@@ -37,6 +37,7 @@ Jedes Plugin registriert sich über ein `manifest.json` beim Kern und bringt eig
 | [`docs/todo.md`](docs/todo.md) | Offene Aufgaben pro Modul |
 | [`docs/done.md`](docs/done.md) | Erledigte Module |
 | [`docs/self-improvement.md`](docs/self-improvement.md) | Learnings & Verbesserungen |
+| [`docs/open-questions.md`](docs/open-questions.md) | Offene Fragen |
 
 ### Modul-Dokumentation
 
