@@ -1,0 +1,45 @@
+version: "3.9"
+# Development overrides – run with:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-botball}:${POSTGRES_PASSWORD:-botball}@db:5432/${POSTGRES_DB:-botball}
+      REDIS_URL: redis://redis:6379/0
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    labels: []
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8000/api
+    command: sh -c "corepack enable && pnpm install && pnpm dev --host"
+    ports:
+      - "5173:5173"
+    labels: []
+
+  traefik:
+    profiles: ["skip-in-dev"]
