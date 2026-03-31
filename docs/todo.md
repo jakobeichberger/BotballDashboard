@@ -54,7 +54,10 @@ Das System folgt einem **modularen Plugin-Prinzip**:
 - [ ] Tech-Stack festlegen (React, Django/FastAPI oder Node.js, PostgreSQL)
 - [ ] Monorepo-Struktur anlegen (`/core`, `/modules/scoring`, `/modules/paper-review`, `/modules/print`, `/frontend`, `/docs`)
 - [ ] Plugin-Registry definieren: Wie registrieren sich Module beim Kern? (z. B. Manifest-Datei pro Modul)
-- [ ] Docker & Docker-Compose für lokale Entwicklung
+- [ ] Docker & Docker-Compose für lokale Entwicklung (DB als persistentes Volume)
+- [ ] Datenbank-Migrationsstrategie: Alembic/Django Migrations, Rollback-fähig, Auto-Backup vor Deployment
+- [ ] `migrate-then-start` Deployment-Pattern (Migrationen vor Backend-Start)
+- [ ] Schema-Versionierung in DB (`schema_version`-Tabelle)
 - [ ] CI/CD-Pipeline (GitHub Actions)
 - [ ] Linter, Formatter, Pre-commit Hooks
 
@@ -106,23 +109,27 @@ Das System folgt einem **modularen Plugin-Prinzip**:
 ---
 
 ## [ ] Modul 5: Scoring-Modul  *(Plugin)*
-**Beschreibung:** Eigenständiges Modul für Turnierbewertung. Konfigurierbare Scoring-Sheets, offizielle Formeln, Live-Ranglisten, OCR-Upload.  
+**Beschreibung:** Zwei-Phasen-Bewertungssystem: interne Vorbereitungsphase (Testläufe) + offizielle ECER-Turnierphase. Performance-Dashboard, Gegner-Scouting, OCR-Upload.  
 **Registriert sich beim Kern via:** Modul-Manifest → liefert eigene API-Routen, UI-Komponenten und Rollen (Juror)  
 **Kommuniziert mit:**
-- Modul 3 (Saisons): Scoring-Vorlagen und Turniere sind saisonspezifisch
+- Modul 3 (Saisons): Scoring-Vorlagen und Phasen sind saisonspezifisch
 - Modul 4 (Teams): Scores werden Teams zugeordnet
 - Frontend: WebSocket für Live-Ranglisten & Scoreboard
 **Aufgaben:**
-- [ ] Turnier- & Spielplanverwaltung (Seeding, Double-Elimination, Alliance-Matches)
+- [ ] Phasen-Modell: Phase 1 (Preparations/intern) und Phase 2 (ECER/offiziell) pro Saison
+- [ ] Phase 1: Flexible Testläufe für alle eigenen Teams dokumentieren
+- [ ] Phase 2: Seeding, Double-Elimination, Alliance-Matches
+- [ ] Externe Gegner-Teams erfassen (Scouting) mit eigenen beobachteten Scores
+- [ ] Performance-Dashboard: Teamvergleich, Verlaufsgraph, Stärken/Schwächen-Analyse
+- [ ] Gegner-Analyse: Ranking inkl. externer Teams, Turnierpositions-Einschätzung
 - [ ] Konfigurierbares Scoring-Sheet-Schema (YAML/JSON oder grafischer Editor)
-- [ ] Berechnung: Seeding-Score (Summe beider Seiten), Durchschnitt bester 2 Runs
-- [ ] Berechnung: Double-Elimination (Sieg/Niederlage)
-- [ ] Berechnung: Gesamtscore inkl. Dokumentationspunkte
+- [ ] Berechnung: Seeding-Score, Durchschnitt bester 2 Runs, Double-Elimination, Gesamtscore
 - [ ] Plausibilitätsprüfung (Maximalwerte, unrealistische Einträge)
+- [ ] Kommentarfeld pro Lauf (Notizen zu Problemen)
 - [ ] Audit Trail für Score-Änderungen
 - [ ] OCR-Upload: Bild/PDF → Tesseract + OpenCV → manuelle Korrektur
 - [ ] Live-Rangliste & öffentliches Scoreboard via WebSocket
-- [ ] Export: PDF, CSV
+- [ ] Export: PDF, CSV (inkl. Phasenvergleich und Scouting-Bericht)
 
 ---
 
