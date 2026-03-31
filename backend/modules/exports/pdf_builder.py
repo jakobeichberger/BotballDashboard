@@ -200,7 +200,7 @@ def build_print_report_pdf(
     elements.append(Paragraph("Druckaufträge", H2))
     data = [["Team", "Datei", "Material", "Status", "Drucker", "Gramm"]]
     for j in jobs:
-        grams = j.get("actual_grams") or j.get("estimated_grams")
+        grams = j.get("actual_grams") if j.get("actual_grams") is not None else j.get("estimated_grams")
         data.append([
             teams_by_id.get(j["team_id"], j["team_id"][:8]),
             Paragraph(j["file_name"][:35], BODY),

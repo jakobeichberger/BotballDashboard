@@ -362,9 +362,14 @@ create_directories() {
 
   success "Created: ${DATA_DIR}/db, ${DATA_DIR}/uploads, ${DATA_DIR}/letsencrypt"
 
-  # Patch docker-compose.yml to use /data paths (idempotent sed)
+  # Patch docker-compose.yml to use absolute /data paths (idempotent)
   if grep -q "device: /data/db" "${INSTALL_DIR}/docker-compose.yml"; then
     success "docker-compose.yml already uses /data/db"
+  else
+    info "Patching docker-compose.yml to use /data/db..."
+    sed -i 's|device: \./data|device: /data|g; s|device: ./data|device: /data|g' \
+      "${INSTALL_DIR}/docker-compose.yml"
+    success "docker-compose.yml patched to use ${DATA_DIR}/db"
   fi
 }
 

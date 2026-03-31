@@ -54,8 +54,17 @@ async def login(
 async def refresh(
     request: Request, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    # Accept token from cookie or body
-    refresh_token = request.cookies.get(REFRESH_COOKIE) or (await request.body() and RefreshRequest.model_validate_json(await request.body())).refresh_token
+    # Accept token from cookie or JSON body (read body only once)
+    refresh_token = request.cookies.get(REFRESH_COOKIE)
+    if not refresh_token:
+        try:
+            body = await request.json()
+            refresh_token = body.get("refresh_token")
+        except Exception:
+            refresh_token = None
+    if not refresh_token:
+        from core.exceptions import UnauthorizedError
+        raise UnauthorizedError("Refresh token required")
     access_token, new_refresh = await service.refresh_tokens(db, refresh_token)
     response.set_cookie(
         REFRESH_COOKIE,
