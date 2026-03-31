@@ -9,70 +9,147 @@
 
 ## Beschreibung
 
-Eigenständiges Plugin für die gesamte Turnierbewertung. Verwaltet Seeding-Runden, Double-Elimination-Brackets und Alliance-Matches. Scoring-Sheets sind jährlich konfigurierbar ohne Programmieraufwand. Unterstützt OCR-Upload von handschriftlichen Sheets.
+Eigenständiges Plugin für die gesamte Turnierbewertung über zwei Phasen: eine interne Vorbereitungsphase mit eigenen Testläufen und die offizielle ECER-Turnierphase. Scoring-Sheets sind jährlich konfigurierbar. Unterstützt OCR-Upload und die Dokumentation von Gegnern im Turnier.
+
+---
+
+## Die zwei Scoring-Phasen
+
+### Phase 1 – Preparations (intern)
+
+Interne Testläufe **vor** dem offiziellen Turnier. Ziel ist es, den eigenen Teams Feedback zu geben und die Leistungsentwicklung zu dokumentieren.
+
+- Mehrere interne Testläufe pro Team möglich (keine feste Rundenanzahl)
+- Alle eigenen Teams nehmen teil
+- Scores werden intern dokumentiert, sind nicht öffentlich
+- Jeder Testlauf kann mit Notizen kommentiert werden (was lief gut, was nicht)
+- Performance-Dashboard zeigt Entwicklung jedes Teams über die Testläufe hinweg
+- Vergleich zwischen Teams in der Vorbereitungsphase
+- Zeitstempel pro Lauf → Fortschrittsverlauf über Wochen sichtbar
+
+### Phase 2 – ECER Offizielles Turnier
+
+Dokumentation der Ergebnisse beim offiziellen ECER-Turnier.
+
+**Eigene Teams:**
+- Seeding-Runden: Score pro Lauf, Durchschnitt der besten 2
+- Double-Elimination: Match-Ergebnisse (Sieg/Niederlage) und Bracket-Position
+- Alliance-Matches (falls vorhanden)
+- Vollständige Ergebnisdokumentation mit Audit Trail
+
+**Gegnerteams (Scouting):**
+- Andere Teams beim Turnier können ebenfalls dokumentiert werden
+- Gegner-Teams werden als `external_team` erfasst (Name, Nummer, ggf. Schule)
+- Ihre Scores in Seeding-Runden können eingetragen werden (soweit beobachtbar / öffentlich)
+- Match-Ergebnisse gegen uns werden dokumentiert (wir haben gespielt gegen Team X → gewonnen/verloren, Score)
+- Ziel: Einschätzung wie wir turniertechnisch dastehen und gegen wen wir im Double-Elimination treffen könnten
 
 ---
 
 ## Features
 
+### Performance-Dashboard (Phase 1 & 2)
+
+Das Scoring-Modul liefert ein eigenes internes Dashboard:
+
+- **Teamvergleich:** Alle eigenen Teams im Überblick, sortiert nach aktuellem Durchschnittsscore
+- **Verlaufsgraph:** Score-Entwicklung pro Team über alle Testläufe / Runden hinweg
+- **Stärken/Schwächen-Analyse:** Aufschlüsselung welche Aufgabensegmente gut/schlecht laufen
+- **Ranking-Vorschau:** Hochrechnung der Seeding-Platzierung auf Basis aktueller Scores
+- **Gegner-Analyse (Phase 2):** Scouting-Übersicht aller dokumentierten Gegner mit ihren Scores → Einschätzung der eigenen Turnierposition
+- **Phase-Vergleich:** Vergleich der Scores aus der Vorbereitungsphase mit den offiziellen Turnierergebnissen
+
 ### Turnier- & Spielplanverwaltung
-- Seeding-Runden anlegen (Anzahl konfigurierbar, Standard: 3)
+- Testläufe (Phase 1): flexibel, kein fixer Zeitplan
+- Seeding-Runden (Phase 2): Anzahl konfigurierbar, Standard: 3
 - Double-Elimination-Bracket automatisch generieren
-- Alliance-Matches (Kooperationsläufe zweier Teams)
-- Übungszeiten im Zeitplan berücksichtigen
+- Alliance-Matches
 - Live-Zeitplan: welches Match läuft gerade, welches kommt als nächstes
 
 ### Konfigurierbares Scoring-Sheet
-- Scoring-Sheet-Schema per YAML/JSON oder grafischem Editor definieren
+- Schema per YAML/JSON oder grafischem Editor definieren
 - Felder: Name, Multiplikator, Maximalwert, Typ (Anzahl / Boolean)
 - Pro Saison ein eigenes Schema (→ Saisonverwaltung)
-- Beispiel-Schema 2024/2025/2026 wird mitgeliefert
-- Änderungen am Schema wirken sich nicht auf bereits eingetragene Scores aus
+- Dasselbe Schema gilt für Phase 1 und Phase 2
+- Beispiel-Schemas 2024/2025/2026 werden mitgeliefert
 
 ### Score-Erfassung
-- Juror gibt Score manuell über Webformular ein
-- Oder: Score via OCR-Upload (Foto / PDF des handschriftlichen Sheets)
+- Manuelles Webformular
+- OCR-Upload (Foto / PDF des handschriftlichen Sheets)
 - Plausibilitätsprüfung: Maximalwerte, unrealistische Einträge werden markiert
-- Manuelle Korrektur mit Kommentarfeld (Begründung pflicht bei Korrektur)
+- Kommentarfeld pro Lauf (z.B. "Roboter ist umgefallen bei Aufgabe 3")
 - Audit Trail: wer hat wann welchen Score eingetragen / geändert
 
 ### Score-Berechnung (offizielle Formeln)
 - **Seeding-Score** = Summe der Punkte auf Side A + Side B
 - **Seeding-Durchschnitt** = Durchschnitt der besten 2 von N Seeding-Runs
-- **Double-Elimination** = Nur Sieg / Niederlage (Punktehöhe irrelevant für Platzierung)
-- **Gesamtscore** = Kombination aus Seeding-Punkten, Double-Elimination-Ergebnis und Dokumentationspunkten (Formel aus Regelwerk, saisonspezifisch konfigurierbar)
+- **Double-Elimination** = Nur Sieg / Niederlage
+- **Gesamtscore** = Seeding + Double-Elimination + Dokumentationspunkte (saisonspezifisch konfigurierbar)
 
 ### OCR-Pipeline
-- Upload: Foto (JPG/PNG) oder PDF des ausgefüllten Scoring-Sheets
-- Bildvorverarbeitung: Kontrast, Entzerrung, Rauschunterdrückung (OpenCV)
-- Texterkennung: Tesseract OCR
-- Erkannte Werte werden dem Scoring-Formular vorausgefüllt
-- Unsichere Erkennungen (niedrige Konfidenz) werden farblich markiert
-- Juror korrigiert markierte Felder manuell bevor er speichert
+- Upload: Foto (JPG/PNG) oder PDF
+- Bildvorverarbeitung mit OpenCV (Kontrast, Entzerrung, Rauschen)
+- Texterkennung mit Tesseract
+- Erkannte Werte werden im Formular vorausgefüllt
+- Unsichere Erkennungen farblich markiert → manuelle Korrektur
 
 ### Ranglisten & Scoreboard
-- Live-Rangliste während der Seeding-Runden (nach Durchschnitt sortiert)
-- Live-Bracket-Anzeige während Double-Elimination
-- Öffentliches Scoreboard via WebSocket (für Großbildschirme / Publikum)
-- Historische Ranglisten vergangener Saisons abrufbar
+- Interne Rangliste (Phase 1, nur für Admins/Mentoren sichtbar)
+- Live-Rangliste Phase 2 (Seeding-Durchschnitt, sortierbar)
+- Live-Bracket-Anzeige Double-Elimination
+- Öffentliches Scoreboard via WebSocket (für Großbildschirme)
+- Gegner-Rangliste: alle dokumentierten Teams (eigene + externe) im Vergleich
 
 ### Export
 - Offizielle Ergebnisliste als PDF
 - Rohdaten als CSV/Excel
-- Einzelne Team-Auswertung als PDF
+- Team-Auswertung (Entwicklung über beide Phasen) als PDF
+- Scouting-Bericht der Gegner als PDF
 
 ---
 
 ## Datenmodell
 
 ```
+Phase {
+  id, season_id,
+  type: preparation | competition,
+  name, start_date, end_date
+}
+
 Tournament {
-  id, season_id, name, type: seeding|double_elim|alliance
+  id, phase_id,
+  type: test_run | seeding | double_elim | alliance,
+  name
+}
+
+Team {
+  // Eigene Teams kommen aus Modul 04 (Teamverwaltung)
+  // Externe/Gegner-Teams werden hier erfasst:
+}
+
+ExternalTeam {
+  id, season_id,
+  name, number, school?,
+  source: observed | official   // selbst beobachtet oder aus offiziellen Daten
 }
 
 Match {
-  id, tournament_id, round, team_a_id, team_b_id?,
-  score_a, score_b, winner_id?, status: scheduled|running|done
+  id, tournament_id,
+  round, status: scheduled | running | done,
+  team_a_id, team_a_type: internal | external,
+  team_b_id?, team_b_type?: internal | external,
+  score_a, score_b, winner_id?
+}
+
+Score {
+  id, match_id, team_id, team_type: internal | external,
+  raw_values: JSON,
+  calculated_total,
+  notes,
+  submitted_by, submitted_at,
+  ocr_source_file?,
+  audit_log: AuditEntry[]
 }
 
 ScoringSchema {
@@ -80,13 +157,7 @@ ScoringSchema {
 }
 
 ScoringField {
-  key, label, multiplier, max_value, type: count|boolean
-}
-
-Score {
-  id, match_id, team_id, raw_values: JSON,
-  calculated_total, submitted_by, submitted_at,
-  ocr_source_file?, audit_log: AuditEntry[]
+  key, label, multiplier, max_value, type: count | boolean
 }
 ```
 
@@ -96,15 +167,20 @@ Score {
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
-| GET | `/scoring/seasons/:id/schema` | Scoring-Schema einer Saison |
+| GET | `/scoring/seasons/:id/schema` | Scoring-Schema abrufen |
 | PUT | `/scoring/seasons/:id/schema` | Schema bearbeiten (Admin) |
-| GET | `/scoring/tournaments` | Turniere auflisten |
-| POST | `/scoring/tournaments` | Turnier anlegen |
+| GET | `/scoring/seasons/:id/phases` | Phasen einer Saison abrufen |
+| POST | `/scoring/phases` | Phase anlegen (Admin) |
+| GET | `/scoring/tournaments` | Turniere/Testläufe auflisten |
+| POST | `/scoring/tournaments` | Turnier/Testlauf anlegen |
 | GET | `/scoring/tournaments/:id/bracket` | Bracket abrufen |
 | POST | `/scoring/matches/:id/score` | Score einreichen |
 | PUT | `/scoring/matches/:id/score` | Score korrigieren |
-| POST | `/scoring/ocr/upload` | Foto/PDF hochladen, OCR starten |
-| GET | `/scoring/seasons/:id/ranking` | Aktuelle Rangliste |
+| POST | `/scoring/ocr/upload` | OCR-Upload starten |
+| GET | `/scoring/seasons/:id/ranking` | Rangliste (eigene Teams) |
+| GET | `/scoring/seasons/:id/ranking/full` | Rangliste inkl. Gegner |
+| POST | `/scoring/external-teams` | Gegner-Team erfassen |
+| GET | `/scoring/seasons/:id/dashboard` | Performance-Dashboard-Daten |
 | GET | `/scoring/seasons/:id/export` | Ergebnisse exportieren |
 
 ---
@@ -113,7 +189,8 @@ Score {
 
 | Richtung | Modul | Art |
 |---|---|---|
-| ← | Saisonverwaltung | `season_id`, Schema ist saisonspezifisch |
-| ← | Teamverwaltung | `team_id` für Match-Zuweisung |
-| → | Dashboard | Scores, Ranglisten, Statistiken |
+| ← | Saisonverwaltung | `season_id`, Schema und Phasen sind saisonspezifisch |
+| ← | Teamverwaltung | `team_id` für eigene Teams |
+| → | Dashboard (Modul 08) | Scores, Ranglisten, Phasen-Vergleich, Gegner-Analyse |
 | → | Frontend | WebSocket für Live-Rangliste & Scoreboard |
+| → | Paper-Review-Modul | Dokumentationspunkte fließen in Gesamtscore ein |
