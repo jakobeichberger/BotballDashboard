@@ -12,6 +12,7 @@ Dieses Handbuch richtet sich an Team-Betreuer (Mentoren), die eines oder mehrere
 | Testlauf-Entwicklung verfolgen | Scoring → Vorbereitungsphase |
 | Paper einreichen | Paper-Review → Paper einreichen |
 | Paper-Status verfolgen | Paper-Review → Meine Papers |
+| Revision einreichen | Paper-Review → Meine Papers → Paper → Neue Version hochladen |
 | Druckjob beantragen | 3D-Druck → Neuer Druckjob |
 | Druckjob-Status verfolgen | 3D-Druck → Meine Jobs |
 | Deadlines im Blick behalten | Dashboard → Saison-Übersicht |
@@ -25,6 +26,7 @@ Die Startseite zeigt nach dem Login alle relevanten Informationen auf einen Blic
 - **Aktuelle Phase:** Welche Phase ist gerade aktiv (Vorbereitung / Turnier / GCER)?
 - **Nächste Deadlines:** Alle kommenden Deadlines (Paper, Turnier, intern) mit Tagen-Countdown
 - **Team-Status:** Letzter Testlauf-Score, Paper-Status, offene Druckjobs
+- **Announcements:** Aktuelle Mitteilungen des Organisationsteams
 - **Benachrichtigungen:** Ungelesene Nachrichten (Druckjob genehmigt, Paper-Revision angefordert, ...)
 
 ---
@@ -87,14 +89,13 @@ Während der internen Testläufe können Mentoren die Entwicklung ihres Teams ve
 1. **3D-Druck → Neuer Druckjob**
 2. STL- oder 3MF-Datei hochladen
 3. Material angeben (PLA, PETG, ...)
-4. Priorität: Normal / Hoch
-5. Kommentar (optional): z.B. „Bitte 0.15mm Layer Height, Infill 20%"
-6. Absenden → Job erhält Status `Angefragt`
+4. Kommentar (optional): z.B. „Bitte 0.15mm Layer Height, Infill 20%"
+5. Absenden → Job erhält Status `Angefragt`
 
-**Wichtige Hinweise (Wettbewerbs-Regeln):**
+**Wichtige Hinweise (Wettbewerbs-Regeln 2026):**
 - Für Roboterteile: STL-Datei muss auch in der Perioddokumentation (Periode 3) eingereicht werden
-- 2026: max. 6 Teile zwischen beiden Robotern, PLA oder PETG, grauskalig
-- Maximalgröße pro Teil: 220 × 220 × 250 mm (Ender 3 V3 SE Volumen)
+- Max. 6 Teile zwischen beiden Robotern, PLA oder PETG, grauskalig
+- Maximalgröße pro Teil: 220 × 220 × 250 mm (Ender 3 V3 SE Druckvolumen)
 
 ### Druckjob-Status verfolgen
 

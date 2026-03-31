@@ -18,14 +18,16 @@ Dieses Handbuch richtet sich an Reviewer (Paper-Gutachter), die eingereichte Pap
 
 ## Zugewiesene Papers
 
-Nach dem Login erscheint unter **Paper-Review → Meine Papers** eine Liste aller Papers die einem zugewiesen wurden.
+Nach dem Login erscheint unter **Paper-Review → Meine Papers** eine Liste aller zugewiesenen Papers.
 
 | Status | Bedeutung |
 |---|---|
-| `Zugewiesen` | Paper wartet auf ersten Review |
+| `Eingereicht` | Paper wartet auf ersten Review |
 | `In Review` | Review wurde begonnen aber noch nicht abgeschlossen |
-| `Revision eingegangen` | Team hat überarbeitete Version hochgeladen |
-| `Abgeschlossen` | Review-Prozess beendet (akzeptiert oder abgelehnt) |
+| `Revision angefordert` | Feedback gegeben, Team muss überarbeiten |
+| `Überarbeitung eingereicht` | Team hat überarbeitete Version hochgeladen |
+| `Akzeptiert` | Review-Prozess erfolgreich abgeschlossen |
+| `Abgelehnt` | Paper entspricht nicht den Anforderungen |
 
 ---
 
@@ -64,7 +66,13 @@ Nach dem Login erscheint unter **Paper-Review → Meine Papers** eine Liste alle
 5. Entscheidung:
    - **Akzeptieren** – Paper erfüllt die Anforderungen
    - **Revision anfordern** – Team muss Änderungen vornehmen
-   - **Ablehnen** – Paper entspricht nicht den Mindestanforderungen (z.B. bei vermuteter KI-Generierung ohne Eigenleistung)
+   - **Ablehnen** – Paper entspricht nicht den Mindestanforderungen
+
+### Gesamtscore
+
+Der Gesamtscore wird automatisch berechnet: `Ø der 5 Kategorien × 2 = 0–100 Punkte`
+
+Bei mehreren Reviewern wird der Durchschnitt aller eingereichten Reviews als finaler Score verwendet.
 
 ---
 
@@ -83,6 +91,7 @@ Wenn das Team eine überarbeitete Version hochlädt:
 2. **Paper-Review → Meine Papers → Paper → Neue Version ansehen**
 3. Vergleich: vorherige und aktuelle Version nebeneinander einsehbar
 4. Neuen Review schreiben (vorheriger Review bleibt als Referenz sichtbar)
+5. Versionsnummer des Papers wird bei jeder Revision hochgezählt
 
 Es können beliebig viele Revisions-Runden stattfinden – auch unterschiedlich viele je Team.
 

@@ -4,7 +4,21 @@ Das Admin-Konto hat Vollzugriff auf alle Module und Einstellungen. Dieses Handbu
 
 ---
 
-## Benutzerverwaltung
+## Inhaltsverzeichnis
+
+- [Benutzerverwaltung](#benutzerverwaltung)
+- [Rechteverwaltung](#rechteverwaltung)
+- [Saisonverwaltung](#saisonverwaltung)
+- [Scoring](#scoring)
+- [Paper-Review](#paper-review)
+- [3D-Druck](#3d-druck)
+- [Exporte](#exporte)
+- [Systemeinstellungen](#systemeinstellungen)
+- [Logging & Fehler-Überwachung](#logging)
+
+---
+
+## Benutzerverwaltung {#benutzerverwaltung}
 
 ### Benutzer einladen
 1. **Admin → Benutzer → Benutzer einladen**
@@ -25,7 +39,7 @@ Das Admin-Konto hat Vollzugriff auf alle Module und Einstellungen. Dieses Handbu
 
 ---
 
-## Rechteverwaltung
+## Rechteverwaltung {#rechteverwaltung}
 
 ### Granulare Berechtigungen
 
@@ -42,53 +56,51 @@ Rechte können pro Benutzer oder pro Gruppe/Rolle vergeben werden. Jedes Recht h
 **Paper-Review-Modul:**
 | Recht | Beschreibung |
 |---|---|
-| `paper:read` | Papers einsehen (eigenes Team oder alle) |
-| `paper:submit` | Paper einreichen (Team-Seite) |
-| `paper:review` | Reviews schreiben, Revisionen anfordern |
-| `paper:assign` | Reviewer einem Paper zuweisen |
-| `paper:admin` | Status manuell setzen, Deadlines verwalten |
+| `papers:read` | Papers einsehen (eigenes Team oder alle) |
+| `papers:submit` | Paper einreichen (Team-Seite) |
+| `papers:review` | Reviews schreiben, Revisionen anfordern |
+| `papers:assign` | Reviewer einem Paper zuweisen |
+| `papers:admin` | Status manuell setzen, Deadlines verwalten, Exporte |
 
 **3D-Druck-Modul:**
 | Recht | Beschreibung |
 |---|---|
-| `print:request` | Druckjob beantragen |
-| `print:manage` | Jobs genehmigen, ablehnen, Drucker zuweisen |
-| `print:admin` | Drucker hinzufügen/entfernen, Limits setzen, Credentials verwalten |
+| `printing:request` | Druckjob beantragen |
+| `printing:manage` | Jobs genehmigen, ablehnen, Drucker zuweisen |
+| `printing:admin` | Drucker hinzufügen/entfernen, Limits setzen, Credentials verwalten, Exporte |
 
 **Teamverwaltung:**
 | Recht | Beschreibung |
 |---|---|
-| `team:read` | Teamdaten einsehen |
-| `team:edit` | Teamdaten bearbeiten (eigenes Team: Mentor; alle: Admin) |
-| `team:admin` | Teams anlegen, löschen, Saison-Anmeldung |
+| `teams:read` | Teamdaten einsehen, Team-Listen exportieren |
+| `teams:write` | Teamdaten bearbeiten |
+| `teams:admin` | Teams anlegen, löschen, Saison-Anmeldung |
 
 **Saisonverwaltung:**
 | Recht | Beschreibung |
 |---|---|
-| `season:read` | Saison-Informationen einsehen |
-| `season:admin` | Saisons anlegen, bearbeiten, archivieren |
+| `seasons:read` | Saison-Informationen einsehen |
+| `seasons:write` | Saisons anlegen, bearbeiten |
+| `seasons:admin` | Saisons archivieren, aktive Saison setzen |
 
-**Systemverwaltung:**
+**Dashboard & Systemverwaltung:**
 | Recht | Beschreibung |
 |---|---|
-| `admin:users` | Benutzerverwaltung |
-| `admin:roles` | Rollen und Rechte verwalten |
-| `admin:system` | Systemeinstellungen, Logs |
+| `dashboard:read` | Dashboard und Statistiken einsehen, Ranglisten exportieren |
+| `dashboard:write` | Announcements erstellen und verwalten |
+| `users:read` | Benutzerliste einsehen |
+| `users:write` | Benutzer einladen, Rollen vergeben |
+| `users:admin` | Benutzer deaktivieren, Passwort-Reset erzwingen |
 
 ### Vordefinierte Rollen (Gruppen)
-
-Das System liefert sinnvolle Standardrollen mit vordefinierten Rechten:
 
 | Rolle | Enthaltene Rechte |
 |---|---|
 | **Admin** | Alle Rechte |
-| **Juror** | `scoring:read`, `scoring:write`, `team:read` |
-| **Head Juror** | `scoring:read`, `scoring:write`, `scoring:delete`, `scoring:admin`, `team:read` |
-| **Reviewer** | `paper:read`, `paper:review`, `team:read` |
-| **Lead Reviewer** | `paper:read`, `paper:review`, `paper:assign`, `paper:admin`, `team:read` |
-| **Mentor** | `team:read`, `team:edit` (nur eigene Teams), `paper:read` (eigene), `print:request`, `scoring:read` |
-| **Print Manager** | `print:request`, `print:manage`, `print:admin` |
-| **Gast** | `scoring:read` (nur öffentliche Daten), `team:read` (nur öffentliche) |
+| **Juror** | `scoring:read`, `scoring:write`, `teams:read` |
+| **Reviewer** | `papers:read`, `papers:review`, `teams:read` |
+| **Mentor** | `teams:read`, `papers:read`, `papers:submit`, `printing:request`, `scoring:read` |
+| **Gast** | `scoring:read`, `dashboard:read`, `teams:read` |
 
 ### Benutzerdefinierte Rollen anlegen
 1. **Admin → Rechteverwaltung → Neue Rolle**
@@ -105,7 +117,7 @@ Das System liefert sinnvolle Standardrollen mit vordefinierten Rechten:
 ### Neue Saison anlegen
 1. **Admin → Saisons → Neue Saison**
 2. Name (z.B. „ECER 2026"), Jahr, Beschreibung
-3. Wettbewerbs-Stufen anlegen (z.B. ECER, GCER)
+3. Wettbewerbs-Stufen anlegen (z.B. ECER, GCER, Junior)
 4. Phasen pro Stufe definieren (Preparations, Tournament)
 5. Aktive Module auswählen (Scoring, Paper-Review, 3D-Druck)
 6. Saison auf „Aktiv" setzen
@@ -118,25 +130,20 @@ Das System liefert sinnvolle Standardrollen mit vordefinierten Rechten:
 ### Scoring-Schema einer Saison bearbeiten
 - **Admin → Saisons → Saison → Scoring → Schema bearbeiten**
 - Felder hinzufügen: Name, Multiplikator, Maximalwert, Typ (Anzahl / Ja-Nein)
+- Schema-Formel: `Gesamt = Σ (Feldwert × Multiplikator)`
 - GCER-Schema: „Von ECER klonen" → unabhängige Kopie die separat bearbeitet werden kann
 
 ### Deadlines verwalten
 - **Admin → Saisons → Saison → Deadlines**
-- Deadline-Typen: `internal_draft`, `internal_review`, `internal_revision`, `internal_final`, `official_submission`, `official_final`
 - Automatische Erinnerungen: 7 Tage, 3 Tage, 1 Tag vor jeder Deadline
 
 ---
 
 ## Scoring {#scoring}
 
-### Testlauf dokumentieren (Vorbereitungsphase)
-- **Scoring → Vorbereitungsphase → Neuer Testlauf**
-- Team auswählen, Score eingeben, Notizen hinzufügen
-
 ### Match anlegen (Turnierphase)
 - **Scoring → Turnierphase → Match anlegen**
-- Typ: Seeding / Double Elimination / Alliance
-- Teams auswählen (eigene und/oder externe Gegner)
+- Team auswählen, Runde und Tisch eingeben
 
 ### Score korrigieren
 - **Scoring → Match → Score → Bearbeiten**
@@ -145,13 +152,18 @@ Das System liefert sinnvolle Standardrollen mit vordefinierten Rechten:
 
 ### Teams für GCER qualifizieren
 - **Scoring → ECER → Qualifikation → Teams verwalten**
-- 1–2 Teams auswählen und als qualifiziert markieren
-- Qualifizierte Teams werden automatisch für GCER-Phasen freigeschaltet
+- Teams auswählen und als qualifiziert markieren
+- Qualifizierte Teams werden automatisch für GCER freigeschaltet
 
 ### Yellow/Red Card vergeben
 - **Scoring → Turnier → Team → Karte vergeben**
 - Gelbe Karte: Verwarnung
 - Rote Karte: sofortige DQ aus dem gesamten Turnier
+
+### Score-Sheets verwalten
+- **Scoring → Score-Sheets verwalten**
+- Score-Sheet-Vorlagen anlegen, bearbeiten, löschen
+- Vorlagen sind mit dem Scoring-Schema der Saison verknüpft
 
 ---
 
@@ -178,10 +190,9 @@ Das System liefert sinnvolle Standardrollen mit vordefinierten Rechten:
 ### Drucker hinzufügen
 1. **3D-Druck → Drucker → Drucker hinzufügen**
 2. Name, Hersteller, Modell, Standort
-3. Adapter-Typ auswählen: `Bambu`, `OctoPrint`, `Prusa`
-4. Verbindungsparameter eingeben (API-Key, IP-Adresse)
-   > API-Keys werden verschlüsselt gespeichert und sind nach dem Speichern nicht mehr einsehbar
-5. Verbindung testen → Statusanzeige
+3. Verbindungsparameter eingeben (API-Key, IP-Adresse)
+   > API-Keys werden verschlüsselt (Fernet/AES-128) gespeichert und sind nach dem Speichern nicht mehr einsehbar
+4. Verbindung testen → Statusanzeige
 
 ### Team-Limits setzen
 - **3D-Druck → Limits → Team auswählen → Limits bearbeiten**
@@ -196,7 +207,24 @@ Das System liefert sinnvolle Standardrollen mit vordefinierten Rechten:
 
 ---
 
-## Systemeinstellungen
+## Exporte {#exporte}
+
+Als Admin stehen alle Exporte zur Verfügung:
+
+| Export | Format | Pfad |
+|---|---|---|
+| Rangliste | PDF, CSV | Scoring → Rangliste → Export-Buttons |
+| Alle Wertungen (Matches) | CSV | Scoring → Matches → Export |
+| Paper-Review-Übersicht | PDF, CSV | Paper-Review → Übersicht → Export |
+| 3D-Druck-Report | PDF | 3D-Druck → Bericht → Export |
+| Team-Liste | PDF, CSV | Teams → Export-Buttons |
+
+**PDF-Exporte** sind A4-formatiert mit Logo-Header und druckfertigen Tabellen.
+**CSV-Exporte** sind UTF-8 (BOM) kodiert und öffnen sich direkt in Excel.
+
+---
+
+## Systemeinstellungen {#systemeinstellungen}
 
 ### E-Mail-Konfiguration testen
 - **Admin → System → E-Mail → Test-E-Mail senden**
@@ -207,43 +235,23 @@ Das System liefert sinnvolle Standardrollen mit vordefinierten Rechten:
 
 ---
 
-## Logging & Fehler-Überwachung
+## Logging & Fehler-Überwachung {#logging}
 
 ### Application Log
 
 **Admin → System → Logs**
 
-Zeigt alle Anwendungs-Ereignisse in Echtzeit:
-
 - **Filter:** Level (DEBUG / INFO / WARNING / ERROR / CRITICAL), Modul, Zeitraum, Benutzer
 - **Suche:** Freitext-Suche in Log-Nachrichten
-- **Auto-Refresh:** Neue Einträge erscheinen automatisch (WebSocket)
 - **Export:** Als CSV für Zeitraum herunterladen
 
 Typische Log-Einträge:
 | Level | Beispiel |
 |---|---|
 | INFO | Benutzer eingeloggt, Score eingegeben, Druckjob gestartet |
-| WARNING | Soft-Limit erreicht, OCR-Erkennung unsicher, Drucker nicht erreichbar (Retry) |
-| ERROR | Drucker-API-Fehler, DB-Query fehlgeschlagen, E-Mail-Versand fehlgeschlagen |
-| CRITICAL | Datenbankverbindung verloren, Out-of-Memory |
-
-### Error-Log
-
-**Admin → System → Fehler**
-
-Dedizierte Ansicht nur für `ERROR`- und `CRITICAL`-Einträge:
-
-- Jeder Fehler enthält: Zeitstempel, Modul, Fehlermeldung, Stack Trace, betroffener Benutzer (wenn vorhanden)
-- **Status:** Offen / Gelöst
-- **Als gelöst markieren:** Fehler auswählen → „Gelöst" + optionale Notiz
-- **Automatische E-Mail** an Admin bei CRITICAL-Fehlern
-
-Workflow bei einem Fehler:
-1. Admin erhält E-Mail (CRITICAL) oder sieht Eintrag im Dashboard
-2. **Admin → System → Fehler → Fehler öffnen** → Stack Trace lesen
-3. Problem beheben
-4. **„Als gelöst markieren"** mit Erklärung
+| WARNING | Soft-Limit erreicht, Drucker nicht erreichbar (Retry) |
+| ERROR | Drucker-API-Fehler, E-Mail-Versand fehlgeschlagen |
+| CRITICAL | Datenbankverbindung verloren |
 
 ### Audit-Log
 

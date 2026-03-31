@@ -22,9 +22,10 @@ Das öffentliche Scoreboard kann auf einer separaten Domain gehostet werden (z.B
 ### Was ist sichtbar?
 
 - **Live-Rangliste:** Aktuelle Seeding-Platzierungen aller Teams (nach Abschluss der Seeding-Runden)
-- **Double-Elimination-Bracket:** Turnierbaum mit aktuellen Ergebnissen
 - **Team-Namen und Nummern:** Öffentliche Teamdaten
 - **Aktuelle Phase:** Welche Runde läuft gerade?
+
+> Was genau öffentlich sichtbar ist, wird vom Admin konfiguriert.
 
 ### Was ist nicht sichtbar?
 
@@ -32,9 +33,7 @@ Das öffentliche Scoreboard kann auf einer separaten Domain gehostet werden (z.B
 - Papers und Paper-Reviews
 - Druckjobs
 - Interne Notizen
-- Scores anderer Teams in Echtzeit während des Spiels (erst nach Abschluss des Matches)
-
-> Was genau öffentlich sichtbar ist, wird vom Admin konfiguriert.
+- Scores während eines laufenden Matches (erst nach Abschluss des Matches)
 
 ---
 
@@ -42,10 +41,9 @@ Das öffentliche Scoreboard kann auf einer separaten Domain gehostet werden (z.B
 
 Für die Anzeige auf einem Projektor oder TV beim Turnier:
 
-- **URL:** `https://scoreboard.meineschule.at/live`
 - Automatische Aktualisierung via WebSocket (kein Neuladen nötig)
-- Vollbild-optimierte Ansicht (kein Header, kein Navigation)
-- Zeigt: aktuelle Runde, laufendes Match, letzten Score, Rangliste
+- Vollbild-optimierte Ansicht (kein Header, keine Navigation)
+- Zeigt: aktuelle Rangliste mit Rang, Team, Seed-Score, Runden
 
 ---
 

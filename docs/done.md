@@ -158,15 +158,57 @@
 
 ---
 
-## [ ] Modul 10: Testing
-**Status:** Ausstehend
-**Offen:**
-- pytest-Setup mit pytest-asyncio für Backend-Tests
-- Unit-Tests: Scoring-Berechnungen (seed_score, total_score)
-- Unit-Tests: Paper-Review-Statusübergänge
-- Unit-Tests: Quota-Logik (soft/hard limit)
-- Integrationstests: Auth-Flow (Login → Refresh → Logout)
-- Integrationstests: vollständiger Scoring-Workflow
-- Vitest für Frontend (TanStack Query + Zustand Mocks)
-- E2E mit Playwright (Login, Score-Eingabe, Rangliste)
-- CI/CD: GitHub Actions Workflow
+## [x] Modul 10: Testing
+**Abgeschlossen am:** 2026-03-31
+**Beschreibung:**
+- `backend/tests/conftest.py`: SQLite in-memory (aiosqlite), `db`/`client`/`admin_token`/`season`/`team` Fixtures
+- Unit-Tests (pytest-asyncio):
+  - `test_scoring.py`: `TestComputeSeedScore` (8 Fälle), `TestComputeMatchTotal` (8 Fälle), `TestRankingLogic` (2 async)
+  - `test_paper_review.py`: `TestPaperStatusTransitions` (6), `TestReviewerAssignment` (3), `TestReviewScores` (3)
+  - `test_printing_quota.py`: `TestPrintQuota` (4), `TestFilamentTracking` (4), `TestCredentialEncryption` (2)
+  - `test_auth.py`: `TestPasswordHashing` (4), `TestJWTTokens` (5), `TestUserCreation` (6)
+- Integrationstests (httpx AsyncClient):
+  - `test_auth_routes.py`: Login/Logout/Refresh/Protected (5+4+1)
+  - `test_scoring_routes.py`: Match-CRUD (5+2)
+  - `test_seasons_teams.py`: Seasons/Teams API (5+4)
+- Frontend (Vitest + @testing-library/react + jsdom):
+  - `authStore.test.ts` (7 Fälle), `themeStore.test.ts` (4 Fälle)
+  - `LoginPage.test.tsx` (4 Fälle inkl. vi.mock für useAuth und react-router)
+- CI/CD GitHub Actions:
+  - `.github/workflows/ci.yml`: ruff lint, pytest+coverage, ESLint, vitest, Vite build check
+  - `.github/workflows/deploy.yml`: Docker buildx → GHCR, SSH-Deploy via appleboy/ssh-action
+
+**Kommuniziert mit:** Allen Modulen (Tests decken alle Kern-Flows ab)
+**Notizen:** SQLite in-memory für Tests (kein echtes PostgreSQL in CI nötig); StaticPool für konsistente Verbindungen.
+
+---
+
+## [x] PDF- & CSV-Export
+**Abgeschlossen am:** 2026-03-31
+**Beschreibung:**
+- `backend/modules/exports/pdf_builder.py`: reportlab A4-PDFs mit Logo-Header und alternierenden Zeilenfarben
+  - `build_ranking_pdf()`, `build_paper_review_pdf()`, `build_print_report_pdf()`, `build_team_list_pdf()`
+- `backend/modules/exports/routes.py`: 7 Export-Endpunkte:
+  - `GET /exports/seasons/{id}/ranking.pdf` + `.csv`
+  - `GET /exports/seasons/{id}/matches.csv`
+  - `GET /exports/seasons/{id}/papers.pdf` + `.csv`
+  - `GET /exports/seasons/{id}/printing.pdf`
+  - `GET /exports/seasons/{id}/teams.pdf` + `.csv`
+- `frontend/src/components/ExportButtons.tsx`: `ExportButton`, `RankingExportButtons`, `PaperExportButtons`, `PrintingExportButtons`, `TeamExportButtons`
+- CSV-Export: UTF-8 mit BOM (Excel-kompatibel)
+- Download via `api.get(url, { responseType: "blob" })` + `URL.createObjectURL` + hidden anchor
+
+**Kommuniziert mit:** Scoring, Paper-Review, Printing, Teams, Seasons
+
+---
+
+## [x] Benutzerhandbuch & FAQ
+**Abgeschlossen am:** 2026-03-31
+**Beschreibung:**
+- `docs/documentation/user-manual/index.md`: Übersicht, Navigation, Rollen, Export-Kurzanleitung
+- `docs/documentation/user-manual/admin.md`: Benutzerverwaltung, Rechte, Saisons, alle Module, Exporte, Logs
+- `docs/documentation/user-manual/juror.md`: Score-Eingabe, Korrektur, Cards, Rangliste, Export, Offline
+- `docs/documentation/user-manual/reviewer.md`: Paper-Review-Workflow, Bewertungskategorien, KI-Policy
+- `docs/documentation/user-manual/mentor.md`: Dashboard, Scoring, Paper einreichen, 3D-Druck, Limits
+- `docs/documentation/user-manual/guest.md`: Öffentliches Scoreboard, PWA
+- `docs/documentation/user-manual/faq.md`: 30+ Fragen zu allen Modulen (allgemein, Scoring, Paper, Druck, Benachrichtigungen, Admin)

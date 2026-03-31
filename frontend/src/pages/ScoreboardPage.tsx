@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { Trophy } from "lucide-react";
+import { RankingExportButtons } from "@/components/ExportButtons";
 
 interface RankingEntry {
   rank: number;
@@ -43,9 +44,14 @@ export default function ScoreboardPage() {
           <Trophy className="w-6 h-6 text-yellow-500" />
           Rangliste
         </h1>
-        <Link to="/scoring/score-sheets" className="btn-secondary text-sm">
-          Score-Sheets verwalten
-        </Link>
+        <div className="flex items-center gap-3">
+          {sid && activeSeasonData && (
+            <RankingExportButtons seasonId={sid} seasonYear={activeSeasonData.year} />
+          )}
+          <Link to="/scoring/score-sheets" className="btn-secondary text-sm">
+            Score-Sheets verwalten
+          </Link>
+        </div>
       </div>
 
       {isLoading && <p className="text-gray-500">Laden...</p>}

@@ -17,8 +17,9 @@ Webbasierte Plattform zur vollständigen Verwaltung und Auswertung des Botball-W
 | 07 | [3D-Druck-Modul](docs/modules/07-3d-druck.md) | Plugin | ✅ Implementiert |
 | 08 | [Dashboard & Visualisierung](docs/modules/08-dashboard.md) | Kern | ✅ Implementiert |
 | 09 | [Mobile App / PWA](docs/modules/09-mobile-pwa.md) | Frontend | ✅ Implementiert |
-| 10 | [Testing](docs/modules/10-testing.md) | Querschnitt | 🔲 Ausstehend |
-| 11 | [Dokumentation](docs/modules/11-dokumentation.md) | Querschnitt | ✅ Dokumentiert |
+| 10 | [Testing](docs/modules/10-testing.md) | Querschnitt | ✅ Implementiert |
+| 11 | [Dokumentation](docs/modules/11-dokumentation.md) | Querschnitt | ✅ Implementiert |
+| – | [PDF- & CSV-Export](docs/modules/) | Feature | ✅ Implementiert |
 
 ---
 
