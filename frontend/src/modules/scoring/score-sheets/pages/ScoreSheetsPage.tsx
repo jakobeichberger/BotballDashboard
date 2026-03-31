@@ -17,7 +17,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import { scoreSheetApi, type ScoreSheetTemplate, type ScoreSheetTemplateListItem } from '../api/scoreSheets'
+import { scoreSheetApi, type ScoreSheetTemplateListItem } from '../api/scoreSheets'
 import ScoreSheetUploadForm from '../components/ScoreSheetUploadForm'
 import FieldCandidateEditor from '../components/FieldCandidateEditor'
 
