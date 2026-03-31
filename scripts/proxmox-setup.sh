@@ -36,6 +36,7 @@ REPO_URL="https://github.com/jakobeichberger/BotballDashboard.git"
 INSTALL_DIR="/opt/botballdashboard"
 DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
+HEALTH_URL="http://localhost:8000/api/system/health"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 info()    { echo -e "${CYAN}[INFO]${NC}  $*"; }
@@ -110,12 +111,16 @@ check_prerequisites() {
   fi
   success "Internet connectivity OK"
 
-  # Python3 available (needed for secret generation)
-  if ! command -v python3 &>/dev/null; then
-    info "Installing python3..."
-    apt-get install -y -q python3 python3-pip > /dev/null
+  # Required packages: git, curl, python3
+  local pkgs=()
+  command -v git     &>/dev/null || pkgs+=(git)
+  command -v curl    &>/dev/null || pkgs+=(curl)
+  command -v python3 &>/dev/null || pkgs+=(python3)
+  if [[ ${#pkgs[@]} -gt 0 ]]; then
+    info "Installing missing packages: ${pkgs[*]}..."
+    apt-get update -qq && apt-get install -y -q "${pkgs[@]}" > /dev/null
   fi
-  success "python3 available"
+  success "git, curl, python3 available"
 }
 
 # ── Step 2: Install Docker ─────────────────────────────────────────────────────
@@ -248,40 +253,24 @@ configure_env() {
   info "JWT_SECRET_KEY              generated"
   info "PRINTER_ENCRYPTION_KEY      generated"
 
-  # ── VAPID Keys ────────────────────────────────────────────────────────────
-  echo -e "\n${BOLD}--- Web Push (VAPID) ---${NC}"
-  info "Generating VAPID key pair..."
-  local vapid_output
-  if python3 -c "from py_vapid import Vapid" 2>/dev/null; then
-    vapid_output=$(python3 -c "
-from py_vapid import Vapid
-v = Vapid()
-v.generate_keys()
-print(v.private_pem().decode().strip())
-print('---')
-print(v.public_key.public_bytes(
-    __import__('cryptography.hazmat.primitives.serialization', fromlist=['Encoding','PublicFormat']).Encoding.PEM,
-    __import__('cryptography.hazmat.primitives.serialization', fromlist=['Encoding','PublicFormat']).PublicFormat.SubjectPublicKeyInfo
-).decode().strip())
-" 2>/dev/null)
-  fi
+  # ── VAPID Keys – generated after Docker images are built ─────────────────
+  # (stored as placeholders here; filled in by generate_vapid_keys() later)
+  VAPID_PRIVATE_KEY="__VAPID_PLACEHOLDER__"
+  VAPID_PUBLIC_KEY="__VAPID_PLACEHOLDER__"
+  VAPID_ADMIN_EMAIL="${TRAEFIK_EMAIL}"
 
-  # Fallback: use make vapid-keys if available
-  if [[ -z "${vapid_output:-}" ]] && command -v make &>/dev/null; then
-    warn "py_vapid not available – run 'make vapid-keys' after setup to generate VAPID keys"
-    VAPID_PRIVATE_KEY=""
-    VAPID_PUBLIC_KEY=""
-  elif [[ -n "${vapid_output:-}" ]]; then
-    VAPID_PRIVATE_KEY=$(echo "${vapid_output}" | awk 'NR==1{print}')
-    VAPID_PUBLIC_KEY=$(echo "${vapid_output}"  | awk 'NR==3{print}')
-    success "VAPID key pair generated"
-  else
-    warn "VAPID keys left empty – push notifications will be disabled until you set them"
-    VAPID_PRIVATE_KEY=""
-    VAPID_PUBLIC_KEY=""
-  fi
-
-  prompt VAPID_ADMIN_EMAIL "VAPID admin email" "${SMTP_USER}"
+  # ── Admin account ─────────────────────────────────────────────────────────
+  echo -e "\n${BOLD}--- Admin Account (first login) ---${NC}"
+  prompt ADMIN_EMAIL    "Admin email address"    "admin@${DOMAIN}"
+  prompt ADMIN_NAME     "Admin display name"     "Administrator"
+  while true; do
+    prompt ADMIN_PASSWORD "Admin password (min. 8 chars)" "" "true"
+    if [[ ${#ADMIN_PASSWORD} -lt 8 ]]; then
+      warn "Password too short (min. 8 characters). Please try again."
+    else
+      break
+    fi
+  done
 
   # ── Write .env ────────────────────────────────────────────────────────────
   cat > "${INSTALL_DIR}/.env" <<EOF
@@ -411,7 +400,7 @@ start_services() {
 
   info "Waiting for backend API to respond..."
   local api_retries=30
-  until curl -fsSL --max-time 3 "http://localhost:8000/api/health" > /dev/null 2>&1; do
+  until curl -fsSL --max-time 3 "${HEALTH_URL}" > /dev/null 2>&1; do
     api_retries=$((api_retries - 1))
     if [[ $api_retries -le 0 ]]; then
       warn "Backend did not respond in time – check logs: docker compose logs backend"
@@ -425,6 +414,72 @@ start_services() {
 
   success "All services started"
 }
+
+# ── Step 7b: Generate VAPID Keys (via running backend container) ──────────────
+generate_vapid_keys() {
+  info "Generating VAPID keys via backend container..."
+
+  local vapid_out
+  vapid_out=$(docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend \
+    python -c "
+from pywebpush import Vapid
+v = Vapid()
+v.generate_keys()
+priv = v.private_key_as_pem()
+pub  = v.public_key_as_pem()
+print(priv.decode().strip())
+print('---')
+print(pub.decode().strip())
+" 2>/dev/null) || true
+
+  if [[ -z "${vapid_out}" ]]; then
+    warn "VAPID key generation failed – push notifications disabled."
+    warn "Run later: cd ${INSTALL_DIR} && make vapid-keys"
+    VAPID_PRIVATE_KEY=""
+    VAPID_PUBLIC_KEY=""
+    return
+  fi
+
+  VAPID_PRIVATE_KEY=$(echo "${vapid_out}" | awk '/^-----BEGIN/{p=1} p{print} /^-----END PRIVATE/{p=0}')
+  VAPID_PUBLIC_KEY=$(echo "${vapid_out}"  | awk '/^-----BEGIN/{p=1} p{print} /^-----END PUBLIC/{p=0}')
+
+  # Replace placeholder values in .env
+  sed -i "s|VAPID_PRIVATE_KEY=__VAPID_PLACEHOLDER__|VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}|" \
+    "${INSTALL_DIR}/.env"
+  sed -i "s|VAPID_PUBLIC_KEY=__VAPID_PLACEHOLDER__|VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}|" \
+    "${INSTALL_DIR}/.env"
+
+  # Restart backend to pick up new VAPID keys
+  docker compose -f "${INSTALL_DIR}/docker-compose.yml" restart backend > /dev/null 2>&1
+
+  success "VAPID keys generated and applied"
+}
+
+
+# ── Step 7c: Create first Admin User ─────────────────────────────────────────
+create_admin_user() {
+  header "Creating Admin User"
+
+  info "Creating admin account: ${ADMIN_EMAIL}..."
+
+  local output
+  output=$(docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend \
+    python scripts/create_admin.py \
+      --email    "${ADMIN_EMAIL}" \
+      --password "${ADMIN_PASSWORD}" \
+      --name     "${ADMIN_NAME}" 2>&1)
+
+  if echo "${output}" | grep -q "\[OK\]"; then
+    success "Admin user '${ADMIN_EMAIL}' created"
+  elif echo "${output}" | grep -q "already exists"; then
+    success "Admin user '${ADMIN_EMAIL}' already exists – skipped"
+  else
+    warn "Admin user creation returned unexpected output:"
+    echo "${output}"
+    warn "Create the admin user manually: cd ${INSTALL_DIR} && docker compose exec backend python scripts/create_admin.py --email admin@example.com --password yourpassword"
+  fi
+}
+
 
 # ── Step 8: Post-install Info ─────────────────────────────────────────────────
 print_summary() {
@@ -458,9 +513,9 @@ print_summary() {
   fi
 
   echo -e "${BOLD}First login:${NC}"
-  echo -e "  A default admin account is created by the database seed:"
-  echo -e "  Email:    admin@${DOMAIN}"
-  echo -e "  Password: ${BOLD}Change this immediately after first login!${NC}"
+  echo -e "  URL:      https://${DOMAIN}"
+  echo -e "  Email:    ${ADMIN_EMAIL}"
+  echo -e "  Password: ${BOLD}(the password you set during setup)${NC}"
   echo ""
   echo -e "${CYAN}Full documentation: https://github.com/jakobeichberger/BotballDashboard/blob/main/docs/documentation/user-manual/index.md${NC}"
 }
@@ -482,6 +537,8 @@ main() {
   create_directories
   build_images
   start_services
+  generate_vapid_keys
+  create_admin_user
   print_summary
 }
 
