@@ -208,21 +208,35 @@ configure_env() {
 
   # ── SMTP ──────────────────────────────────────────────────────────────────
   echo -e "\n${BOLD}--- Email (SMTP) ---${NC}"
-  prompt SMTP_HOST     "SMTP host"          "mail.yourschool.at"
-  prompt SMTP_PORT     "SMTP port"          "587"
-  prompt SMTP_USER     "SMTP username / sender address"
-  prompt SMTP_PASSWORD "SMTP password" "" "true"
-  SMTP_FROM="BotballDashboard <${SMTP_USER}>"
-  SMTP_TLS="true"
+  echo -e "${YELLOW}Email is optional. Without it, password resets and notifications will be disabled.${NC}"
+  read -rp "Configure SMTP email? (y/N): " use_smtp
+  if [[ "${use_smtp}" =~ ^[Yy]$ ]]; then
+    prompt SMTP_HOST     "SMTP host"          "mail.yourschool.at"
+    prompt SMTP_PORT     "SMTP port"          "587"
+    prompt SMTP_USER     "SMTP username / sender address"
+    prompt SMTP_PASSWORD "SMTP password" "" "true"
+    SMTP_FROM="BotballDashboard <${SMTP_USER}>"
+    SMTP_TLS="true"
 
-  echo ""
-  read -rp "Do you have a SendGrid API key as fallback? (y/N): " use_sendgrid
-  if [[ "${use_sendgrid}" =~ ^[Yy]$ ]]; then
-    prompt SENDGRID_API_KEY "SendGrid API key" "" "true"
-    SENDGRID_FROM="${SMTP_USER}"
+    echo ""
+    read -rp "Do you have a SendGrid API key as fallback? (y/N): " use_sendgrid
+    if [[ "${use_sendgrid}" =~ ^[Yy]$ ]]; then
+      prompt SENDGRID_API_KEY "SendGrid API key" "" "true"
+      SENDGRID_FROM="${SMTP_USER}"
+    else
+      SENDGRID_API_KEY=""
+      SENDGRID_FROM="${SMTP_USER}"
+    fi
   else
+    warn "SMTP skipped – email features (password reset, notifications) will be disabled."
+    SMTP_HOST=""
+    SMTP_PORT="587"
+    SMTP_USER=""
+    SMTP_PASSWORD=""
+    SMTP_FROM=""
+    SMTP_TLS="false"
     SENDGRID_API_KEY=""
-    SENDGRID_FROM="${SMTP_USER}"
+    SENDGRID_FROM=""
   fi
 
   # ── Auto-generated secrets ────────────────────────────────────────────────
