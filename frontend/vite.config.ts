@@ -45,9 +45,16 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  esbuild: false,
+  // esbuild cannot spawn its service daemon in Proxmox LXC containers
+  // (socketpair IPC fails with ENOTCONN). Disable every esbuild code path:
+  esbuild: false,                    // 1. vite's built-in TS/JSX transform
+  optimizeDeps: {
+    noDiscovery: true,               // 2. dep optimizer (Vite 5.1+ runs during build)
+    include: [],
+  },
   build: {
-    minify: "terser",
+    minify: "terser",                // 3. JS minification → terser (pure JS, no daemon)
+    cssMinify: false,                //    CSS minify default falls back to esbuild; disable it
   },
   server: {
     proxy: {
