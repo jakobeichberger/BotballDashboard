@@ -74,6 +74,7 @@ submitted → under_review → revision_requested → resubmitted → accepted |
 - Automatische Zuweisung: Round-Robin oder nach Expertise-Tags
 - Konfliktprüfung: Reviewer darf kein Paper der eigenen Schule bewerten
 - Reviewer-Pool verwaltbar: welche Benutzer haben die Rolle `reviewer`?
+- **Reviewer müssen keine Teammitglieder sein** – externe Personen (Lehrpersonen anderer Schulen, KIPR-Volunteers, Experten) können als Reviewer eingeladen werden. Sie benötigen nur einen Account mit Rolle `reviewer`, keine Teamzugehörigkeit.
 
 ### Review-Formular (Reviewer-Seite)
 - Strukturiertes Feedback mit Bewertungskategorien:

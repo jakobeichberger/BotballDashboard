@@ -34,6 +34,7 @@ Initiale Rollen:
 
 - Rollen können Benutzern direkt oder über eine Gruppe zugewiesen werden
 - Plugins können eigene Rollen per `manifest.json` registrieren
+- **Juror*innen und Reviewer*innen müssen keine Teammitglieder sein** – sie können externe Personen sein (z.B. Lehrpersonen anderer Schulen, KIPR-Volunteers, externe Experten). Ein Account kann ohne jede Teamzugehörigkeit nur mit der Rolle `juror` oder `reviewer` existieren.
 - Berechtigungen sind fein granular: z.B. `scoring:write`, `paper:review`, `team:edit`
 
 ### Token-Verwaltung

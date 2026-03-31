@@ -110,12 +110,32 @@ Das Scoring-Modul liefert ein eigenes internes Dashboard:
 - Alliance-Matches
 - Live-Zeitplan: welches Match läuft gerade, welches kommt als nächstes
 
-### Konfigurierbares Scoring-Sheet
-- Schema per YAML/JSON oder grafischem Editor definieren
+### Scoring-Einstellungen (Settings-Seite pro Saison & Phase)
+
+Jede Kombination aus **Saison × Wettbewerbs-Stufe** (ECER / GCER) hat eine eigene Settings-Seite:
+
+**Scoring-Schema:**
 - Felder: Name, Multiplikator, Maximalwert, Typ (Anzahl / Boolean)
-- Pro Saison ein eigenes Schema (→ Saisonverwaltung)
-- Dasselbe Schema gilt für Phase 1 und Phase 2
-- Beispiel-Schemas 2024/2025/2026 werden mitgeliefert
+- Schema per YAML/JSON oder grafischem Editor definieren
+- GCER-Schema ist typischerweise eine leicht abgeänderte Version des ECER-Schemas → **"Von ECER klonen"**-Button erzeugt Kopie die unabhängig bearbeitet werden kann
+- Beispiel-Schemas 2024/2025/2026 werden als Vorlage mitgeliefert
+
+**Formel-Einstellungen:**
+- Welche Formel gilt? (Botball Standard / ECER-Amendments / PRIA Open)
+- Onsite-Score aktiviert? (Ja bei GCER, Nein bei ECER)
+- Gewichtung der Periods (P1/P2/P3/Onsite) konfigurierbar
+- Double Seeding aktiviert? (Ja bei GCER, Nein bei ECER)
+- Paper-Score integriert? (Ja/Nein, Gewichtung)
+
+**Turnier-Einstellungen:**
+- Anzahl Seeding-Runden (Standard: 3)
+- Anzahl Teams im Double-Elimination-Bracket
+- Alliance-Matches aktiviert?
+
+**Beispiel: GCER 2025 erbt ECER 2025, ändert aber:**
+- Onsite-Score: aktiviert (×4 statt ×0)
+- Double Seeding: aktiviert
+- Schema: leicht abweichende Felder (z.B. andere Multiplikatoren)
 
 ### Score-Erfassung
 - Manuelles Webformular
@@ -129,12 +149,6 @@ Das Scoring-Modul liefert ein eigenes internes Dashboard:
 **Roh-Score eines Laufs:**
 - `RunScore = Side_A_Points + Side_B_Points`
 - Team-Seed-Score = Durchschnitt der besten 2 Runs
-
-**Gesamtscore (regional, 0–3):**
-- `Overall = SeedScore + DEScore + DocScore`
-
-**Gesamtscore GCER (0–4, mit Double Seeding):**
-- `Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore`
 
 **Seeding Score:**
 ```
@@ -153,20 +167,86 @@ DoubleSeedScore = (2/3) × (n − DoubleSeedRank + 1) / n
                + (1/3) × (TeamAvgDoubleSeedScore / MaxTournamentDoubleSeedScore)
 ```
 
-**Documentation Score (saisonspezifisch):**
+**Documentation Score – regulär (Botball global):**
 
 | Saison | Formel |
 |---|---|
 | 2024 | `DocScore = 3/10·P1 + 3/10·P2 + 3/10·P3 + 1/10·Onsite` |
 | 2025/2026 | `DocScore = 2/10·P1 + 2/10·P2 + 2/10·P3 + 4/10·Onsite` |
 
-**ECER/PRIA Open Overall (mit Paper):**
+**Documentation Score – ECER-spezifisch (kein Onsite):**
+
+| Saison | Formel |
+|---|---|
+| 2024 ECER | `DocScore = 3/10·P1 + 3/10·P2 + 1/10·P3` (Summe = 0.7) |
+| 2025 ECER | `DocScore = 1/3·P1 + 1/3·P2 + 1/3·P3` (Summe = 1.0) |
+
+**Gesamtscore ECER/PRIA Open (mit Paper):**
 ```
-AdaptedDocScore   = ½ × DocScore + ½ × PaperScore
-PriaOpenOverall   = DEScore + SeedScore + ½ × PaperScore
+AdaptedDocScore = ½ × DocScore + ½ × PaperScore
+
+Botball Overall  = DE + Seeding + AdaptedDocScore   (kein Double Seeding bei ECER)
+PRIA Open        = DE + Seeding + ½ × PaperScore    (kein DocScore, nur Paper)
+```
+
+**Gesamtscore GCER (0–4):**
+```
+Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore
 ```
 
 *(n = Anzahl Teams im Turnier/Bracket)*
+
+---
+
+### Scoring-Sheet-Felder pro Saison
+
+#### 2024 – Moon Base Mission
+
+| Bereich | Feld | Multiplikator | Bereichs-Multiplikator |
+|---|---|---|---|
+| Area 1–6 | Sorted Poms | ×5 | Botguy/Cube in Zone ×5 |
+| Area 1–6 | All Other Game Pieces | ×1 | |
+| Small/Large Rover Bay | Sorted Poms | ×5 | Botguy/Cube in Zone ×5 |
+| Small/Large Rover Bay | All Other Game Pieces | ×1 | |
+| Rock Heap | Only Rocks | ×6 | Botguy/Cube ×5 |
+| Rock Heap | All Other Game Pieces | ×1 | |
+| Solar Panel | Solar Panel Flipped | ×50 | Robots Back in Start Box ×(+1) |
+| Lava Tube | Purple Noodles in Area | ×50 | Deepest Lava Tube depth (1/2/3) |
+| Lava Tube | Purple Noodles in Tubes | ×100 | |
+| Lava Tube | Lava Tube Cap | ×25 | |
+| Moon Base Air Lock | Air Lock Open | ×25 | Air Lock Closed ×3 |
+| Moon Base Air Lock | Light Blue Poms | ×15 | |
+| Moon Base Air Lock | Dark Blue Poms | ×50 | |
+| Habitat Construction | Red/Green Noodles | ×8 | # of Posts with Habitats |
+| Astronauts | Astronauts In Stations | ×25 | # Areas with Astronaut |
+| Astronauts | Flag Raised | ×25 | |
+| Astronauts | Flipped Switch | ×20 | |
+
+#### 2025 – Restaurant/Kitchen Theme
+
+| Bereich | Feld | Multiplikator | Bereichs-Multiplikator |
+|---|---|---|---|
+| Starting Box/Prep Station | Vegetables | ×5 | Botguy ×2 |
+| Starting Box/Prep Station | Botguy | ×15 | |
+| Kitchen Floor | Any Game Piece | ×1 | |
+| Kitchen Floor | Botguy | ×15 | |
+| Condiment Stations | Unsorted Poms | ×1 | # of Sorted Stations |
+| Condiment Stations | Sorted Poms | ×5 | |
+| Serving Station | Red/Orange/Yellow Pom in Tray | ×5 | # Full Pom Sets in Trays |
+| Serving Station | One Side in Tray | ×15 | # Full Trays ×2 |
+| Serving Station | One Entree in Tray | ×15 | |
+| Beverage Station | Cups | ×5 | Full Cup ×2 |
+| Beverage Station | Water Bottles | ×10 | 2+ Cups ×2 |
+| Beverage Station | Ice | ×10 | 5 Water Bottles ×3 |
+| Beverage Station | Matching Drink Color | ×30 | 6 Water Bottles ×6 |
+| Beverage Station | Wrong Drink Color | ×10 | |
+| Fry Station | Potato | ×50 | No Fries on Game Surface ×2 |
+
+#### 2026 – Logistics/Warehouse Theme
+
+Scoring-Sheet-Felder aus dem PDF grafisch eingebettet, konnten nicht automatisch extrahiert werden. Manuelle Erfassung aus dem Dokument nötig. Bekannte Elemente aus Regeltext: sortierte Cubes, Poms, Pallets, Loading Docks, Packaging Bins, Drum Storage, Warehouse Floor Areas.
+
+> Alle Felder werden als konfigurierbares YAML/JSON-Schema pro Saison im System hinterlegt.
 
 ### OCR-Pipeline
 - Upload: Foto (JPG/PNG) oder PDF
