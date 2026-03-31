@@ -110,6 +110,26 @@ Das Scoring-Modul liefert ein eigenes internes Dashboard:
 - Alliance-Matches
 - Live-Zeitplan: welches Match läuft gerade, welches kommt als nächstes
 
+### GCER-Qualifikation
+
+- **1–2 Teams** qualifizieren sich typischerweise von der ECER für die GCER
+- Qualifikation erfolgt **manuell durch den Admin** (kein automatischer Schwellenwert)
+- Admin wählt qualifizierte Teams aus und gibt sie für GCER-Phasen frei
+- System zeigt welche Teams noch nicht für GCER freigeschaltet sind
+
+### Alliance-Matches
+
+- Alliance-Matches finden **nicht immer** statt — abhängig vom jeweiligen Turnier
+- Admin kann Alliance-Matches pro Tournament-Phase aktivieren oder deaktivieren
+- Einstellung in der Turnier-Konfiguration (Settings-Seite)
+
+### Prep-Phase Sichtbarkeit
+
+- Scores aus der Vorbereitungsphase sind **auch für Teams selbst sichtbar**
+- Teams sehen ihre eigenen Scores und die Entwicklung über Testläufe
+- Andere Teams' Prep-Scores bleiben unsichtbar (kein gegenseitiger Vergleich in der Prep-Phase)
+- Admins und Mentoren sehen alle Teams
+
 ### Scoring-Einstellungen (Settings-Seite pro Saison & Phase)
 
 Jede Kombination aus **Saison × Wettbewerbs-Stufe** (ECER / GCER) hat eine eigene Settings-Seite:

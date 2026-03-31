@@ -81,8 +81,31 @@ Die Website muss auf allen Geräteklassen gut nutzbar sein:
 - Schriftgrößen und Abstände responsive skaliert
 - Getestet auf: Chrome/Safari Mobile, Chrome/Firefox Desktop
 
+### Tech-Stack-Entscheidungen
+
+**Backend-Framework: FastAPI**
+- Modernes Python-Framework mit nativer async-Unterstützung
+- Automatische OpenAPI/Swagger-Docs aus dem Code generiert
+- Typ-Validierung via Pydantic (saubere Datenmodelle, weniger Boilerplate)
+- Besser geeignet für reine API-Server als Django (kein ORM-Overhead, keine Template-Engine nötig)
+- Alembic als Migrations-Tool (funktioniert problemlos mit FastAPI + SQLAlchemy)
+
+**Monorepo-Setup: Einfaches pnpm Workspaces**
+- Kein Turborepo/Nx-Overhead für diesen Projektumfang
+- `pnpm workspaces` für Frontend-Pakete
+- Python-Backend als separates Package im selben Repo
+- Shared Types zwischen Frontend und Backend via OpenAPI-Codegen (FastAPI → TypeScript-Typen)
+
+**Deployment: Self-hosted auf Proxmox**
+- Proxmox-VM mit Docker + Docker Compose
+- Jeder Service als eigener Container: Backend, Frontend (Nginx), PostgreSQL, (optional OCR-Service)
+- Persistente Volumes für DB und Uploads bleiben bei Updates erhalten
+- Proxmox-Snapshot vor jedem Deployment als zusätzliche Sicherheit
+- Reverse Proxy: Traefik oder Nginx Proxy Manager (beide Proxmox-kompatibel)
+- Empfehlung: eigene Proxmox-LXC für DB (leichter als VM, persistentes Storage)
+
 ### Code-Qualität
-- Linter: ESLint (Frontend), Ruff/Flake8 (Backend)
+- Linter: ESLint (Frontend), Ruff (Backend)
 - Formatter: Prettier (Frontend), Black (Backend)
 - Pre-commit Hooks
 
@@ -98,6 +121,7 @@ Die Website muss auf allen Geräteklassen gut nutzbar sein:
 
 ---
 
-## Offene Fragen
-- [ ] Monorepo-Tool: Turborepo, Nx oder einfaches Workspace-Setup?
-- [ ] Backend-Framework: Django REST Framework oder FastAPI?
+## Entschiedene Tech-Stack-Fragen
+- [x] **Backend-Framework:** FastAPI (async, Pydantic, automatische OpenAPI-Docs)
+- [x] **Monorepo-Tool:** pnpm Workspaces (kein Turborepo/Nx-Overhead nötig)
+- [x] **Hosting:** Self-hosted auf Proxmox (Docker Compose, Traefik als Reverse Proxy)

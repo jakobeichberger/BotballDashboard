@@ -6,16 +6,16 @@ Fragen die noch nicht beantwortet wurden. Werden hier protokolliert und nach Bea
 
 ## Infrastruktur & Tech-Stack
 
-- [ ] **Backend-Framework:** Django REST Framework oder FastAPI?
-- [ ] **Monorepo-Tool:** Turborepo, Nx oder einfaches Workspace-Setup?
-- [ ] **Hosting:** Wo wird das System deployed? Eigener Server, Cloud (AWS/Azure/GCP), oder Schul-Infrastruktur?
+- [x] **Backend-Framework:** ✅ FastAPI (async, Pydantic, automatische OpenAPI-Docs)
+- [x] **Monorepo-Tool:** ✅ pnpm Workspaces (kein Turborepo/Nx-Overhead nötig)
+- [x] **Hosting:** ✅ Self-hosted auf Proxmox, Docker Compose, Traefik als Reverse Proxy
 
 ---
 
 ## Auth & Rechtesystem
 
-- [ ] **Social Login:** Soll OAuth2 / Login via Google oder Microsoft unterstützt werden?
-- [ ] **Admin-Oberfläche:** Reicht eine API zur Benutzerverwaltung oder soll es eine eigene Admin-UI geben?
+- [x] **Social Login:** ✅ Kein OAuth2 / Social Login – nur E-Mail + Passwort
+- [x] **Admin-Oberfläche:** ✅ Eigene Admin-UI zur Benutzerverwaltung
 
 ---
 
@@ -23,12 +23,12 @@ Fragen die noch nicht beantwortet wurden. Werden hier protokolliert und nach Bea
 
 - [x] **Gesamtscore-Formel:** ✅ Aus PDFs extrahiert – siehe `docs/modules/05-scoring.md`
 - [x] **Scoring-Sheet-Felder 2024/2025:** ✅ Vollständig aus PDFs extrahiert – siehe `docs/modules/05-scoring.md`
-- [ ] **Scoring-Sheet-Felder 2026:** Spielelemente aus Regeltext bekannt (Warehouse/Cubes/Poms/Pallets/Loading Docks/Packaging Bins/Drum Storage). Exakte Multiplikator-Werte liegen nur im grafischen Score-Sheet-PDF vor – manuelle Erfassung aus Dokument nötig.
-- [x] **Yellow/Red Card System:** ✅ Dokumentiert in `docs/modules/05-scoring.md` – DQ-Status muss im Match-Datensatz speicherbar sein
-- [x] **3D-Druck-Roboterteile-Regeln:** ✅ 2025: max. 4 Teile PLA; 2026: max. 6 Teile PLA/PETG. Dokumentiert in `docs/modules/04-teamverwaltung.md`
-- [ ] **GCER Qualifikationsschwelle:** Wie viele Teams qualifizieren sich von der ECER für die GCER? Feste Anzahl oder Prozentwert?
-- [ ] **Alliance-Matches bei GCER:** Gibt es bei der GCER immer Alliance-Matches oder nur manchmal?
-- [ ] **Öffentlichkeit der Prep-Phase:** Sollen Scores aus der Vorbereitungsphase nur für Admins/Mentoren sichtbar sein, oder auch für die Teams selbst?
+- [ ] **Scoring-Sheet-Felder 2026:** Spielelemente bekannt, exakte Multiplikator-Werte werden über dynamische Admin-UI manuell eingetragen (kein Blocker)
+- [x] **Yellow/Red Card System:** ✅ Dokumentiert in `docs/modules/05-scoring.md`
+- [x] **3D-Druck-Roboterteile-Regeln:** ✅ 2025: max. 4 Teile PLA; 2026: max. 6 Teile PLA/PETG
+- [x] **GCER Qualifikationsschwelle:** ✅ 1–2 Teams, manuelle Freigabe durch Admin
+- [x] **Alliance-Matches bei GCER:** ✅ Nicht immer – aktivierbar pro Turnier-Phase durch Admin
+- [x] **Öffentlichkeit der Prep-Phase:** ✅ Auch für Teams selbst sichtbar (nur eigene Scores, keine anderen Teams)
 
 ---
 

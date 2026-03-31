@@ -77,6 +77,6 @@ Initiale Rollen:
 
 ---
 
-## Offene Fragen
-- [ ] OAuth2 / Social Login (Google, Microsoft) gewünscht?
-- [ ] Soll es eine zentrale Admin-Oberfläche zur Benutzerverwaltung geben oder reicht API?
+## Entschiedene Fragen
+- [x] **Social Login:** Kein OAuth2 / Social Login – nur E-Mail + Passwort
+- [x] **Admin-Oberfläche:** Eigene Admin-UI zur Benutzerverwaltung (nicht nur API)
