@@ -181,12 +181,19 @@ DoubleSeedScore = (2/3) × (n − DoubleSeedRank + 1) / n
 | 2024 ECER | `DocScore = 3/10·P1 + 3/10·P2 + 1/10·P3` (Summe = 0.7) |
 | 2025 ECER | `DocScore = 1/3·P1 + 1/3·P2 + 1/3·P3` (Summe = 1.0) |
 
-**Gesamtscore ECER/PRIA Open (mit Paper):**
-```
-AdaptedDocScore = ½ × DocScore + ½ × PaperScore
+**Gesamtscore ECER – nach Team-Typ:**
 
-Botball Overall  = DE + Seeding + AdaptedDocScore   (kein Double Seeding bei ECER)
-PRIA Open        = DE + Seeding + ½ × PaperScore    (kein DocScore, nur Paper)
+| Team-Typ | Formel | Bemerkung |
+|---|---|---|
+| Botball | `DE + Seeding + AdaptedDocScore` | AdaptedDocScore = ½·DocScore + ½·PaperScore |
+| Open (PRIA Open) | `DE + Seeding + ½·PaperScore` | Kein Botball-DocScore, nur Paper |
+
+> Bei uns: **beide Team-Typen müssen ein Paper einreichen.** Paper-Einreichung ist in unserem System für alle Teams Pflicht, unabhängig vom Team-Typ. Die Score-Berechnung bleibt dennoch typ-spezifisch.
+
+```
+AdaptedDocScore  = ½ × DocScore + ½ × PaperScore   (nur Botball-Teams)
+Botball Overall  = DE + Seeding + AdaptedDocScore
+PRIA Open        = DE + Seeding + ½ × PaperScore
 ```
 
 **Gesamtscore GCER (0–4):**

@@ -8,7 +8,25 @@
 
 ## Beschreibung
 
-Verwaltung aller Botball-Teams über mehrere Saisons hinweg. Teams können angelegt, bearbeitet und einer oder mehreren Saisons zugeordnet werden. Mitglieder, Betreuer und Schuldaten werden pro Team gepflegt.
+Verwaltung aller Teams über mehrere Saisons hinweg. Ein Team gehört entweder zum **Botball**- oder zum **Open**-Wettbewerb – diese Unterscheidung beeinflusst Scoring-Formeln, Paper-Pflichten und sichtbare Dashboard-Inhalte. Bei uns müssen **beide Team-Typen ein Paper einreichen**.
+
+---
+
+## Team-Typen
+
+### Botball-Teams
+- Vollständige Botball-Teilnahme: Roboter + Dokumentation (Period 1–3) + Paper
+- Gesamt-Score: `DE + Seeding + AdaptedDocScore` (mit AdaptedDocScore = ½·DocScore + ½·PaperScore)
+- Kit wird von KIPR bereitgestellt (Versandstatus relevant)
+- Paper-Einreichung: **Pflicht** (bei uns intern)
+
+### Open-Teams (PRIA Open)
+- Roboter-Teilnahme ohne offizielle Botball-Dokumentation (Period-Scores)
+- Gesamt-Score: `DE + Seeding + ½·PaperScore` (kein DocScore)
+- Kein Kit-Versand (bringen eigene Hardware oder verwenden Schul-Equipment)
+- Paper-Einreichung: **Pflicht** (bei uns intern)
+
+> **Hinweis:** Beide Team-Typen nehmen am selben Turnier teil und spielen gegeneinander. Die Unterscheidung betrifft nur die Score-Berechnung und Paper-Anforderungen, nicht den Spielbetrieb.
 
 ---
 
@@ -16,6 +34,7 @@ Verwaltung aller Botball-Teams über mehrere Saisons hinweg. Teams können angel
 
 ### Team-Stammdaten
 - Teamname, Teamnummer (offizielle KIPR-Nummer)
+- **Team-Typ:** `botball` | `open` (pro Saison zuweisbar, kann sich von Jahr zu Jahr ändern)
 - Schule / Organisation (Name, Adresse, Land)
 - Kontaktperson der Schule (Name, E-Mail, Telefon)
 
@@ -26,7 +45,9 @@ Verwaltung aller Botball-Teams über mehrere Saisons hinweg. Teams können angel
 
 ### Saison-Teilnahme
 - Team für eine Saison anmelden
-- Pro Saison: Teilnahmegebühr-Status (offen / bezahlt), Kit-Versandstatus
+- **Team-Typ pro Saison:** Ein Team kann in einer Saison als Botball-Team und in einer anderen als Open-Team teilnehmen
+- Pro Saison: Teilnahmegebühr-Status (offen / bezahlt)
+- Kit-Versandstatus: nur für Botball-Teams relevant
 - Team kann in mehreren Saisons gleichzeitig aktiv sein
 
 ### Teamhistorie
@@ -63,8 +84,10 @@ TeamSeason {
   id: UUID
   team_id: UUID
   season_id: UUID
+  team_type: botball | open        // Typ pro Saison (kann sich ändern)
   fee_status: pending | paid
-  kit_status: not_sent | sent | received
+  kit_status: not_sent | sent | received  // nur für botball relevant
+  paper_required: boolean          // Standard: true für beide Typen (bei uns)
   members: TeamMember[]
   documents: Document[]
 }

@@ -55,12 +55,22 @@ PriaOpenOverall = DEScore + SeedScore + ½ × PaperScore
 
 ## Features
 
+### Team-Typen & Paper-Pflicht
+
+| Team-Typ | Paper-Pflicht (offiziell) | Paper-Pflicht (bei uns) | Score-Auswirkung |
+|---|---|---|---|
+| Botball | Empfohlen, freiwillig | **Pflicht** | AdaptedDocScore = ½·DocScore + ½·PaperScore |
+| Open (PRIA Open) | Pflicht | **Pflicht** | PRIA Overall = DE + Seeding + ½·PaperScore |
+
+> Beide Team-Typen müssen bei uns ein Paper einreichen. Das System erzwingt dies über eine Pflichtprüfung vor Ablauf der internen Paper-Deadline.
+
 ### Paper-Einreichung (Team-Seite)
 - PDF-Upload des Papers (max. Dateigröße konfigurierbar)
-- Pflichtfelder: Titel, Autoren, Abstract, Saison, Kategorie
+- Pflichtfelder: Titel, Autoren, Abstract, Saison, Kategorie, **Team-Typ** (automatisch aus Teammitgliedschaft)
 - Versionierung: Teams können überarbeitete Versionen hochladen
 - Status-Tracking: Team sieht aktuellen Status seines Papers jederzeit
-- Deadline-Enforcement: Upload nach Deadline nicht mehr möglich (außer bei expliziter Verlängerung durch Admin)
+- Deadline-Enforcement: Upload nach offizieller Deadline nicht mehr möglich (außer Admin-Override)
+- **Pflichtwarnung:** Teams ohne eingreichtes Paper erhalten ab einer konfigurierbaren Vorwarnung (z.B. 7 Tage vor Deadline) tägliche Erinnerungen
 
 ### Paper-Status-Workflow
 

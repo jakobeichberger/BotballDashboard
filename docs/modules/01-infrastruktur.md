@@ -64,6 +64,23 @@ volumes:
 - Automatische Tests bei Pull Requests
 - Build & Deploy bei Merge in `main`
 
+### Responsive Design (alle Geräte)
+Die Website muss auf allen Geräteklassen gut nutzbar sein:
+
+| Gerät | Breite | Anforderungen |
+|---|---|---|
+| Handy | < 640px | Touch-optimiert, große Buttons, vertikales Layout |
+| Tablet | 640–1024px | Angepasstes Grid, gut lesbare Tabellen |
+| Laptop | 1024–1440px | Volle Funktionalität, mehrspaltige Layouts |
+| Desktop/PC | > 1440px | Optimale Nutzung des Bildschirmplatzes |
+
+- CSS Framework mit eingebautem Breakpoint-System (z.B. Tailwind CSS)
+- Alle Formulare (Score-Eingabe, Paper-Upload, Review) touch-freundlich
+- Tabellen bei kleinen Screens horizontal scrollbar oder in Card-Layout umgebrochen
+- Navigation: Hamburger-Menü auf Mobile, Sidebar auf Desktop
+- Schriftgrößen und Abstände responsive skaliert
+- Getestet auf: Chrome/Safari Mobile, Chrome/Firefox Desktop
+
 ### Code-Qualität
 - Linter: ESLint (Frontend), Ruff/Flake8 (Backend)
 - Formatter: Prettier (Frontend), Black (Backend)
