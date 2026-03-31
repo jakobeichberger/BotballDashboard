@@ -13,6 +13,7 @@ Dieses Handbuch richtet sich an Schiedsrichter (Jurors), die während Testläufe
 | Score korrigieren | Scoring → Match → Score → Bearbeiten |
 | Yellow/Red Card vergeben | Scoring → Turnier → Team → Karte vergeben |
 | Rangliste einsehen | Scoring → Rangliste |
+| Rangliste exportieren | Scoring → Rangliste → PDF / CSV |
 
 ---
 
@@ -25,21 +26,11 @@ Dieses Handbuch richtet sich an Schiedsrichter (Jurors), die während Testläufe
 3. Score-Sheet-Felder eingeben:
    - Jedes Feld ist nach dem Spielbereich benannt (z.B. „Warehouse Floor – Sorted Cubes")
    - Zahlenwerte eingeben oder Ja/Nein-Felder anklicken
-   - Das System berechnet den Gesamtscore automatisch in Echtzeit
+   - Das System berechnet den Gesamtscore automatisch in Echtzeit (Formel: `Σ Feldwert × Multiplikator`)
 4. Optionales Kommentarfeld: Besonderheiten notieren (z.B. „Roboter hat sich vor Ende gestoppt")
 5. **Absenden** → Score wird sofort gespeichert und in der Rangliste aktualisiert
 
-> **Tipp:** Große Zahleneingaben auf Mobil: einfach auf das Feld tippen → Nummernblock erscheint automatisch.
-
-### OCR-Upload (Foto des Score-Sheets)
-
-Statt manuelle Eingabe kann ein Foto des handschriftlichen Score-Sheets hochgeladen werden:
-
-1. **Score eingeben → Foto hochladen** (Kamera-Icon)
-2. Score-Sheet fotografieren (möglichst gerade, gute Beleuchtung)
-3. OCR erkennt die Werte automatisch → Formular wird vorausgefüllt
-4. Erkannte Werte prüfen (unsichere Felder sind orange markiert)
-5. Korrekturen vornehmen → Absenden
+> **Tipp:** Auf Mobilgeräten erscheint bei Nummernfeldern automatisch der Nummernblock.
 
 ### Double-Elimination-Match
 
@@ -115,9 +106,31 @@ Das System zeigt für jedes Match eine Schritt-für-Schritt-Checkliste:
 
 ## Rangliste & Live-Scoreboard
 
-- **Scoring → Rangliste**: Aktuelle Seeding-Rangliste (sortierbar nach Score, Team-Name)
+- **Scoring → Rangliste**: Aktuelle Seeding-Rangliste
+  - Zeigt: Rang, Team, Seed-Score (Ø Top-2-Läufe), Best-Score, Durchschnitt, Anzahl Runden
+  - **Export:** PDF-Button (druckfertige Rangliste) oder CSV-Button (für Excel)
 - **Scoring → Bracket**: Double-Elimination-Bracket (interaktiv, zeigt aktuellen Stand)
 - **Scoring → Live-Scoreboard**: Vollbildansicht für Großbildschirm (URL separat abrufbar)
+
+### Seed-Score-Formel
+
+Der Seed-Score ergibt sich aus dem **Durchschnitt der zwei besten Läufe** eines Teams:
+
+```
+Seed-Score = (bester Lauf + zweitbester Lauf) / 2
+```
+
+Teams mit nur einem Lauf erhalten diesen als Seed-Score.
+
+---
+
+## Rangliste exportieren
+
+1. **Scoring → Rangliste**
+2. **PDF**-Button: A4-PDF mit Logo-Header, Rang, Team, Scores – druckfertig
+3. **CSV**-Button: Tabelle mit allen Wertungen für Excel/Sheets
+
+Der Export enthält immer den Stand zum Zeitpunkt des Klickens.
 
 ---
 
