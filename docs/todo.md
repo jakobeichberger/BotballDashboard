@@ -54,7 +54,10 @@ Das System folgt einem **modularen Plugin-Prinzip**:
 - [ ] Tech-Stack festlegen (React, Django/FastAPI oder Node.js, PostgreSQL)
 - [ ] Monorepo-Struktur anlegen (`/core`, `/modules/scoring`, `/modules/paper-review`, `/modules/print`, `/frontend`, `/docs`)
 - [ ] Plugin-Registry definieren: Wie registrieren sich Module beim Kern? (z. B. Manifest-Datei pro Modul)
-- [ ] Docker & Docker-Compose für lokale Entwicklung
+- [ ] Docker & Docker-Compose für lokale Entwicklung (DB als persistentes Volume)
+- [ ] Datenbank-Migrationsstrategie: Alembic/Django Migrations, Rollback-fähig, Auto-Backup vor Deployment
+- [ ] `migrate-then-start` Deployment-Pattern (Migrationen vor Backend-Start)
+- [ ] Schema-Versionierung in DB (`schema_version`-Tabelle)
 - [ ] CI/CD-Pipeline (GitHub Actions)
 - [ ] Linter, Formatter, Pre-commit Hooks
 
