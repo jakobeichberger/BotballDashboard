@@ -13,7 +13,7 @@ WORKDIR /app
 # ── Dependencies ──────────────────────────────────────────────
 FROM base AS deps
 COPY pyproject.toml .
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip setuptools wheel && pip install .
 
 # ── Development target ────────────────────────────────────────
 FROM deps AS development
