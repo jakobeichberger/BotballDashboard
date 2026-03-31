@@ -1,0 +1,63 @@
+{
+  "scoreSheets": {
+    "title": "Score Sheets",
+    "subtitle": "Import PDF score sheets and manage scoring fields",
+    "empty": "No score sheets uploaded yet.",
+    "selectToEdit": "Select a sheet from the list to edit its fields.",
+    "active": "Active",
+    "download": "Download PDF",
+    "setActive": "Set as active",
+    "deleteConfirm": "Really delete sheet \"{{label}}\"?",
+
+    "upload": {
+      "button": "Upload PDF",
+      "title": "Import New Score Sheet",
+      "dropzone": "Drop PDF here or click to select",
+      "onlyPdf": "Only PDF files are accepted.",
+      "label": "Label",
+      "year": "Year",
+      "gameTheme": "Game theme (optional)",
+      "submit": "Upload & start OCR",
+      "uploading": "Uploading …",
+      "error": "Upload failed. Please try again."
+    },
+
+    "ocr": {
+      "status": "OCR status",
+      "pending": "Pending",
+      "processing": "Processing …",
+      "done": "Done",
+      "failed": "Failed",
+      "candidatesFound": "fields detected",
+      "processing": "OCR is running, page will refresh automatically …"
+    },
+
+    "candidates": {
+      "hide": "Hide raw OCR results",
+      "show": "Show {{count}} raw OCR candidates",
+      "rawText": "OCR text",
+      "suggestedLabel": "Suggested label",
+      "multiplier": "Multiplier",
+      "confidence": "Confidence",
+      "add": "Add"
+    },
+
+    "fields": {
+      "title": "Confirmed fields",
+      "key": "Key",
+      "label": "Label",
+      "section": "Section",
+      "multiplier": "Multiplier",
+      "maxValue": "Max",
+      "type": "Type",
+      "sectionPlaceholder": "e.g. Warehouse Floor",
+      "addBlank": "Add blank",
+      "empty": "No fields yet – add from OCR candidates or manually.",
+      "confirmed": "fields confirmed",
+      "applyToSchema": "Apply fields to the scoring schema for this season/level",
+      "confirm": "Confirm {{count}} fields",
+      "confirming": "Saving …",
+      "confirmError": "Failed to save. Please try again."
+    }
+  }
+}
