@@ -1,0 +1,31 @@
+{
+  "id": "scoring",
+  "name": "Scoring-Modul",
+  "version": "1.0.0",
+  "description": "Turnierbewertung, Phasen, Ranglisten, Score-Sheet-Import",
+  "permissions": [
+    "scoring:read",
+    "scoring:write",
+    "scoring:admin",
+    "scoring:delete"
+  ],
+  "db_tables": [
+    "competition_levels",
+    "phases",
+    "tournaments",
+    "matches",
+    "scores",
+    "scoring_schemas",
+    "score_sheet_templates",
+    "external_teams",
+    "qualified_teams",
+    "team_cards"
+  ],
+  "dashboard_widgets": ["ranking", "bracket", "performance"],
+  "api_prefix": "/scoring",
+  "nav_items": [
+    { "label": { "de": "Rangliste",     "en": "Ranking"      }, "path": "/scoring/ranking",      "icon": "trophy",    "permission": "scoring:read"  },
+    { "label": { "de": "Turnier",       "en": "Tournament"   }, "path": "/scoring/tournament",   "icon": "bracket",   "permission": "scoring:read"  },
+    { "label": { "de": "Score-Sheets",  "en": "Score Sheets" }, "path": "/scoring/score-sheets", "icon": "document",  "permission": "scoring:admin" }
+  ]
+}
