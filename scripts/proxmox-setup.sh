@@ -385,6 +385,17 @@ create_directories() {
   mkdir -p "${DATA_DIR}/uploads"
   mkdir -p "${DATA_DIR}/letsencrypt"
 
+  # postgres:alpine runs as UID 70 inside the container. Pre-owning the bind-
+  # mount directory to that UID lets PostgreSQL initialise without needing to
+  # chown (which can fail in some container runtimes).
+  if [[ -z "$(ls -A "${DATA_DIR}/db" 2>/dev/null)" ]]; then
+    chown 70:70 "${DATA_DIR}/db"
+    chmod 700   "${DATA_DIR}/db"
+    info "Set ${DATA_DIR}/db ownership to postgres (uid 70)"
+  else
+    info "${DATA_DIR}/db is non-empty – preserving existing ownership"
+  fi
+
   local acme_file="${DATA_DIR}/letsencrypt/acme.json"
   if [[ ! -f "${acme_file}" ]]; then
     touch "${acme_file}"
@@ -454,18 +465,25 @@ start_services() {
 
   cd "${INSTALL_DIR}"
 
-  docker compose up -d
+  # Remove any stale containers from previous runs (preserves volumes/data)
+  info "Removing stale containers (if any)..."
+  docker compose down --remove-orphans 2>/dev/null || true
+
+  # Start all services; don't let depends_on health-check failures abort here –
+  # we do our own wait loop below which prints useful logs on failure.
+  docker compose up -d --no-deps db redis traefik frontend 2>&1 || true
+  docker compose up -d backend 2>&1 || true
 
   info "Waiting for database to be healthy..."
-  local retries=30
+  local retries=40
   until docker compose exec -T db pg_isready -U "$(grep POSTGRES_USER .env | cut -d= -f2)" -q 2>/dev/null; do
     retries=$((retries - 1))
     if [[ $retries -le 0 ]]; then
-      error "Database did not become healthy in time."
-      docker compose logs db | tail -20
-      die "Startup failed."
+      error "Database did not become healthy in time. Logs:"
+      docker compose logs db | tail -30
+      die "Startup failed – see db logs above."
     fi
-    sleep 2
+    sleep 3
   done
   success "Database is healthy"
 
