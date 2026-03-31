@@ -5,8 +5,7 @@ RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
 
 WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile --ignore-scripts && \
-    find node_modules/.pnpm -name "esbuild" -type f | xargs chmod +x
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
 ARG VITE_API_URL=/api
