@@ -41,24 +41,25 @@ Fragen die noch nicht beantwortet wurden. Werden hier protokolliert und nach Bea
 - [x] **Paper-Kategorien 2026:** ✅ Multi Agent Systems / Embracing Educational Robotics / Engineering / STEM Projects
 - [x] **Score-Integration:** ✅ `AdaptedDocScore = ½·DocScore + ½·PaperScore` / `PriaOpenOverall = DE + Seeding + ½·PaperScore`
 - [x] **Deadlines 2026:** ✅ Einreichung 15. März, Annahme 29. März, Final 5. April
-- [ ] **Anzahl Reviewer pro Paper:** Wie viele Reviewer werden einem Paper zugewiesen?
-- [ ] **Blind Review:** Ist der Review-Prozess blind (Reviewer sieht nicht welches Team einreicht)?
-- [ ] **Interne Review-Deadlines:** Wie viele interne Review-Runden sind typischerweise pro Saison geplant?
+- [x] **Anzahl Reviewer pro Paper:** ✅ Beliebig viele – Admin entscheidet je Paper
+- [x] **Blind Review:** ✅ Kein Blind Review – Reviewer sieht welches Team einreicht
+- [x] **Interne Review-Runden:** ✅ Beliebig viele, auch unterschiedlich je Team
 
 ---
 
 ## 3D-Druck-Modul
 
-- [ ] **Drucker-Inventar:** Welche 3D-Drucker sind konkret im Einsatz? (Hersteller, Modell, Anzahl)
-- [ ] **Credentials-Verwaltung:** Sollen Drucker-API-Keys in der Datenbank (verschlüsselt) oder als Umgebungsvariablen gespeichert werden?
-- [ ] **Limits pro Team:** Gibt es ein maximales Druckvolumen / maximale Druckzeit pro Team und Saison?
-- [ ] **Filament-Tracking:** Soll der Materialverbrauch (Filamentmenge) pro Job und Drucker getrackt werden?
+- [x] **Drucker-Inventar:** ✅ ~5 Drucker (Bambu Lab, Ender/OctoPrint, ggf. Prusa). Adapter vorbereitet.
+- [x] **Credentials-Verwaltung:** ✅ Verschlüsselt in DB, Installationsanleitung dokumentiert
+- [x] **Limits pro Team:** ✅ Soft Limits (Warnung) + Hard Limits (Stop) in Stunden/Gramm/Jobs
+- [x] **Filament-Tracking:** ✅ Ja – pro Job, Team und Saison
 
 ---
 
 ## Allgemein
 
 - [x] **PDF-Lesbarkeit:** ✅ `poppler-utils` installiert
-- [ ] **Mehrsprachigkeit:** Wird die Oberfläche nur auf Deutsch sein oder auch auf Englisch (für internationale Teilnehmer bei GCER)?
-- [ ] **Benachrichtigungen:** E-Mail-Provider – eigener SMTP-Server oder Dienst wie SendGrid/Mailgun?
-- [ ] **Öffentliches Scoreboard:** Soll das Live-Scoreboard passwortgeschützt sein oder komplett öffentlich?
+- [x] **Mehrsprachigkeit:** ✅ Deutsch + Englisch, 1-Klick-Umschalter, i18next
+- [x] **Benachrichtigungen:** ✅ Primär eigener SMTP-Server + SendGrid/Mailgun als Fallback; PWA Push-Notifications via Web Push API
+- [x] **Öffentliches Scoreboard:** ✅ Intern (hinter Login/Firewall) + separate öffentliche Version die extern gehostet werden kann
+- [x] **Dark/Light Mode:** ✅ Systemeinstellung wird erkannt, manueller Umschalter, Einstellung im Profil gespeichert

@@ -80,11 +80,13 @@ submitted → under_review → revision_requested → resubmitted → accepted |
 ```
 
 ### Reviewer-Zuweisung (Admin-Seite)
-- Manuelle Zuweisung: Admin weist Paper einem oder mehreren Reviewern zu
+- Manuelle Zuweisung: Admin weist Paper einem oder **beliebig vielen** Reviewern zu
 - Automatische Zuweisung: Round-Robin oder nach Expertise-Tags
 - Konfliktprüfung: Reviewer darf kein Paper der eigenen Schule bewerten
 - Reviewer-Pool verwaltbar: welche Benutzer haben die Rolle `reviewer`?
 - **Reviewer müssen keine Teammitglieder sein** – externe Personen (Lehrpersonen anderer Schulen, KIPR-Volunteers, Experten) können als Reviewer eingeladen werden. Sie benötigen nur einen Account mit Rolle `reviewer`, keine Teamzugehörigkeit.
+- **Kein Blind Review:** Reviewer sehen welches Team das Paper eingereicht hat — volle Transparenz
+- **Reviewer-Anzahl pro Paper:** Keine feste Zahl – Admin entscheidet je Paper wie viele Reviewer zugewiesen werden
 
 ### Review-Formular (Reviewer-Seite)
 - Strukturiertes Feedback mit Bewertungskategorien:
@@ -101,7 +103,8 @@ submitted → under_review → revision_requested → resubmitted → accepted |
 - Reviewer fordert Revision an → Team erhält Benachrichtigung
 - Team lädt überarbeitete Version hoch
 - Reviewer bewertet neue Version (kann vorherige Reviews einsehen)
-- Mehrere Revisions-Runden möglich
+- **Beliebig viele Revisions-Runden möglich** – auch unterschiedlich viele je Team
+- Admin sieht wie viele Runden jedes Team bereits durchlaufen hat
 
 ### Versionierung
 - Alle eingereichten Versionen werden gespeichert

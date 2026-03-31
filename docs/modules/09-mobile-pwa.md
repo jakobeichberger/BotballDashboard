@@ -15,10 +15,34 @@ Mobile Oberfläche für Juror*innen und Reviewer direkt am Spielfeldrand oder Ko
 ## Features
 
 ### Progressive Web App (PWA)
-- Installation auf iOS und Android ohne App Store
+- Installation auf iOS und Android ohne App Store — **ein Klick, kein App Store**
 - Funktioniert im Browser (Chrome, Safari, Firefox)
 - Home-Screen-Icon, Splash Screen
-- Push-Benachrichtigungen (wo vom OS unterstützt)
+- **Push-Benachrichtigungen auf Clients** (Web Push API, wo vom OS unterstützt)
+
+### Push-Benachrichtigungen
+
+Benachrichtigungen werden als Web Push an installierte PWA-Clients gesendet:
+
+| Event | Empfänger |
+|---|---|
+| Neues Match beginnt bald | Juror |
+| Score wurde korrigiert | Juror, Admin |
+| Paper-Review zugewiesen | Reviewer |
+| Revision angefordert | Team-Mentor |
+| Paper akzeptiert / abgelehnt | Team-Mentor |
+| Druckjob genehmigt / fertig / fehlgeschlagen | Team-Mentor |
+| Deadline in X Tagen | Alle relevanten Rollen |
+
+**Technologie:**
+- Backend: Web Push Protocol (via `pywebpush`)
+- Frontend: Service Worker + Push Manager API
+- Subscription wird pro Gerät gespeichert (ein User kann mehrere Geräte registrieren)
+- Benutzer kann Push-Benachrichtigungen in den Profileinstellungen deaktivieren
+
+**Fallback:**
+- Wenn Push nicht verfügbar (Browser-Einschränkung, iOS < 16.4): In-App-Notification-Center als Alternative
+- E-Mail als zusätzlicher Kanal (primär eigener SMTP-Server, alternativ SendGrid/Mailgun)
 
 ### Offline-Modus
 - Scores können ohne Internetverbindung eingegeben werden

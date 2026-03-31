@@ -94,10 +94,25 @@ Eine dedizierte **Übersichtsseite pro Saison** zeigt den gesamten Ablauf und al
 - Ergebnisse vergangener Saisons abrufbar
 - Archivierte Saisons im Dashboard durchsuchen
 
+### Scoreboard-Split: Intern vs. Öffentlich
+
+Das System unterscheidet zwei Scoreboard-Ansichten:
+
+| Ansicht | Zugang | Hosting |
+|---|---|---|
+| **Internes Dashboard** | Nur nach Login, hinter VPN/Firewall | Intern (Proxmox, nicht öffentlich erreichbar) |
+| **Öffentliches Scoreboard** | Separate Login-Seite, eigene URL | Kann extern gehostet werden (eigener Server/Domain) |
+
+- Das öffentliche Scoreboard ist eine abgespeckte, read-only Version
+- Zeigt nur was freigegeben ist: Rangliste, Bracket, Team-Namen
+- Keine internen Prep-Scores, keine Paper-Reviews, keine Druckjobs
+- Admin kann per Toggle festlegen was öffentlich sichtbar ist
+- Deployment: zweiter Nginx-Vhost oder separater Docker-Service mit eigenem Port
+
 ### Export
 - PDF-Berichte (Saison-Zusammenfassung, Team-Bericht)
 - CSV/Excel für Weiterverarbeitung
-- Öffentliches Live-Scoreboard (separater View für Großbildschirme, via WebSocket)
+- Live-Scoreboard via WebSocket (Großbildschirm-Modus, separater View)
 
 ---
 

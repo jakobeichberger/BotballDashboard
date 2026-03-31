@@ -64,6 +64,22 @@ volumes:
 - Automatische Tests bei Pull Requests
 - Build & Deploy bei Merge in `main`
 
+### Mehrsprachigkeit (i18n)
+
+- **Sprachen:** Deutsch und Englisch
+- **Umschaltung:** Ein-Klick-Sprachumschalter in der Navigation (DE | EN)
+- **Technologie:** i18next (React) – alle UI-Texte als Übersetzungs-Keys
+- Sprachpräferenz wird im User-Profil gespeichert (persistent nach Login)
+- Fallback auf Englisch wenn Übersetzung fehlt
+- **Scope:** Gesamte UI (alle Module, Fehlermeldungen, E-Mail-Vorlagen)
+
+### Dark / Light Mode
+
+- Systemeinstellung wird automatisch erkannt (`prefers-color-scheme`)
+- Manueller Umschalter in der Navigation (Sonne/Mond-Icon)
+- Einstellung wird im User-Profil gespeichert (persistent)
+- Tailwind CSS `dark:`-Klassen für alle Komponenten
+
 ### Responsive Design (alle Geräte)
 Die Website muss auf allen Geräteklassen gut nutzbar sein:
 
