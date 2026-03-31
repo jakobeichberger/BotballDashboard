@@ -125,10 +125,48 @@ Das Scoring-Modul liefert ein eigenes internes Dashboard:
 - Audit Trail: wer hat wann welchen Score eingetragen / geändert
 
 ### Score-Berechnung (offizielle Formeln)
-- **Seeding-Score** = Summe der Punkte auf Side A + Side B
-- **Seeding-Durchschnitt** = Durchschnitt der besten 2 von N Seeding-Runs
-- **Double-Elimination** = Nur Sieg / Niederlage
-- **Gesamtscore** = Seeding + Double-Elimination + Dokumentationspunkte (saisonspezifisch konfigurierbar)
+
+**Roh-Score eines Laufs:**
+- `RunScore = Side_A_Points + Side_B_Points`
+- Team-Seed-Score = Durchschnitt der besten 2 Runs
+
+**Gesamtscore (regional, 0–3):**
+- `Overall = SeedScore + DEScore + DocScore`
+
+**Gesamtscore GCER (0–4, mit Double Seeding):**
+- `Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore`
+
+**Seeding Score:**
+```
+SeedScore = (3/4) × (n − SeedRank + 1) / n
+          + (1/4) × (TeamAvgSeedScore / MaxTournamentSeedScore)
+```
+
+**Double Elimination Score:**
+```
+DEScore = (n − DERank + 1) / n
+```
+
+**Double Seeding Score (nur GCER):**
+```
+DoubleSeedScore = (2/3) × (n − DoubleSeedRank + 1) / n
+               + (1/3) × (TeamAvgDoubleSeedScore / MaxTournamentDoubleSeedScore)
+```
+
+**Documentation Score (saisonspezifisch):**
+
+| Saison | Formel |
+|---|---|
+| 2024 | `DocScore = 3/10·P1 + 3/10·P2 + 3/10·P3 + 1/10·Onsite` |
+| 2025/2026 | `DocScore = 2/10·P1 + 2/10·P2 + 2/10·P3 + 4/10·Onsite` |
+
+**ECER/PRIA Open Overall (mit Paper):**
+```
+AdaptedDocScore   = ½ × DocScore + ½ × PaperScore
+PriaOpenOverall   = DEScore + SeedScore + ½ × PaperScore
+```
+
+*(n = Anzahl Teams im Turnier/Bracket)*
 
 ### OCR-Pipeline
 - Upload: Foto (JPG/PNG) oder PDF

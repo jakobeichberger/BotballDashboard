@@ -13,17 +13,43 @@ Eigenständiges Plugin für die Verwaltung und Bewertung der ECER-Papers. Teams 
 
 ---
 
-## Hintergrund (aus 2024 Call for Papers)
+## Hintergrund (aus Call for Papers 2024–2026)
 
-- **Track:** ECER Engineering (alle Ingenieursdisziplinen inkl. Software)
-- **Paper-Struktur:** Concept/Design → Implementation → Results/Conclusion
-- **Format:** A4, 2-spaltig, 10pt, single-spaced
-- **Einreichung:** PDF
-- **Ausgewählte Papers:** Vortrag + 5 Minuten Q&A
-- **Einreichungsplattform bisher:** moodle.pria.at → wird durch dieses Modul abgelöst
-- **Score-Relevanz:** Papers fließen in den Gesamt-Wettkampfscore ein
+### Paper-Struktur (alle Jahre identisch)
+Abstract → Introduction → (State of the Art / Literature Review) → Concept/Design → Implementation → Results/Conclusion
 
-> Detaillierte Bewertungskriterien für 2025/2026 werden ergänzt sobald die PDFs lesbar sind.
+### Format (alle Jahre identisch)
+- IEEE A4-Template (Word, LaTeX oder Typst)
+- 2-spaltig, single-spaced, 10pt
+- Max. 5 Seiten inkl. Abbildungen & Referenzen
+- Formatverstöße oder KI-Missbrauch → Punktabzug bis 100% / Ablehnung
+
+### Themen-Schwerpunkte (jährlich wechselnd)
+| Saison | Hauptthema | Dauerthemen |
+|---|---|---|
+| 2024 | Software Development Practices | Embracing Educational Robotics, Engineering, STEM Projects |
+| 2025 | Artificial Intelligence | Embracing Educational Robotics, Engineering, STEM Projects |
+| 2026 | Multi Agent Systems | Embracing Educational Robotics, Engineering, STEM Projects |
+
+### Offizielle Deadlines
+| | 2024 | 2025 | 2026 |
+|---|---|---|---|
+| Einreichung | 10. März | 9. März | 15. März |
+| Annahme-Benachrichtigung | 24. März | 23. März | 29. März |
+| Final Submission | 1. April | 30. März | 5. April |
+
+### Einreichungsplattform
+- Bisher: moodle.pria.at → wird durch dieses Modul abgelöst
+
+### Präsentation
+- Ausgewählte Papers: bis 10 Min. Vortrag + 5 Min. Q&A
+- Auswahl durch Program Committee
+
+### Score-Relevanz
+```
+AdaptedDocScore = ½ × DocScore + ½ × PaperScore
+PriaOpenOverall = DEScore + SeedScore + ½ × PaperScore
+```
 
 ---
 

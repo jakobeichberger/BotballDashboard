@@ -21,8 +21,8 @@ Fragen die noch nicht beantwortet wurden. Werden hier protokolliert und nach Bea
 
 ## Scoring-Modul
 
-- [ ] **Scoring-Sheet-Details 2025/2026:** Genaue Aufgabenkategorien, Felder und Multiplikatoren aus den Game-Review-PDFs (aktuell nicht lesbar, benötigt `poppler-utils`)
-- [ ] **Gesamtscore-Formel:** Genaue Formel für die Kombination aus Seeding + Double-Elimination + Dokumentationspunkten (saisonabhängig – aus Regelwerk entnehmen)
+- [x] **Gesamtscore-Formel:** ✅ Aus PDFs extrahiert – siehe `docs/modules/05-scoring.md`
+- [ ] **Scoring-Sheet-Felder 2024/2025/2026:** Die Score-Sheet-Seiten enthalten grafische Tabellen die als Bilder eingebettet sind – Felder/Punktwerte pro Aufgabe nicht als Text extrahierbar. Manuelle Erfassung nötig.
 - [ ] **GCER Qualifikationsschwelle:** Wie viele Teams qualifizieren sich von der ECER für die GCER? Feste Anzahl oder Prozentwert?
 - [ ] **Alliance-Matches bei GCER:** Gibt es bei der GCER immer Alliance-Matches oder nur manchmal?
 - [ ] **Öffentlichkeit der Prep-Phase:** Sollen Scores aus der Vorbereitungsphase nur für Admins/Mentoren sichtbar sein, oder auch für die Teams selbst?
@@ -31,13 +31,16 @@ Fragen die noch nicht beantwortet wurden. Werden hier protokolliert und nach Bea
 
 ## Paper-Review-Modul
 
-- [ ] **Bewertungskriterien 2025/2026:** Genaue Kategorien und Punkteverteilung aus den Call-for-Papers-PDFs (aktuell nicht lesbar)
-- [ ] **Anzahl Reviewer pro Paper:** Wie viele Reviewer werden einem Paper zugewiesen? (1, 2, oder mehr?)
-- [ ] **Blind Review:** Ist der Review-Prozess blind (Reviewer sieht nicht welches Team das Paper eingereicht hat)?
-- [ ] **Einreichungsplattform:** Wird `moodle.pria.at` vollständig durch unser System abgelöst oder parallel betrieben?
-- [ ] **Präsentationsauswahl:** Nach welchem Kriterium werden Papers für die Präsentation (Vortrag + Q&A) ausgewählt? Nur beste Note oder auch andere Faktoren?
-- [ ] **Paper-Kategorien:** Gibt es neben ECER Engineering weitere Tracks/Kategorien?
-- [ ] **Interne Review-Deadlines:** Wie viele interne Review-Runden sind typischerweise geplant pro Saison?
+- [x] **Paper-Struktur:** ✅ Abstract → Introduction → (State of the Art) → Concept/Design → Implementation → Results/Conclusion
+- [x] **Format:** ✅ IEEE A4-Template, 2-spaltig, 10pt, single-spaced, max. 5 Seiten inkl. Abbildungen & Referenzen
+- [x] **Einreichung:** ✅ PDF via moodle.pria.at (wird durch unser System abgelöst)
+- [x] **Präsentation:** ✅ Ausgewählte Papers: bis 10 Min. Vortrag + 5 Min. Q&A
+- [x] **Paper-Kategorien 2026:** ✅ Multi Agent Systems / Embracing Educational Robotics / Engineering / STEM Projects
+- [x] **Score-Integration:** ✅ `AdaptedDocScore = ½·DocScore + ½·PaperScore` / `PriaOpenOverall = DE + Seeding + ½·PaperScore`
+- [x] **Deadlines 2026:** ✅ Einreichung 15. März, Annahme 29. März, Final 5. April
+- [ ] **Anzahl Reviewer pro Paper:** Wie viele Reviewer werden einem Paper zugewiesen?
+- [ ] **Blind Review:** Ist der Review-Prozess blind (Reviewer sieht nicht welches Team einreicht)?
+- [ ] **Interne Review-Deadlines:** Wie viele interne Review-Runden sind typischerweise pro Saison geplant?
 
 ---
 
@@ -52,7 +55,7 @@ Fragen die noch nicht beantwortet wurden. Werden hier protokolliert und nach Bea
 
 ## Allgemein
 
-- [ ] **PDF-Lesbarkeit:** `poppler-utils` auf dem System installieren (`apt install poppler-utils`) damit die Game-Review- und Call-for-Papers-PDFs ausgewertet werden können
+- [x] **PDF-Lesbarkeit:** ✅ `poppler-utils` installiert
 - [ ] **Mehrsprachigkeit:** Wird die Oberfläche nur auf Deutsch sein oder auch auf Englisch (für internationale Teilnehmer bei GCER)?
-- [ ] **Benachrichtigungen:** E-Mail-Provider für automatische Benachrichtigungen – eigener SMTP-Server oder Dienst wie SendGrid/Mailgun?
-- [ ] **Öffentliches Scoreboard:** Soll das Live-Scoreboard passwortgeschützt sein oder komplett öffentlich (z.B. für Zuschauer)?
+- [ ] **Benachrichtigungen:** E-Mail-Provider – eigener SMTP-Server oder Dienst wie SendGrid/Mailgun?
+- [ ] **Öffentliches Scoreboard:** Soll das Live-Scoreboard passwortgeschützt sein oder komplett öffentlich?
