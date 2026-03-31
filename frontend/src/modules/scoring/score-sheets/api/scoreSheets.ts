@@ -2,7 +2,7 @@
  * Score Sheet Import – API client
  */
 
-import { apiClient } from '@/core/api'
+import { api } from '@/lib/api'
 
 export interface ScoringField {
   key: string
@@ -67,13 +67,13 @@ export interface ConfirmFieldsParams {
 
 export const scoreSheetApi = {
   list: (seasonId: string, competitionLevelId?: string) =>
-    apiClient.get<ScoreSheetTemplateListItem[]>(
+    api.get<ScoreSheetTemplateListItem[]>(
       `/scoring/seasons/${seasonId}/score-sheets`,
       { params: competitionLevelId ? { competition_level_id: competitionLevelId } : {} }
-    ),
+    ).then(r => r.data),
 
   get: (sheetId: string) =>
-    apiClient.get<ScoreSheetTemplate>(`/scoring/score-sheets/${sheetId}`),
+    api.get<ScoreSheetTemplate>(`/scoring/score-sheets/${sheetId}`).then(r => r.data),
 
   upload: ({ seasonId, file, label, year, gameTheme, competitionLevelId }: UploadScoreSheetParams) => {
     const form = new FormData()
@@ -82,24 +82,24 @@ export const scoreSheetApi = {
     form.append('year', String(year))
     if (gameTheme) form.append('game_theme', gameTheme)
     if (competitionLevelId) form.append('competition_level_id', competitionLevelId)
-    return apiClient.post<ScoreSheetTemplate>(
+    return api.post<ScoreSheetTemplate>(
       `/scoring/seasons/${seasonId}/score-sheets`,
       form,
       { headers: { 'Content-Type': 'multipart/form-data' } }
-    )
+    ).then(r => r.data)
   },
 
   downloadUrl: (sheetId: string) => `/api/scoring/score-sheets/${sheetId}/file`,
 
   confirm: ({ sheetId, fields, applyToSchema }: ConfirmFieldsParams) =>
-    apiClient.post<ScoreSheetTemplate>(`/scoring/score-sheets/${sheetId}/confirm`, {
+    api.post<ScoreSheetTemplate>(`/scoring/score-sheets/${sheetId}/confirm`, {
       fields,
       apply_to_schema: applyToSchema,
-    }),
+    }).then(r => r.data),
 
   setActive: (sheetId: string) =>
-    apiClient.put(`/scoring/score-sheets/${sheetId}/active`),
+    api.put(`/scoring/score-sheets/${sheetId}/active`),
 
   delete: (sheetId: string) =>
-    apiClient.delete(`/scoring/score-sheets/${sheetId}`),
+    api.delete(`/scoring/score-sheets/${sheetId}`),
 }
