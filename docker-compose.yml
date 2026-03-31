@@ -29,9 +29,14 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Mount a fresh writable tmpfs for the Unix socket directory so that the
+    # postgres user (uid 70) can create .s.PGSQL.5432 even on hosts where
+    # Docker's default /var/run tmpfs is not writable by non-root.
+    tmpfs:
+      - /var/run/postgresql:uid=70,gid=70,mode=0755
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-botball}"]
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER:-botball}"]
       interval: 10s
       timeout: 5s
       retries: 5
