@@ -8,7 +8,7 @@ COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 # esbuild needs its post-install script to download the native binary;
 # run it directly with Node to avoid pnpm's stream handling in LXC/Docker
-RUN node node_modules/esbuild/install.js
+RUN node node_modules/.pnpm/esbuild@*/node_modules/esbuild/install.js
 
 COPY . .
 ARG VITE_API_URL=/api
