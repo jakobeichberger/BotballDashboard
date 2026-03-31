@@ -42,21 +42,43 @@ Webbasierte Plattform zur vollständigen Verwaltung und Auswertung des Botball-W
 
 ## Schnellstart
 
-### Voraussetzungen
+### Proxmox / Debian LXC – One-Call Setup
+
+Auf einem frischen **Debian 12 LXC-Container** genügt ein einziger Befehl:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/jakobeichberger/BotballDashboard/main/scripts/proxmox-setup.sh)
+```
+
+Das Script erledigt automatisch:
+- Docker-Installation
+- Repository klonen
+- Interaktive `.env`-Konfiguration (Domain, DB, SMTP optional, Secrets auto-generiert)
+- Datenverzeichnisse anlegen
+- Images bauen & Services starten
+- Health-Checks und Zusammenfassung
+
+> SMTP-Konfiguration ist **optional** – bei Bedarf kann sie übersprungen werden.
+
+---
+
+### Manuelle Installation
+
+#### Voraussetzungen
 - Docker & Docker Compose
 - (Optional) pnpm 9+ für lokale Frontend-Entwicklung
 
-### Produktion
+#### Produktion
 
 ```bash
 cp .env.example .env
-# .env anpassen (Passwörter, DOMAIN, SMTP, VAPID-Keys)
+# .env anpassen (Passwörter, DOMAIN, SMTP optional, VAPID-Keys)
 
 make up          # startet alle Container inkl. Traefik
 make migrate     # ggf. Migrationen manuell anstoßen (läuft automatisch beim Start)
 ```
 
-### Entwicklung
+#### Entwicklung
 
 ```bash
 cp .env.example .env
@@ -163,7 +185,8 @@ Alle Endpunkte unter `/api/`. Swagger UI unter `/api/docs` (nur im Dev-Modus).
 |---|---|
 | [docs/documentation/installation/quickstart.md](docs/documentation/installation/quickstart.md) | Schnellstart-Anleitung |
 | [docs/documentation/installation/configuration.md](docs/documentation/installation/configuration.md) | Alle .env-Variablen |
-| [docs/documentation/installation/proxmox-setup.md](docs/documentation/installation/proxmox-setup.md) | Proxmox + Docker Setup |
+| [scripts/proxmox-setup.sh](scripts/proxmox-setup.sh) | One-Call Proxmox Installer |
+| [docs/documentation/installation/proxmox-setup.md](docs/documentation/installation/proxmox-setup.md) | Proxmox + Docker Setup (manuell) |
 | [docs/documentation/technical/architecture.md](docs/documentation/technical/architecture.md) | Systemarchitektur |
 | [docs/documentation/technical/database.md](docs/documentation/technical/database.md) | Datenbankschema |
 | [docs/documentation/technical/api-reference.md](docs/documentation/technical/api-reference.md) | API-Referenz |

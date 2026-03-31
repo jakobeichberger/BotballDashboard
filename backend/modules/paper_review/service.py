@@ -34,7 +34,8 @@ async def list_papers(
     status: str | None = None,
 ) -> list[Paper]:
     q = select(Paper).options(
-        selectinload(Paper.assignments)
+        selectinload(Paper.assignments),
+        selectinload(Paper.reviews),
     ).order_by(Paper.created_at.desc())
     if season_id:
         q = q.where(Paper.season_id == season_id)

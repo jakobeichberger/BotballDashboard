@@ -19,7 +19,7 @@ api.interceptors.request.use((config) => {
 
 // Auto-refresh on 401
 let isRefreshing = false;
-let queue: Array<(token: string) => void> = [];
+let queue: Array<(token: string | null) => void> = [];
 
 api.interceptors.response.use(
   (res) => res,
@@ -28,8 +28,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       if (isRefreshing) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           queue.push((token) => {
+            if (!token) {
+              reject(error);
+              return;
+            }
             original.headers.Authorization = `Bearer ${token}`;
             resolve(api(original));
           });
@@ -48,8 +52,12 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.access_token}`;
         return api(original);
       } catch {
+        // Notify queued requests that refresh failed
+        queue.forEach((cb) => cb(""));
+        queue = [];
         useAuthStore.getState().logout();
         window.location.href = "/login";
+        return Promise.reject(error);
       } finally {
         isRefreshing = false;
       }

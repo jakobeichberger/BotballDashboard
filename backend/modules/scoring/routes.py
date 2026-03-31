@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,30 +16,35 @@ from modules.scoring.schemas import (
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
-# WebSocket connections for live scoreboard
-_scoreboard_connections: list[WebSocket] = []
+# WebSocket connections for live scoreboard (set + lock for safe concurrent access)
+_scoreboard_connections: set[WebSocket] = set()
+_connection_lock = asyncio.Lock()
 
 
 @router.websocket("/scoreboard/ws")
 async def scoreboard_ws(websocket: WebSocket):
     await websocket.accept()
-    _scoreboard_connections.append(websocket)
+    async with _connection_lock:
+        _scoreboard_connections.add(websocket)
     try:
         while True:
             await websocket.receive_text()  # keep-alive
     except WebSocketDisconnect:
-        _scoreboard_connections.remove(websocket)
+        pass
+    finally:
+        async with _connection_lock:
+            _scoreboard_connections.discard(websocket)
 
 
 async def _broadcast_ranking_update(season_id: str) -> None:
-    dead = []
-    for ws in _scoreboard_connections:
-        try:
-            await ws.send_json({"event": "ranking_updated", "season_id": season_id})
-        except Exception:
-            dead.append(ws)
-    for ws in dead:
-        _scoreboard_connections.remove(ws)
+    async with _connection_lock:
+        dead: set[WebSocket] = set()
+        for ws in list(_scoreboard_connections):
+            try:
+                await ws.send_json({"event": "ranking_updated", "season_id": season_id})
+            except Exception:
+                dead.add(ws)
+        _scoreboard_connections.difference_update(dead)
 
 
 # ── Matches ───────────────────────────────────────────────────────────────────

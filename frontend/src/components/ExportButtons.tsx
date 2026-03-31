@@ -1,4 +1,5 @@
-import { Download, FileText } from "lucide-react";
+import { useState } from "react";
+import { Download, FileText, Loader2, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface ExportButtonProps {
@@ -8,35 +9,62 @@ interface ExportButtonProps {
   variant?: "pdf" | "csv";
 }
 
-async function downloadFile(url: string, filename: string) {
+async function downloadFile(url: string, filename: string): Promise<void> {
   const response = await api.get(url, { responseType: "blob" });
   const blob = new Blob([response.data]);
   const href = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = href;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(href);
+  try {
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = filename;
+    a.click();
+  } finally {
+    URL.revokeObjectURL(href);
+  }
 }
 
 export function ExportButton({ url, filename, label, variant = "pdf" }: ExportButtonProps) {
-  const handleClick = () => downloadFile(url, filename);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleClick = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await downloadFile(url, filename);
+    } catch {
+      setError("Export fehlgeschlagen");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <button
-      onClick={handleClick}
-      className={`btn-secondary gap-1.5 text-xs ${
-        variant === "csv" ? "opacity-80" : ""
-      }`}
-      title={`${label} herunterladen`}
-    >
-      {variant === "pdf" ? (
-        <FileText className="w-3.5 h-3.5 text-red-500" />
-      ) : (
-        <Download className="w-3.5 h-3.5 text-green-600" />
+    <div className="relative">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className={`btn-secondary gap-1.5 text-xs ${
+          variant === "csv" ? "opacity-80" : ""
+        } disabled:opacity-50 disabled:cursor-not-allowed`}
+        title={`${label} herunterladen`}
+      >
+        {loading ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : variant === "pdf" ? (
+          <FileText className="w-3.5 h-3.5 text-red-500" />
+        ) : (
+          <Download className="w-3.5 h-3.5 text-green-600" />
+        )}
+        {label}
+      </button>
+      {error && (
+        <div className="absolute top-full mt-1 left-0 flex items-center gap-1 text-xs text-red-500 whitespace-nowrap">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </div>
       )}
-      {label}
-    </button>
+    </div>
   );
 }
 
