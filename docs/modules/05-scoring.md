@@ -251,9 +251,66 @@ Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore
 
 #### 2026 – Logistics/Warehouse Theme
 
-Scoring-Sheet-Felder aus dem PDF grafisch eingebettet, konnten nicht automatisch extrahiert werden. Manuelle Erfassung aus dem Dokument nötig. Bekannte Elemente aus Regeltext: sortierte Cubes, Poms, Pallets, Loading Docks, Packaging Bins, Drum Storage, Warehouse Floor Areas.
+Game-Elemente aus Regeltext extrahiert. Exakte Multiplikatoren liegen nur im grafischen Score-Sheet-PDF vor und müssen manuell eingetragen werden.
 
-> Alle Felder werden als konfigurierbares YAML/JSON-Schema pro Saison im System hinterlegt.
+| Bereich | Feld | Bemerkung |
+|---|---|---|
+| Warehouse Floor | Cubes (unsortiert) | pro Cube |
+| Warehouse Floor | Cubes (sortiert, auf Pallet) | Mehrfach-Multiplikator je nach Anzahl sortierter Sections |
+| Warehouse Floor | Poms | pro Pom, sortierte Bereiche ×höher |
+| Warehouse Floor | Baskets mit matching Poms | gleiche Anzahl Orange+Blau erforderlich |
+| Internal Loading Dock | Pallet oder Cube | muss topmost surface berühren |
+| External Loading Dock | Pallet oder Cube (sortiert) | sortiert = höherer Multiplikator |
+| Packaging Center | Returned Packaging Bins | Bin darf keine anderen Flächen berühren |
+| Drum Storage | 2" PVC Pipe auf Post | Post muss Volume des Rohrs brechen |
+| Upper Warehouse | Clean Deck (alle Poms entfernt) | Boolean-Multiplikator |
+| Upper Start Box | Traffic Cones | pro Cone |
+| Upper Start Box / Lower Start Box | Botguy | nach Position unterschiedlich gewertet |
+| Stacks | Cubes gestapelt auf Pallet/Loading Dock | Höhe des Stapels zählt (Tiebreaker) |
+
+**Wichtige Sonderregeln 2026:**
+- Cubes auf Warehouse Floor zählen **nicht** als "sortierte Section" (nur Poms)
+- Ein Cube/Pom kann nur in **einem** Bereich gewertet werden (höchster Bereich gewinnt)
+- Roboterinterpretation bei Kubenüberlappung: erster Volume den das Stück bricht
+- Drum muss physisch durch ADDS automatisch ausgeliefert werden (autonomer Delivery-Mechanismus)
+- Stacks: unterster Piece muss Pallet oder Cube sein; nur Cubes können gestapelt werden
+
+> Alle Felder werden als konfigurierbares YAML/JSON-Schema pro Saison im System hinterlegt. Für 2026 müssen die exakten Multiplikator-Werte aus dem offiziellen Score-Sheet (PDF) manuell eingetragen werden.
+
+### Yellow/Red Card System – Team Misconduct
+
+Eingeführt bei ECER 2024, weitergeführt 2025. Wird vom Head Judge ausgestellt.
+
+| Karte | Auswirkung |
+|---|---|
+| Gelbe Karte | Verwarnung; Team ist offiziell verwarnt |
+| Rote Karte | 2. Verwarnung → sofortige DQ aus dem gesamten Turnier und allen Awards |
+
+**Gründe für Verwarnungen (nicht abschließend):**
+- Beleidigung oder Respektlosigkeit gegenüber Teilnehmern, Betreuern, Judges oder anderen Beteiligten
+- Weigerung, eine finale Head-Judge-Entscheidung zu akzeptieren
+- Manipulation oder böswillige Einmischung in Roboter/Runden anderer Teams oder Turnier-Administrationsgeräte
+- Physische Gewalt, willentliche Zerstörung → direktes Rot möglich
+
+> Für das Scoring-Modul relevant: DQ-Status muss im Match-Datensatz speicherbar sein. Admin kann Yellow/Red-Card-Status pro Team setzen und Turnier-DQ auslösen.
+
+### Turnier-Ablauf & Setup-Regeln (ECER-spezifisch)
+
+**Seeding-Runde:**
+1. Team bringt Roboter zum Tisch
+2. Setup-Phase: max. 2 Minuten → 1. Fehler: Verwarnung, 2. Fehler: DQ
+3. Judge prüft Setup → OK / Korrektur nötig
+4. Hands-Off → Judge-definierte Zeit (normal 30s–2min)
+5. Spiel startet
+
+**Double-Elimination-Runde:**
+- Gleicher Ablauf wie Seeding + Parts Challenge möglich
+- Gegner kann Parts Challenge stellen → Head Judge entscheidet
+  - Challenge korrekt: gegnerisches Team DQ
+  - Challenge falsch/irrelevant: Challenger-Team DQ
+- Gegner darf Concerns zum Judge äußern während Setup
+
+> Diese Informationen sind für die Schiedsrichter-Ansicht im Scoring-Modul relevant (Ablauf-Checkliste, DQ-Knopf, Card-System).
 
 ### OCR-Pipeline
 - Upload: Foto (JPG/PNG) oder PDF

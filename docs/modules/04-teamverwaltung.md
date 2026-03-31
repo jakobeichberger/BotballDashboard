@@ -60,6 +60,25 @@ Verwaltung aller Teams über mehrere Saisons hinweg. Ein Team gehört entweder z
 - Dokumente sind versionsiert (neueste Version + Archiv)
 - Zugriff: Team-Mitglieder und Mentoren sehen eigene Dokumente; Admins sehen alle
 
+### 3D-Druck-Regeln für Roboterteile (Wettbewerbs-Regeln)
+
+Diese Regeln betreffen das **Drucken von Roboterteilen** für den Wettbewerb – nicht das 3D-Druck-Verwaltungsmodul (Modul 07). Die Regeln variieren pro Saison und sind für die Dokumentation und Compliance-Prüfung relevant.
+
+| Saison | Material | Max. Teile | Max. Größe pro Teil | Besonderheiten |
+|---|---|---|---|---|
+| 2025 | PLA (grauskalig) | 4 Teile zwischen beiden Robotern | Ender 3 V3 SE: 220×220×250mm | STL-Datei in Periode 3 einzureichen |
+| 2026 | PLA oder PETG (grauskalig) | 6 Teile zwischen beiden Robotern | Ender 3 V3 SE: 220×220×250mm | STL-Datei in Periode 3 einzureichen |
+
+**Allgemeine Regeln (2025 & 2026):**
+- Jedes bewegliche Teil zählt einzeln (z.B. Kette mit 10 Gliedern = 10 Teile)
+- Jig/Positionierhilfe für Start-Box zählt **nicht** zum Limit, wenn nicht am Roboter
+- Von jedem Teil muss eine zweite identische Kopie für Judge-Inspektion mitgebracht werden
+- Judge kann Teile aus Sicherheits- oder Unangemessenheitsgründen ablehnen
+- Kein Drucken direkt beim Turnier erlaubt
+- STL-Dateien werden nach dem letzten regionalen Turnier und nach GCER für die Botball-Community freigegeben
+
+> Diese Informationen sollen im Team-Dokumentations-Bereich sichtbar sein (z.B. als Compliance-Checkliste für die aktuelle Saison).
+
 ### Suche & Filter
 - Teams suchen nach Name, Nummer, Schule, Saison
 - Filtern nach Status (aktiv, archiviert), Land, Saison

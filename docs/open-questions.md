@@ -22,7 +22,10 @@ Fragen die noch nicht beantwortet wurden. Werden hier protokolliert und nach Bea
 ## Scoring-Modul
 
 - [x] **Gesamtscore-Formel:** ✅ Aus PDFs extrahiert – siehe `docs/modules/05-scoring.md`
-- [ ] **Scoring-Sheet-Felder 2024/2025/2026:** Die Score-Sheet-Seiten enthalten grafische Tabellen die als Bilder eingebettet sind – Felder/Punktwerte pro Aufgabe nicht als Text extrahierbar. Manuelle Erfassung nötig.
+- [x] **Scoring-Sheet-Felder 2024/2025:** ✅ Vollständig aus PDFs extrahiert – siehe `docs/modules/05-scoring.md`
+- [ ] **Scoring-Sheet-Felder 2026:** Spielelemente aus Regeltext bekannt (Warehouse/Cubes/Poms/Pallets/Loading Docks/Packaging Bins/Drum Storage). Exakte Multiplikator-Werte liegen nur im grafischen Score-Sheet-PDF vor – manuelle Erfassung aus Dokument nötig.
+- [x] **Yellow/Red Card System:** ✅ Dokumentiert in `docs/modules/05-scoring.md` – DQ-Status muss im Match-Datensatz speicherbar sein
+- [x] **3D-Druck-Roboterteile-Regeln:** ✅ 2025: max. 4 Teile PLA; 2026: max. 6 Teile PLA/PETG. Dokumentiert in `docs/modules/04-teamverwaltung.md`
 - [ ] **GCER Qualifikationsschwelle:** Wie viele Teams qualifizieren sich von der ECER für die GCER? Feste Anzahl oder Prozentwert?
 - [ ] **Alliance-Matches bei GCER:** Gibt es bei der GCER immer Alliance-Matches oder nur manchmal?
 - [ ] **Öffentlichkeit der Prep-Phase:** Sollen Scores aus der Vorbereitungsphase nur für Admins/Mentoren sichtbar sein, oder auch für die Teams selbst?
