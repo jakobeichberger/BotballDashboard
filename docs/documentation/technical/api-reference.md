@@ -166,6 +166,27 @@ POST /api/auth/logout
 
 ---
 
+## Score Sheet Import
+
+| Methode | Pfad | Recht | Beschreibung |
+|---|---|---|---|
+| `POST` | `/api/scoring/seasons/:id/score-sheets` | `scoring:admin` | PDF hochladen, OCR startet im Hintergrund |
+| `GET` | `/api/scoring/seasons/:id/score-sheets` | `scoring:read` | Alle Sheets einer Saison auflisten |
+| `GET` | `/api/scoring/score-sheets/:id` | `scoring:read` | Sheet + OCR-Kandidaten abrufen |
+| `GET` | `/api/scoring/score-sheets/:id/file` | `scoring:read` | Original-PDF herunterladen |
+| `POST` | `/api/scoring/score-sheets/:id/confirm` | `scoring:admin` | Felder bestätigen (optional: sofort in Scoring-Schema übernehmen) |
+| `PUT` | `/api/scoring/score-sheets/:id/active` | `scoring:admin` | Sheet als aktiv markieren |
+| `DELETE` | `/api/scoring/score-sheets/:id` | `scoring:admin` | Sheet + PDF-Datei löschen |
+
+**Upload-Workflow:**
+1. `POST` mit `multipart/form-data` (Felder: `file`, `label`, `year`, `game_theme?`, `competition_level_id?`)
+2. Response sofort mit `ocr_status: "pending"`
+3. Background-Task läuft: `pdftotext` → Feldextraktion → `ocr_status: "done"`
+4. Frontend pollt `GET /score-sheets/:id` bis `ocr_status === "done"` (alle 3s)
+5. Admin überprüft `extracted_fields`, editiert und sendet `POST /confirm`
+
+---
+
 ## Dashboard
 
 | Methode | Pfad | Recht | Beschreibung |

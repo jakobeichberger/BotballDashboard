@@ -1,0 +1,63 @@
+{
+  "scoreSheets": {
+    "title": "Scoring-Sheets",
+    "subtitle": "PDF Score-Sheets importieren und Felder verwalten",
+    "empty": "Noch kein Score-Sheet hochgeladen.",
+    "selectToEdit": "Sheet aus der Liste auswählen, um Felder zu bearbeiten.",
+    "active": "Aktiv",
+    "download": "PDF herunterladen",
+    "setActive": "Als aktiv setzen",
+    "deleteConfirm": "Sheet \"{{label}}\" wirklich löschen?",
+
+    "upload": {
+      "button": "PDF hochladen",
+      "title": "Neues Score-Sheet importieren",
+      "dropzone": "PDF hier ablegen oder klicken zum Auswählen",
+      "onlyPdf": "Nur PDF-Dateien werden akzeptiert.",
+      "label": "Bezeichnung",
+      "year": "Jahr",
+      "gameTheme": "Spielthema (optional)",
+      "submit": "Hochladen & OCR starten",
+      "uploading": "Wird hochgeladen …",
+      "error": "Fehler beim Hochladen. Bitte erneut versuchen."
+    },
+
+    "ocr": {
+      "status": "OCR-Status",
+      "pending": "Ausstehend",
+      "processing": "Wird verarbeitet …",
+      "done": "Abgeschlossen",
+      "failed": "Fehlgeschlagen",
+      "candidatesFound": "Felder erkannt",
+      "processing": "OCR läuft, Seite wird automatisch aktualisiert …"
+    },
+
+    "candidates": {
+      "hide": "Rohe OCR-Ergebnisse ausblenden",
+      "show": "{{count}} rohe OCR-Kandidaten anzeigen",
+      "rawText": "OCR-Text",
+      "suggestedLabel": "Vorgeschlagener Name",
+      "multiplier": "Multiplikator",
+      "confidence": "Konfidenz",
+      "add": "Hinzufügen"
+    },
+
+    "fields": {
+      "title": "Bestätigte Felder",
+      "key": "Key",
+      "label": "Bezeichnung",
+      "section": "Abschnitt",
+      "multiplier": "Multiplikator",
+      "maxValue": "Max.",
+      "type": "Typ",
+      "sectionPlaceholder": "z.B. Warehouse Floor",
+      "addBlank": "Leer hinzufügen",
+      "empty": "Noch keine Felder – OCR-Kandidaten übernehmen oder manuell hinzufügen.",
+      "confirmed": "Felder bestätigt",
+      "applyToSchema": "Felder direkt in das Scoring-Schema dieser Saison/Stufe übernehmen",
+      "confirm": "{{count}} Felder bestätigen",
+      "confirming": "Wird gespeichert …",
+      "confirmError": "Fehler beim Speichern. Bitte erneut versuchen."
+    }
+  }
+}
