@@ -3,9 +3,10 @@ import { useAuthStore } from "@/store/authStore";
 
 interface Props {
   requireRole?: string;
+  children?: React.ReactNode;
 }
 
-export default function ProtectedRoute({ requireRole }: Props) {
+export default function ProtectedRoute({ requireRole, children }: Props) {
   const { accessToken, hasRole, user } = useAuthStore();
 
   if (!accessToken) {
@@ -16,5 +17,5 @@ export default function ProtectedRoute({ requireRole }: Props) {
     return <Navigate to="/" replace />;
   }
 
-  return <Outlet />;
+  return children ? <>{children}</> : <Outlet />;
 }
