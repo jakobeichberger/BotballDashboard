@@ -8,16 +8,26 @@
 #   bash scripts/proxmox-setup.sh
 #
 # What this script does:
-#   1. Checks prerequisites (OS, root, network)
-#   2. Installs Docker + Docker Compose plugin
-#   3. Clones the repository (or updates if already cloned)
-#   4. Interactively generates a .env file with all required secrets
-#   5. Creates required data directories
-#   6. Pulls/builds Docker images
-#   7. Starts all services
-#   8. Waits for health checks and prints access info
+#   1.  Checks prerequisites (OS, root, network)
+#   2.  Installs Docker + Docker Compose plugin
+#   3.  Installs Node.js 20 + pnpm (needed to build the frontend on the host)
+#   4.  Clones the repository (or updates if already cloned)
+#   5.  Interactively generates a .env file with all required secrets
+#   6.  Creates required data directories
+#   7.  Builds the frontend on the host (esbuild/workbox run natively, no Docker)
+#   8.  Builds the backend Docker image; the frontend nginx image just copies dist/
+#   9.  Starts all services
+#   10. Generates VAPID keys, rebuilds frontend with them, restarts nginx
+#   11. Creates first admin user
+#   12. Prints access info
 #
 # Tested on: Debian 12 (Bookworm) LXC container on Proxmox VE 8
+#
+# Note: The frontend is built directly on the host rather than inside a Docker
+# build container. This avoids a socketpair()/ENOTCONN failure that occurs when
+# esbuild (used by Vite + workbox-build) tries to spawn its child service daemon
+# inside a Docker build container running in a Proxmox LXC without kernel
+# nesting enabled.
 # =============================================================================
 
 set -euo pipefail
@@ -36,6 +46,8 @@ REPO_URL="https://github.com/jakobeichberger/BotballDashboard.git"
 INSTALL_DIR="/opt/botballdashboard"
 DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
+NODE_MAJOR="20"
+PNPM_VERSION="10.29.3"
 HEALTH_URL="http://localhost:8000/api/system/health"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -77,7 +89,6 @@ prompt() {
 }
 
 generate_secret() {
-  # Generate a cryptographically random secret of given byte length (default 32)
   local bytes="${1:-32}"
   python3 -c "import secrets; print(secrets.token_urlsafe(${bytes}))"
 }
@@ -88,15 +99,13 @@ generate_fernet_key() {
 
 # ── Step 1: Prerequisite Checks ───────────────────────────────────────────────
 check_prerequisites() {
-  header "Step 1/8 – Checking Prerequisites"
+  header "Step 1/10 – Checking Prerequisites"
 
-  # Root check
   if [[ $EUID -ne 0 ]]; then
     die "This script must be run as root (or via sudo)."
   fi
   success "Running as root"
 
-  # OS check
   if [[ ! -f /etc/debian_version ]]; then
     warn "This script is optimised for Debian/Ubuntu. Proceeding anyway..."
   else
@@ -105,13 +114,11 @@ check_prerequisites() {
     success "Debian/Ubuntu detected (${debian_ver})"
   fi
 
-  # Network check
   if ! curl -fsSL --max-time 5 https://github.com > /dev/null 2>&1; then
     die "No internet access. Please check network connectivity."
   fi
   success "Internet connectivity OK"
 
-  # Required packages: git, curl, python3
   local pkgs=()
   command -v git     &>/dev/null || pkgs+=(git)
   command -v curl    &>/dev/null || pkgs+=(curl)
@@ -125,13 +132,14 @@ check_prerequisites() {
 
 # ── Step 2: Install Docker ─────────────────────────────────────────────────────
 install_docker() {
-  header "Step 2/8 – Installing Docker"
+  header "Step 2/10 – Installing Docker"
 
   if command -v docker &>/dev/null; then
     local docker_ver
     docker_ver=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1)
     if [[ "${docker_ver:-0}" -ge "$MIN_DOCKER_VERSION" ]]; then
       success "Docker ${docker_ver} already installed"
+      apt-get install -y -q python3-cryptography > /dev/null 2>&1 || true
       return 0
     else
       warn "Docker version too old (${docker_ver}). Upgrading..."
@@ -141,24 +149,66 @@ install_docker() {
   info "Installing Docker via official install script..."
   curl -fsSL https://get.docker.com | sh
 
-  # Enable and start Docker
   systemctl enable --now docker > /dev/null 2>&1
 
-  # Verify
   local installed_ver
   installed_ver=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1)
   success "Docker ${installed_ver} installed and running"
 
-  # Install cryptography lib for Fernet key generation
   info "Installing python3-cryptography for key generation..."
   apt-get install -y -q python3-cryptography > /dev/null 2>&1 || \
     pip3 install cryptography --quiet
   success "python3-cryptography available"
 }
 
-# ── Step 3: Clone / Update Repository ────────────────────────────────────────
+# ── Step 3: Install Node.js + pnpm ────────────────────────────────────────────
+# The frontend is built on the LXC host so that esbuild and workbox-build can
+# use their native binaries (socketpair IPC works fine outside Docker).
+install_node() {
+  header "Step 3/10 – Installing Node.js ${NODE_MAJOR} + pnpm ${PNPM_VERSION}"
+
+  # ── Node.js ───────────────────────────────────────────────────────────────
+  local node_ok=false
+  if command -v node &>/dev/null; then
+    local nv
+    nv=$(node --version 2>/dev/null | sed 's/v//' | cut -d. -f1)
+    if [[ "${nv:-0}" -ge "${NODE_MAJOR}" ]]; then
+      success "Node.js $(node --version) already installed"
+      node_ok=true
+    else
+      warn "Node.js ${nv} too old (need ${NODE_MAJOR}+). Upgrading..."
+    fi
+  fi
+
+  if [[ "${node_ok}" == "false" ]]; then
+    info "Installing Node.js ${NODE_MAJOR} via NodeSource..."
+    apt-get install -y -q ca-certificates gnupg > /dev/null
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - > /dev/null 2>&1
+    apt-get install -y -q nodejs > /dev/null
+    success "Node.js $(node --version) installed"
+  fi
+
+  # ── pnpm (via corepack) ───────────────────────────────────────────────────
+  if command -v pnpm &>/dev/null; then
+    local pv
+    pv=$(pnpm --version 2>/dev/null)
+    if [[ "${pv}" == "${PNPM_VERSION}" ]]; then
+      success "pnpm ${pv} already installed"
+      return 0
+    fi
+    info "pnpm ${pv} found, pinning to ${PNPM_VERSION}..."
+  else
+    info "Installing pnpm ${PNPM_VERSION} via corepack..."
+  fi
+
+  corepack enable
+  corepack prepare "pnpm@${PNPM_VERSION}" --activate
+  success "pnpm $(pnpm --version) installed"
+}
+
+# ── Step 4: Clone / Update Repository ────────────────────────────────────────
 setup_repository() {
-  header "Step 3/8 – Setting Up Repository"
+  header "Step 4/10 – Setting Up Repository"
 
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
     info "Repository already exists at ${INSTALL_DIR}. Pulling latest changes..."
@@ -173,9 +223,9 @@ setup_repository() {
   cd "${INSTALL_DIR}"
 }
 
-# ── Step 4: Generate .env ─────────────────────────────────────────────────────
+# ── Step 5: Generate .env ─────────────────────────────────────────────────────
 configure_env() {
-  header "Step 4/8 – Configuration"
+  header "Step 5/10 – Configuration"
 
   if [[ -f "${INSTALL_DIR}/.env" ]]; then
     echo -e "${YELLOW}A .env file already exists.${NC}"
@@ -190,7 +240,6 @@ configure_env() {
   echo -e "${BOLD}Please provide the following configuration values.${NC}"
   echo -e "Secrets will be auto-generated where possible. Press Enter to accept defaults.\n"
 
-  # ── Domain & URL ──────────────────────────────────────────────────────────
   echo -e "${BOLD}--- Domain & URL ---${NC}"
   prompt DOMAIN        "Domain name (e.g. botball.yourschool.at)"
   prompt TRAEFIK_EMAIL "Admin email (for Let's Encrypt SSL notifications)"
@@ -198,7 +247,6 @@ configure_env() {
   APP_BASE_URL="https://${DOMAIN}"
   ALLOWED_ORIGINS="https://${DOMAIN}"
 
-  # ── Database ──────────────────────────────────────────────────────────────
   echo -e "\n${BOLD}--- Database ---${NC}"
   prompt POSTGRES_DB   "PostgreSQL database name" "botball"
   prompt POSTGRES_USER "PostgreSQL user"          "botball"
@@ -211,7 +259,6 @@ configure_env() {
   fi
   DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
 
-  # ── SMTP ──────────────────────────────────────────────────────────────────
   echo -e "\n${BOLD}--- Email (SMTP) ---${NC}"
   echo -e "${YELLOW}Email is optional. Without it, password resets and notifications will be disabled.${NC}"
   read -rp "Configure SMTP email? (y/N): " use_smtp
@@ -244,7 +291,6 @@ configure_env() {
     SENDGRID_FROM=""
   fi
 
-  # ── Auto-generated secrets ────────────────────────────────────────────────
   echo -e "\n${BOLD}--- Secrets (auto-generated) ---${NC}"
   APP_SECRET_KEY=$(generate_secret 32)
   JWT_SECRET_KEY=$(generate_secret 32)
@@ -253,13 +299,11 @@ configure_env() {
   info "JWT_SECRET_KEY              generated"
   info "PRINTER_ENCRYPTION_KEY      generated"
 
-  # ── VAPID Keys – generated after Docker images are built ─────────────────
-  # (stored as placeholders here; filled in by generate_vapid_keys() later)
+  # VAPID keys are generated later (step 9) via the running backend container.
   VAPID_PRIVATE_KEY="__VAPID_PLACEHOLDER__"
   VAPID_PUBLIC_KEY="__VAPID_PLACEHOLDER__"
   VAPID_ADMIN_EMAIL="${TRAEFIK_EMAIL}"
 
-  # ── Admin account ─────────────────────────────────────────────────────────
   echo -e "\n${BOLD}--- Admin Account (first login) ---${NC}"
   prompt ADMIN_EMAIL    "Admin email address"    "admin@${DOMAIN}"
   prompt ADMIN_NAME     "Admin display name"     "Administrator"
@@ -272,7 +316,6 @@ configure_env() {
     fi
   done
 
-  # ── Write .env ────────────────────────────────────────────────────────────
   cat > "${INSTALL_DIR}/.env" <<EOF
 # Generated by proxmox-setup.sh on $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # ─────────────────────────────────────────────
@@ -334,15 +377,14 @@ EOF
   success ".env written to ${INSTALL_DIR}/.env (permissions: 600)"
 }
 
-# ── Step 5: Create Data Directories ──────────────────────────────────────────
+# ── Step 6: Create Data Directories ──────────────────────────────────────────
 create_directories() {
-  header "Step 5/8 – Creating Data Directories"
+  header "Step 6/10 – Creating Data Directories"
 
   mkdir -p "${DATA_DIR}/db"
   mkdir -p "${DATA_DIR}/uploads"
   mkdir -p "${DATA_DIR}/letsencrypt"
 
-  # acme.json must exist with exact permissions for Traefik
   local acme_file="${DATA_DIR}/letsencrypt/acme.json"
   if [[ ! -f "${acme_file}" ]]; then
     touch "${acme_file}"
@@ -351,7 +393,6 @@ create_directories() {
 
   success "Created: ${DATA_DIR}/db, ${DATA_DIR}/uploads, ${DATA_DIR}/letsencrypt"
 
-  # Patch docker-compose.yml to use absolute /data paths (idempotent)
   if grep -q "device: /data/db" "${INSTALL_DIR}/docker-compose.yml"; then
     success "docker-compose.yml already uses /data/db"
   else
@@ -362,24 +403,54 @@ create_directories() {
   fi
 }
 
-# ── Step 6: Pull / Build Images ───────────────────────────────────────────────
+# ── Step 7: Build Frontend on Host ────────────────────────────────────────────
+# Building on the host avoids Docker's nested seccomp profile which blocks the
+# socketpair() IPC call that esbuild and workbox-build use for their child
+# service daemons when running inside a Docker build container on Proxmox LXC.
+build_frontend() {
+  header "Step 7/10 – Building Frontend (on host)"
+
+  local frontend_dir="${INSTALL_DIR}/frontend"
+
+  info "Installing frontend dependencies..."
+  cd "${frontend_dir}"
+  pnpm install --frozen-lockfile
+
+  # Read VAPID public key from .env; use empty string if still a placeholder
+  local vapid_pub=""
+  if [[ -f "${INSTALL_DIR}/.env" ]]; then
+    vapid_pub=$(grep -m1 '^VAPID_PUBLIC_KEY=' "${INSTALL_DIR}/.env" | cut -d= -f2-)
+    if [[ "${vapid_pub}" == "__VAPID_PLACEHOLDER__" ]]; then
+      vapid_pub=""
+    fi
+  fi
+
+  info "Building frontend (VITE_API_URL=/api)..."
+  VITE_API_URL=/api VITE_VAPID_PUBLIC_KEY="${vapid_pub}" pnpm build
+
+  success "Frontend built → ${frontend_dir}/dist"
+}
+
+# ── Step 8: Build Docker Images ───────────────────────────────────────────────
 build_images() {
-  header "Step 6/8 – Building Docker Images"
+  header "Step 8/10 – Building Docker Images"
 
   cd "${INSTALL_DIR}"
 
   info "Pulling base images..."
   docker compose pull --quiet traefik db redis 2>/dev/null || true
 
+  # Frontend image just copies the pre-built dist/ into nginx (no build step).
+  # Backend image is the only one that compiles code inside Docker.
   info "Building backend and frontend images..."
   docker compose build --no-cache
 
   success "All images built"
 }
 
-# ── Step 7: Start Services ────────────────────────────────────────────────────
+# ── Step 9: Start Services ────────────────────────────────────────────────────
 start_services() {
-  header "Step 7/8 – Starting Services"
+  header "Step 9/10 – Starting Services"
 
   cd "${INSTALL_DIR}"
 
@@ -415,7 +486,7 @@ start_services() {
   success "All services started"
 }
 
-# ── Step 7b: Generate VAPID Keys (via running backend container) ──────────────
+# ── Step 9b: Generate VAPID Keys + Rebuild Frontend ──────────────────────────
 generate_vapid_keys() {
   info "Generating VAPID keys via backend container..."
 
@@ -449,14 +520,20 @@ print(pub.decode().strip())
   sed -i "s|VAPID_PUBLIC_KEY=__VAPID_PLACEHOLDER__|VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}|" \
     "${INSTALL_DIR}/.env"
 
-  # Restart backend to pick up new VAPID keys
+  # Restart backend to pick up the new VAPID keys
   docker compose -f "${INSTALL_DIR}/docker-compose.yml" restart backend > /dev/null 2>&1
 
-  success "VAPID keys generated and applied"
+  # Rebuild the frontend with the real VAPID public key embedded, then restart nginx
+  info "Rebuilding frontend with VAPID public key..."
+  cd "${INSTALL_DIR}/frontend"
+  VITE_API_URL=/api VITE_VAPID_PUBLIC_KEY="${VAPID_PUBLIC_KEY}" pnpm build
+  docker compose -f "${INSTALL_DIR}/docker-compose.yml" build --no-cache frontend > /dev/null 2>&1
+  docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d frontend > /dev/null 2>&1
+
+  success "VAPID keys generated and frontend rebuilt with push notifications enabled"
 }
 
-
-# ── Step 7c: Create first Admin User ─────────────────────────────────────────
+# ── Step 9c: Create first Admin User ─────────────────────────────────────────
 create_admin_user() {
   header "Creating Admin User"
 
@@ -480,12 +557,10 @@ create_admin_user() {
   fi
 }
 
-
-# ── Step 8: Post-install Info ─────────────────────────────────────────────────
+# ── Step 10: Post-install Info ────────────────────────────────────────────────
 print_summary() {
-  header "Step 8/8 – Setup Complete"
+  header "Step 10/10 – Setup Complete"
 
-  # Reload .env to get domain
   # shellcheck source=/dev/null
   source "${INSTALL_DIR}/.env"
 
@@ -530,16 +605,18 @@ main() {
   echo "  ╚══════════════════════════════════════════════╝"
   echo -e "${NC}"
 
-  check_prerequisites
-  install_docker
-  setup_repository
-  configure_env
-  create_directories
-  build_images
-  start_services
-  generate_vapid_keys
-  create_admin_user
-  print_summary
+  check_prerequisites   # 1
+  install_docker        # 2
+  install_node          # 3  ← installs Node.js 20 + pnpm on the host
+  setup_repository      # 4
+  configure_env         # 5
+  create_directories    # 6
+  build_frontend        # 7  ← builds on host, esbuild/workbox run natively
+  build_images          # 8  ← nginx image just copies dist/; backend compiled here
+  start_services        # 9
+  generate_vapid_keys   # 9b ← rebuilds frontend with real VAPID key
+  create_admin_user     # 9c
+  print_summary         # 10
 }
 
 main "$@"

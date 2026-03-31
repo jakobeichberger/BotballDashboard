@@ -1,24 +1,35 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      manifest: {
+        name: "BotballDashboard",
+        short_name: "BotballDash",
+        description: "Botball Competition Dashboard",
+        theme_color: "#ffffff",
+        background_color: "#ffffff",
+        display: "standalone",
+        start_url: "/",
+        icons: [],
+      },
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      },
+    }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-  },
-  // esbuild service daemon (socketpair IPC) fails in Proxmox LXC.
-  // Use SWC for transforms and terser for minification instead.
-  esbuild: false,
-  optimizeDeps: {
-    noDiscovery: true,
-    include: [],
-  },
-  build: {
-    minify: "terser",
-    cssMinify: false,
   },
   server: {
     proxy: {

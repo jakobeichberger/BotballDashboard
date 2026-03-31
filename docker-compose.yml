@@ -73,13 +73,11 @@ services:
       - "traefik.http.services.api.loadbalancer.server.port=8000"
 
   # ── Frontend ──────────────────────────────────────────────────
+  # dist/ is pre-built on the host by scripts/proxmox-setup.sh before docker compose build
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: /api
-        VITE_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
