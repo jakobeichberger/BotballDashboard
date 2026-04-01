@@ -490,6 +490,28 @@ start_services() {
   done
   success "Database is healthy"
 
+  # Ensure the target database exists.  It may be absent if a previous run was
+  # done with a broken postgres command that disabled Unix sockets during
+  # initialisation (the Docker entrypoint's temp server uses sockets to create
+  # the POSTGRES_DB).  In that case initdb ran but POSTGRES_DB was never
+  # created; re-running the setup script would hit the same stuck state without
+  # this recovery step.
+  local pg_db pg_pass
+  pg_db=$(grep '^POSTGRES_DB=' .env | cut -d= -f2)
+  pg_pass=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2)
+  local db_exists
+  db_exists=$(docker compose exec -T db \
+    env PGPASSWORD="${pg_pass}" \
+    psql -h localhost -U "${pg_user}" -tAc \
+    "SELECT 1 FROM pg_database WHERE datname='${pg_db}'" 2>/dev/null || true)
+  if [[ "${db_exists}" != "1" ]]; then
+    warn "Database '${pg_db}' does not exist – creating it now..."
+    docker compose exec -T db \
+      env PGPASSWORD="${pg_pass}" \
+      psql -h localhost -U "${pg_user}" -c "CREATE DATABASE \"${pg_db}\";" 2>/dev/null
+    success "Database '${pg_db}' created"
+  fi
+
   info "Waiting for Redis..."
   local redis_retries=20
   until docker compose exec -T redis redis-cli ping 2>/dev/null | grep -q PONG; do
