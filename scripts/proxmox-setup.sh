@@ -570,6 +570,15 @@ print(pub.decode().strip())
 create_admin_user() {
   header "Creating Admin User"
 
+  # ADMIN_EMAIL/PASSWORD/NAME are only set when configure_env() created a new
+  # .env. If the user kept the existing .env they are unbound – skip silently.
+  if [[ -z "${ADMIN_EMAIL:-}" ]]; then
+    info "Existing .env kept – skipping admin user creation (already exists)."
+    info "To create a new admin manually:"
+    info "  cd ${INSTALL_DIR} && docker compose exec backend python scripts/create_admin.py --email you@example.com --password yourpassword"
+    return 0
+  fi
+
   info "Creating admin account: ${ADMIN_EMAIL}..."
 
   local output
