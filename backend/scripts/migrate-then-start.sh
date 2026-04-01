@@ -5,7 +5,19 @@
 set -e
 
 echo "==> Running database migrations..."
-alembic upgrade head
+# Retry up to 15 times (45s) in case the DB container reports healthy before
+# the init scripts have finished creating the target database.
+for i in $(seq 1 15); do
+    if alembic upgrade head 2>&1; then
+        break
+    fi
+    if [ "$i" -eq 15 ]; then
+        echo "ERROR: database still not ready after 15 attempts, giving up."
+        exit 1
+    fi
+    echo "    attempt $i failed, retrying in 3s..."
+    sleep 3
+done
 
 echo "==> Starting BotballDashboard API..."
 exec uvicorn main:app \
