@@ -469,14 +469,17 @@ start_services() {
   info "Removing stale containers (if any)..."
   docker compose down --remove-orphans 2>/dev/null || true
 
-  # Start all services; don't let depends_on health-check failures abort here –
-  # we do our own wait loop below which prints useful logs on failure.
+  # Start infrastructure first; bypass depends_on so the script controls ordering
+  info "Starting infrastructure services (db, redis, traefik, frontend)..."
   docker compose up -d --no-deps db redis traefik frontend 2>&1 || true
-  docker compose up -d backend 2>&1 || true
+
+  # Wait for db before even attempting to start the backend
+  local pg_user
+  pg_user=$(grep '^POSTGRES_USER=' .env | cut -d= -f2)
 
   info "Waiting for database to be healthy..."
   local retries=40
-  until docker compose exec -T db pg_isready -U "$(grep POSTGRES_USER .env | cut -d= -f2)" -q 2>/dev/null; do
+  until docker compose exec -T db pg_isready -h localhost -U "${pg_user}" -q 2>/dev/null; do
     retries=$((retries - 1))
     if [[ $retries -le 0 ]]; then
       error "Database did not become healthy in time. Logs:"
@@ -486,6 +489,18 @@ start_services() {
     sleep 3
   done
   success "Database is healthy"
+
+  info "Waiting for Redis..."
+  local redis_retries=20
+  until docker compose exec -T redis redis-cli ping 2>/dev/null | grep -q PONG; do
+    redis_retries=$((redis_retries - 1))
+    [[ $redis_retries -le 0 ]] && { warn "Redis slow to respond – continuing"; break; }
+    sleep 2
+  done
+
+  # Now start the backend (db + redis confirmed healthy)
+  info "Starting backend service..."
+  docker compose up -d --no-deps backend 2>&1 || true
 
   info "Waiting for backend API to respond..."
   local api_retries=30
