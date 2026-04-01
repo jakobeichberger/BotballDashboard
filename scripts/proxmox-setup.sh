@@ -469,9 +469,15 @@ start_services() {
   info "Removing stale containers (if any)..."
   docker compose down --remove-orphans 2>/dev/null || true
 
+  # Remove the old Docker volume registration so Compose doesn't ask
+  # "volume exists but doesn't match configuration" interactively when the
+  # pgdata volume driver_opts changed between runs (bind-mount ↔ named).
+  # The actual data in /data/db is a bind mount and is NOT deleted by this.
+  docker volume rm botballdashboard_pgdata 2>/dev/null || true
+
   # Start infrastructure first; bypass depends_on so the script controls ordering
   info "Starting infrastructure services (db, redis, traefik, frontend)..."
-  docker compose up -d --no-deps db redis traefik frontend 2>&1 || true
+  docker compose up -d --no-deps db redis traefik frontend
 
   # Wait for db before even attempting to start the backend
   local pg_user
@@ -490,25 +496,36 @@ start_services() {
   done
   success "Database is healthy"
 
-  # Ensure the target database exists.  It may be absent if a previous run was
-  # done with a broken postgres command that disabled Unix sockets during
-  # initialisation (the Docker entrypoint's temp server uses sockets to create
-  # the POSTGRES_DB).  In that case initdb ran but POSTGRES_DB was never
-  # created; re-running the setup script would hit the same stuck state without
-  # this recovery step.
+  # Recovery: if the data directory was previously initialised without
+  # POSTGRES_USER/POSTGRES_DB being created (e.g. from a failed run with
+  # unix_socket_directories='' that prevented the init scripts from running)
+  # we repair by connecting as the built-in postgres superuser which uses
+  # trust auth from 127.0.0.1 regardless of POSTGRES_PASSWORD.
   local pg_db pg_pass
   pg_db=$(grep '^POSTGRES_DB=' .env | cut -d= -f2)
   pg_pass=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2)
+
+  # Ensure the application user exists
+  local user_exists
+  user_exists=$(docker compose exec -T db \
+    psql -h localhost -U postgres -tAc \
+    "SELECT 1 FROM pg_roles WHERE rolname='${pg_user}'" 2>/dev/null || true)
+  if [[ "${user_exists}" != "1" ]]; then
+    warn "User '${pg_user}' missing – creating..."
+    docker compose exec -T db psql -h localhost -U postgres \
+      -c "CREATE USER \"${pg_user}\" WITH SUPERUSER PASSWORD '${pg_pass}';" || true
+    success "User '${pg_user}' created"
+  fi
+
+  # Ensure the application database exists
   local db_exists
   db_exists=$(docker compose exec -T db \
-    env PGPASSWORD="${pg_pass}" \
-    psql -h localhost -U "${pg_user}" -tAc \
+    psql -h localhost -U postgres -tAc \
     "SELECT 1 FROM pg_database WHERE datname='${pg_db}'" 2>/dev/null || true)
   if [[ "${db_exists}" != "1" ]]; then
-    warn "Database '${pg_db}' does not exist – creating it now..."
-    docker compose exec -T db \
-      env PGPASSWORD="${pg_pass}" \
-      psql -h localhost -U "${pg_user}" -c "CREATE DATABASE \"${pg_db}\";" 2>/dev/null
+    warn "Database '${pg_db}' missing – creating..."
+    docker compose exec -T db psql -h localhost -U postgres \
+      -c "CREATE DATABASE \"${pg_db}\" OWNER \"${pg_user}\";" || true
     success "Database '${pg_db}' created"
   fi
 

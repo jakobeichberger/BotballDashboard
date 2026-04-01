@@ -110,6 +110,11 @@ services:
 
 volumes:
   pgdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/db
   redisdata:
   uploads:
   letsencrypt:
