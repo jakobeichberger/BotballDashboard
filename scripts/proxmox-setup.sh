@@ -630,7 +630,8 @@ print_summary() {
   if [[ ${#host_ips[@]} -gt 0 ]]; then
     echo -e "  ${BOLD}Host IP(s):${NC}"
     for ip in "${host_ips[@]}"; do
-      echo -e "    http://${ip}  ${YELLOW}(HTTP only – use domain for HTTPS/SSL)${NC}"
+      echo -e "    http://${ip}        ${YELLOW}← Traefik (redirects to HTTPS)${NC}"
+      echo -e "    http://${ip}:8080   ${GREEN}← Direct nginx access (no DNS/SSL needed)${NC}"
     done
     echo ""
   fi
@@ -664,9 +665,13 @@ print_summary() {
   fi
 
   echo -e "${BOLD}First login:${NC}"
-  echo -e "  URL:      https://${DOMAIN}"
-  echo -e "  Email:    ${ADMIN_EMAIL}"
-  echo -e "  Password: ${BOLD}(the password you set during setup)${NC}"
+  echo -e "  URL:      http://$(echo "${host_ips[0]:-<server-ip>}"):8080"
+  if [[ -n "${ADMIN_EMAIL:-}" ]]; then
+    echo -e "  Email:    ${ADMIN_EMAIL}"
+    echo -e "  Password: ${BOLD}(the password you set during setup)${NC}"
+  else
+    echo -e "  ${YELLOW}Admin credentials: use the email/password you set during initial setup.${NC}"
+  fi
   echo ""
   echo -e "${CYAN}Full documentation: https://github.com/jakobeichberger/BotballDashboard/blob/main/docs/documentation/user-manual/index.md${NC}"
 }

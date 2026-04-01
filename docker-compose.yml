@@ -90,6 +90,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    # nginx uses socketpair() to spawn worker processes – blocked on Proxmox VE
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
     restart: unless-stopped
     ports:
       - "8080:80"
