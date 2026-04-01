@@ -23,11 +23,15 @@ services:
   # ── Database ──────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
-    # Disable Unix-domain sockets: on Proxmox hosts Docker's /var/run tmpfs is
-    # mounted root-owned so postgres (uid 70) can't create .s.PGSQL.5432 there.
-    # All connections from the backend use TCP (postgresql+asyncpg://db:5432/…)
-    # so Unix sockets are not needed.
-    command: postgres -c unix_socket_directories=''
+    # Redirect Unix-domain sockets to /tmp: on Proxmox hosts Docker's /var/run
+    # tmpfs is mounted root-owned so postgres (uid 70) can't create the socket
+    # file in /var/run/postgresql.  Using /tmp (world-writable) lets the
+    # postgres Docker entrypoint's temporary init server create its socket
+    # there so that the POSTGRES_DB init script can connect and create the
+    # target database.  All connections from the backend use TCP
+    # (postgresql+asyncpg://db:5432/…) so the socket location does not matter
+    # at runtime.
+    command: postgres -c unix_socket_directories='/tmp'
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-botball}
       POSTGRES_USER: ${POSTGRES_USER:-botball}
