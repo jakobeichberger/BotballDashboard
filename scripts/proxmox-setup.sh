@@ -597,12 +597,46 @@ print_summary() {
   # shellcheck source=/dev/null
   source "${INSTALL_DIR}/.env"
 
+  # Collect host IP addresses (exclude loopback and Docker bridge networks)
+  local host_ips=()
+  while IFS= read -r ip; do
+    host_ips+=("$ip")
+  done < <(ip -4 addr show scope global \
+    | grep -oP '(?<=inet\s)\d+(\.\d+){3}' \
+    | grep -v '^172\.' \
+    | grep -v '^10\.0\.2\.' \
+    || true)
+
+  # Docker internal network of the db container
+  local db_ip=""
+  db_ip=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+    botballdashboard-db-1 2>/dev/null || true)
+
   echo -e "${GREEN}${BOLD}BotballDashboard is up and running!${NC}"
   echo ""
-  echo -e "  ${BOLD}URL:${NC}           https://${DOMAIN}"
-  echo -e "  ${BOLD}API / Swagger:${NC} https://${DOMAIN}/api/docs"
-  echo -e "  ${BOLD}Install dir:${NC}   ${INSTALL_DIR}"
-  echo -e "  ${BOLD}Data dir:${NC}      ${DATA_DIR}"
+  echo -e "  ${BOLD}Domain (HTTPS):${NC}  https://${DOMAIN}"
+  echo -e "  ${BOLD}API / Swagger:${NC}   https://${DOMAIN}/api/docs"
+  echo ""
+
+  if [[ ${#host_ips[@]} -gt 0 ]]; then
+    echo -e "  ${BOLD}Host IP(s):${NC}"
+    for ip in "${host_ips[@]}"; do
+      echo -e "    http://${ip}  ${YELLOW}(HTTP only – use domain for HTTPS/SSL)${NC}"
+    done
+    echo ""
+  fi
+
+  if [[ -n "${db_ip}" ]]; then
+    echo -e "  ${BOLD}Postgres (Docker-internal):${NC}"
+    echo -e "    Host:  db  →  ${db_ip}"
+    echo -e "    Port:  5432  (TCP only, Unix sockets disabled)"
+    echo -e "    DB:    ${POSTGRES_DB}"
+    echo -e "    User:  ${POSTGRES_USER}"
+    echo ""
+  fi
+
+  echo -e "  ${BOLD}Install dir:${NC}     ${INSTALL_DIR}"
+  echo -e "  ${BOLD}Data dir:${NC}        ${DATA_DIR}"
   echo ""
   echo -e "${BOLD}Useful commands:${NC}"
   echo -e "  cd ${INSTALL_DIR}"
