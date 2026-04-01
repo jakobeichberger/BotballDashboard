@@ -37,8 +37,8 @@ MAX_PDF_SIZE = 20 * 1024 * 1024  # 20 MB
     response_model=schemas.ScoreSheetTemplateResponse,
     status_code=201,
     summary="Upload a scoring sheet PDF for a season",
+    dependencies=[Depends(require_permission("scoring:admin"))],
 )
-@require_permission("scoring:admin")
 async def upload_score_sheet(
     season_id: UUID,
     background_tasks: BackgroundTasks,
@@ -96,8 +96,8 @@ async def upload_score_sheet(
     "/seasons/{season_id}/score-sheets",
     response_model=list[schemas.ScoreSheetTemplateListItem],
     summary="List all score sheet PDFs for a season",
+    dependencies=[Depends(require_permission("scoring:read"))],
 )
-@require_permission("scoring:read")
 async def list_score_sheets(
     season_id: UUID,
     competition_level_id: Optional[UUID] = None,
@@ -124,8 +124,8 @@ async def list_score_sheets(
     "/score-sheets/{sheet_id}",
     response_model=schemas.ScoreSheetTemplateResponse,
     summary="Get a single score sheet with all extracted field candidates",
+    dependencies=[Depends(require_permission("scoring:read"))],
 )
-@require_permission("scoring:read")
 async def get_score_sheet(
     sheet_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -143,8 +143,8 @@ async def get_score_sheet(
 @router.get(
     "/score-sheets/{sheet_id}/file",
     summary="Download the original PDF",
+    dependencies=[Depends(require_permission("scoring:read"))],
 )
-@require_permission("scoring:read")
 async def download_score_sheet_pdf(
     sheet_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -172,8 +172,8 @@ async def download_score_sheet_pdf(
     "/score-sheets/{sheet_id}/confirm",
     response_model=schemas.ScoreSheetTemplateResponse,
     summary="Admin confirms extracted fields (optionally applies them to the scoring schema)",
+    dependencies=[Depends(require_permission("scoring:admin"))],
 )
-@require_permission("scoring:admin")
 async def confirm_score_sheet_fields(
     sheet_id: UUID,
     body: schemas.ConfirmFieldsRequest,
@@ -203,8 +203,8 @@ async def confirm_score_sheet_fields(
     "/score-sheets/{sheet_id}/active",
     status_code=204,
     summary="Mark a score sheet as the active one for its season/level",
+    dependencies=[Depends(require_permission("scoring:admin"))],
 )
-@require_permission("scoring:admin")
 async def set_active_score_sheet(
     sheet_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -229,8 +229,8 @@ async def set_active_score_sheet(
     "/score-sheets/{sheet_id}",
     status_code=204,
     summary="Delete a score sheet and its PDF file",
+    dependencies=[Depends(require_permission("scoring:admin"))],
 )
-@require_permission("scoring:admin")
 async def delete_score_sheet(
     sheet_id: UUID,
     db: AsyncSession = Depends(get_db),
