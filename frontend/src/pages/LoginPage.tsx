@@ -33,8 +33,15 @@ export default function LoginPage() {
       await login(data.email, data.password);
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       navigate("/");
-    } catch {
-      setError("Ungültige Anmeldedaten");
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        setError("Ungültige E-Mail oder Passwort");
+      } else if (!status) {
+        setError("Server nicht erreichbar – bitte prüfen ob das Backend läuft");
+      } else {
+        setError(`Anmeldung fehlgeschlagen (Fehler ${status})`);
+      }
     }
   };
 
