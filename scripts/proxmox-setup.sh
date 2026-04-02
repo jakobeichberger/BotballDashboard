@@ -590,8 +590,9 @@ print_summary() {
 
   echo -e "${BOLD}First login:${NC}"
   echo -e "  URL:      https://${DOMAIN}"
+  echo -e "  Name:     ${ADMIN_NAME}"
   echo -e "  Email:    ${ADMIN_EMAIL}"
-  echo -e "  Password: ${BOLD}(the password you set during setup)${NC}"
+  echo -e "  Password: ${BOLD}${ADMIN_PASSWORD}${NC}"
   echo ""
   echo -e "${CYAN}Full documentation: https://github.com/jakobeichberger/BotballDashboard/blob/main/docs/documentation/user-manual/index.md${NC}"
 }
