@@ -46,6 +46,9 @@ class Season(Base):
     phases: Mapped[list["SeasonPhase"]] = relationship(
         "SeasonPhase", back_populates="season", cascade="all, delete-orphan", order_by="SeasonPhase.sort_order"
     )
+    score_sheet_templates: Mapped[list["ScoreSheetTemplate"]] = relationship(
+        "ScoreSheetTemplate", back_populates="season", cascade="all, delete-orphan"
+    )
 
 
 class SeasonPhase(Base):
