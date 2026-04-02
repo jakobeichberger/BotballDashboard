@@ -139,7 +139,6 @@ install_docker() {
     docker_ver=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1)
     if [[ "${docker_ver:-0}" -ge "$MIN_DOCKER_VERSION" ]]; then
       success "Docker ${docker_ver} already installed"
-      # Still ensure cryptography lib is present
       apt-get install -y -q python3-cryptography > /dev/null 2>&1 || true
       return 0
     else
@@ -386,6 +385,17 @@ create_directories() {
   mkdir -p "${DATA_DIR}/uploads"
   mkdir -p "${DATA_DIR}/letsencrypt"
 
+  # postgres:alpine runs as UID 70 inside the container. Pre-owning the bind-
+  # mount directory to that UID lets PostgreSQL initialise without needing to
+  # chown (which can fail in some container runtimes).
+  if [[ -z "$(ls -A "${DATA_DIR}/db" 2>/dev/null)" ]]; then
+    chown 70:70 "${DATA_DIR}/db"
+    chmod 700   "${DATA_DIR}/db"
+    info "Set ${DATA_DIR}/db ownership to postgres (uid 70)"
+  else
+    info "${DATA_DIR}/db is non-empty – preserving existing ownership"
+  fi
+
   local acme_file="${DATA_DIR}/letsencrypt/acme.json"
   if [[ ! -f "${acme_file}" ]]; then
     touch "${acme_file}"
@@ -455,20 +465,81 @@ start_services() {
 
   cd "${INSTALL_DIR}"
 
-  docker compose up -d
+  # Remove any stale containers from previous runs (preserves volumes/data)
+  info "Removing stale containers (if any)..."
+  docker compose down --remove-orphans 2>/dev/null || true
+
+  # Remove the old Docker volume registration so Compose doesn't ask
+  # "volume exists but doesn't match configuration" interactively when the
+  # pgdata volume driver_opts changed between runs (bind-mount ↔ named).
+  # The actual data in /data/db is a bind mount and is NOT deleted by this.
+  docker volume rm botballdashboard_pgdata 2>/dev/null || true
+
+  # Start infrastructure first; bypass depends_on so the script controls ordering
+  info "Starting infrastructure services (db, redis, traefik, frontend)..."
+  docker compose up -d --no-deps db redis traefik frontend
+
+  # Wait for db before even attempting to start the backend
+  local pg_user
+  pg_user=$(grep '^POSTGRES_USER=' .env | cut -d= -f2)
 
   info "Waiting for database to be healthy..."
-  local retries=30
-  until docker compose exec -T db pg_isready -U "$(grep POSTGRES_USER .env | cut -d= -f2)" -q 2>/dev/null; do
+  local retries=40
+  until docker compose exec -T db pg_isready -h localhost -U "${pg_user}" -q 2>/dev/null; do
     retries=$((retries - 1))
     if [[ $retries -le 0 ]]; then
-      error "Database did not become healthy in time."
-      docker compose logs db | tail -20
-      die "Startup failed."
+      error "Database did not become healthy in time. Logs:"
+      docker compose logs db | tail -30
+      die "Startup failed – see db logs above."
     fi
-    sleep 2
+    sleep 3
   done
   success "Database is healthy"
+
+  # Recovery: if the data directory was previously initialised without
+  # POSTGRES_USER/POSTGRES_DB being created (e.g. from a failed run with
+  # unix_socket_directories='' that prevented the init scripts from running)
+  # we repair by connecting as the built-in postgres superuser which uses
+  # trust auth from 127.0.0.1 regardless of POSTGRES_PASSWORD.
+  local pg_db pg_pass
+  pg_db=$(grep '^POSTGRES_DB=' .env | cut -d= -f2)
+  pg_pass=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2)
+
+  # Ensure the application user exists
+  local user_exists
+  user_exists=$(docker compose exec -T db \
+    psql -h localhost -U postgres -tAc \
+    "SELECT 1 FROM pg_roles WHERE rolname='${pg_user}'" 2>/dev/null || true)
+  if [[ "${user_exists}" != "1" ]]; then
+    warn "User '${pg_user}' missing – creating..."
+    docker compose exec -T db psql -h localhost -U postgres \
+      -c "CREATE USER \"${pg_user}\" WITH SUPERUSER PASSWORD '${pg_pass}';" || true
+    success "User '${pg_user}' created"
+  fi
+
+  # Ensure the application database exists
+  local db_exists
+  db_exists=$(docker compose exec -T db \
+    psql -h localhost -U postgres -tAc \
+    "SELECT 1 FROM pg_database WHERE datname='${pg_db}'" 2>/dev/null || true)
+  if [[ "${db_exists}" != "1" ]]; then
+    warn "Database '${pg_db}' missing – creating..."
+    docker compose exec -T db psql -h localhost -U postgres \
+      -c "CREATE DATABASE \"${pg_db}\" OWNER \"${pg_user}\";" || true
+    success "Database '${pg_db}' created"
+  fi
+
+  info "Waiting for Redis..."
+  local redis_retries=20
+  until docker compose exec -T redis redis-cli ping 2>/dev/null | grep -q PONG; do
+    redis_retries=$((redis_retries - 1))
+    [[ $redis_retries -le 0 ]] && { warn "Redis slow to respond – continuing"; break; }
+    sleep 2
+  done
+
+  # Now start the backend (db + redis confirmed healthy)
+  info "Starting backend service..."
+  docker compose up -d --no-deps backend 2>&1 || true
 
   info "Waiting for backend API to respond..."
   local api_retries=30
@@ -538,6 +609,15 @@ print(pub.decode().strip())
 create_admin_user() {
   header "Creating Admin User"
 
+  # ADMIN_EMAIL/PASSWORD/NAME are only set when configure_env() created a new
+  # .env. If the user kept the existing .env they are unbound – skip silently.
+  if [[ -z "${ADMIN_EMAIL:-}" ]]; then
+    info "Existing .env kept – skipping admin user creation (already exists)."
+    info "To create a new admin manually:"
+    info "  cd ${INSTALL_DIR} && docker compose exec backend python scripts/create_admin.py --email you@example.com --password yourpassword"
+    return 0
+  fi
+
   info "Creating admin account: ${ADMIN_EMAIL}..."
 
   local output
@@ -562,15 +642,55 @@ create_admin_user() {
 print_summary() {
   header "Step 10/10 – Setup Complete"
 
+  # Save admin credentials before sourcing .env (they are not stored in .env)
+  local _admin_email="${ADMIN_EMAIL:-}"
+  local _admin_name="${ADMIN_NAME:-}"
+  local _admin_password="${ADMIN_PASSWORD:-}"
+
   # shellcheck source=/dev/null
   source "${INSTALL_DIR}/.env"
 
+  # Collect host IP addresses (exclude loopback and Docker bridge networks)
+  local host_ips=()
+  while IFS= read -r ip; do
+    host_ips+=("$ip")
+  done < <(ip -4 addr show scope global \
+    | grep -oP '(?<=inet\s)\d+(\.\d+){3}' \
+    | grep -v '^172\.' \
+    | grep -v '^10\.0\.2\.' \
+    || true)
+
+  # Docker internal network of the db container
+  local db_ip=""
+  db_ip=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+    botballdashboard-db-1 2>/dev/null || true)
+
   echo -e "${GREEN}${BOLD}BotballDashboard is up and running!${NC}"
   echo ""
-  echo -e "  ${BOLD}URL:${NC}           https://${DOMAIN}"
-  echo -e "  ${BOLD}API / Swagger:${NC} https://${DOMAIN}/api/docs"
-  echo -e "  ${BOLD}Install dir:${NC}   ${INSTALL_DIR}"
-  echo -e "  ${BOLD}Data dir:${NC}      ${DATA_DIR}"
+  echo -e "  ${BOLD}Domain (HTTPS):${NC}  https://${DOMAIN}"
+  echo -e "  ${BOLD}API / Swagger:${NC}   https://${DOMAIN}/api/docs"
+  echo ""
+
+  if [[ ${#host_ips[@]} -gt 0 ]]; then
+    echo -e "  ${BOLD}Host IP(s):${NC}"
+    for ip in "${host_ips[@]}"; do
+      echo -e "    http://${ip}        ${YELLOW}← Traefik (redirects to HTTPS)${NC}"
+      echo -e "    http://${ip}:8080   ${GREEN}← Direct nginx access (no DNS/SSL needed)${NC}"
+    done
+    echo ""
+  fi
+
+  if [[ -n "${db_ip}" ]]; then
+    echo -e "  ${BOLD}Postgres (Docker-internal):${NC}"
+    echo -e "    Host:  db  →  ${db_ip}"
+    echo -e "    Port:  5432  (TCP only, Unix sockets disabled)"
+    echo -e "    DB:    ${POSTGRES_DB}"
+    echo -e "    User:  ${POSTGRES_USER}"
+    echo ""
+  fi
+
+  echo -e "  ${BOLD}Install dir:${NC}     ${INSTALL_DIR}"
+  echo -e "  ${BOLD}Data dir:${NC}        ${DATA_DIR}"
   echo ""
   echo -e "${BOLD}Useful commands:${NC}"
   echo -e "  cd ${INSTALL_DIR}"
@@ -589,10 +709,14 @@ print_summary() {
   fi
 
   echo -e "${BOLD}First login:${NC}"
-  echo -e "  URL:      https://${DOMAIN}"
-  echo -e "  Name:     ${ADMIN_NAME}"
-  echo -e "  Email:    ${ADMIN_EMAIL}"
-  echo -e "  Password: ${BOLD}${ADMIN_PASSWORD}${NC}"
+  echo -e "  URL:      http://$(echo "${host_ips[0]:-<server-ip>}"):8080"
+  if [[ -n "${_admin_email}" ]]; then
+    echo -e "  Name:     ${_admin_name}"
+    echo -e "  Email:    ${_admin_email}"
+    echo -e "  Password: ${BOLD}${_admin_password}${NC}"
+  else
+    echo -e "  ${YELLOW}Admin credentials: use the email/password you set during initial setup.${NC}"
+  fi
   echo ""
   echo -e "${CYAN}Full documentation: https://github.com/jakobeichberger/BotballDashboard/blob/main/docs/documentation/user-manual/index.md${NC}"
 }
@@ -609,7 +733,7 @@ main() {
 
   check_prerequisites   # 1
   install_docker        # 2
-  install_node          # 3
+  install_node          # 3  ← installs Node.js 20 + pnpm on the host
   setup_repository      # 4
   configure_env         # 5
   create_directories    # 6
