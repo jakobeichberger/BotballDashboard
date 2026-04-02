@@ -317,6 +317,11 @@ configure_env() {
     prompt ADMIN_PASSWORD "Admin password (min. 8 chars)" "" "true"
     if [[ ${#ADMIN_PASSWORD} -lt 8 ]]; then
       warn "Password too short (min. 8 characters). Please try again."
+      continue
+    fi
+    prompt ADMIN_PASSWORD_CONFIRM "Admin password (repeat)" "" "true"
+    if [[ "${ADMIN_PASSWORD}" != "${ADMIN_PASSWORD_CONFIRM}" ]]; then
+      warn "Passwords do not match. Please try again."
     else
       break
     fi
@@ -723,7 +728,8 @@ print_summary() {
   if [[ -n "${_admin_email}" ]]; then
     echo -e "  Name:     ${_admin_name}"
     echo -e "  Email:    ${_admin_email}"
-    echo -e "  Password: ${BOLD}${_admin_password}${NC}"
+    # Use printf %s so backslash sequences inside the password are never interpreted
+    printf "  Password: ${BOLD}%s${NC}\n" "${_admin_password}"
   else
     echo -e "  ${YELLOW}Admin credentials: use the email/password you set during initial setup.${NC}"
   fi
