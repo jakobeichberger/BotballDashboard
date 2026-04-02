@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Eye, EyeOff } from "lucide-react";
 import { useLogin } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const login = useLogin();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -62,12 +64,23 @@ export default function LoginPage() {
             </div>
             <div>
               <label className="label">Passwort</label>
-              <input
-                type="password"
-                className="input"
-                placeholder="••••••••"
-                {...register("password")}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className="input pr-10"
+                  placeholder="••••••••"
+                  {...register("password")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               {errors.password && (
                 <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
               )}

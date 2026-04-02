@@ -76,8 +76,14 @@ prompt() {
   fi
 
   if [[ "$secret" == "true" ]]; then
-    read -rsp "${prompt_text}: " value
-    echo ""
+    local show_pw="n"
+    read -rp "  Passwort beim Tippen anzeigen? (j/N): " show_pw
+    if [[ "${show_pw}" =~ ^[Jj]$ ]]; then
+      read -rp "${prompt_text}: " value
+    else
+      read -rsp "${prompt_text}: " value
+      echo ""
+    fi
   else
     read -rp "${prompt_text}: " value
   fi
@@ -620,12 +626,16 @@ create_admin_user() {
 
   info "Creating admin account: ${ADMIN_EMAIL}..."
 
+  # Pass password via env var to avoid shell interpolation of special characters
+  # (e.g. $, !, spaces) that would corrupt the value if passed as a CLI argument.
   local output
-  output=$(docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend \
+  output=$(ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
+    docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T \
+      -e ADMIN_PASSWORD \
+      backend \
     python scripts/create_admin.py \
-      --email    "${ADMIN_EMAIL}" \
-      --password "${ADMIN_PASSWORD}" \
-      --name     "${ADMIN_NAME}" 2>&1)
+      --email "${ADMIN_EMAIL}" \
+      --name  "${ADMIN_NAME}" 2>&1)
 
   if echo "${output}" | grep -q "\[OK\]"; then
     success "Admin user '${ADMIN_EMAIL}' created"
