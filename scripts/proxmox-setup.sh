@@ -43,6 +43,7 @@ NC='\033[0m' # No Color
 
 # ── Config ────────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/jakobeichberger/BotballDashboard.git"
+REPO_BRANCH="claude/analyze-test-coverage-ciEQE"
 INSTALL_DIR="/opt/botballdashboard"
 DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
@@ -218,11 +219,13 @@ setup_repository() {
 
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
     info "Repository already exists at ${INSTALL_DIR}. Pulling latest changes..."
-    git -C "${INSTALL_DIR}" pull --ff-only
-    success "Repository updated"
+    git -C "${INSTALL_DIR}" fetch origin
+    git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}"
+    git -C "${INSTALL_DIR}" pull origin "${REPO_BRANCH}"
+    success "Repository updated (branch: ${REPO_BRANCH})"
   else
-    info "Cloning repository to ${INSTALL_DIR}..."
-    git clone "${REPO_URL}" "${INSTALL_DIR}"
+    info "Cloning repository (branch: ${REPO_BRANCH}) to ${INSTALL_DIR}..."
+    git clone -b "${REPO_BRANCH}" "${REPO_URL}" "${INSTALL_DIR}"
     success "Repository cloned"
   fi
 
