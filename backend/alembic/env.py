@@ -12,6 +12,7 @@ import modules.seasons.models  # noqa: F401
 import modules.teams.models  # noqa: F401
 import modules.scoring.models  # noqa: F401
 import modules.scoring.score_sheets.models  # noqa: F401
+import modules.scoring.competition_models  # noqa: F401
 import modules.paper_review.models  # noqa: F401
 import modules.printing.models  # noqa: F401
 import modules.dashboard.models  # noqa: F401

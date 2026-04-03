@@ -46,7 +46,7 @@ export default function ScoreSheetsPage() {
     enabled: !!seasonId,
     // Poll while any sheet is still processing
     refetchInterval: (query) =>
-      query.state.data?.some((s) => s.ocr_status === 'processing' || s.ocr_status === 'pending')
+      query.state.data?.some((s: ScoreSheetTemplateListItem) => s.ocr_status === 'processing' || s.ocr_status === 'pending')
         ? 3000
         : false,
   })

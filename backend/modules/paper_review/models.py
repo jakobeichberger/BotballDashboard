@@ -35,6 +35,9 @@ class Paper(Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     submitted_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
     revision_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Final numeric score (0-1) and rank set by admins after review
+    final_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    paper_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

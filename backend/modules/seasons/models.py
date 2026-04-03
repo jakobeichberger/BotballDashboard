@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, date
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, Integer, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, JSON, String, Text, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -26,6 +26,16 @@ class Season(Base):
     paper_submission_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     print_submission_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ── Competition module toggles ─────────────────────────────────────────
+    use_seeding: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    use_double_elimination: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    use_paper_scoring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    use_documentation_scoring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    use_aerial: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Active team categories in this season: ["botball", "open", "aerial", "jbc"]
+    active_categories: Mapped[list] = mapped_column(JSON, default=lambda: ["botball"], nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -35,6 +45,9 @@ class Season(Base):
 
     phases: Mapped[list["SeasonPhase"]] = relationship(
         "SeasonPhase", back_populates="season", cascade="all, delete-orphan", order_by="SeasonPhase.sort_order"
+    )
+    score_sheet_templates: Mapped[list["ScoreSheetTemplate"]] = relationship(
+        "ScoreSheetTemplate", back_populates="season", cascade="all, delete-orphan"
     )
 
 

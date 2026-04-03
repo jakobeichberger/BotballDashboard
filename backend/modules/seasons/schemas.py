@@ -24,6 +24,16 @@ class SeasonPhaseResponse(BaseModel):
     end_date: date | None
 
 
+class SeasonModules(BaseModel):
+    """Which competition modules are active for a season."""
+    use_seeding: bool = True
+    use_double_elimination: bool = False
+    use_paper_scoring: bool = False
+    use_documentation_scoring: bool = False
+    use_aerial: bool = False
+    active_categories: list[str] = ["botball"]
+
+
 class SeasonCreate(BaseModel):
     name: str
     year: int
@@ -36,6 +46,13 @@ class SeasonCreate(BaseModel):
     print_submission_deadline: date | None = None
     notes: str | None = None
     phases: list[SeasonPhaseCreate] = []
+    # modules
+    use_seeding: bool = True
+    use_double_elimination: bool = False
+    use_paper_scoring: bool = False
+    use_documentation_scoring: bool = False
+    use_aerial: bool = False
+    active_categories: list[str] = ["botball"]
 
 
 class SeasonUpdate(BaseModel):
@@ -49,6 +66,13 @@ class SeasonUpdate(BaseModel):
     paper_submission_deadline: date | None = None
     print_submission_deadline: date | None = None
     notes: str | None = None
+    # modules
+    use_seeding: bool | None = None
+    use_double_elimination: bool | None = None
+    use_paper_scoring: bool | None = None
+    use_documentation_scoring: bool | None = None
+    use_aerial: bool | None = None
+    active_categories: list[str] | None = None
 
 
 class SeasonResponse(BaseModel):
@@ -66,6 +90,13 @@ class SeasonResponse(BaseModel):
     paper_submission_deadline: date | None
     print_submission_deadline: date | None
     notes: str | None
+    # modules
+    use_seeding: bool
+    use_double_elimination: bool
+    use_paper_scoring: bool
+    use_documentation_scoring: bool
+    use_aerial: bool
+    active_categories: list[str]
     created_at: datetime
     phases: list[SeasonPhaseResponse]
 

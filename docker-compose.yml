@@ -23,13 +23,6 @@ services:
   # ── Database ──────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
-    # Proxmox VE's AppArmor docker profile also restricts the postgres process.
-    # Without apparmor=unconfined postgres cannot create Unix-domain sockets
-    # (needed by its own init scripts to create POSTGRES_DB on first start).
-    security_opt:
-      - seccomp=unconfined
-      - apparmor=unconfined
-    command: postgres -c unix_socket_directories='/tmp'
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-botball}
       POSTGRES_USER: ${POSTGRES_USER:-botball}
@@ -38,13 +31,10 @@ services:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      # pg_isready returns OK as soon as postgres accepts connections, before
-      # the POSTGRES_DB init script has run. Use psql to actually connect to
-      # the target database so the backend only starts when it truly exists.
-      test: ["CMD-SHELL", "PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U ${POSTGRES_USER:-botball} -d ${POSTGRES_DB:-botball} -c '\\q'"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-botball}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ── Redis ─────────────────────────────────────────────────────
   redis:
@@ -54,22 +44,15 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ── Backend API ───────────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    # Proxmox VE hosts block socket.socketpair() inside Docker containers.
-    # Python asyncio uses socketpair() for its event loop self-pipe, so
-    # uvicorn cannot start without it. seccomp=unconfined alone is not enough;
-    # Proxmox's AppArmor profile also needs to be lifted.
-    security_opt:
-      - seccomp=unconfined
-      - apparmor=unconfined
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-botball}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-botball}
@@ -90,17 +73,12 @@ services:
       - "traefik.http.services.api.loadbalancer.server.port=8000"
 
   # ── Frontend ──────────────────────────────────────────────────
+  # dist/ is pre-built on the host by scripts/proxmox-setup.sh before docker compose build
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    # nginx uses socketpair() to spawn worker processes – blocked on Proxmox VE
-    security_opt:
-      - seccomp=unconfined
-      - apparmor=unconfined
     restart: unless-stopped
-    ports:
-      - "8080:80"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"

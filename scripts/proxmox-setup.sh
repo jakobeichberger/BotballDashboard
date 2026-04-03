@@ -43,6 +43,7 @@ NC='\033[0m' # No Color
 
 # ── Config ────────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/jakobeichberger/BotballDashboard.git"
+REPO_BRANCH="claude/analyze-test-coverage-ciEQE"
 INSTALL_DIR="/opt/botballdashboard"
 DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
@@ -76,8 +77,14 @@ prompt() {
   fi
 
   if [[ "$secret" == "true" ]]; then
-    read -rsp "${prompt_text}: " value
-    echo ""
+    local show_pw="n"
+    read -rp "  Passwort beim Tippen anzeigen? (j/N): " show_pw
+    if [[ "${show_pw}" =~ ^[Jj]$ ]]; then
+      read -rp "${prompt_text}: " value
+    else
+      read -rsp "${prompt_text}: " value
+      echo ""
+    fi
   else
     read -rp "${prompt_text}: " value
   fi
@@ -212,11 +219,13 @@ setup_repository() {
 
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
     info "Repository already exists at ${INSTALL_DIR}. Pulling latest changes..."
-    git -C "${INSTALL_DIR}" pull --ff-only
-    success "Repository updated"
+    git -C "${INSTALL_DIR}" fetch origin
+    git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}"
+    git -C "${INSTALL_DIR}" pull origin "${REPO_BRANCH}"
+    success "Repository updated (branch: ${REPO_BRANCH})"
   else
-    info "Cloning repository to ${INSTALL_DIR}..."
-    git clone "${REPO_URL}" "${INSTALL_DIR}"
+    info "Cloning repository (branch: ${REPO_BRANCH}) to ${INSTALL_DIR}..."
+    git clone -b "${REPO_BRANCH}" "${REPO_URL}" "${INSTALL_DIR}"
     success "Repository cloned"
   fi
 
@@ -311,6 +320,11 @@ configure_env() {
     prompt ADMIN_PASSWORD "Admin password (min. 8 chars)" "" "true"
     if [[ ${#ADMIN_PASSWORD} -lt 8 ]]; then
       warn "Password too short (min. 8 characters). Please try again."
+      continue
+    fi
+    prompt ADMIN_PASSWORD_CONFIRM "Admin password (repeat)" "" "true"
+    if [[ "${ADMIN_PASSWORD}" != "${ADMIN_PASSWORD_CONFIRM}" ]]; then
+      warn "Passwords do not match. Please try again."
     else
       break
     fi
@@ -620,12 +634,16 @@ create_admin_user() {
 
   info "Creating admin account: ${ADMIN_EMAIL}..."
 
+  # Pass password via env var to avoid shell interpolation of special characters
+  # (e.g. $, !, spaces) that would corrupt the value if passed as a CLI argument.
   local output
-  output=$(docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend \
+  output=$(ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
+    docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T \
+      -e ADMIN_PASSWORD \
+      backend \
     python scripts/create_admin.py \
-      --email    "${ADMIN_EMAIL}" \
-      --password "${ADMIN_PASSWORD}" \
-      --name     "${ADMIN_NAME}" 2>&1)
+      --email "${ADMIN_EMAIL}" \
+      --name  "${ADMIN_NAME}" 2>&1)
 
   if echo "${output}" | grep -q "\[OK\]"; then
     success "Admin user '${ADMIN_EMAIL}' created"
@@ -641,6 +659,11 @@ create_admin_user() {
 # ── Step 10: Post-install Info ────────────────────────────────────────────────
 print_summary() {
   header "Step 10/10 – Setup Complete"
+
+  # Save admin credentials before sourcing .env (they are not stored in .env)
+  local _admin_email="${ADMIN_EMAIL:-}"
+  local _admin_name="${ADMIN_NAME:-}"
+  local _admin_password="${ADMIN_PASSWORD:-}"
 
   # shellcheck source=/dev/null
   source "${INSTALL_DIR}/.env"
@@ -705,9 +728,11 @@ print_summary() {
 
   echo -e "${BOLD}First login:${NC}"
   echo -e "  URL:      http://$(echo "${host_ips[0]:-<server-ip>}"):8080"
-  if [[ -n "${ADMIN_EMAIL:-}" ]]; then
-    echo -e "  Email:    ${ADMIN_EMAIL}"
-    echo -e "  Password: ${BOLD}(the password you set during setup)${NC}"
+  if [[ -n "${_admin_email}" ]]; then
+    echo -e "  Name:     ${_admin_name}"
+    echo -e "  Email:    ${_admin_email}"
+    # Use printf %s so backslash sequences inside the password are never interpreted
+    printf "  Password: ${BOLD}%s${NC}\n" "${_admin_password}"
   else
     echo -e "  ${YELLOW}Admin credentials: use the email/password you set during initial setup.${NC}"
   fi

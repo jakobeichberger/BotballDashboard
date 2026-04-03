@@ -74,6 +74,8 @@ class TeamSeasonRegistration(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Competition category: botball | open | aerial | jbc
+    category: Mapped[str] = mapped_column(String(20), default="botball", nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     team: Mapped[Team] = relationship(Team, back_populates="season_registrations")
