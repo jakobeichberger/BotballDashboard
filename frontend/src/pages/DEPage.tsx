@@ -19,11 +19,6 @@ interface Team {
   team_number: string | null;
 }
 
-interface Registration {
-  team: Team;
-  category: string;
-}
-
 export default function DEPage() {
   const [searchParams] = useSearchParams();
   const sid = searchParams.get("season_id") ?? "";

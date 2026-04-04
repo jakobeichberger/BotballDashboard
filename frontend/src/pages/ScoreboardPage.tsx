@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
-import { Trophy, Plane, Medal, BarChart3, ChevronDown } from "lucide-react";
+import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
 import { RankingExportButtons } from "@/components/ExportButtons";
 import { useCurrentUser } from "@/hooks/useAuth";
 
@@ -194,7 +194,6 @@ function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) 
 
 function DETab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<Record<string, Partial<DEEntry>>>({});
 
   const { data: deData, isLoading } = useQuery<DEEntry[]>({
     queryKey: ["de-results", sid],
@@ -203,16 +202,6 @@ function DETab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
       return data;
     },
     enabled: !!sid,
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async (entries: DEEntry[]) => {
-      await api.put(`/scoring/seasons/${sid}/de-results`, entries);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["de-results", sid] });
-      setEditing({});
-    },
   });
 
   const groups = { A: deData?.filter((e) => e.bracket === "A") ?? [], B: deData?.filter((e) => e.bracket === "B") ?? [] };
