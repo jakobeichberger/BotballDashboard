@@ -43,7 +43,7 @@ NC='\033[0m' # No Color
 
 # ── Config ────────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/jakobeichberger/BotballDashboard.git"
-REPO_BRANCH="claude/analyze-test-coverage-ciEQE"
+REPO_BRANCH="main"
 INSTALL_DIR="/opt/botballdashboard"
 DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
