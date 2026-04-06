@@ -83,4 +83,14 @@ if __name__ == "__main__":
         print("[ERROR] Password must be at least 8 characters.", file=sys.stderr)
         sys.exit(1)
 
+    # Use uvloop if available (installed via uvicorn[standard]).
+    # Python's default _UnixSelectorEventLoop calls socket.socketpair(AF_UNIX)
+    # during __init__, which is blocked in Proxmox LXC containers by the
+    # seccomp/AppArmor profile. uvloop uses libuv and does not have this issue.
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    except ImportError:
+        pass
+
     asyncio.run(main(args.email, password, args.name, args.reset))

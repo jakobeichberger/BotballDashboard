@@ -1,7 +1,7 @@
 """Competition modules: season feature flags, team categories, DE/aerial/doc scoring
 
 Revision ID: 0009
-Revises: 0008
+Revises: 0001
 Create Date: 2026-01-01 00:07:00
 """
 from alembic import op
