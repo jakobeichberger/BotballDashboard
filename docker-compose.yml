@@ -24,10 +24,10 @@ services:
   db:
     image: postgres:16-alpine
     command: postgres -c unix_socket_directories=''
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-botball}
-      POSTGRES_USER: ${POSTGRES_USER:-botball}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Use env_file (same as backend) so both services parse POSTGRES_PASSWORD
+    # identically.  Using environment: ${VAR} leaves JSON-quote chars in the
+    # value; env_file: strips them.  Both services must see the same string.
+    env_file: .env
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped

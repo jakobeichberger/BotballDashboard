@@ -243,6 +243,13 @@ configure_env() {
       success ".env kept as-is"
       return 0
     fi
+  elif [[ -f "${DATA_DIR}/db/PG_VERSION" ]]; then
+    # PostgreSQL data directory exists but .env is gone → the new .env will
+    # get a freshly generated password that does not match the running DB.
+    # The start_services() ALTER USER step will re-synchronise the password,
+    # but warn the user so they understand what is happening.
+    warn "Existing PostgreSQL data found at ${DATA_DIR}/db but no .env present."
+    warn "A new password will be generated and the DB password will be updated automatically."
   fi
 
   echo ""
@@ -541,17 +548,33 @@ with open(".env") as f:
 PYEOF
 )
 
-  # Helper: run psql as the application superuser (Alpine postgres image uses
-  # POSTGRES_USER as the superuser – there is no separate 'postgres' role).
-  _psql() { PGPASSWORD="${pg_pass}" docker compose exec -T db psql -h localhost -U "${pg_user}" "$@"; }
+  # Helper: run psql via localhost (127.0.0.1) inside the db container.
+  # The PostgreSQL Docker image generates pg_hba.conf with:
+  #   host  all  all  127.0.0.1/32  trust
+  # so connections from inside the container to localhost use TRUST auth –
+  # no password required. This lets us repair the DB regardless of what
+  # password the data directory was originally initialised with.
+  _psql() { docker compose exec -T db psql -h localhost -U "${pg_user}" "$@"; }
 
-  # Ensure the application user exists
+  # Ensure the application user exists (needed when data dir was pre-existing
+  # from a failed init that never created the role).
   local user_exists
   user_exists=$(_psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${pg_user}'" 2>/dev/null || true)
   if [[ "${user_exists}" != "1" ]]; then
     warn "User '${pg_user}' missing – creating..."
-    _psql -c "CREATE USER \"${pg_user}\" WITH SUPERUSER PASSWORD '${pg_pass}';" || true
+    _psql -c "CREATE USER \"${pg_user}\" WITH SUPERUSER PASSWORD '${pg_pass}';" 2>/dev/null || true
     success "User '${pg_user}' created"
+  fi
+
+  # ALWAYS synchronise the password to match .env.
+  # If the data directory is from a previous install with a different password
+  # the backend would fail to authenticate.  Trust auth (127.0.0.1) lets us
+  # reset it without knowing the old password.
+  info "Synchronising database password..."
+  if _psql -c "ALTER USER \"${pg_user}\" WITH PASSWORD '${pg_pass}';" 2>/dev/null; then
+    success "Database password synchronised"
+  else
+    warn "Password sync failed – check DB logs if backend cannot connect"
   fi
 
   # Ensure the application database exists
@@ -559,7 +582,7 @@ PYEOF
   db_exists=$(_psql -tAc "SELECT 1 FROM pg_database WHERE datname='${pg_db}'" 2>/dev/null || true)
   if [[ "${db_exists}" != "1" ]]; then
     warn "Database '${pg_db}' missing – creating..."
-    _psql -c "CREATE DATABASE \"${pg_db}\" OWNER \"${pg_user}\";" || true
+    _psql -c "CREATE DATABASE \"${pg_db}\" OWNER \"${pg_user}\";" 2>/dev/null || true
     success "Database '${pg_db}' created"
   fi
 
