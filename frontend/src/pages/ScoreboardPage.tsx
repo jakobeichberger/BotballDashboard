@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
@@ -193,8 +193,6 @@ function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) 
 // ── DE Tab ────────────────────────────────────────────────────────────────────
 
 function DETab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
-  const queryClient = useQueryClient();
-
   const { data: deData, isLoading } = useQuery<DEEntry[]>({
     queryKey: ["de-results", sid],
     queryFn: async () => {
