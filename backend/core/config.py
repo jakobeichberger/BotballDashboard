@@ -11,8 +11,13 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:8000"
     allowed_origins: str = "http://localhost:5173"
 
-    # Database
-    database_url: str = "postgresql+asyncpg://botball:botball@db:5432/botball"
+    # Database – individual components so passwords with special characters
+    # are never embedded in a URL string (avoids URL-encoding pitfalls).
+    postgres_host: str = "db"
+    postgres_port: int = 5432
+    postgres_db: str = "botball"
+    postgres_user: str = "botball"
+    postgres_password: str = "botball"
 
     # Redis
     redis_url: str = "redis://redis:6379/0"
@@ -43,6 +48,18 @@ class Settings(BaseSettings):
     # Files
     upload_dir: str = "/app/uploads"
     max_upload_size_mb: int = 20
+
+    @property
+    def database_url(self):
+        from sqlalchemy.engine import URL
+        return URL.create(
+            drivername="postgresql+asyncpg",
+            username=self.postgres_user,
+            password=self.postgres_password,
+            host=self.postgres_host,
+            port=self.postgres_port,
+            database=self.postgres_db,
+        )
 
     @property
     def allowed_origins_list(self) -> list[str]:

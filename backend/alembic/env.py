@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 from alembic import context
 
 # Import all models so Alembic can detect them
@@ -24,13 +25,22 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-def get_url() -> str:
+def get_url() -> URL:
+    """Build connection URL from individual components (never embed password in string).
+
+    Uses psycopg2 (sync) driver so Alembic does not need asyncio.  Python's
+    _UnixSelectorEventLoop calls socket.socketpair(AF_UNIX) on init, which is
+    blocked by the seccomp/AppArmor profile in Proxmox LXC containers.
+    """
     import os
-    url = os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url", ""))
-    # Convert async URL (asyncpg) to sync URL (psycopg2) for Alembic migrations.
-    # Alembic runs synchronously; using asyncio.run() fails in restricted
-    # environments (Proxmox LXC) where socket.socketpair(AF_UNIX) is blocked.
-    return url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    return URL.create(
+        drivername="postgresql+psycopg2",
+        username=os.environ.get("POSTGRES_USER", "botball"),
+        password=os.environ.get("POSTGRES_PASSWORD", "botball"),
+        host=os.environ.get("POSTGRES_HOST", "db"),
+        port=int(os.environ.get("POSTGRES_PORT", "5432")),
+        database=os.environ.get("POSTGRES_DB", "botball"),
+    )
 
 
 def run_migrations_offline() -> None:

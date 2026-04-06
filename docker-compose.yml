@@ -56,7 +56,6 @@ services:
       dockerfile: Dockerfile
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-botball}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-botball}
       REDIS_URL: redis://redis:6379/0
     volumes:
       - uploads:/app/uploads
