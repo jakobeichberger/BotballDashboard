@@ -519,27 +519,25 @@ start_services() {
   pg_db=$(grep '^POSTGRES_DB=' .env | cut -d= -f2)
   pg_pass=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2)
 
+  # Helper: run psql as the application superuser (Alpine postgres image uses
+  # POSTGRES_USER as the superuser – there is no separate 'postgres' role).
+  _psql() { PGPASSWORD="${pg_pass}" docker compose exec -T db psql -h localhost -U "${pg_user}" "$@"; }
+
   # Ensure the application user exists
   local user_exists
-  user_exists=$(docker compose exec -T db \
-    psql -h localhost -U postgres -tAc \
-    "SELECT 1 FROM pg_roles WHERE rolname='${pg_user}'" 2>/dev/null || true)
+  user_exists=$(_psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${pg_user}'" 2>/dev/null || true)
   if [[ "${user_exists}" != "1" ]]; then
     warn "User '${pg_user}' missing – creating..."
-    docker compose exec -T db psql -h localhost -U postgres \
-      -c "CREATE USER \"${pg_user}\" WITH SUPERUSER PASSWORD '${pg_pass}';" || true
+    _psql -c "CREATE USER \"${pg_user}\" WITH SUPERUSER PASSWORD '${pg_pass}';" || true
     success "User '${pg_user}' created"
   fi
 
   # Ensure the application database exists
   local db_exists
-  db_exists=$(docker compose exec -T db \
-    psql -h localhost -U postgres -tAc \
-    "SELECT 1 FROM pg_database WHERE datname='${pg_db}'" 2>/dev/null || true)
+  db_exists=$(_psql -tAc "SELECT 1 FROM pg_database WHERE datname='${pg_db}'" 2>/dev/null || true)
   if [[ "${db_exists}" != "1" ]]; then
     warn "Database '${pg_db}' missing – creating..."
-    docker compose exec -T db psql -h localhost -U postgres \
-      -c "CREATE DATABASE \"${pg_db}\" OWNER \"${pg_user}\";" || true
+    _psql -c "CREATE DATABASE \"${pg_db}\" OWNER \"${pg_user}\";" || true
     success "Database '${pg_db}' created"
   fi
 
@@ -555,12 +553,14 @@ start_services() {
   info "Starting backend service..."
   docker compose up -d --no-deps backend 2>&1 || true
 
-  info "Waiting for backend API to respond..."
-  local api_retries=30
+  info "Waiting for backend API to respond (up to 3 min – migrations run on first boot)..."
+  local api_retries=60
   until curl -fsSL --max-time 3 "${HEALTH_URL}" > /dev/null 2>&1; do
     api_retries=$((api_retries - 1))
     if [[ $api_retries -le 0 ]]; then
-      warn "Backend did not respond in time – check logs: docker compose logs backend"
+      warn "Backend did not respond in time. Last 20 lines of backend logs:"
+      docker compose logs --tail=20 backend
+      warn "Setup continues – the backend may still be starting."
       break
     fi
     sleep 3
