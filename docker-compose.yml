@@ -23,6 +23,7 @@ services:
   # ── Database ──────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
+    command: postgres -c unix_socket_directories=''
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-botball}
       POSTGRES_USER: ${POSTGRES_USER:-botball}
@@ -31,7 +32,7 @@ services:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-botball}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-botball} -h localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
