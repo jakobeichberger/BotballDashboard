@@ -6,6 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from core.config import get_settings
 from core.database import get_db
@@ -61,7 +62,11 @@ async def get_current_user(
     payload = decode_token(credentials.credentials)
     user_id: str = payload.get("sub", "")
 
-    result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.roles))
+        .where(User.id == user_id, User.is_active == True)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise UnauthorizedError("User not found or inactive")
