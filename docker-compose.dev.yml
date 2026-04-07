@@ -5,6 +5,10 @@
 
 services:
   db:
+    # Override the unix_socket_directories='' command – that's only needed
+    # on Proxmox LXC where socket creation is blocked.  On macOS/Linux dev
+    # hosts it breaks pg_ctl during init ("no socket created for listening").
+    command: postgres
     environment:
       POSTGRES_DB: botball
       POSTGRES_USER: botball
