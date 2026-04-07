@@ -3,6 +3,12 @@
 
 services:
   db:
+    # Override env_file with direct env vars so dev works without a .env file.
+    env_file: !reset null
+    environment:
+      POSTGRES_DB: botball
+      POSTGRES_USER: botball
+      POSTGRES_PASSWORD: botball
     ports:
       - "5432:5432"
 
@@ -20,7 +26,11 @@ services:
       - uploads:/app/uploads
     environment:
       APP_ENV: development
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-botball}:${POSTGRES_PASSWORD:-botball}@db:5432/${POSTGRES_DB:-botball}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: botball
+      POSTGRES_USER: botball
+      POSTGRES_PASSWORD: botball
       REDIS_URL: redis://redis:6379/0
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     ports:
@@ -42,3 +52,10 @@ services:
 
   traefik:
     profiles: ["skip-in-dev"]
+
+volumes:
+  # Override the production bind-mount (Linux /data/db) with a plain named
+  # volume so dev works on macOS and Windows without creating /data/db.
+  pgdata:
+    driver: local
+    driver_opts: !reset {}
