@@ -36,7 +36,15 @@ services:
       POSTGRES_USER: botball
       POSTGRES_PASSWORD: botball
       REDIS_URL: redis://redis:6379/0
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        ADMIN_PASSWORD=admin1234 python scripts/create_admin.py
+          --email admin@dev.local
+          --name 'Dev Admin'
+          --reset &&
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      "
     ports:
       - "8000:8000"
     labels: []
