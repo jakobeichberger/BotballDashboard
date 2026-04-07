@@ -91,6 +91,15 @@ Danach erreichbar:
 - Frontend: http://localhost:5173
 - Backend API + Swagger: http://localhost:8000/api/docs
 
+**Standard-Login (Dev):**
+
+| | |
+|---|---|
+| E-Mail | `admin@dev.local` |
+| Passwort | `admin1234` |
+
+> Der Dev-Admin wird beim ersten Start automatisch angelegt.
+
 ### Nützliche Make-Befehle
 
 | Befehl | Beschreibung |
