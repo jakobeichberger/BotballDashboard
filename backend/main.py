@@ -46,9 +46,12 @@ app = FastAPI(
 )
 
 # CORS
+# In dev: allow_origin_regex=".*" echoes back the actual Origin header so
+# allow_credentials=True still works (allow_origins=["*"] would break cookies).
+# In production: restrict to the explicit whitelist from ALLOWED_ORIGINS env var.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,
+    **({"allow_origin_regex": ".*"} if settings.is_dev else {"allow_origins": settings.allowed_origins_list}),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
