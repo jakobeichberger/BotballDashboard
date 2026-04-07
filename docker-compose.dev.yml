@@ -3,8 +3,6 @@
 
 services:
   db:
-    # Override env_file with direct env vars so dev works without a .env file.
-    env_file: !reset null
     environment:
       POSTGRES_DB: botball
       POSTGRES_USER: botball
@@ -54,8 +52,6 @@ services:
     profiles: ["skip-in-dev"]
 
 volumes:
-  # Override the production bind-mount (Linux /data/db) with a plain named
-  # volume so dev works on macOS and Windows without creating /data/db.
+  # Use a plain named volume in dev – no /data/db bind mount needed on macOS/Windows.
   pgdata:
     driver: local
-    driver_opts: !reset {}

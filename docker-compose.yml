@@ -24,10 +24,15 @@ services:
   db:
     image: postgres:16-alpine
     command: postgres -c unix_socket_directories=''
-    # Use env_file (same as backend) so both services parse POSTGRES_PASSWORD
-    # identically.  Using environment: ${VAR} leaves JSON-quote chars in the
-    # value; env_file: strips them.  Both services must see the same string.
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false   # optional so dev works without a .env file
+    environment:
+      # Defaults apply when no .env is present (dev).
+      # On production .env overrides these via env_file above.
+      POSTGRES_DB: ${POSTGRES_DB:-botball}
+      POSTGRES_USER: ${POSTGRES_USER:-botball}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-botball}
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -54,7 +59,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false   # optional so dev works without a .env file
     environment:
       REDIS_URL: redis://redis:6379/0
     volumes:
