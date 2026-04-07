@@ -12,7 +12,7 @@ build:
 
 # ── Development ───────────────────────────────────────────────
 dev:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 dev-backend:
 	docker compose -f docker-compose.yml -f docker-compose.dev.yml up db redis backend
