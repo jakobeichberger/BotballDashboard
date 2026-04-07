@@ -1,21 +1,20 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
-import resourcesToBackend from "i18next-resources-to-backend";
+import deCommon from "./locales/de/common.json";
+import enCommon from "./locales/en/common.json";
 
 i18n
   .use(LanguageDetector)
-  .use(
-    resourcesToBackend(
-      (language: string, namespace: string) =>
-        import(`./locales/${language}/${namespace}.json`)
-    )
-  )
   .use(initReactI18next)
   .init({
+    resources: {
+      de: { common: deCommon },
+      en: { common: enCommon },
+    },
     fallbackLng: "de",
     supportedLngs: ["de", "en"],
-    ns: ["common", "auth", "scoring", "teams", "papers", "printing", "dashboard"],
+    ns: ["common"],
     defaultNS: "common",
     detection: {
       order: ["localStorage", "navigator"],
