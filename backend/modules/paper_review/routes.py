@@ -36,7 +36,7 @@ async def list_papers(
 @router.post("", response_model=PaperResponse, status_code=201)
 async def create_paper(
     body: PaperCreate,
-    _=Depends(require_permission("papers:read")),
+    _=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.create_paper(db, body.model_dump())
@@ -55,7 +55,7 @@ async def get_paper(
 async def update_paper(
     paper_id: str,
     body: PaperUpdate,
-    _=Depends(require_permission("papers:read")),
+    _=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
@@ -65,7 +65,7 @@ async def update_paper(
 async def upload_paper_file(
     paper_id: str,
     file: UploadFile = File(...),
-    _=Depends(require_permission("papers:read")),
+    _=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
     file_path, file_name, file_size = await service.save_file(file, paper_id)
@@ -95,7 +95,7 @@ async def download_paper(
 @router.put("/{paper_id}/submit", response_model=PaperResponse)
 async def submit_paper(
     paper_id: str,
-    current_user=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.submit_paper(db, paper_id, current_user.id)

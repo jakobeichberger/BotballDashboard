@@ -52,7 +52,7 @@ async def list_announcements(
 @router.post("/announcements", response_model=AnnouncementResponse, status_code=201)
 async def create_announcement(
     body: AnnouncementCreate,
-    current_user=Depends(require_permission("dashboard:read")),
+    current_user=Depends(require_permission("dashboard:write")),
     db: AsyncSession = Depends(get_db),
 ):
     ann = Announcement(**body.model_dump(), created_by=current_user.id)
@@ -64,7 +64,7 @@ async def create_announcement(
 @router.put("/announcements/{ann_id}/publish", response_model=AnnouncementResponse)
 async def publish_announcement(
     ann_id: str,
-    _=Depends(require_permission("dashboard:read")),
+    _=Depends(require_permission("dashboard:write")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Announcement).where(Announcement.id == ann_id))

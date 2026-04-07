@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str  # str not EmailStr: login shouldn't reject unusual addresses (e.g. .local TLD)
     password: str
 
 
