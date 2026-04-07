@@ -360,6 +360,11 @@ POSTGRES_DB=${POSTGRES_DB}
 POSTGRES_USER=${POSTGRES_USER}
 POSTGRES_PASSWORD=$(_q "${POSTGRES_PASSWORD}")
 
+# pgdata bind-mount (production only – dev uses plain named volume when these are empty)
+PGDATA_DRIVER_OPT_TYPE=none
+PGDATA_DRIVER_OPT_O=bind
+PGDATA_DRIVER_OPT_DEVICE=${DATA_DIR}/db
+
 # ── Redis ────────────────────────────────────
 REDIS_URL=redis://redis:6379/0
 

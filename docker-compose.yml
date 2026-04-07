@@ -94,12 +94,18 @@ services:
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
 
 volumes:
+  # pgdata uses a bind-mount in production (path set in .env) and a plain
+  # named volume in dev (variables are empty / .env absent).
+  # Production .env must set:
+  #   PGDATA_DRIVER_OPT_TYPE=none
+  #   PGDATA_DRIVER_OPT_O=bind
+  #   PGDATA_DRIVER_OPT_DEVICE=/data/db
   pgdata:
     driver: local
     driver_opts:
-      type: none
-      o: bind
-      device: /data/db
+      type:   ${PGDATA_DRIVER_OPT_TYPE:-}
+      o:      ${PGDATA_DRIVER_OPT_O:-}
+      device: ${PGDATA_DRIVER_OPT_DEVICE:-}
   redisdata:
   uploads:
   letsencrypt:

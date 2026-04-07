@@ -1,5 +1,7 @@
 # Development overrides – run with:
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# or simply:
+#   make dev
 
 services:
   db:
@@ -50,8 +52,3 @@ services:
 
   traefik:
     profiles: ["skip-in-dev"]
-
-volumes:
-  # Use a plain named volume in dev – no /data/db bind mount needed on macOS/Windows.
-  pgdata:
-    driver: local
