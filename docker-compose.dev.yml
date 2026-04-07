@@ -45,9 +45,8 @@ services:
     image: node:20-alpine
     build:
       # Override the production nginx Dockerfile (which needs a pre-built dist/).
-      # In dev we just want the plain node:20-alpine image – no local build needed.
-      context: .
-      dockerfile_inline: "FROM node:20-alpine"
+      context: ./frontend
+      dockerfile: Dockerfile.dev
     working_dir: /app
     volumes:
       - ./frontend:/app
