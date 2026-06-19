@@ -84,6 +84,8 @@ async def register_for_season(db: AsyncSession, team_id: str, season_id: str, **
 
     reg = TeamSeasonRegistration(team_id=team_id, season_id=season_id, **kwargs)
     db.add(reg)
+    await db.flush()
+    await db.refresh(reg)
     return reg
 
 

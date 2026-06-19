@@ -3,8 +3,7 @@ Score Sheet Import – SQLAlchemy Models
 """
 import uuid
 
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Text, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, JSON, String, Integer, Boolean, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -43,8 +42,8 @@ class ScoreSheetTemplate(Base):
 
     # OCR / extraction results
     raw_text = Column(Text)
-    extracted_fields = Column(JSONB)
-    confirmed_fields = Column(JSONB)
+    extracted_fields = Column(JSON)
+    confirmed_fields = Column(JSON)
 
     # Status of the OCR pipeline
     ocr_status = Column(String(30), default="pending")  # pending | processing | done | failed

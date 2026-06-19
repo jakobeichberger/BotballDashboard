@@ -80,6 +80,8 @@ def require_permission(*permissions: str):
         current_user=Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ):
+        if current_user.is_superuser:
+            return current_user
         from modules.auth.service import get_user_permissions
 
         user_perms = await get_user_permissions(db, current_user.id)
@@ -98,6 +100,8 @@ def require_any_permission(*permissions: str):
         current_user=Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ):
+        if current_user.is_superuser:
+            return current_user
         from modules.auth.service import get_user_permissions
 
         user_perms = await get_user_permissions(db, current_user.id)

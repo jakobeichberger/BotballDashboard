@@ -155,6 +155,8 @@ async def list_spools(db: AsyncSession, printer_id: str | None = None) -> list[F
 
 
 async def create_spool(db: AsyncSession, data: dict) -> FilamentSpool:
+    if "remaining_grams" not in data and "initial_grams" in data:
+        data = {**data, "remaining_grams": data["initial_grams"]}
     spool = FilamentSpool(**data)
     db.add(spool)
     return spool

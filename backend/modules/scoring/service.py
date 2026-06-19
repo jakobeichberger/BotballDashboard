@@ -72,6 +72,7 @@ async def get_match(db: AsyncSession, match_id: str) -> Match:
 
 
 async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
+    data = {k: v for k, v in data.items() if k != "total_score"}
     schema = await get_active_schema(db, data["season_id"], data.get("competition_level_id"))
     schema_fields = schema.fields if schema else []
 

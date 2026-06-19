@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
@@ -18,6 +19,9 @@ class Settings(BaseSettings):
     postgres_db: str = "botball"
     postgres_user: str = "botball"
     postgres_password: str = "botball"
+
+    # Allow DATABASE_URL env var override for testing (e.g. sqlite+aiosqlite:///:memory:)
+    database_url: str = Field(default="", alias="DATABASE_URL")
 
     # Redis
     redis_url: str = "redis://redis:6379/0"
@@ -50,7 +54,9 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 20
 
     @property
-    def database_url(self):
+    def resolved_database_url(self):
+        if self.database_url:
+            return self.database_url
         from sqlalchemy.engine import URL
         return URL.create(
             drivername="postgresql+asyncpg",

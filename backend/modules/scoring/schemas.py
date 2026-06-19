@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class MatchCreate(BaseModel):
-    season_id: str
+    season_id: str | None = None  # overridden by season_id path param in routes
     phase_id: str | None = None
     team_id: str
     competition_level_id: str | None = None

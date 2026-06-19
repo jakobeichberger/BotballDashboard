@@ -108,6 +108,7 @@ async def assign_reviewer(
         paper_id=paper_id, reviewer_id=reviewer_id, assigned_by=assigned_by
     )
     db.add(assignment)
+    await db.flush()
     return assignment
 
 
