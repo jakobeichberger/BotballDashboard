@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy } from "lucide-react";
+import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy, Pencil, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import clsx from "clsx";
@@ -66,17 +66,30 @@ export default function ScoreEntryPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["matches", sid] });
   const onError = (e: any) => alert(e?.response?.data?.detail ?? "Aktion fehlgeschlagen.");
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const rawFromScores = () => Object.fromEntries(fields.map((f) => [f.key, Number(scores[f.key] || 0)]));
+  const resetForm = () => { setScores({}); setEditingId(null); };
+
   const saveM = useMutation({
     mutationFn: () =>
-      api.post(`/scoring/seasons/${sid}/matches`, {
-        team_id: teamId,
-        round_number: round,
-        is_practice: isPractice,
-        raw_scores: Object.fromEntries(fields.map((f) => [f.key, Number(scores[f.key] || 0)])),
-      }),
-    onSuccess: () => { setScores({}); invalidate(); },
+      editingId
+        ? api.patch(`/scoring/matches/${editingId}`, { raw_scores: rawFromScores() })
+        : api.post(`/scoring/seasons/${sid}/matches`, {
+            team_id: teamId,
+            round_number: round,
+            is_practice: isPractice,
+            raw_scores: rawFromScores(),
+          }),
+    onSuccess: () => { resetForm(); invalidate(); },
     onError,
   });
+
+  const startEdit = (m: any) => {
+    setEditingId(m.id);
+    setTeamId(m.team_id);
+    setRound(m.round_number);
+    setScores({ ...m.raw_scores });
+  };
   const confirmM = useMutation({
     mutationFn: (mid: string) => api.put(`/scoring/matches/${mid}/confirm`),
     onSuccess: invalidate, onError,
@@ -155,14 +168,14 @@ export default function ScoreEntryPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="label">Team</label>
-              <select className="input" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+              <select className="input" value={teamId} disabled={!!editingId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">— Team wählen —</option>
                 {entryTeams?.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
               </select>
             </div>
             <div>
               <label className="label">{isPractice ? "Lauf-Nr." : "Runde"}</label>
-              <input type="number" min={1} className="input" value={round}
+              <input type="number" min={1} className="input" value={round} disabled={!!editingId}
                      onChange={(e) => setRound(Number(e.target.value) || 1)} />
             </div>
             <div className="flex items-end">
@@ -192,13 +205,17 @@ export default function ScoreEntryPage() {
             ))}
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            {editingId && (
+              <button className="btn-secondary" onClick={resetForm}><X className="w-4 h-4" /> Abbrechen</button>
+            )}
             <button className="btn-primary disabled:opacity-40" disabled={!teamId || saveM.isPending}
                     onClick={() => saveM.mutate()}>
-              <Save className="w-4 h-4" /> {isPractice ? "Übungslauf speichern" : "Wertung speichern"}
+              <Save className="w-4 h-4" /> {editingId ? "Änderungen speichern" : (isPractice ? "Übungslauf speichern" : "Wertung speichern")}
             </button>
           </div>
-          {!isPractice && !canManageAll && (
+          {editingId && <p className="text-xs text-gray-400">Bearbeitung: nur die Punkte werden geändert (Team/Runde bleiben).</p>}
+          {!editingId && !isPractice && !canManageAll && (
             <p className="text-xs text-gray-400">Deine Wertung wird zur Bestätigung durch die Jury eingereicht.</p>
           )}
         </div>
@@ -244,6 +261,9 @@ export default function ScoreEntryPage() {
                 {canManageAll && (
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
+                      <button onClick={() => startEdit(m)}
+                              className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                              title="Bearbeiten"><Pencil className="w-4 h-4" /></button>
                       {!isPractice && !m.confirmed_by && (
                         <button onClick={() => confirmM.mutate(m.id)} disabled={confirmM.isPending}
                                 className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"

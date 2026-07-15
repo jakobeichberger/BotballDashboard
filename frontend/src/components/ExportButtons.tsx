@@ -90,6 +90,12 @@ export function RankingExportButtons({ seasonId, seasonYear }: SeasonExportProps
         label="CSV"
         variant="csv"
       />
+      <ExportButton
+        url={`/exports/seasons/${seasonId}/matches.csv`}
+        filename={`matches-${seasonYear}.csv`}
+        label="Matches CSV"
+        variant="csv"
+      />
     </div>
   );
 }
