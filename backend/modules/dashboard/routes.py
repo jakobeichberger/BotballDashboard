@@ -37,12 +37,13 @@ class AnnouncementResponse(BaseModel):
 @router.get("/announcements", response_model=list[AnnouncementResponse])
 async def list_announcements(
     season_id: str | None = Query(None),
+    include_unpublished: bool = Query(False),
     _=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Announcement).where(Announcement.is_published == True).order_by(
-        Announcement.created_at.desc()
-    )
+    q = select(Announcement).order_by(Announcement.created_at.desc())
+    if not include_unpublished:
+        q = q.where(Announcement.is_published == True)
     if season_id:
         q = q.where(Announcement.season_id == season_id)
     result = await db.execute(q)
