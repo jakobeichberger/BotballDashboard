@@ -3,8 +3,9 @@
 Stand: 2026-07-15 · Branch `feature/detail-pages-and-review-workflow` (gepusht)
 
 Ausgangslage war ein weitgehend **read-only** Frontend (ca. die Hälfte der API ungenutzt).
-Aktuell: **96 / 105 Endpoints genutzt** — die 9 verbleibenden sind fast alle redundante
-Alternativen zu bereits verdrahteten Endpoints.
+Aktuell: **98 / 106 Endpoints genutzt** — die verbleibenden sind redundante
+Alternativen zu bereits verdrahteten Endpoints. Es gibt keine substanziell
+offenen Features mehr.
 
 ## ✅ Umgesetzt
 - Detailseiten (Team, Paper, Druckauftrag) + klickbare Navigation
@@ -17,10 +18,12 @@ Alternativen zu bereits verdrahteten Endpoints.
 - Admin-Settings: Benutzer (inkl. Rollen bearbeiten), Saisons (CRUD), Saison-Details, Saison-Module, **Wettbewerbsstufen (CRUD)**, Drucker, Filament-Spulen, Ankündigungen
 - Team anlegen, Profilseite (Name/Sprache/Passwort), **Druck-Kontingent anzeigen + bearbeiten**
 - Einzelne Wertung bearbeiten, `matches.csv`-Export
+- **Benutzerdefinierte Rollen** anlegen (`GET /auth/permissions` + `POST /auth/roles`) mit Rechte-Auswahl
 - 4 latente Berechtigungs-Bugs behoben (Migrationen 0010–0014)
+- **Tests**: 14 neue Tests (Season-Events, Level-CRUD, Quota, Rollen, Finalisierung, Übungsläufe, Team-Zugriff); Gesamtsuite **574 grün**
 
-## 🟡 Offen – sinnvoll umzusetzen
-- [ ] **Eigene Rollen/Rechte anlegen** – `POST /auth/roles`. Rollen sind aktuell fix (admin/juror/reviewer/mentor/guest); es gibt kein UI, um benutzerdefinierte Rollen mit eigener Rechte-Auswahl zu erstellen.
+## 🟢 Keine substanziell offenen Features mehr
+Alle ursprünglich offenen Punkte sind abgearbeitet.
 
 ## ⚪ Bewusst nicht umgesetzt (redundant zu bereits Genutztem)
 - `GET /scoring/seasons/{id}/ranking` – Basis-Rangliste; Frontend nutzt `ranking/extended`.
@@ -32,5 +35,5 @@ Alternativen zu bereits verdrahteten Endpoints.
 
 ## ⚠️ Bekannte Einschränkungen / Hinweise
 - **`.local`-E-Mails**: `UserCreate.email` (`EmailStr`) lehnt reservierte TLDs wie `.local` ab. Die Seed-Logins (`@test.local`) funktionieren nur, weil das Seed-Script die Validierung umgeht. Im Formular echte Domains verwenden.
-- **Tests**: Die Pytest-Suite wurde für die neuen Endpoints/Migrationen (0010–0014) **nicht** aktualisiert; Verifikation erfolgte via `tsc -b`, API-Stichproben und Browser-Checks.
+- **Tests**: Pytest-Suite auf **574 grün** (14 neue Tests für die neuen Endpoints); Frontend via `tsc -b`, API-Stichproben und Browser-Checks verifiziert. Keine automatisierten Frontend-E2E-Tests.
 - **Dependabot**: GitHub meldet Sicherheits-Findings bei Abhängigkeiten (unabhängig von diesen Änderungen) – separat prüfen.
