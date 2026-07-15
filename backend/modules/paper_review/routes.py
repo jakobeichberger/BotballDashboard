@@ -120,6 +120,16 @@ async def set_paper_status(
     return await service.set_paper_status(db, paper_id, status)
 
 
+@router.post("/{paper_id}/finalize", response_model=PaperResponse)
+async def finalize_paper(
+    paper_id: str,
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aggregate submitted reviews into final_score and recompute paper ranks."""
+    return await service.finalize_paper(db, paper_id)
+
+
 # ── Reviewer assignments ──────────────────────────────────────────────────────
 
 @router.post("/{paper_id}/assignments", response_model=ReviewerAssignmentResponse, status_code=201)

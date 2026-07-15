@@ -74,6 +74,8 @@ class PaperResponse(BaseModel):
     file_size_bytes: int | None
     submitted_at: datetime | None
     revision_number: int
+    final_score: float | None
+    paper_rank: int | None
     notes: str | None
     created_at: datetime
     updated_at: datetime
@@ -90,5 +92,7 @@ class PaperListItem(BaseModel):
     title: str
     status: str
     revision_number: int
+    final_score: float | None
+    paper_rank: int | None
     submitted_at: datetime | None
     created_at: datetime

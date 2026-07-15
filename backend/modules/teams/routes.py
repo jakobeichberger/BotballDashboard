@@ -73,6 +73,15 @@ async def confirm_registration(
     return await service.confirm_registration(db, registration_id)
 
 
+@router.delete("/registrations/{registration_id}", status_code=204)
+async def delete_registration(
+    registration_id: str,
+    _=Depends(require_permission("teams:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    await service.delete_registration(db, registration_id)
+
+
 # ── Individual team routes ────────────────────────────────────────────────────
 
 @router.get("/{team_id}", response_model=TeamResponse)

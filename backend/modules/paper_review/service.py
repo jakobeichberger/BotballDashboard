@@ -145,6 +145,42 @@ async def get_or_create_review(
     return review
 
 
+async def _recompute_paper_ranks(db: AsyncSession, season_id: str) -> None:
+    """Rank papers in a season by final_score DESC; papers without a score get no rank."""
+    scored = await db.execute(
+        select(Paper)
+        .where(Paper.season_id == season_id, Paper.final_score.isnot(None))
+        .order_by(Paper.final_score.desc())
+    )
+    for i, p in enumerate(scored.scalars().all(), start=1):
+        p.paper_rank = i
+    unscored = await db.execute(
+        select(Paper).where(Paper.season_id == season_id, Paper.final_score.is_(None))
+    )
+    for p in unscored.scalars().all():
+        p.paper_rank = None
+
+
+async def finalize_paper(db: AsyncSession, paper_id: str) -> Paper:
+    """Aggregate the submitted reviews of the current revision into a final
+    score (0-1 = average reviewer score / 10) and recompute the season ranking."""
+    paper = await get_paper(db, paper_id)
+    submitted = [
+        r for r in paper.reviews
+        if r.is_submitted
+        and r.revision_number == paper.revision_number
+        and r.total_score is not None
+    ]
+    if submitted:
+        avg = sum(r.total_score for r in submitted) / len(submitted)
+        paper.final_score = round(avg / 10.0, 4)
+    else:
+        paper.final_score = None
+    await db.flush()
+    await _recompute_paper_ranks(db, paper.season_id)
+    return await get_paper(db, paper_id)
+
+
 async def save_review(
     db: AsyncSession,
     paper_id: str,

@@ -102,6 +102,16 @@ async def confirm_registration(db: AsyncSession, registration_id: str) -> TeamSe
     return reg
 
 
+async def delete_registration(db: AsyncSession, registration_id: str) -> None:
+    result = await db.execute(
+        select(TeamSeasonRegistration).where(TeamSeasonRegistration.id == registration_id)
+    )
+    reg = result.scalar_one_or_none()
+    if not reg:
+        raise NotFoundError("Registration not found")
+    await db.delete(reg)
+
+
 async def list_registrations(
     db: AsyncSession, season_id: str | None = None, team_id: str | None = None
 ) -> list[TeamSeasonRegistration]:
