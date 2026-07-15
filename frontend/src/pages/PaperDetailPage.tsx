@@ -71,6 +71,7 @@ export default function PaperDetailPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isAdmin = useAuthStore((s) => s.hasRole("admin"));
+  const isMentor = useAuthStore((s) => s.hasRole("mentor"));
 
   const { data: paper, isLoading, isError } = useQuery({
     queryKey: ["paper", id],
@@ -89,6 +90,11 @@ export default function PaperDetailPage() {
     queryKey: ["users"],
     queryFn: async () => (await api.get("/auth/users")).data,
     enabled: isAdmin,
+  });
+  const { data: myTeams } = useQuery({
+    queryKey: ["teams-mine"],
+    queryFn: async () => (await api.get("/teams/mine")).data,
+    enabled: isMentor && !isAdmin,
   });
 
   const team = teams?.find((t: any) => t.id === paper?.team_id);
@@ -212,6 +218,8 @@ export default function PaperDetailPage() {
       u.roles?.some((r: any) => r.name === "reviewer") &&
       !paper.assignments?.some((a: any) => a.reviewer_id === u.id)
   );
+  const isMyTeam = !!myTeams?.some((t: any) => t.id === paper.team_id);
+  const canWritePaper = isAdmin || (isMentor && isMyTeam); // upload / submit
   const canSubmitPaper = ["draft", "revision_requested"].includes(paper.status);
 
   return (
@@ -289,7 +297,7 @@ export default function PaperDetailPage() {
               <Download className="w-4 h-4" /> Herunterladen
             </button>
           )}
-          {isAdmin && (
+          {canWritePaper && (
             <>
               <input
                 type="file"
@@ -304,6 +312,15 @@ export default function PaperDetailPage() {
               >
                 <Upload className="w-4 h-4" /> Hochladen
               </button>
+              {canSubmitPaper && (
+                <button
+                  disabled={submitPaperM.isPending}
+                  onClick={() => submitPaperM.mutate()}
+                  className="btn-secondary text-sm disabled:opacity-40"
+                >
+                  <Send className="w-4 h-4" /> Einreichen
+                </button>
+              )}
             </>
           )}
         </div>
@@ -354,11 +371,6 @@ export default function PaperDetailPage() {
           </div>
 
           <div className="flex flex-wrap gap-2 border-t pt-4">
-            {canSubmitPaper && (
-              <button disabled={submitPaperM.isPending} onClick={() => submitPaperM.mutate()} className="btn-secondary text-sm disabled:opacity-40">
-                <Send className="w-4 h-4" /> Paper einreichen
-              </button>
-            )}
             <button disabled={finalizeM.isPending} onClick={() => finalizeM.mutate()} className="btn-primary text-sm disabled:opacity-40">
               <Award className="w-4 h-4" /> Bewertung finalisieren
             </button>

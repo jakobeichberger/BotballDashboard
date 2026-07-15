@@ -419,6 +419,9 @@ export default function ScoreboardPage() {
   const seasonId = params.get("season_id") ?? "";
   const { data: currentUser } = useCurrentUser();
   const isAdmin = currentUser?.roles?.some((r: any) => r.name === "admin") ?? false;
+  const canEnterScores =
+    currentUser?.is_superuser ||
+    (currentUser?.roles?.some((r: any) => ["admin", "juror", "mentor"].includes(r.name)) ?? false);
 
   const { data: activeSeasonData } = useQuery<Season>({
     queryKey: ["seasons", "active"],
@@ -448,6 +451,11 @@ export default function ScoreboardPage() {
           Rangliste
         </h1>
         <div className="flex items-center gap-3">
+          {canEnterScores && (
+            <Link to="/scoring/entry" className="btn-primary text-sm">
+              Wertung erfassen
+            </Link>
+          )}
           {isAdmin && (
             <Link to="/scoring/score-sheets" className="btn-secondary text-sm">
               Score-Sheets

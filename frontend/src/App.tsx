@@ -11,6 +11,7 @@ const ScoreSheetsPage = lazy(
   () => import("@/modules/scoring/score-sheets/pages/ScoreSheetsPage")
 );
 const ScoreboardPage = lazy(() => import("@/pages/ScoreboardPage"));
+const ScoreEntryPage = lazy(() => import("@/pages/ScoreEntryPage"));
 const TeamsPage = lazy(() => import("@/pages/TeamsPage"));
 const TeamSeasonMatrixPage = lazy(() => import("@/pages/TeamSeasonMatrixPage"));
 const TeamDetailPage = lazy(() => import("@/pages/TeamDetailPage"));
@@ -46,6 +47,7 @@ function AppRoutes() {
             <Route path="teams/matrix" element={<TeamSeasonMatrixPage />} />
             <Route path="teams/:id" element={<TeamDetailPage />} />
             <Route path="scoring" element={<ScoreboardPage />} />
+            <Route path="scoring/entry" element={<ScoreEntryPage />} />
             <Route path="scoring/score-sheets" element={<ScoreSheetsPage />} />
             <Route path="scoring/de" element={<DEPage />} />
             <Route path="scoring/aerial" element={<AerialPage />} />

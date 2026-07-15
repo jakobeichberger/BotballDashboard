@@ -26,6 +26,8 @@ const STATUS_LABEL: Record<string, string> = {
 export default function PapersPage() {
   const qc = useQueryClient();
   const isAdmin = useAuthStore((s) => s.hasRole("admin"));
+  const isMentor = useAuthStore((s) => s.hasRole("mentor"));
+  const canCreate = isAdmin || isMentor;
   const [showForm, setShowForm] = useState(false);
   const [teamId, setTeamId] = useState("");
   const [title, setTitle] = useState("");
@@ -39,12 +41,19 @@ export default function PapersPage() {
     queryKey: ["teams"],
     queryFn: async () => (await api.get("/teams")).data,
   });
+  // Mentors may only file for teams they belong to.
+  const { data: myTeams } = useQuery({
+    queryKey: ["teams-mine"],
+    queryFn: async () => (await api.get("/teams/mine")).data,
+    enabled: canCreate && !isAdmin,
+  });
   const { data: activeSeason } = useQuery({
     queryKey: ["season-active"],
     queryFn: async () => (await api.get("/seasons/active")).data,
-    enabled: isAdmin,
+    enabled: canCreate,
   });
 
+  const createTeams = isAdmin ? teams : myTeams;
   const teamName = (tid: string) => teams?.find((t: any) => t.id === tid)?.name ?? tid;
 
   const createM = useMutation({
@@ -54,7 +63,7 @@ export default function PapersPage() {
         team_id: teamId,
         title,
         abstract: abstract || null,
-        competition_level_id: teams?.find((t: any) => t.id === teamId)?.competition_level_id ?? null,
+        competition_level_id: createTeams?.find((t: any) => t.id === teamId)?.competition_level_id ?? null,
       }),
     onSuccess: () => {
       setShowForm(false); setTeamId(""); setTitle(""); setAbstract("");
@@ -70,14 +79,14 @@ export default function PapersPage() {
           <FileText className="w-6 h-6" />
           Paper Review
         </h1>
-        {isAdmin && (
+        {canCreate && (
           <button className="btn-primary" onClick={() => setShowForm((v) => !v)}>
             {showForm ? "Abbrechen" : "+ Paper anlegen"}
           </button>
         )}
       </div>
 
-      {isAdmin && showForm && (
+      {canCreate && showForm && (
         <div className="card p-5 mb-6 space-y-4">
           {!activeSeason && (
             <p className="text-sm text-red-600">Keine aktive Saison — bitte zuerst eine Saison aktivieren.</p>
@@ -87,7 +96,7 @@ export default function PapersPage() {
               <label className="label">Team</label>
               <select className="input" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">— Team wählen —</option>
-                {teams?.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                {createTeams?.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
               </select>
             </div>
             <div>
