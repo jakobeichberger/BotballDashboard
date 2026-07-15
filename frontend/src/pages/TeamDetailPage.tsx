@@ -117,6 +117,17 @@ export default function TeamDetailPage() {
     onSuccess: refresh, onError,
   });
 
+  // ── Print quota (admin) ────────────────────────────────────────────────
+  const [editQuota, setEditQuota] = useState(false);
+  const [qParts, setQParts] = useState(0);
+  const [qGrams, setQGrams] = useState(0);
+  const setQuotaM = useMutation({
+    mutationFn: () => api.put("/printing/quotas", { team_id: id, season_id: activeSeason.id, max_parts: qParts, max_grams: qGrams }),
+    onSuccess: () => { setEditQuota(false); qc.invalidateQueries({ queryKey: ["team-quota", id, activeSeason?.id] }); },
+    onError,
+  });
+  const startQuotaEdit = () => { setQParts(quota?.max_parts ?? 4); setQGrams(quota?.max_grams ?? 0); setEditQuota(true); };
+
   if (isLoading) return <div className="p-6 text-gray-500">Laden...</div>;
   if (isError || !team) {
     return (
@@ -280,9 +291,18 @@ export default function TeamDetailPage() {
       <section className="card overflow-hidden">
         <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex flex-wrap items-center justify-between gap-2">
           <span className="flex items-center gap-2"><Printer className="w-4 h-4" /> Druckaufträge ({jobs?.length ?? 0})</span>
-          {quota?.max_parts != null && (
-            <span className="text-xs font-normal text-gray-500">
+          {quota?.max_parts != null && !editQuota && (
+            <span className="text-xs font-normal text-gray-500 flex items-center gap-2">
               Kontingent: {quota.used_parts}/{quota.max_parts} Teile · {quota.used_grams} g verbraucht
+              {isAdmin && <button onClick={startQuotaEdit} className="text-primary-600 dark:text-primary-400 hover:underline">bearbeiten</button>}
+            </span>
+          )}
+          {isAdmin && editQuota && (
+            <span className="flex items-center gap-2 text-xs font-normal text-gray-500">
+              max. Teile <input type="number" className="input w-16 py-1" value={qParts} onChange={(e) => setQParts(Number(e.target.value))} />
+              max. g <input type="number" className="input w-20 py-1" value={qGrams} onChange={(e) => setQGrams(Number(e.target.value))} />
+              <button className="btn-primary text-xs" disabled={setQuotaM.isPending} onClick={() => setQuotaM.mutate()}>OK</button>
+              <button className="btn-secondary text-xs" onClick={() => setEditQuota(false)}>×</button>
             </span>
           )}
         </h2>
