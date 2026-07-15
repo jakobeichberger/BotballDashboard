@@ -148,6 +148,15 @@ async def get_quota(db: AsyncSession, team_id: str, season_id: str) -> TeamSeaso
     return await _get_or_create_quota(db, team_id, season_id)
 
 
+async def set_quota(db: AsyncSession, team_id: str, season_id: str, **kwargs) -> TeamSeasonPrintQuota:
+    quota = await _get_or_create_quota(db, team_id, season_id)
+    for key, value in kwargs.items():
+        if value is not None:
+            setattr(quota, key, value)
+    await db.flush()
+    return quota
+
+
 # ── Filament spools ───────────────────────────────────────────────────────────
 
 async def list_spools(db: AsyncSession, printer_id: str | None = None) -> list[FilamentSpool]:
