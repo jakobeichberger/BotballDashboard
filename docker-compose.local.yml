@@ -1,0 +1,10 @@
+# Local-only override – avoids host port clashes with other running stacks.
+# The DB is still reachable inside the compose network as `db:5432`; this only
+# remaps the *host* port so it doesn't collide with another Postgres on 5432.
+#
+# Run with:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml up --build
+services:
+  db:
+    ports: !override
+      - "5433:5432"

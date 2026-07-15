@@ -64,6 +64,7 @@ async def upsert_de_result(db: AsyncSession, season_id: str, data: dict) -> DERe
         for k, v in data.items():
             setattr(row, k, v)
     await db.flush()
+    await db.refresh(row)
     return row
 
 
@@ -111,6 +112,7 @@ async def upsert_aerial_result(db: AsyncSession, season_id: str, data: dict) -> 
     runs = [row.run1, row.run2, row.run3, row.run4]
     row.score = _avg_best_n([r for r in runs if r is not None], n=2)
     await db.flush()
+    await db.refresh(row)
     return row
 
 
@@ -151,6 +153,7 @@ async def upsert_doc_score(db: AsyncSession, season_id: str, data: dict) -> Docu
     valid = [p / 100.0 for p in parts if p is not None]
     row.doc_score = sum(valid) / len(valid) if valid else None
     await db.flush()
+    await db.refresh(row)
     return row
 
 

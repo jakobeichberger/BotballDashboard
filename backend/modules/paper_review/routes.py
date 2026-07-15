@@ -88,8 +88,17 @@ async def download_paper(
         from core.exceptions import NotFoundError
         raise NotFoundError("No file uploaded")
     from core.config import get_settings as _gs
-    file_path = Path(_gs().upload_dir) / "papers" / paper_id / paper.file_name
-    return FileResponse(str(file_path), filename=paper.file_name, media_type="application/pdf")
+    from core.files import ensure_within, safe_filename
+
+    upload_dir = Path(_gs().upload_dir) / "papers" / paper_id
+    safe_name = safe_filename(paper.file_name, "paper.pdf")
+    file_path = ensure_within(upload_dir, upload_dir / safe_name)
+    return FileResponse(
+        str(file_path),
+        filename=safe_name,
+        media_type="application/pdf",
+        content_disposition_type="attachment",
+    )
 
 
 @router.put("/{paper_id}/submit", response_model=PaperResponse)

@@ -63,7 +63,7 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1" aria-label="Hauptnavigation">
           {NAV_ITEMS.map(({ to, icon: Icon, labelKey }) => (
             <NavLink
               key={to}
@@ -78,7 +78,7 @@ export default function Layout() {
                 )
               }
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4" aria-hidden="true" />
               {t(labelKey)}
             </NavLink>
           ))}
@@ -101,7 +101,7 @@ export default function Layout() {
                   )
                 }
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-4 h-4" aria-hidden="true" />
                 {t("nav.settings")}
               </NavLink>
             </>
@@ -112,23 +112,27 @@ export default function Layout() {
         <div className="border-t p-3 space-y-1">
           <button
             onClick={toggleLanguage}
+            aria-label={`Sprache wechseln (aktuell ${i18n.language === "de" ? "Deutsch" : "English"})`}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
-            <Globe className="w-4 h-4" />
+            <Globe className="w-4 h-4" aria-hidden="true" />
             {i18n.language === "de" ? "Deutsch" : "English"}
           </button>
           <button
             onClick={nextTheme}
+            aria-label={`Design wechseln (aktuell ${
+              theme === "light" ? "Hell" : theme === "dark" ? "Dunkel" : "System"
+            })`}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
-            <ThemeIcon className="w-4 h-4" />
+            <ThemeIcon className="w-4 h-4" aria-hidden="true" />
             {theme === "light" ? "Hell" : theme === "dark" ? "Dunkel" : "System"}
           </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4" aria-hidden="true" />
             Abmelden
           </button>
           {user && (

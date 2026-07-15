@@ -19,7 +19,18 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # ── Development target ────────────────────────────────────────
 FROM deps AS development
-RUN pip install watchfiles
+# watchfiles for --reload, plus the test/lint toolchain (mirrors the
+# [project.optional-dependencies] dev group) so `make test-backend` and
+# `make lint-backend` work out-of-the-box inside the container.
+RUN pip install \
+    watchfiles \
+    pytest==8.2.0 \
+    pytest-asyncio==0.23.6 \
+    pytest-cov==5.0.0 \
+    aiosqlite==0.20.0 \
+    factory-boy==3.3.0 \
+    ruff==0.4.4 \
+    mypy==1.10.0
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # ── Production target ─────────────────────────────────────────

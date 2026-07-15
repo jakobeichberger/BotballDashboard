@@ -8,8 +8,10 @@ Or via Docker (migrate-then-start.sh runs migrations first).
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from core.config import get_settings
 from core.logging import configure_logging
@@ -45,13 +47,43 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Turn DB constraint violations (e.g. a non-existent team_id / season_id in a
+# create request, or a duplicate) into a clean 4xx instead of a 500 that leaks
+# database internals.
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    return JSONResponse(
+        status_code=409,
+        content={"detail": "Request violates a data constraint (missing reference or duplicate)."},
+    )
+
+
+# Security response headers (defence in depth; complements Traefik/nginx).
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
+    if not settings.is_dev:
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=63072000; includeSubDomains"
+        )
+    return response
+
 # CORS
-# In dev: allow_origin_regex=".*" echoes back the actual Origin header so
-# allow_credentials=True still works (allow_origins=["*"] would break cookies).
+# In dev: reflect only localhost origins (so credentials work) rather than any
+# origin — prevents arbitrary sites from making credentialed requests to a
+# developer's instance.
 # In production: restrict to the explicit whitelist from ALLOWED_ORIGINS env var.
 app.add_middleware(
     CORSMiddleware,
-    **({"allow_origin_regex": ".*"} if settings.is_dev else {"allow_origins": settings.allowed_origins_list}),
+    **(
+        {"allow_origin_regex": r"https?://(localhost|127\.0\.0\.1)(:\d+)?"}
+        if settings.is_dev
+        else {"allow_origins": settings.allowed_origins_list}
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

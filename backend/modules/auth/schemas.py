@@ -43,6 +43,14 @@ class UserUpdate(BaseModel):
     role_ids: list[str] | None = None
 
 
+class MeUpdate(BaseModel):
+    """Self-service profile update. Deliberately excludes privilege fields
+    (is_active, role_ids) so a user can never escalate or lock themselves out."""
+    display_name: str | None = None
+    preferred_language: str | None = None
+    theme: str | None = None
+
+
 class UserPasswordChange(BaseModel):
     current_password: str
     new_password: str

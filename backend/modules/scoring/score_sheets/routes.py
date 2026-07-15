@@ -11,7 +11,6 @@ Endpoints:
   DELETE /scoring/score-sheets/{sheet_id}                       Delete
 """
 
-from uuid import UUID
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, BackgroundTasks, UploadFile
@@ -40,13 +39,13 @@ MAX_PDF_SIZE = 20 * 1024 * 1024  # 20 MB
     dependencies=[Depends(require_permission("scoring:admin"))],
 )
 async def upload_score_sheet(
-    season_id: UUID,
+    season_id: str,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="PDF file of the official scoring sheet"),
     label: str = Form(..., description="Display name, e.g. 'ECER 2026 Official Sheet'"),
     year: int = Form(...),
     game_theme: Optional[str] = Form(None),
-    competition_level_id: Optional[UUID] = Form(None),
+    competition_level_id: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -99,8 +98,8 @@ async def upload_score_sheet(
     dependencies=[Depends(require_permission("scoring:read"))],
 )
 async def list_score_sheets(
-    season_id: UUID,
-    competition_level_id: Optional[UUID] = None,
+    season_id: str,
+    competition_level_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ):
     templates = await service.list_templates(db, season_id, competition_level_id)
@@ -127,7 +126,7 @@ async def list_score_sheets(
     dependencies=[Depends(require_permission("scoring:read"))],
 )
 async def get_score_sheet(
-    sheet_id: UUID,
+    sheet_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     template = await service.get_template(db, sheet_id)
@@ -146,7 +145,7 @@ async def get_score_sheet(
     dependencies=[Depends(require_permission("scoring:read"))],
 )
 async def download_score_sheet_pdf(
-    sheet_id: UUID,
+    sheet_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     template = await service.get_template(db, sheet_id)
@@ -175,7 +174,7 @@ async def download_score_sheet_pdf(
     dependencies=[Depends(require_permission("scoring:admin"))],
 )
 async def confirm_score_sheet_fields(
-    sheet_id: UUID,
+    sheet_id: str,
     body: schemas.ConfirmFieldsRequest,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -206,7 +205,7 @@ async def confirm_score_sheet_fields(
     dependencies=[Depends(require_permission("scoring:admin"))],
 )
 async def set_active_score_sheet(
-    sheet_id: UUID,
+    sheet_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     template = await service.get_template(db, sheet_id)
@@ -232,7 +231,7 @@ async def set_active_score_sheet(
     dependencies=[Depends(require_permission("scoring:admin"))],
 )
 async def delete_score_sheet(
-    sheet_id: UUID,
+    sheet_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     template = await service.get_template(db, sheet_id)

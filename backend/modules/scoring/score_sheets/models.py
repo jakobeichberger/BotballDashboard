@@ -3,12 +3,15 @@ Score Sheet Import – SQLAlchemy Models
 """
 import uuid
 
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Text, DateTime
+from sqlalchemy import JSON, Column, String, Integer, Boolean, ForeignKey, Text, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from core.database import Base
+
+# JSONB on PostgreSQL (production), generic JSON on SQLite (tests).
+JSONBType = JSONB().with_variant(JSON(), "sqlite")
 
 
 def _uuid() -> str:
@@ -43,8 +46,8 @@ class ScoreSheetTemplate(Base):
 
     # OCR / extraction results
     raw_text = Column(Text)
-    extracted_fields = Column(JSONB)
-    confirmed_fields = Column(JSONB)
+    extracted_fields = Column(JSONBType)
+    confirmed_fields = Column(JSONBType)
 
     # Status of the OCR pipeline
     ocr_status = Column(String(30), default="pending")  # pending | processing | done | failed

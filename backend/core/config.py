@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
@@ -68,6 +69,26 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.app_env == "development"
+
+    @model_validator(mode="after")
+    def _reject_default_secrets_in_prod(self) -> "Settings":
+        """Fail fast in production if security-critical secrets are left at
+        their insecure defaults — otherwise an attacker who knows the public
+        default JWT key could forge tokens for any user."""
+        if self.is_dev:
+            return self
+        weak: list[str] = []
+        if self.app_secret_key.startswith("change-me") or len(self.app_secret_key) < 16:
+            weak.append("APP_SECRET_KEY")
+        if self.jwt_secret_key.startswith("change-me") or len(self.jwt_secret_key) < 16:
+            weak.append("JWT_SECRET_KEY")
+        if weak:
+            raise ValueError(
+                "Insecure default secret(s) in production: "
+                + ", ".join(weak)
+                + ". Set strong values (>=16 chars) in the environment/.env."
+            )
+        return self
 
 
 @lru_cache

@@ -58,24 +58,32 @@ export default function LoginPage() {
         <div className="card p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="label">E-Mail</label>
+              <label className="label" htmlFor="email">E-Mail</label>
               <input
+                id="email"
                 type="email"
                 className="input"
                 placeholder="admin@example.com"
+                autoComplete="email"
+                aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? "email-error" : undefined}
                 {...register("email")}
               />
               {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+                <p id="email-error" className="text-red-500 text-xs mt-1">{errors.email.message}</p>
               )}
             </div>
             <div>
-              <label className="label">Passwort</label>
+              <label className="label" htmlFor="password">Passwort</label>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   className="input pr-10"
                   placeholder="••••••••"
+                  autoComplete="current-password"
+                  aria-invalid={errors.password ? true : undefined}
+                  aria-describedby={errors.password ? "password-error" : undefined}
                   {...register("password")}
                 />
                 <button
@@ -94,7 +102,10 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm rounded-lg px-3 py-2">
+              <div
+                role="alert"
+                className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm rounded-lg px-3 py-2"
+              >
                 {error}
               </div>
             )}

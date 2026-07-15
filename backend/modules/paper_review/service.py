@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from core.config import get_settings
 from core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from core.files import ensure_within, safe_filename, validate_pdf
 from modules.paper_review.models import Paper, PaperReview, ReviewerAssignment
 
 settings = get_settings()
@@ -18,13 +19,19 @@ settings = get_settings()
 async def save_file(file: UploadFile, paper_id: str) -> tuple[str, str, int]:
     upload_dir = Path(settings.upload_dir) / "papers" / paper_id
     upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = upload_dir / (file.filename or "paper.pdf")
 
     content = await file.read()
+    validate_pdf(content)  # size + magic-byte check
+
+    # Never trust the client-supplied filename (path traversal); store a
+    # sanitised base name and assert containment within the upload dir.
+    safe_name = safe_filename(file.filename, "paper.pdf")
+    file_path = ensure_within(upload_dir, upload_dir / safe_name)
+
     async with aiofiles.open(file_path, "wb") as f:
         await f.write(content)
 
-    return str(file_path), file.filename or "paper.pdf", len(content)
+    return str(file_path), safe_name, len(content)
 
 
 async def list_papers(
@@ -62,7 +69,10 @@ async def get_paper(db: AsyncSession, paper_id: str) -> Paper:
 async def create_paper(db: AsyncSession, data: dict) -> Paper:
     paper = Paper(**data)
     db.add(paper)
-    return paper
+    await db.flush()
+    # Re-fetch with relationships eagerly loaded so response serialization
+    # doesn't trigger a lazy load (MissingGreenlet) in the async context.
+    return await get_paper(db, paper.id)
 
 
 async def update_paper(db: AsyncSession, paper_id: str, **kwargs) -> Paper:
@@ -108,6 +118,7 @@ async def assign_reviewer(
         paper_id=paper_id, reviewer_id=reviewer_id, assigned_by=assigned_by
     )
     db.add(assignment)
+    await db.flush()
     return assignment
 
 
@@ -129,6 +140,8 @@ async def get_or_create_review(
             revision_number=revision_number,
         )
         db.add(review)
+        await db.flush()
+        await db.refresh(review)
     return review
 
 
@@ -171,6 +184,8 @@ async def save_review(
     if submit:
         review.is_submitted = True
         review.submitted_at = datetime.now(timezone.utc)
+        # Flush so the just-submitted review is counted below (autoflush is off).
+        await db.flush()
         # If all reviewers submitted → transition paper to under_review
         assignments = await db.execute(
             select(ReviewerAssignment).where(ReviewerAssignment.paper_id == paper_id)

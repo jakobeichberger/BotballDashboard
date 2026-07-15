@@ -9,6 +9,7 @@ from core.database import get_db
 from modules.auth import service
 from modules.auth.schemas import (
     LoginRequest,
+    MeUpdate,
     PushSubscriptionCreate,
     RefreshRequest,
     RoleCreate,
@@ -100,11 +101,13 @@ async def get_me(current_user=Depends(get_current_user)):
 
 @router.patch("/me", response_model=UserResponse)
 async def update_me(
-    body: UserUpdate,
+    body: MeUpdate,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    update_data = body.model_dump(exclude_none=True, exclude={"role_ids"})
+    # MeUpdate cannot carry role_ids / is_active, so self-escalation is
+    # structurally impossible.
+    update_data = body.model_dump(exclude_none=True)
     return await service.update_user(db, current_user.id, **update_data)
 
 

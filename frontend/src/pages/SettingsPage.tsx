@@ -147,10 +147,14 @@ function SeasonModulesSettings() {
 
       {/* Season selector */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label
+          htmlFor="season-select"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
           Saison
         </label>
         <select
+          id="season-select"
           value={selectedSeasonId || seasons?.[0]?.id || ""}
           onChange={(e) => { setSelectedSeasonId(e.target.value); setDraft(null); }}
           className="input text-sm w-64"

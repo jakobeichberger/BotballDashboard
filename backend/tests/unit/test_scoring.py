@@ -93,11 +93,10 @@ class TestRankingLogic:
             "team_id": team.id,
             "round_number": 1,
             "raw_scores": {},
-            "total_score": 0.0,
         }
-        # Manually set total to test ranking
-        match = await create_match(db, {**data, "raw_scores": {}, "total_score": 100.0}, team.id)
-        # Override total for test
+        # total_score is computed server-side from raw_scores; override it
+        # afterwards to exercise the ranking logic with a known value.
+        match = await create_match(db, data, team.id)
         match.total_score = 100.0
         await db.commit()
 

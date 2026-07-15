@@ -141,7 +141,7 @@ export default function DocScoringPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Link to="/scoring" className="text-gray-400 hover:text-gray-600">
+          <Link to="/scoring" aria-label="Zurück zur Rangliste" className="text-gray-400 hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -222,6 +222,7 @@ export default function DocScoringPage() {
                           type="number" min={0} max={100} step={0.5}
                           value={e[f] ?? ""}
                           onChange={(ev) => setDocField(team.id, f, ev.target.value === "" ? null : Number(ev.target.value))}
+                          aria-label={`${f} für ${team.name}`}
                           className="input text-sm w-24 text-center"
                           placeholder="–"
                         />
@@ -271,6 +272,7 @@ export default function DocScoringPage() {
                             [paper.team_id]: { final_score: ev.target.value === "" ? null : Number(ev.target.value) },
                           }))
                         }
+                        aria-label={`Final-Score für ${paper.title}`}
                         className="input text-sm w-28 text-center"
                         placeholder="–"
                       />

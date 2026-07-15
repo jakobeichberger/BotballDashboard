@@ -90,7 +90,7 @@ export default function DEPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Link to="/scoring" className="text-gray-400 hover:text-gray-600">
+          <Link to="/scoring" aria-label="Zurück zur Rangliste" className="text-gray-400 hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -139,6 +139,7 @@ export default function DEPage() {
                     <select
                       value={e.bracket ?? ""}
                       onChange={(ev) => setField(team.id, "bracket", ev.target.value)}
+                      aria-label={`Bracket für ${team.name}`}
                       className="input text-sm w-20"
                     >
                       <option value="">–</option>
@@ -152,6 +153,7 @@ export default function DEPage() {
                       min={1}
                       value={e.de_rank ?? ""}
                       onChange={(ev) => setField(team.id, "de_rank", ev.target.value === "" ? null : Number(ev.target.value))}
+                      aria-label={`DE-Rang für ${team.name}`}
                       className="input text-sm w-20 text-center"
                       placeholder="–"
                     />
@@ -162,6 +164,7 @@ export default function DEPage() {
                       min={0} max={1} step={0.0001}
                       value={e.bracket_score ?? ""}
                       onChange={(ev) => setField(team.id, "bracket_score", ev.target.value === "" ? null : Number(ev.target.value))}
+                      aria-label={`Bracket-Score für ${team.name}`}
                       className="input text-sm w-28 text-center"
                       placeholder="–"
                     />
@@ -172,6 +175,7 @@ export default function DEPage() {
                       min={0} max={1} step={0.0001}
                       value={e.de_score ?? ""}
                       onChange={(ev) => setField(team.id, "de_score", ev.target.value === "" ? null : Number(ev.target.value))}
+                      aria-label={`DE-Score für ${team.name}`}
                       className="input text-sm w-28 text-center"
                       placeholder="–"
                     />

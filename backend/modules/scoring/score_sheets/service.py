@@ -40,13 +40,18 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 async def save_upload(file: UploadFile, season_id: uuid.UUID) -> tuple[Path, int]:
     """Save the uploaded PDF to disk and return (path, size_bytes)."""
+    from core.files import ensure_within, safe_filename, validate_pdf
+
     dest_dir = UPLOAD_DIR / str(season_id)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_name = f"{uuid.uuid4()}_{file.filename.replace(' ', '_')}"
-    dest = dest_dir / safe_name
-
     content = await file.read()
+    validate_pdf(content)  # size + magic-byte check
+
+    # Sanitise the client filename (path traversal) and assert containment.
+    safe_name = f"{uuid.uuid4()}_{safe_filename(file.filename, 'sheet.pdf')}"
+    dest = ensure_within(dest_dir, dest_dir / safe_name)
+
     dest.write_bytes(content)
 
     logger.info(
@@ -331,7 +336,7 @@ async def _apply_to_scoring_schema(
     result = await db.execute(
         sa_select(ScoringSchema).where(
             ScoringSchema.season_id == template.season_id,
-            ScoringSchema.level_id == template.competition_level_id,
+            ScoringSchema.competition_level_id == template.competition_level_id,
         )
     )
     schema = result.scalar_one_or_none()
@@ -342,7 +347,7 @@ async def _apply_to_scoring_schema(
     else:
         schema = ScoringSchema(
             season_id=template.season_id,
-            level_id=template.competition_level_id,
+            competition_level_id=template.competition_level_id,
             fields=field_dicts,
         )
         db.add(schema)

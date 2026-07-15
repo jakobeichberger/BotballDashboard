@@ -83,7 +83,7 @@ class TestUserManagement:
         resp = await client.post("/api/auth/users", headers=auth_headers, json={
             "email": admin_user.email,
             "display_name": "Dupe",
-            "password": "pass",
+            "password": "validpass123",
         })
         assert resp.status_code == 409
 

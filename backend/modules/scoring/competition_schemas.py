@@ -5,7 +5,8 @@ from pydantic import BaseModel, field_validator
 # ── Double Elimination ────────────────────────────────────────────────────────
 
 class DEResultUpsert(BaseModel):
-    team_id: str
+    # team_id is taken from the URL path by the route; optional in the body.
+    team_id: str | None = None
     bracket: str  # "A" | "B"
     de_rank: int | None = None
     bracket_score: float | None = None
@@ -37,7 +38,7 @@ class DEResultResponse(BaseModel):
 # ── Aerial ────────────────────────────────────────────────────────────────────
 
 class AerialResultUpsert(BaseModel):
-    team_id: str
+    team_id: str | None = None
     run1: float | None = None
     run2: float | None = None
     run3: float | None = None
@@ -64,7 +65,7 @@ class AerialResultResponse(BaseModel):
 # ── Documentation ─────────────────────────────────────────────────────────────
 
 class DocScoreUpsert(BaseModel):
-    team_id: str
+    team_id: str | None = None
     part1: float | None = None
     part2: float | None = None
     part3: float | None = None

@@ -198,16 +198,23 @@ async def create_role(
         raise ConflictError("Role name already exists")
 
     role = Role(name=name, description=description)
-    db.add(role)
-    await db.flush()
-
+    # Assign permissions on the transient object so no lazy-load of the
+    # (empty) collection is triggered in the async context.
     if permission_names:
         perms = await db.execute(
             select(Permission).where(Permission.name.in_(permission_names))
         )
         role.permissions = list(perms.scalars().all())
 
-    return role
+    db.add(role)
+    await db.flush()
+
+    # Reload with permissions eagerly loaded so response serialization
+    # doesn't trigger a lazy load (MissingGreenlet).
+    result = await db.execute(
+        select(Role).options(selectinload(Role.permissions)).where(Role.id == role.id)
+    )
+    return result.scalar_one()
 
 
 # ── Push subscriptions ────────────────────────────────────────────────────────

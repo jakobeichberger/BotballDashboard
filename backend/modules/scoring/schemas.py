@@ -3,7 +3,8 @@ from pydantic import BaseModel
 
 
 class MatchCreate(BaseModel):
-    season_id: str
+    # season_id is taken from the URL path by the route; optional in the body.
+    season_id: str | None = None
     phase_id: str | None = None
     team_id: str
     competition_level_id: str | None = None
