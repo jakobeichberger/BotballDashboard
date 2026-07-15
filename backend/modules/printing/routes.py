@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission
+from core.auth import get_current_user, require_permission, assert_team_access
 from core.database import get_db
 from modules.printing import service
 from modules.printing.schemas import (
@@ -66,6 +66,8 @@ async def create_print_job(
     current_user=Depends(require_permission("printing:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Organizers (printing:admin) may submit for any team; mentors only their own.
+    await assert_team_access(db, current_user, body.team_id, "printing:admin")
     return await service.create_print_job(db, body.model_dump(), current_user.id)
 
 

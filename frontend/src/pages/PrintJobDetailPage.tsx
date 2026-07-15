@@ -1,7 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
-import { Printer, ArrowLeft, Users, Clock } from "lucide-react";
+import { Printer, ArrowLeft, Users, Clock, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
+
+const JOB_STATUS = ["pending", "approved", "queued", "printing", "completed", "failed", "cancelled"];
 
 const STATUS_BADGE: Record<string, string> = {
   pending: "badge-gray",
@@ -46,9 +49,23 @@ export default function PrintJobDetailPage() {
     queryFn: async () => (await api.get("/teams")).data,
   });
 
+  const qc = useQueryClient();
+  const isAdmin = useAuthStore((s) => s.hasRole("admin"));
+
   const job = jobs?.find((j: any) => j.id === id);
   const printer = printers?.find((p: any) => p.id === job?.printer_id);
   const team = teams?.find((t: any) => t.id === job?.team_id);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["print-jobs"] });
+  const onError = (e: any) => alert(e?.response?.data?.detail ?? "Aktion fehlgeschlagen.");
+  const approveM = useMutation({
+    mutationFn: () => api.put(`/printing/jobs/${id}/approve`),
+    onSuccess: invalidate, onError,
+  });
+  const statusM = useMutation({
+    mutationFn: (status: string) => api.patch(`/printing/jobs/${id}`, { status }),
+    onSuccess: invalidate, onError,
+  });
 
   if (isLoading) {
     return <div className="p-6 text-gray-500">Laden...</div>;
@@ -121,6 +138,39 @@ export default function PrintJobDetailPage() {
           <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 border-t pt-3">{job.notes}</p>
         )}
       </div>
+
+      {/* Admin actions */}
+      {isAdmin && (
+        <section className="card p-6 space-y-4 border-primary-200 dark:border-primary-900">
+          <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-primary-500" /> Verwaltung (Admin)
+          </h2>
+          <div className="flex flex-wrap items-center gap-3">
+            {job.status === "pending" && (
+              <button
+                disabled={approveM.isPending}
+                onClick={() => approveM.mutate()}
+                className="btn-primary text-sm disabled:opacity-40"
+              >
+                <CheckCircle2 className="w-4 h-4" /> Genehmigen
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="label mb-0">Status</span>
+              <select
+                className="input"
+                value={job.status}
+                onChange={(e) => statusM.mutate(e.target.value)}
+                disabled={statusM.isPending}
+              >
+                {JOB_STATUS.map((s) => (
+                  <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Timeline */}
       <section className="card p-6">

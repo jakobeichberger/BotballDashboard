@@ -1,7 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Printer } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
 const STATUS_BADGE: Record<string, string> = {
   pending: "badge-gray",
@@ -14,12 +16,54 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default function PrintingPage() {
+  const qc = useQueryClient();
+  const isAdmin = useAuthStore((s) => s.hasRole("admin"));
+  const isMentor = useAuthStore((s) => s.hasRole("mentor"));
+  const canCreate = isAdmin || isMentor;
+
+  const [showForm, setShowForm] = useState(false);
+  const [teamId, setTeamId] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [material, setMaterial] = useState("PLA");
+  const [color, setColor] = useState("");
+  const [grams, setGrams] = useState("");
+
   const { data: jobs, isLoading } = useQuery({
     queryKey: ["print-jobs"],
-    queryFn: async () => {
-      const { data } = await api.get("/printing/jobs");
-      return data;
+    queryFn: async () => (await api.get("/printing/jobs")).data,
+  });
+  const { data: teams } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async () => (await api.get("/teams")).data,
+  });
+  const { data: myTeams } = useQuery({
+    queryKey: ["teams-mine"],
+    queryFn: async () => (await api.get("/teams/mine")).data,
+    enabled: canCreate && !isAdmin,
+  });
+  const { data: activeSeason } = useQuery({
+    queryKey: ["season-active"],
+    queryFn: async () => (await api.get("/seasons/active")).data,
+    enabled: canCreate,
+  });
+
+  const createTeams = isAdmin ? teams : myTeams;
+
+  const createM = useMutation({
+    mutationFn: () =>
+      api.post("/printing/jobs", {
+        season_id: activeSeason?.id,
+        team_id: teamId,
+        file_name: fileName,
+        material,
+        color: color || null,
+        estimated_grams: grams === "" ? null : Number(grams),
+      }),
+    onSuccess: () => {
+      setShowForm(false); setTeamId(""); setFileName(""); setColor(""); setGrams("");
+      qc.invalidateQueries({ queryKey: ["print-jobs"] });
     },
+    onError: (e: any) => alert(e?.response?.data?.detail ?? "Anlegen fehlgeschlagen."),
   });
 
   return (
@@ -29,8 +73,57 @@ export default function PrintingPage() {
           <Printer className="w-6 h-6" />
           3D-Druck
         </h1>
-        <button className="btn-primary">+ Druckauftrag</button>
+        {canCreate && (
+          <button className="btn-primary" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? "Abbrechen" : "+ Druckauftrag"}
+          </button>
+        )}
       </div>
+
+      {canCreate && showForm && (
+        <div className="card p-5 mb-6 space-y-4">
+          {!activeSeason && (
+            <p className="text-sm text-red-600">Keine aktive Saison — bitte zuerst eine Saison aktivieren.</p>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="label">Team</label>
+              <select className="input" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                <option value="">— Team wählen —</option>
+                {createTeams?.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Datei</label>
+              <input className="input" value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="bauteil.3mf" />
+            </div>
+            <div>
+              <label className="label">Material</label>
+              <select className="input" value={material} onChange={(e) => setMaterial(e.target.value)}>
+                <option value="PLA">PLA</option>
+                <option value="PETG">PETG</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Farbe</label>
+              <input className="input" value={color} onChange={(e) => setColor(e.target.value)} placeholder="z. B. Schwarz" />
+            </div>
+            <div>
+              <label className="label">Gramm (geschätzt)</label>
+              <input type="number" min={0} className="input" value={grams} onChange={(e) => setGrams(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              className="btn-primary disabled:opacity-40"
+              disabled={!activeSeason || !teamId || !fileName || createM.isPending}
+              onClick={() => createM.mutate()}
+            >
+              Druckauftrag einreichen
+            </button>
+          </div>
+        </div>
+      )}
 
       {isLoading && <p className="text-gray-500">Laden...</p>}
 
