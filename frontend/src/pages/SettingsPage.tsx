@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Routes, Route, NavLink } from "react-router-dom";
-import { Settings, Users, Layers, Save, Calendar, CalendarClock, Printer, Megaphone, Award, Trash2 } from "lucide-react";
+import { Settings, Users, Layers, Save, Calendar, CalendarClock, Printer, Megaphone, Award, Trash2, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import clsx from "clsx";
 
@@ -614,8 +614,77 @@ function SeasonModulesSettings() {
   );
 }
 
+// ── Roles ─────────────────────────────────────────────────────────────────────
+function RolesSettings() {
+  const invalidate = useInvalidate(["roles"]);
+  const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: async () => (await api.get("/auth/roles")).data });
+  const { data: perms } = useQuery({ queryKey: ["permissions"], queryFn: async () => (await api.get("/auth/permissions")).data });
+  const [show, setShow] = useState(false);
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [selPerms, setSelPerms] = useState<string[]>([]);
+
+  const createM = useMutation({
+    mutationFn: () => api.post("/auth/roles", { name, description: desc || null, permission_names: selPerms }),
+    onSuccess: () => { setShow(false); setName(""); setDesc(""); setSelPerms([]); invalidate(); },
+    onError: onErr,
+  });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Rollen</h2>
+        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? "Abbrechen" : "+ Rolle anlegen"}</button>
+      </div>
+      {show && (
+        <div className="card p-4 mb-4 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="z. B. head-juror" /></div>
+            <div><label className="label">Beschreibung</label><input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+          </div>
+          <div>
+            <label className="label">Berechtigungen</label>
+            <div className="flex flex-wrap gap-1.5">
+              {perms?.map((p: any) => {
+                const on = selPerms.includes(p.name);
+                return (
+                  <button key={p.id} type="button" title={p.description ?? ""}
+                    onClick={() => setSelPerms((prev) => on ? prev.filter((x) => x !== p.name) : [...prev, p.name])}
+                    className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
+                    {p.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>Rolle anlegen</button></div>
+        </div>
+      )}
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+            <th className="px-4 py-3 text-left font-medium">Rolle</th>
+            <th className="px-4 py-3 text-left font-medium">Beschreibung</th>
+            <th className="px-4 py-3 text-left font-medium">Berechtigungen</th>
+          </tr></thead>
+          <tbody className="divide-y dark:divide-gray-800">
+            {roles?.map((r: any) => (
+              <tr key={r.id}>
+                <td className="px-4 py-3 font-medium">{r.name} {r.is_system && <span className="badge-gray ml-1">System</span>}</td>
+                <td className="px-4 py-3 text-gray-500">{r.description ?? "—"}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{r.permissions?.length ?? 0} Rechte</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 const NAV = [
   { to: "/settings/users", icon: Users, label: "Benutzer" },
+  { to: "/settings/roles", icon: ShieldCheck, label: "Rollen" },
   { to: "/settings/seasons", icon: Calendar, label: "Saisons" },
   { to: "/settings/season-details", icon: CalendarClock, label: "Saison-Details" },
   { to: "/settings/modules", icon: Layers, label: "Saison-Module" },
@@ -641,6 +710,7 @@ export default function SettingsPage() {
         <div className="flex-1">
           <Routes>
             <Route path="users" element={<UsersSettings />} />
+            <Route path="roles" element={<RolesSettings />} />
             <Route path="seasons" element={<SeasonsSettings />} />
             <Route path="season-details" element={<SeasonEditor />} />
             <Route path="modules" element={<SeasonModulesSettings />} />

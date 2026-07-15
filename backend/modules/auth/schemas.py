@@ -114,6 +114,14 @@ class RoleDetailResponse(BaseModel):
     permissions: list[RoleResponse]
 
 
+class PermissionResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    name: str
+    description: str | None
+
+
 # ── Push subscriptions ────────────────────────────────────────────────────────
 
 class PushSubscriptionCreate(BaseModel):
