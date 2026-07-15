@@ -78,10 +78,11 @@ async def list_matches(
     season_id: str,
     team_id: str | None = Query(None),
     phase_id: str | None = Query(None),
+    is_practice: bool | None = Query(None),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_matches(db, season_id, team_id, phase_id)
+    return await service.list_matches(db, season_id, team_id, phase_id, is_practice)
 
 
 @router.post("/seasons/{season_id}/matches", response_model=MatchResponse, status_code=201)

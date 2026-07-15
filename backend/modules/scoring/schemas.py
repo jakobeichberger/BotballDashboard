@@ -11,6 +11,7 @@ class MatchCreate(BaseModel):
     round_number: int = 1
     table_number: int | None = None
     raw_scores: dict = {}
+    is_practice: bool = False
     notes: str | None = None
 
 
@@ -47,6 +48,7 @@ class MatchResponse(BaseModel):
     raw_scores: dict
     total_score: float
     is_disqualified: bool
+    is_practice: bool
     yellow_card: bool
     red_card: bool
     notes: str | None

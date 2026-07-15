@@ -51,6 +51,7 @@ async def list_matches(
     season_id: str,
     team_id: str | None = None,
     phase_id: str | None = None,
+    is_practice: bool | None = None,
 ) -> list[Match]:
     q = select(Match).where(Match.season_id == season_id).order_by(
         Match.round_number, Match.created_at
@@ -59,6 +60,8 @@ async def list_matches(
         q = q.where(Match.team_id == team_id)
     if phase_id:
         q = q.where(Match.phase_id == phase_id)
+    if is_practice is not None:
+        q = q.where(Match.is_practice == is_practice)
     result = await db.execute(q)
     return list(result.scalars().all())
 
@@ -125,6 +128,7 @@ async def _recompute_ranking(
             Match.season_id == season_id,
             Match.team_id == team_id,
             Match.is_disqualified == False,
+            Match.is_practice == False,  # practice runs never count toward the ranking
         )
     )
     matches = result.scalars().all()

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ClipboardList, ArrowLeft, Check, Trash2, Save } from "lucide-react";
+import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import clsx from "clsx";
 
 interface Field {
   key: string;
@@ -13,6 +14,8 @@ interface Field {
   type: "count" | "boolean";
 }
 
+type Mode = "contest" | "practice";
+
 export default function ScoreEntryPage() {
   const qc = useQueryClient();
   const isAdmin = useAuthStore((s) => s.hasRole("admin"));
@@ -20,6 +23,9 @@ export default function ScoreEntryPage() {
   const isMentor = useAuthStore((s) => s.hasRole("mentor"));
   const canEnter = isAdmin || isJuror || isMentor;
   const canManageAll = isAdmin || isJuror; // scoring:admin → any team + confirm/delete
+
+  const [mode, setMode] = useState<Mode>("contest");
+  const isPractice = mode === "practice";
 
   const { data: season } = useQuery({
     queryKey: ["season-active"],
@@ -65,6 +71,7 @@ export default function ScoreEntryPage() {
       api.post(`/scoring/seasons/${sid}/matches`, {
         team_id: teamId,
         round_number: round,
+        is_practice: isPractice,
         raw_scores: Object.fromEntries(fields.map((f) => [f.key, Number(scores[f.key] || 0)])),
       }),
     onSuccess: () => { setScores({}); invalidate(); },
@@ -80,15 +87,21 @@ export default function ScoreEntryPage() {
   });
 
   const visibleMatches = (matches ?? [])
+    .filter((m: any) => !!m.is_practice === isPractice)
     .filter((m: any) => canManageAll || myTeams?.some((t: any) => t.id === m.team_id))
     .sort((a: any, b: any) => a.round_number - b.round_number);
+
+  // Practice progress summary (per selected team, or across visible practice runs)
+  const practiceScores = visibleMatches.map((m: any) => m.total_score);
+  const practiceBest = practiceScores.length ? Math.max(...practiceScores) : null;
+  const practiceAvg = practiceScores.length
+    ? (practiceScores.reduce((a: number, b: number) => a + b, 0) / practiceScores.length).toFixed(1)
+    : null;
 
   if (!canEnter) {
     return (
       <div className="p-6">
-        <div className="card p-8 text-center text-gray-400">
-          Keine Berechtigung zur Wertungserfassung.
-        </div>
+        <div className="card p-8 text-center text-gray-400">Keine Berechtigung zur Wertungserfassung.</div>
       </div>
     );
   }
@@ -99,9 +112,37 @@ export default function ScoreEntryPage() {
         <ArrowLeft className="w-4 h-4" /> Zurück zur Rangliste
       </Link>
 
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-        <ClipboardList className="w-6 h-6" /> Wertung erfassen
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <ClipboardList className="w-6 h-6" /> Wertung erfassen
+        </h1>
+        {/* Mode toggle */}
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {([
+            ["contest", "Wettbewerb", Trophy],
+            ["practice", "Vorbereitung", Dumbbell],
+          ] as [Mode, string, any][]).map(([m, label, Icon]) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
+                mode === m
+                  ? "bg-primary-600 text-white"
+                  : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              )}
+            >
+              <Icon className="w-4 h-4" /> {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isPractice && (
+        <p className="text-sm text-gray-500">
+          Vorbereitungs-Läufe zählen <strong>nicht</strong> zur offiziellen Rangliste – sie helfen deinem Team, den Fortschritt zu verfolgen.
+        </p>
+      )}
 
       {!season && <p className="text-red-600 text-sm">Keine aktive Saison.</p>}
       {season && !schema && (
@@ -120,7 +161,7 @@ export default function ScoreEntryPage() {
               </select>
             </div>
             <div>
-              <label className="label">Runde</label>
+              <label className="label">{isPractice ? "Lauf-Nr." : "Runde"}</label>
               <input type="number" min={1} className="input" value={round}
                      onChange={(e) => setRound(Number(e.target.value) || 1)} />
             </div>
@@ -135,58 +176,55 @@ export default function ScoreEntryPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 border-t pt-4">
             {fields.map((f) => (
               <div key={f.key}>
-                <label className="label">
-                  {f.label} <span className="text-gray-400">(×{f.multiplier})</span>
-                </label>
+                <label className="label">{f.label} <span className="text-gray-400">(×{f.multiplier})</span></label>
                 {f.type === "boolean" ? (
                   <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={!!scores[f.key]}
-                      onChange={(e) => setScores({ ...scores, [f.key]: e.target.checked ? 1 : 0 })}
-                    />
+                    <input type="checkbox" checked={!!scores[f.key]}
+                           onChange={(e) => setScores({ ...scores, [f.key]: e.target.checked ? 1 : 0 })} />
                     Erreicht
                   </label>
                 ) : (
-                  <input
-                    type="number" min={0} max={f.max_value ?? undefined} className="input"
-                    value={scores[f.key] ?? ""}
-                    onChange={(e) => setScores({ ...scores, [f.key]: Number(e.target.value) })}
-                  />
+                  <input type="number" min={0} max={f.max_value ?? undefined} className="input"
+                         value={scores[f.key] ?? ""}
+                         onChange={(e) => setScores({ ...scores, [f.key]: Number(e.target.value) })} />
                 )}
               </div>
             ))}
           </div>
 
           <div className="flex justify-end">
-            <button
-              className="btn-primary disabled:opacity-40"
-              disabled={!teamId || saveM.isPending}
-              onClick={() => saveM.mutate()}
-            >
-              <Save className="w-4 h-4" /> Wertung speichern
+            <button className="btn-primary disabled:opacity-40" disabled={!teamId || saveM.isPending}
+                    onClick={() => saveM.mutate()}>
+              <Save className="w-4 h-4" /> {isPractice ? "Übungslauf speichern" : "Wertung speichern"}
             </button>
           </div>
-          {!canManageAll && (
-            <p className="text-xs text-gray-400">
-              Deine Wertung wird zur Bestätigung durch die Jury eingereicht.
-            </p>
+          {!isPractice && !canManageAll && (
+            <p className="text-xs text-gray-400">Deine Wertung wird zur Bestätigung durch die Jury eingereicht.</p>
           )}
+        </div>
+      )}
+
+      {/* Practice progress summary */}
+      {isPractice && practiceScores.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="card p-4"><div className="text-gray-500 text-sm">Bestwert</div><div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{practiceBest}</div></div>
+          <div className="card p-4"><div className="text-gray-500 text-sm">Durchschnitt</div><div className="text-2xl font-bold text-gray-900 dark:text-white">{practiceAvg}</div></div>
+          <div className="card p-4"><div className="text-gray-500 text-sm">Läufe</div><div className="text-2xl font-bold text-gray-900 dark:text-white">{practiceScores.length}</div></div>
         </div>
       )}
 
       {/* Matches list */}
       <section className="card overflow-hidden">
         <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white">
-          Erfasste Wertungen ({visibleMatches.length})
+          {isPractice ? "Übungsläufe" : "Erfasste Wertungen"} ({visibleMatches.length})
         </h2>
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Runde</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{isPractice ? "Lauf" : "Runde"}</th>
               <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Punkte</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
+              {!isPractice && <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>}
               {canManageAll && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Aktionen</th>}
             </tr>
           </thead>
@@ -196,15 +234,17 @@ export default function ScoreEntryPage() {
                 <td className="px-4 py-3 text-gray-900 dark:text-white">{teamName(m.team_id)}</td>
                 <td className="px-4 py-3 text-right text-gray-500">{m.round_number}</td>
                 <td className="px-4 py-3 text-right font-semibold">{m.total_score}</td>
-                <td className="px-4 py-3">
-                  <span className={m.confirmed_by ? "badge-green" : "badge-yellow"}>
-                    {m.confirmed_by ? "Bestätigt" : "Offen"}
-                  </span>
-                </td>
+                {!isPractice && (
+                  <td className="px-4 py-3">
+                    <span className={m.confirmed_by ? "badge-green" : "badge-yellow"}>
+                      {m.confirmed_by ? "Bestätigt" : "Offen"}
+                    </span>
+                  </td>
+                )}
                 {canManageAll && (
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
-                      {!m.confirmed_by && (
+                      {!isPractice && !m.confirmed_by && (
                         <button onClick={() => confirmM.mutate(m.id)} disabled={confirmM.isPending}
                                 className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"
                                 title="Bestätigen"><Check className="w-4 h-4" /></button>
@@ -218,7 +258,9 @@ export default function ScoreEntryPage() {
               </tr>
             ))}
             {visibleMatches.length === 0 && (
-              <tr><td colSpan={canManageAll ? 5 : 4} className="px-4 py-8 text-center text-gray-400">Noch keine Wertungen</td></tr>
+              <tr><td colSpan={(isPractice ? 3 : 4) + (canManageAll ? 1 : 0)} className="px-4 py-8 text-center text-gray-400">
+                {isPractice ? "Noch keine Übungsläufe" : "Noch keine Wertungen"}
+              </td></tr>
             )}
           </tbody>
         </table>
