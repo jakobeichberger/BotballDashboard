@@ -62,6 +62,16 @@ export default function TeamDetailPage() {
     queryFn: async () => (await api.get(`/printing/jobs?team_id=${id}`)).data,
     enabled: !!id,
   });
+  const { data: activeSeason } = useQuery({
+    queryKey: ["season-active"],
+    queryFn: async () => (await api.get("/seasons/active")).data,
+  });
+  const { data: quota } = useQuery({
+    queryKey: ["team-quota", id, activeSeason?.id],
+    queryFn: async () => (await api.get(`/printing/quotas?team_id=${id}&season_id=${activeSeason.id}`)).data,
+    enabled: !!id && !!activeSeason?.id,
+    retry: false,
+  });
 
   const isMyTeam = !!myTeams?.some((t: any) => t.id === id);
   const canManage = isAdmin || (isMentor && isMyTeam);
@@ -268,7 +278,14 @@ export default function TeamDetailPage() {
 
       {/* Print jobs */}
       <section className="card overflow-hidden">
-        <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2"><Printer className="w-4 h-4" /> Druckaufträge ({jobs?.length ?? 0})</h2>
+        <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex flex-wrap items-center justify-between gap-2">
+          <span className="flex items-center gap-2"><Printer className="w-4 h-4" /> Druckaufträge ({jobs?.length ?? 0})</span>
+          {quota?.max_parts != null && (
+            <span className="text-xs font-normal text-gray-500">
+              Kontingent: {quota.used_parts}/{quota.max_parts} Teile · {quota.used_grams} g verbraucht
+            </span>
+          )}
+        </h2>
         <table className="w-full text-sm"><tbody className="divide-y dark:divide-gray-800">
           {jobs?.map((j: any) => (
             <tr key={j.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">

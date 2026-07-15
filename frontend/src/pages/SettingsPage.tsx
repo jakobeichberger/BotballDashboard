@@ -164,6 +164,64 @@ function SeasonsSettings() {
 }
 
 // ── Printers ──────────────────────────────────────────────────────────────────
+function SpoolsPanel() {
+  const invalidate = useInvalidate(["spools"]);
+  const { data: spools } = useQuery({ queryKey: ["spools"], queryFn: async () => (await api.get("/printing/spools")).data });
+  const [material, setMaterial] = useState("PLA");
+  const [color, setColor] = useState("");
+  const [brand, setBrand] = useState("");
+  const [grams, setGrams] = useState(1000);
+
+  const createM = useMutation({
+    mutationFn: () => api.post("/printing/spools", { material, color: color || null, brand: brand || null, initial_grams: grams }),
+    onSuccess: () => { setColor(""); setBrand(""); invalidate(); }, onError: onErr,
+  });
+  const consumeM = useMutation({
+    mutationFn: ({ id, g }: { id: string; g: number }) => api.post(`/printing/spools/${id}/consume?grams=${g}`),
+    onSuccess: invalidate, onError: onErr,
+  });
+
+  return (
+    <div className="mt-8">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Filament-Spulen</h3>
+      <div className="card p-4 mb-4 flex flex-wrap items-end gap-3">
+        <div><label className="label">Material</label>
+          <select className="input" value={material} onChange={(e) => setMaterial(e.target.value)}><option>PLA</option><option>PETG</option></select></div>
+        <div><label className="label">Farbe</label><input className="input" value={color} onChange={(e) => setColor(e.target.value)} /></div>
+        <div><label className="label">Marke</label><input className="input" value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
+        <div><label className="label">Gramm</label><input type="number" className="input w-28" value={grams} onChange={(e) => setGrams(Number(e.target.value))} /></div>
+        <button className="btn-primary text-sm disabled:opacity-40" disabled={createM.isPending} onClick={() => createM.mutate()}>+ Spule</button>
+      </div>
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+            <th className="px-4 py-3 text-left font-medium">Material</th><th className="px-4 py-3 text-left font-medium">Farbe</th>
+            <th className="px-4 py-3 text-left font-medium">Marke</th><th className="px-4 py-3 text-right font-medium">Rest</th>
+            <th className="px-4 py-3 text-right font-medium"></th>
+          </tr></thead>
+          <tbody className="divide-y dark:divide-gray-800">
+            {spools?.map((s: any) => {
+              const pct = Math.round((s.remaining_grams / s.initial_grams) * 100);
+              return (
+                <tr key={s.id}>
+                  <td className="px-4 py-3 font-medium">{s.material}</td>
+                  <td className="px-4 py-3 text-gray-500">{s.color ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-500">{s.brand ?? "—"}</td>
+                  <td className="px-4 py-3 text-right">{s.remaining_grams} g <span className="text-gray-400">({pct}%)</span></td>
+                  <td className="px-4 py-3 text-right">
+                    <button className="btn-secondary text-xs" disabled={consumeM.isPending} onClick={() => consumeM.mutate({ id: s.id, g: 50 })}>−50 g</button>
+                  </td>
+                </tr>
+              );
+            })}
+            {spools?.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">Keine Spulen</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function PrintersSettings() {
   const invalidate = useInvalidate(["printers"]);
   const { data: printers, isLoading } = useQuery({ queryKey: ["printers"], queryFn: async () => (await api.get("/printing/printers")).data });
@@ -222,6 +280,7 @@ function PrintersSettings() {
           </tbody>
         </table>
       </div>
+      <SpoolsPanel />
     </div>
   );
 }

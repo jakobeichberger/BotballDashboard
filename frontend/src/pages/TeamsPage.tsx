@@ -1,15 +1,41 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Users, Grid3x3 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
 export default function TeamsPage() {
+  const qc = useQueryClient();
+  const isAdmin = useAuthStore((s) => s.hasRole("admin"));
+  const [show, setShow] = useState(false);
+  const [form, setForm] = useState<any>({ name: "", team_number: "", school: "", city: "", country: "DE", competition_level_id: "", notes: "" });
+
   const { data: teams, isLoading } = useQuery({
     queryKey: ["teams"],
-    queryFn: async () => {
-      const { data } = await api.get("/teams");
-      return data;
+    queryFn: async () => (await api.get("/teams")).data,
+  });
+  const { data: levels } = useQuery({
+    queryKey: ["competition-levels"],
+    queryFn: async () => (await api.get("/seasons/competition-levels/all")).data,
+    enabled: isAdmin,
+  });
+
+  const createM = useMutation({
+    mutationFn: () => api.post("/teams", {
+      ...form,
+      team_number: form.team_number || null,
+      school: form.school || null,
+      city: form.city || null,
+      competition_level_id: form.competition_level_id || null,
+      notes: form.notes || null,
+    }),
+    onSuccess: () => {
+      setShow(false);
+      setForm({ name: "", team_number: "", school: "", city: "", country: "DE", competition_level_id: "", notes: "" });
+      qc.invalidateQueries({ queryKey: ["teams"] });
     },
+    onError: (e: any) => alert(e?.response?.data?.detail ?? "Anlegen fehlgeschlagen."),
   });
 
   return (
@@ -23,9 +49,42 @@ export default function TeamsPage() {
           <Link to="/teams/matrix" className="btn-secondary">
             <Grid3x3 className="w-4 h-4" /> Saison-Zuweisung
           </Link>
-          <button className="btn-primary">+ Team hinzufügen</button>
+          {isAdmin && (
+            <button className="btn-primary" onClick={() => setShow((v) => !v)}>
+              {show ? "Abbrechen" : "+ Team hinzufügen"}
+            </button>
+          )}
         </div>
       </div>
+
+      {isAdmin && show && (
+        <div className="card p-5 mb-6 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[["name", "Name"], ["team_number", "Team-Nr."], ["school", "Schule"], ["city", "Ort"], ["country", "Land"]].map(([key, label]) => (
+              <div key={key}>
+                <label className="label">{label}</label>
+                <input className="input" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+              </div>
+            ))}
+            <div>
+              <label className="label">Wettbewerbsstufe</label>
+              <select className="input" value={form.competition_level_id} onChange={(e) => setForm({ ...form, competition_level_id: e.target.value })}>
+                <option value="">— keine —</option>
+                {levels?.map((l: any) => (<option key={l.id} value={l.id}>{l.name}</option>))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">Notizen</label>
+            <textarea className="input min-h-[4rem]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          </div>
+          <div className="flex justify-end">
+            <button className="btn-primary disabled:opacity-40" disabled={!form.name || createM.isPending} onClick={() => createM.mutate()}>
+              Team anlegen
+            </button>
+          </div>
+        </div>
+      )}
 
       {isLoading && <p className="text-gray-500">Laden...</p>}
 
@@ -39,26 +98,18 @@ export default function TeamsPage() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">{team.name}</h3>
-                {team.team_number && (
-                  <span className="text-xs text-gray-500">#{team.team_number}</span>
-                )}
+                {team.team_number && (<span className="text-xs text-gray-500">#{team.team_number}</span>)}
               </div>
               <span className={team.is_active ? "badge-green" : "badge-gray"}>
                 {team.is_active ? "Aktiv" : "Inaktiv"}
               </span>
             </div>
-            {team.school && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{team.school}</p>
-            )}
-            {team.city && (
-              <p className="text-sm text-gray-500 mt-0.5">{team.city}, {team.country}</p>
-            )}
+            {team.school && (<p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{team.school}</p>)}
+            {team.city && (<p className="text-sm text-gray-500 mt-0.5">{team.city}, {team.country}</p>)}
           </Link>
         ))}
         {teams?.length === 0 && (
-          <div className="col-span-3 text-center py-12 text-gray-400">
-            Noch keine Teams angelegt
-          </div>
+          <div className="col-span-3 text-center py-12 text-gray-400">Noch keine Teams angelegt</div>
         )}
       </div>
     </div>
