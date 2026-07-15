@@ -12,8 +12,12 @@ const ScoreSheetsPage = lazy(
 );
 const ScoreboardPage = lazy(() => import("@/pages/ScoreboardPage"));
 const TeamsPage = lazy(() => import("@/pages/TeamsPage"));
+const TeamSeasonMatrixPage = lazy(() => import("@/pages/TeamSeasonMatrixPage"));
+const TeamDetailPage = lazy(() => import("@/pages/TeamDetailPage"));
 const PapersPage = lazy(() => import("@/pages/PapersPage"));
+const PaperDetailPage = lazy(() => import("@/pages/PaperDetailPage"));
 const PrintingPage = lazy(() => import("@/pages/PrintingPage"));
+const PrintJobDetailPage = lazy(() => import("@/pages/PrintJobDetailPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const DEPage = lazy(() => import("@/pages/DEPage"));
 const AerialPage = lazy(() => import("@/pages/AerialPage"));
@@ -39,13 +43,17 @@ function AppRoutes() {
           <Route element={<Layout />}>
             <Route index element={<DashboardPage />} />
             <Route path="teams" element={<TeamsPage />} />
+            <Route path="teams/matrix" element={<TeamSeasonMatrixPage />} />
+            <Route path="teams/:id" element={<TeamDetailPage />} />
             <Route path="scoring" element={<ScoreboardPage />} />
             <Route path="scoring/score-sheets" element={<ScoreSheetsPage />} />
             <Route path="scoring/de" element={<DEPage />} />
             <Route path="scoring/aerial" element={<AerialPage />} />
             <Route path="scoring/doc" element={<DocScoringPage />} />
             <Route path="papers" element={<PapersPage />} />
+            <Route path="papers/:id" element={<PaperDetailPage />} />
             <Route path="printing" element={<PrintingPage />} />
+            <Route path="printing/jobs/:id" element={<PrintJobDetailPage />} />
             <Route
               path="settings/*"
               element={

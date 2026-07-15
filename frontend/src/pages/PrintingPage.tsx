@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { Printer } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -47,7 +48,11 @@ export default function PrintingPage() {
           <tbody className="divide-y dark:divide-gray-800">
             {jobs?.map((job: any) => (
               <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{job.file_name}</td>
+                <td className="px-4 py-3 font-medium">
+                  <Link to={`/printing/jobs/${job.id}`} className="text-primary-600 dark:text-primary-400 hover:underline">
+                    {job.file_name}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-gray-500">{job.material}</td>
                 <td className="px-4 py-3">
                   <span className={STATUS_BADGE[job.status] ?? "badge-gray"}>{job.status}</span>
