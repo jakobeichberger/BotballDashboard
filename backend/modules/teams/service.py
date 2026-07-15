@@ -6,6 +6,17 @@ from core.exceptions import ConflictError, NotFoundError
 from modules.teams.models import Team, TeamMember, TeamSeasonRegistration
 
 
+async def list_my_teams(db: AsyncSession, user_id: str) -> list[Team]:
+    """Teams the given user is a member of (for mentor self-service)."""
+    result = await db.execute(
+        select(Team)
+        .join(TeamMember, TeamMember.team_id == Team.id)
+        .where(TeamMember.user_id == user_id)
+        .order_by(Team.name)
+    )
+    return list(result.scalars().unique().all())
+
+
 async def list_teams(
     db: AsyncSession,
     season_id: str | None = None,

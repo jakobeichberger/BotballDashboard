@@ -23,6 +23,17 @@ class MatchUpdate(BaseModel):
     notes: str | None = None
 
 
+class ScoringSchemaResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    season_id: str
+    competition_level_id: str | None
+    fields: list
+    version: int
+    is_active: bool
+
+
 class MatchResponse(BaseModel):
     model_config = {"from_attributes": True}
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission, require_any_permission
+from core.auth import require_permission, require_any_permission, get_current_user
 from core.database import get_db
 from modules.teams import service
 from modules.teams.schemas import (
@@ -26,6 +26,15 @@ async def list_teams(
     db: AsyncSession = Depends(get_db),
 ):
     return await service.list_teams(db, season_id, competition_level_id)
+
+
+@router.get("/mine", response_model=list[TeamListItem])
+async def list_my_teams(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Teams the current user belongs to — used for mentor self-service dropdowns."""
+    return await service.list_my_teams(db, current_user.id)
 
 
 @router.post("", response_model=TeamResponse, status_code=201)

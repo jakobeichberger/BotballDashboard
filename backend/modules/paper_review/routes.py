@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission, require_any_permission
+from core.auth import get_current_user, require_permission, require_any_permission, assert_team_access
 from core.database import get_db
 from modules.paper_review import service
 from modules.paper_review.schemas import (
@@ -36,9 +36,11 @@ async def list_papers(
 @router.post("", response_model=PaperResponse, status_code=201)
 async def create_paper(
     body: PaperCreate,
-    _=Depends(require_permission("papers:write")),
+    current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Organizers (papers:admin) may file for any team; mentors only their own.
+    await assert_team_access(db, current_user, body.team_id, "papers:admin")
     return await service.create_paper(db, body.model_dump())
 
 
@@ -65,9 +67,11 @@ async def update_paper(
 async def upload_paper_file(
     paper_id: str,
     file: UploadFile = File(...),
-    _=Depends(require_permission("papers:write")),
+    current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    paper = await service.get_paper(db, paper_id)
+    await assert_team_access(db, current_user, paper.team_id, "papers:admin")
     file_path, file_name, file_size = await service.save_file(file, paper_id)
     return await service.update_paper(
         db, paper_id,
@@ -107,6 +111,8 @@ async def submit_paper(
     current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    paper = await service.get_paper(db, paper_id)
+    await assert_team_access(db, current_user, paper.team_id, "papers:admin")
     return await service.submit_paper(db, paper_id, current_user.id)
 
 
