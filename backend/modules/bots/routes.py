@@ -99,4 +99,11 @@ async def get_bot_image(
     bot = await service.get_bot(db, bot_id)
     if not bot.image_name:
         raise NotFoundError("No image uploaded")
-    return FileResponse(str(service.image_path(bot)))
+    # Serve with the media type we validated from the magic bytes, never one
+    # guessed from the (client-chosen) extension: "evil.html" with a GIF header
+    # would otherwise come back as text/html and render inline.
+    return FileResponse(
+        str(service.image_path(bot)),
+        media_type=bot.image_media_type or "application/octet-stream",
+        content_disposition_type="inline",
+    )

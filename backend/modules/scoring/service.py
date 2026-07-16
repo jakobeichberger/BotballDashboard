@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select, delete, func as sqlfunc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import NotFoundError
+from core.exceptions import NotFoundError, ValidationError
 from modules.scoring.models import Match, Ranking, ScoringSchema
 
 
@@ -19,13 +19,36 @@ def compute_seed_score(scores: list[float]) -> float:
 
 
 def compute_match_total(raw_scores: dict, schema_fields: list[dict]) -> float:
-    """Multiply each field value by its multiplier and sum."""
+    """Sum each scored field's value times its multiplier.
+
+    When a schema is defined it is authoritative: keys it doesn't define score
+    nothing, and a field's ``max_value`` is enforced. Both matter because the
+    client supplies raw_scores — previously an invented key scored with an
+    implicit multiplier of 1, and any value was accepted, so a mentor could
+    score themselves arbitrarily high on their own match.
+
+    With no schema configured the legacy fallback still applies: values are
+    summed as-is (multiplier 1), which is what a season without a schema means.
+    """
     total = 0.0
     field_map = {f["key"]: f for f in schema_fields}
     for key, value in raw_scores.items():
-        field = field_map.get(key, {})
-        multiplier = field.get("multiplier", 1)
-        total += float(value) * float(multiplier)
+        field = field_map.get(key)
+        if field is None:
+            if field_map:
+                continue  # schema is authoritative → unknown keys score nothing
+            field = {}  # no schema at all → sum as-is
+
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            raise ValidationError(f"Score for '{key}' must be a number")
+
+        max_value = field.get("max_value")
+        if max_value is not None and numeric > float(max_value):
+            raise ValidationError(f"Score for '{key}' exceeds the maximum of {max_value}")
+
+        total += numeric * float(field.get("multiplier", 1))
     return round(total, 2)
 
 

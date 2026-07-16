@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from core.config import get_settings
 from core.exceptions import ConflictError, ForbiddenError, NotFoundError
-from core.files import ensure_within, safe_filename, validate_pdf
+from core.files import assert_upload_size, ensure_within, safe_filename, validate_pdf
 from modules.paper_review.models import Paper, PaperReview, ReviewerAssignment
 
 settings = get_settings()
@@ -20,6 +20,7 @@ async def save_file(file: UploadFile, paper_id: str) -> tuple[str, str, int]:
     upload_dir = Path(settings.upload_dir) / "papers" / paper_id
     upload_dir.mkdir(parents=True, exist_ok=True)
 
+    assert_upload_size(file)  # reject before buffering it into memory
     content = await file.read()
     validate_pdf(content)  # size + magic-byte check
 

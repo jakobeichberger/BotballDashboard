@@ -47,10 +47,21 @@ async def create_paper(
 @router.get("/{paper_id}", response_model=PaperResponse)
 async def get_paper(
     paper_id: str,
-    _=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_paper(db, paper_id)
+    paper = await service.get_paper(db, paper_id)
+    resp = PaperResponse.model_validate(paper)
+    # GET /{id}/reviews is papers:admin-gated; don't let this endpoint hand the
+    # same scores/comments (incl. unsubmitted drafts) to everyone with
+    # papers:read. Reviewers still get their own review back for editing.
+    from modules.auth.service import get_user_permissions
+
+    if not current_user.is_superuser and "papers:admin" not in await get_user_permissions(
+        db, current_user.id
+    ):
+        resp.reviews = [r for r in resp.reviews if r.reviewer_id == current_user.id]
+    return resp
 
 
 @router.patch("/{paper_id}", response_model=PaperResponse)

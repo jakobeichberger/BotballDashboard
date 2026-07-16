@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from core.exceptions import NotFoundError
-from core.files import ensure_within, safe_filename, validate_image
+from core.files import assert_upload_size, ensure_within, safe_filename, validate_image
 from modules.bots.models import Bot
 
 settings = get_settings()
@@ -67,8 +67,9 @@ async def save_image(db: AsyncSession, bot_id: str, file: UploadFile) -> Bot:
     """Store a bot image (magic-byte validated) and record its name."""
     bot = await get_bot(db, bot_id)
 
+    assert_upload_size(file)          # reject before buffering it into memory
     content = await file.read()
-    validate_image(content)  # size + magic-byte check
+    media_type = validate_image(content)  # size + magic-byte check
 
     upload_dir = Path(settings.upload_dir) / "bots" / bot_id
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -85,6 +86,7 @@ async def save_image(db: AsyncSession, bot_id: str, file: UploadFile) -> Bot:
         old.unlink(missing_ok=True)
 
     bot.image_name = safe_name
+    bot.image_media_type = media_type
     return bot
 
 

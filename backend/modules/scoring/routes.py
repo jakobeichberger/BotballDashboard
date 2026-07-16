@@ -262,7 +262,7 @@ async def list_de_results(
 async def bulk_upsert_de_results(
     season_id: str,
     body: list[DEResultUpsert],
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     entries = [e.model_dump() for e in body]
@@ -276,7 +276,7 @@ async def upsert_de_result(
     season_id: str,
     team_id: str,
     body: DEResultUpsert,
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump()
@@ -307,7 +307,7 @@ async def get_aerial_ranking(
 async def bulk_upsert_aerial_results(
     season_id: str,
     body: list[AerialResultUpsert],
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     entries = [e.model_dump() for e in body]
@@ -319,7 +319,7 @@ async def upsert_aerial_result(
     season_id: str,
     team_id: str,
     body: AerialResultUpsert,
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump()
@@ -342,7 +342,7 @@ async def list_doc_scores(
 async def bulk_upsert_doc_scores(
     season_id: str,
     body: list[DocScoreUpsert],
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     entries = [e.model_dump() for e in body]
@@ -354,7 +354,7 @@ async def upsert_doc_score(
     season_id: str,
     team_id: str,
     body: DocScoreUpsert,
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump()

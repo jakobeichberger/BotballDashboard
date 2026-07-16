@@ -55,6 +55,19 @@ def ensure_within(base_dir: Path, target: Path) -> Path:
     return target_resolved
 
 
+def assert_upload_size(file, *, max_mb: int | None = None) -> None:
+    """Reject an oversized upload *before* it is read into memory.
+
+    Starlette populates UploadFile.size, so we can fail fast instead of
+    buffering a multi-gigabyte body just to reject it afterwards.
+    """
+    if max_mb is None:
+        max_mb = getattr(get_settings(), "max_upload_size_mb", 20)
+    size = getattr(file, "size", None)
+    if size is not None and size > max_mb * 1024 * 1024:
+        raise ValidationError(f"File too large (max {max_mb} MB)")
+
+
 def validate_pdf(content: bytes, *, max_mb: int | None = None) -> None:
     """Validate an uploaded PDF: enforce a size cap and verify the magic bytes.
 

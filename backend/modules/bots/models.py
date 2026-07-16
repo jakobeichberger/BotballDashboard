@@ -39,6 +39,8 @@ class Bot(Base):
     is_published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     image_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Detected from the magic bytes on upload — never trust the extension.
+    image_media_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     created_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

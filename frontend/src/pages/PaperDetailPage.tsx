@@ -116,18 +116,25 @@ export default function PaperDetailPage() {
 
   // ── Reviewer form state ────────────────────────────────────────────────
   const [form, setForm] = useState<ReviewForm>(EMPTY_FORM);
+  // Re-seed whenever the paper OR the matching review changes. The router
+  // reuses this component across /papers/:id, so without the reset branch the
+  // previous paper's scores stayed in the form and could be saved onto the
+  // next one. The same applies after a revision is requested, which makes
+  // myReview undefined (reviews are per revision_number).
   useEffect(() => {
-    if (myReview) {
-      setForm({
-        score_content: myReview.score_content ?? "",
-        score_methodology: myReview.score_methodology ?? "",
-        score_presentation: myReview.score_presentation ?? "",
-        score_originality: myReview.score_originality ?? "",
-        recommendation: myReview.recommendation ?? "",
-        comments: myReview.comments ?? "",
-      });
-    }
-  }, [myReview?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    setForm(
+      myReview
+        ? {
+            score_content: myReview.score_content ?? "",
+            score_methodology: myReview.score_methodology ?? "",
+            score_presentation: myReview.score_presentation ?? "",
+            score_originality: myReview.score_originality ?? "",
+            recommendation: myReview.recommendation ?? "",
+            comments: myReview.comments ?? "",
+          }
+        : EMPTY_FORM
+    );
+  }, [id, myReview?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["paper", id] });

@@ -16,8 +16,11 @@ class MatchCreate(BaseModel):
 
 
 class MatchUpdate(BaseModel):
+    # total_score is intentionally NOT accepted: it is always derived from
+    # raw_scores via the season's scoring schema. Letting a client send it let
+    # anyone who may edit a match (incl. a mentor on their own match) write an
+    # arbitrary score straight into the public ranking.
     raw_scores: dict | None = None
-    total_score: float | None = None
     is_disqualified: bool | None = None
     yellow_card: bool | None = None
     red_card: bool | None = None
