@@ -24,8 +24,8 @@ FROM deps AS development
 # `make lint-backend` work out-of-the-box inside the container.
 RUN pip install \
     watchfiles \
-    pytest==8.2.0 \
-    pytest-asyncio==0.23.6 \
+    pytest==9.0.3 \
+    pytest-asyncio==1.4.0 \
     pytest-cov==5.0.0 \
     aiosqlite==0.20.0 \
     factory-boy==3.3.0 \

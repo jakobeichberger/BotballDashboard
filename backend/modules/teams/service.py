@@ -6,6 +6,17 @@ from core.exceptions import ConflictError, NotFoundError
 from modules.teams.models import Team, TeamMember, TeamSeasonRegistration
 
 
+async def list_my_teams(db: AsyncSession, user_id: str) -> list[Team]:
+    """Teams the given user is a member of (for mentor self-service)."""
+    result = await db.execute(
+        select(Team)
+        .join(TeamMember, TeamMember.team_id == Team.id)
+        .where(TeamMember.user_id == user_id)
+        .order_by(Team.name)
+    )
+    return list(result.scalars().unique().all())
+
+
 async def list_teams(
     db: AsyncSession,
     season_id: str | None = None,
@@ -100,6 +111,16 @@ async def confirm_registration(db: AsyncSession, registration_id: str) -> TeamSe
         raise NotFoundError("Registration not found")
     reg.confirmed = True
     return reg
+
+
+async def delete_registration(db: AsyncSession, registration_id: str) -> None:
+    result = await db.execute(
+        select(TeamSeasonRegistration).where(TeamSeasonRegistration.id == registration_id)
+    )
+    reg = result.scalar_one_or_none()
+    if not reg:
+        raise NotFoundError("Registration not found")
+    await db.delete(reg)
 
 
 async def list_registrations(

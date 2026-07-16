@@ -11,16 +11,31 @@ class MatchCreate(BaseModel):
     round_number: int = 1
     table_number: int | None = None
     raw_scores: dict = {}
+    is_practice: bool = False
     notes: str | None = None
 
 
 class MatchUpdate(BaseModel):
+    # total_score is intentionally NOT accepted: it is always derived from
+    # raw_scores via the season's scoring schema. Letting a client send it let
+    # anyone who may edit a match (incl. a mentor on their own match) write an
+    # arbitrary score straight into the public ranking.
     raw_scores: dict | None = None
-    total_score: float | None = None
     is_disqualified: bool | None = None
     yellow_card: bool | None = None
     red_card: bool | None = None
     notes: str | None = None
+
+
+class ScoringSchemaResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    season_id: str
+    competition_level_id: str | None
+    fields: list
+    version: int
+    is_active: bool
 
 
 class MatchResponse(BaseModel):
@@ -36,6 +51,7 @@ class MatchResponse(BaseModel):
     raw_scores: dict
     total_score: float
     is_disqualified: bool
+    is_practice: bool
     yellow_card: bool
     red_card: bool
     notes: str | None

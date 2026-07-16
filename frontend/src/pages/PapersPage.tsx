@@ -1,6 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { FileText } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
 const STATUS_BADGE: Record<string, string> = {
   draft: "badge-gray",
@@ -21,12 +24,52 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function PapersPage() {
+  const qc = useQueryClient();
+  const isAdmin = useAuthStore((s) => s.hasRole("admin"));
+  const isMentor = useAuthStore((s) => s.hasRole("mentor"));
+  const canCreate = isAdmin || isMentor;
+  const [showForm, setShowForm] = useState(false);
+  const [teamId, setTeamId] = useState("");
+  const [title, setTitle] = useState("");
+  const [abstract, setAbstract] = useState("");
+
   const { data: papers, isLoading } = useQuery({
     queryKey: ["papers"],
-    queryFn: async () => {
-      const { data } = await api.get("/papers");
-      return data;
+    queryFn: async () => (await api.get("/papers")).data,
+  });
+  const { data: teams } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async () => (await api.get("/teams")).data,
+  });
+  // Mentors may only file for teams they belong to.
+  const { data: myTeams } = useQuery({
+    queryKey: ["teams-mine"],
+    queryFn: async () => (await api.get("/teams/mine")).data,
+    enabled: canCreate && !isAdmin,
+  });
+  const { data: activeSeason } = useQuery({
+    queryKey: ["season-active"],
+    queryFn: async () => (await api.get("/seasons/active")).data,
+    enabled: canCreate,
+  });
+
+  const createTeams = isAdmin ? teams : myTeams;
+  const teamName = (tid: string) => teams?.find((t: any) => t.id === tid)?.name ?? tid;
+
+  const createM = useMutation({
+    mutationFn: () =>
+      api.post("/papers", {
+        season_id: activeSeason?.id,
+        team_id: teamId,
+        title,
+        abstract: abstract || null,
+        competition_level_id: createTeams?.find((t: any) => t.id === teamId)?.competition_level_id ?? null,
+      }),
+    onSuccess: () => {
+      setShowForm(false); setTeamId(""); setTitle(""); setAbstract("");
+      qc.invalidateQueries({ queryKey: ["papers"] });
     },
+    onError: (e: any) => alert(e?.response?.data?.detail ?? "Anlegen fehlgeschlagen."),
   });
 
   return (
@@ -36,8 +79,46 @@ export default function PapersPage() {
           <FileText className="w-6 h-6" />
           Paper Review
         </h1>
-        <button className="btn-primary">+ Paper einreichen</button>
+        {canCreate && (
+          <button className="btn-primary" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? "Abbrechen" : "+ Paper anlegen"}
+          </button>
+        )}
       </div>
+
+      {canCreate && showForm && (
+        <div className="card p-5 mb-6 space-y-4">
+          {!activeSeason && (
+            <p className="text-sm text-red-600">Keine aktive Saison — bitte zuerst eine Saison aktivieren.</p>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label">Team</label>
+              <select className="input" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                <option value="">— Team wählen —</option>
+                {createTeams?.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Titel</label>
+              <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel des Papers" />
+            </div>
+          </div>
+          <div>
+            <label className="label">Abstract (optional)</label>
+            <textarea className="input min-h-[5rem]" value={abstract} onChange={(e) => setAbstract(e.target.value)} />
+          </div>
+          <div className="flex justify-end">
+            <button
+              className="btn-primary disabled:opacity-40"
+              disabled={!activeSeason || !teamId || !title || createM.isPending}
+              onClick={() => createM.mutate()}
+            >
+              Paper anlegen
+            </button>
+          </div>
+        </div>
+      )}
 
       {isLoading && <p className="text-gray-500">Laden...</p>}
 
@@ -46,31 +127,41 @@ export default function PapersPage() {
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Titel</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Rev.</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Ergebnis</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Rang</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Eingereicht</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
             {papers?.map((paper: any) => (
               <tr key={paper.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{paper.title}</td>
+                <td className="px-4 py-3 font-medium">
+                  <Link to={`/papers/${paper.id}`} className="text-primary-600 dark:text-primary-400 hover:underline">
+                    {paper.title}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-gray-500">{teamName(paper.team_id)}</td>
                 <td className="px-4 py-3">
                   <span className={STATUS_BADGE[paper.status] ?? "badge-gray"}>
                     {STATUS_LABEL[paper.status] ?? paper.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500">#{paper.revision_number}</td>
+                <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                  {paper.final_score != null ? `${Math.round(paper.final_score * 100)}%` : "—"}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {paper.paper_rank != null ? <span className="badge-green">#{paper.paper_rank}</span> : "—"}
+                </td>
                 <td className="px-4 py-3 text-gray-500">
-                  {paper.submitted_at
-                    ? new Date(paper.submitted_at).toLocaleDateString("de-DE")
-                    : "—"}
+                  {paper.submitted_at ? new Date(paper.submitted_at).toLocaleDateString("de-DE") : "—"}
                 </td>
               </tr>
             ))}
             {papers?.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   Noch keine Paper eingereicht
                 </td>
               </tr>

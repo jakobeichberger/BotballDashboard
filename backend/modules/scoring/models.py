@@ -53,6 +53,7 @@ class Match(Base):
     raw_scores: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     total_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     is_disqualified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_practice: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     yellow_card: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     red_card: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

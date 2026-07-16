@@ -37,12 +37,22 @@ class AnnouncementResponse(BaseModel):
 @router.get("/announcements", response_model=list[AnnouncementResponse])
 async def list_announcements(
     season_id: str | None = Query(None),
-    _=Depends(get_current_user),
+    include_unpublished: bool = Query(False),
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Announcement).where(Announcement.is_published == True).order_by(
-        Announcement.created_at.desc()
-    )
+    q = select(Announcement).order_by(Announcement.created_at.desc())
+    if include_unpublished:
+        # Drafts are internal — only those who may publish may read them.
+        from core.exceptions import ForbiddenError
+        from modules.auth.service import get_user_permissions
+
+        if not current_user.is_superuser and "dashboard:write" not in await get_user_permissions(
+            db, current_user.id
+        ):
+            raise ForbiddenError("Missing permissions: dashboard:write")
+    else:
+        q = q.where(Announcement.is_published == True)
     if season_id:
         q = q.where(Announcement.season_id == season_id)
     result = await db.execute(q)

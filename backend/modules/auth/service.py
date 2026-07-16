@@ -190,6 +190,11 @@ async def list_roles(db: AsyncSession) -> list[Role]:
     return list(result.scalars().all())
 
 
+async def list_permissions(db: AsyncSession) -> list[Permission]:
+    result = await db.execute(select(Permission).order_by(Permission.name))
+    return list(result.scalars().all())
+
+
 async def create_role(
     db: AsyncSession, name: str, description: str | None, permission_names: list[str]
 ) -> Role:

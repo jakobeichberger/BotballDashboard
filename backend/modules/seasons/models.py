@@ -77,3 +77,21 @@ class CompetitionLevel(Base):
     code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class SeasonEvent(Base):
+    """A dated deadline or event attached to a season (submission deadlines,
+    kickoffs, competition days, …)."""
+    __tablename__ = "season_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    season_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(20), default="deadline", nullable=False)  # deadline | event
+    event_date: Mapped[date] = mapped_column(Date, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

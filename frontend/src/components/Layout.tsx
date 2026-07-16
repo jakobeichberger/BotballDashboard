@@ -6,6 +6,7 @@ import {
   Trophy,
   FileText,
   Printer,
+  Bot,
   Settings,
   LogOut,
   Sun,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { to: "/scoring", icon: Trophy, labelKey: "nav.scoring", roles: [] },
   { to: "/papers", icon: FileText, labelKey: "nav.papers", roles: [] },
   { to: "/printing", icon: Printer, labelKey: "nav.printing", roles: [] },
+  { to: "/bots", icon: Bot, labelKey: "nav.bots", roles: [] },
 ];
 
 export default function Layout() {
@@ -136,9 +138,19 @@ export default function Layout() {
             Abmelden
           </button>
           {user && (
-            <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500 truncate">
-              {user.display_name}
-            </div>
+            <NavLink
+              to="/profile"
+              className={({ isActive }) =>
+                clsx(
+                  "block px-3 py-2 text-xs truncate rounded-lg",
+                  isActive
+                    ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                    : "text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                )
+              }
+            >
+              {user.display_name} · Profil
+            </NavLink>
           )}
         </div>
       </aside>

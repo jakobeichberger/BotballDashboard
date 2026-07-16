@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select, delete, func as sqlfunc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import NotFoundError
+from core.exceptions import NotFoundError, ValidationError
 from modules.scoring.models import Match, Ranking, ScoringSchema
 
 
@@ -19,13 +19,36 @@ def compute_seed_score(scores: list[float]) -> float:
 
 
 def compute_match_total(raw_scores: dict, schema_fields: list[dict]) -> float:
-    """Multiply each field value by its multiplier and sum."""
+    """Sum each scored field's value times its multiplier.
+
+    When a schema is defined it is authoritative: keys it doesn't define score
+    nothing, and a field's ``max_value`` is enforced. Both matter because the
+    client supplies raw_scores — previously an invented key scored with an
+    implicit multiplier of 1, and any value was accepted, so a mentor could
+    score themselves arbitrarily high on their own match.
+
+    With no schema configured the legacy fallback still applies: values are
+    summed as-is (multiplier 1), which is what a season without a schema means.
+    """
     total = 0.0
     field_map = {f["key"]: f for f in schema_fields}
     for key, value in raw_scores.items():
-        field = field_map.get(key, {})
-        multiplier = field.get("multiplier", 1)
-        total += float(value) * float(multiplier)
+        field = field_map.get(key)
+        if field is None:
+            if field_map:
+                continue  # schema is authoritative → unknown keys score nothing
+            field = {}  # no schema at all → sum as-is
+
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            raise ValidationError(f"Score for '{key}' must be a number")
+
+        max_value = field.get("max_value")
+        if max_value is not None and numeric > float(max_value):
+            raise ValidationError(f"Score for '{key}' exceeds the maximum of {max_value}")
+
+        total += numeric * float(field.get("multiplier", 1))
     return round(total, 2)
 
 
@@ -51,6 +74,7 @@ async def list_matches(
     season_id: str,
     team_id: str | None = None,
     phase_id: str | None = None,
+    is_practice: bool | None = None,
 ) -> list[Match]:
     q = select(Match).where(Match.season_id == season_id).order_by(
         Match.round_number, Match.created_at
@@ -59,6 +83,8 @@ async def list_matches(
         q = q.where(Match.team_id == team_id)
     if phase_id:
         q = q.where(Match.phase_id == phase_id)
+    if is_practice is not None:
+        q = q.where(Match.is_practice == is_practice)
     result = await db.execute(q)
     return list(result.scalars().all())
 
@@ -96,6 +122,10 @@ async def update_match(db: AsyncSession, match_id: str, **kwargs) -> Match:
         if value is not None:
             setattr(match, key, value)
 
+    # _recompute_ranking re-queries the matches in SQL; without a flush the
+    # session (autoflush=False) would still hand it the pre-update row, so e.g.
+    # disqualifying a match would leave it counted in the ranking.
+    await db.flush()
     await _recompute_ranking(db, match.season_id, match.team_id, match.competition_level_id)
     return match
 
@@ -125,6 +155,7 @@ async def _recompute_ranking(
             Match.season_id == season_id,
             Match.team_id == team_id,
             Match.is_disqualified == False,
+            Match.is_practice == False,  # practice runs never count toward the ranking
         )
     )
     matches = result.scalars().all()
@@ -137,6 +168,9 @@ async def _recompute_ranking(
                 Ranking.team_id == team_id,
             )
         )
+        # Close the gap the removed row leaves behind (…1, 2, 4 → 1, 2, 3).
+        await db.flush()
+        await _refresh_ranks(db, season_id, competition_level_id)
         return
 
     seed_score = compute_seed_score(scores)
@@ -156,6 +190,9 @@ async def _recompute_ranking(
         ranking.best_score = best_score
         ranking.average_score = avg_score
         ranking.rounds_played = len(scores)
+        # Keep the level in sync — otherwise the row would keep whatever level
+        # it was first created with and be ranked in the wrong group.
+        ranking.competition_level_id = competition_level_id
     else:
         ranking = Ranking(
             season_id=season_id,
@@ -176,9 +213,18 @@ async def _recompute_ranking(
 async def _refresh_ranks(
     db: AsyncSession, season_id: str, competition_level_id: str | None
 ) -> None:
-    """Re-number all ranks for a season/level by seed_score DESC."""
+    """Re-number ranks by seed_score DESC within one competition level.
+
+    Teams compete within their level, so each level is numbered from 1
+    independently — and teams without a level (the default) form their own
+    group. Previously a NULL level skipped the filter and renumbered the whole
+    season, so a level's 1..n could collide with the season-wide 1..n and two
+    teams ended up sharing rank 1.
+    """
     q = select(Ranking).where(Ranking.season_id == season_id)
-    if competition_level_id:
+    if competition_level_id is None:
+        q = q.where(Ranking.competition_level_id.is_(None))
+    else:
         q = q.where(Ranking.competition_level_id == competition_level_id)
     result = await db.execute(q.order_by(Ranking.seed_score.desc()))
     rankings = result.scalars().all()

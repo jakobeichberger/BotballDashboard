@@ -59,12 +59,15 @@ class TestComputeMatchTotal:
         # 10*2 + 4*5 + 100*1 = 20 + 20 + 100 = 140
         assert compute_match_total(scores, schema) == 140.0
 
-    def test_unknown_field_uses_multiplier_1(self):
-        # Field not in schema → default multiplier 1
+    def test_unknown_field_scores_nothing_when_a_schema_is_defined(self):
+        # A defined schema is authoritative. raw_scores is client-supplied, so
+        # letting an unknown key score with an implicit multiplier of 1 allowed
+        # anyone who may enter a match to invent a field and score themselves
+        # arbitrarily high. (With NO schema the sum-as-is fallback still
+        # applies — see test_scoring_full.test_empty_schema_*.)
         schema = [{"key": "known", "multiplier": 3}]
         scores = {"known": 10, "unknown": 5}
-        # 10*3 + 5*1 = 35
-        assert compute_match_total(scores, schema) == 35.0
+        assert compute_match_total(scores, schema) == 30.0
 
     def test_zero_values(self):
         schema = [{"key": "a", "multiplier": 10}]

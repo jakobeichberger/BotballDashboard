@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
@@ -32,7 +33,15 @@ def create_refresh_token(subject: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.jwt_refresh_token_expire_days
     )
-    payload = {"sub": subject, "exp": expire, "type": "refresh"}
+    # `jti` keeps every refresh token unique: without it two logins for the
+    # same user within the same second produce an identical JWT (exp only has
+    # second granularity), whose hash then collides on refresh_tokens.token_hash.
+    payload = {
+        "sub": subject,
+        "exp": expire,
+        "type": "refresh",
+        "jti": str(uuid.uuid4()),
+    }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
@@ -114,3 +123,30 @@ def require_any_permission(*permissions: str):
         return current_user
 
     return _check
+
+
+async def assert_team_access(db, user, team_id: str, elevated_permission: str) -> None:
+    """Authorize an action scoped to a single team.
+
+    Superusers and holders of ``elevated_permission`` (e.g. an organizer with
+    ``scoring:admin`` / ``papers:admin``) may act on any team. Everyone else –
+    typically a mentor doing self-service – must be a member of ``team_id``.
+    """
+    if user.is_superuser:
+        return
+
+    from modules.auth.service import get_user_permissions
+
+    if elevated_permission in await get_user_permissions(db, user.id):
+        return
+
+    from modules.teams.models import TeamMember
+
+    result = await db.execute(
+        select(TeamMember).where(
+            TeamMember.team_id == team_id,
+            TeamMember.user_id == user.id,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise ForbiddenError("You may only submit for your own team")

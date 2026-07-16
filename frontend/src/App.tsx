@@ -11,10 +11,18 @@ const ScoreSheetsPage = lazy(
   () => import("@/modules/scoring/score-sheets/pages/ScoreSheetsPage")
 );
 const ScoreboardPage = lazy(() => import("@/pages/ScoreboardPage"));
+const ScoreEntryPage = lazy(() => import("@/pages/ScoreEntryPage"));
 const TeamsPage = lazy(() => import("@/pages/TeamsPage"));
+const TeamSeasonMatrixPage = lazy(() => import("@/pages/TeamSeasonMatrixPage"));
+const TeamDetailPage = lazy(() => import("@/pages/TeamDetailPage"));
 const PapersPage = lazy(() => import("@/pages/PapersPage"));
+const PaperDetailPage = lazy(() => import("@/pages/PaperDetailPage"));
 const PrintingPage = lazy(() => import("@/pages/PrintingPage"));
+const BotsPage = lazy(() => import("@/pages/BotsPage"));
+const BotDetailPage = lazy(() => import("@/pages/BotDetailPage"));
+const PrintJobDetailPage = lazy(() => import("@/pages/PrintJobDetailPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const DEPage = lazy(() => import("@/pages/DEPage"));
 const AerialPage = lazy(() => import("@/pages/AerialPage"));
 const DocScoringPage = lazy(() => import("@/pages/DocScoringPage"));
@@ -39,13 +47,21 @@ function AppRoutes() {
           <Route element={<Layout />}>
             <Route index element={<DashboardPage />} />
             <Route path="teams" element={<TeamsPage />} />
+            <Route path="teams/matrix" element={<TeamSeasonMatrixPage />} />
+            <Route path="teams/:id" element={<TeamDetailPage />} />
             <Route path="scoring" element={<ScoreboardPage />} />
+            <Route path="scoring/entry" element={<ScoreEntryPage />} />
             <Route path="scoring/score-sheets" element={<ScoreSheetsPage />} />
             <Route path="scoring/de" element={<DEPage />} />
             <Route path="scoring/aerial" element={<AerialPage />} />
             <Route path="scoring/doc" element={<DocScoringPage />} />
             <Route path="papers" element={<PapersPage />} />
+            <Route path="papers/:id" element={<PaperDetailPage />} />
             <Route path="printing" element={<PrintingPage />} />
+            <Route path="printing/jobs/:id" element={<PrintJobDetailPage />} />
+            <Route path="bots" element={<BotsPage />} />
+            <Route path="bots/:id" element={<BotDetailPage />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route
               path="settings/*"
               element={

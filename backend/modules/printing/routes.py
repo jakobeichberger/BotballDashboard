@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission
+from core.auth import get_current_user, require_permission, assert_team_access
 from core.database import get_db
 from modules.printing import service
 from modules.printing.schemas import (
@@ -14,6 +14,7 @@ from modules.printing.schemas import (
     PrintJobResponse,
     PrintJobUpdate,
     QuotaResponse,
+    QuotaUpsert,
 )
 
 router = APIRouter(prefix="/printing", tags=["printing"])
@@ -66,6 +67,8 @@ async def create_print_job(
     current_user=Depends(require_permission("printing:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Organizers (printing:admin) may submit for any team; mentors only their own.
+    await assert_team_access(db, current_user, body.team_id, "printing:admin")
     return await service.create_print_job(db, body.model_dump(), current_user.id)
 
 
@@ -98,6 +101,18 @@ async def get_quota(
     db: AsyncSession = Depends(get_db),
 ):
     return await service.get_quota(db, team_id, season_id)
+
+
+@router.put("/quotas", response_model=QuotaResponse)
+async def set_quota(
+    body: QuotaUpsert,
+    _=Depends(require_permission("printing:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.set_quota(
+        db, body.team_id, body.season_id,
+        max_parts=body.max_parts, soft_limit_parts=body.soft_limit_parts, max_grams=body.max_grams,
+    )
 
 
 # ── Filament spools ───────────────────────────────────────────────────────────

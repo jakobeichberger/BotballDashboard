@@ -121,3 +121,34 @@ class CompetitionLevelResponse(BaseModel):
     code: str
     description: str | None
     is_active: bool
+
+
+class CompetitionLevelCreate(BaseModel):
+    name: str
+    code: str
+    description: str | None = None
+
+
+class CompetitionLevelUpdate(BaseModel):
+    name: str | None = None
+    code: str | None = None
+    description: str | None = None
+    is_active: bool | None = None
+
+
+class SeasonEventCreate(BaseModel):
+    title: str
+    event_type: str = "deadline"  # deadline | event
+    event_date: date
+    description: str | None = None
+
+
+class SeasonEventResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    season_id: str
+    title: str
+    event_type: str
+    event_date: date
+    description: str | None

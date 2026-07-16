@@ -39,6 +39,32 @@ async def _printers_map(db: AsyncSession) -> dict[str, str]:
 
 # ── Ranking PDF ───────────────────────────────────────────────────────────────
 
+def _csv_safe(value):
+    """Neutralise spreadsheet formula injection.
+
+    Team names, paper titles and match notes are user-supplied (a mentor can set
+    them on their own records). Excel/LibreOffice execute a cell starting with
+    =, +, - or @, so prefix those with an apostrophe.
+    """
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@"):
+        return "'" + value
+    return value
+
+
+class _SafeWriter:
+    """csv.writer wrapper that escapes every field via _csv_safe."""
+
+    def __init__(self, buf):
+        self._w = csv.writer(buf)
+
+    def writerow(self, row):
+        self._w.writerow([_csv_safe(v) for v in row])
+
+    def writerows(self, rows):
+        for row in rows:
+            self.writerow(row)
+
+
 @router.get("/seasons/{season_id}/ranking.pdf")
 async def export_ranking_pdf(
     season_id: str,
@@ -85,7 +111,7 @@ async def export_ranking_csv(
     teams = await _teams_map(db, season_id)
 
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    writer = _SafeWriter(buf)
     writer.writerow(["Rang", "Team", "Seed-Score", "Best-Score", "Durchschnitt", "Runden"])
     for r in ranking:
         writer.writerow([
@@ -117,7 +143,7 @@ async def export_matches_csv(
     teams = await _teams_map(db, season_id)
 
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    writer = _SafeWriter(buf)
     writer.writerow([
         "Match-ID", "Team", "Runde", "Tisch", "Total-Score",
         "DQ", "Yellow Card", "Red Card", "Notizen", "Eingetragen am",
@@ -192,7 +218,7 @@ async def export_papers_csv(
     teams = await _teams_map(db, season_id)
 
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    writer = _SafeWriter(buf)
     writer.writerow([
         "Team", "Titel", "Status", "Revision",
         "Reviewer", "Ø Score", "Eingereicht am",
@@ -294,7 +320,7 @@ async def export_teams_csv(
     teams = await list_teams(db, season_id=season_id)
 
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    writer = _SafeWriter(buf)
     writer.writerow(["Name", "Nummer", "Schule", "Stadt", "Land", "Status"])
     for t in teams:
         writer.writerow([

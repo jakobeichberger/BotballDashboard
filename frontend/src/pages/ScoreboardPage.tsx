@@ -164,7 +164,9 @@ function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) 
               <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-white">{e.team_name ?? e.team_id}</div>
+                  <Link to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                    {e.team_name ?? e.team_id}
+                  </Link>
                   <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 {categories.length > 1 && (
@@ -293,7 +295,9 @@ function AerialTab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
               <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-white">{e.team_name ?? e.team_id}</div>
+                  <Link to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                    {e.team_name ?? e.team_id}
+                  </Link>
                   <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 <td className="px-4 py-3 text-right">{fmt(e.run1, 1)}</td>
@@ -372,7 +376,9 @@ function OverallTab({
               <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-white">{e.team_name ?? e.team_id}</div>
+                  <Link to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                    {e.team_name ?? e.team_id}
+                  </Link>
                   <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 {categories.length > 1 && (
@@ -413,6 +419,9 @@ export default function ScoreboardPage() {
   const seasonId = params.get("season_id") ?? "";
   const { data: currentUser } = useCurrentUser();
   const isAdmin = currentUser?.roles?.some((r: any) => r.name === "admin") ?? false;
+  const canEnterScores =
+    currentUser?.is_superuser ||
+    (currentUser?.roles?.some((r: any) => ["admin", "juror", "mentor"].includes(r.name)) ?? false);
 
   const { data: activeSeasonData } = useQuery<Season>({
     queryKey: ["seasons", "active"],
@@ -442,6 +451,11 @@ export default function ScoreboardPage() {
           Rangliste
         </h1>
         <div className="flex items-center gap-3">
+          {canEnterScores && (
+            <Link to="/scoring/entry" className="btn-primary text-sm">
+              Wertung erfassen
+            </Link>
+          )}
           {isAdmin && (
             <Link to="/scoring/score-sheets" className="btn-secondary text-sm">
               Score-Sheets

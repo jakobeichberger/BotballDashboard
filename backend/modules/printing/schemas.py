@@ -80,6 +80,14 @@ class PrintJobResponse(BaseModel):
     created_at: datetime
 
 
+class QuotaUpsert(BaseModel):
+    team_id: str
+    season_id: str
+    max_parts: int | None = None
+    soft_limit_parts: int | None = None
+    max_grams: float | None = None
+
+
 class QuotaResponse(BaseModel):
     model_config = {"from_attributes": True}
 

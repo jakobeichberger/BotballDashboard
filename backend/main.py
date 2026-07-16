@@ -25,6 +25,7 @@ from modules.paper_review.routes import router as paper_router
 from modules.printing.routes import router as printing_router
 from modules.dashboard.routes import router as dashboard_router
 from modules.exports.routes import router as exports_router
+from modules.bots.routes import router as bots_router
 
 settings = get_settings()
 configure_logging()
@@ -98,6 +99,7 @@ app.include_router(paper_router, prefix="/api")
 app.include_router(printing_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(exports_router, prefix="/api")
+app.include_router(bots_router, prefix="/api")
 
 
 @app.get("/api/system/health", tags=["system"])
