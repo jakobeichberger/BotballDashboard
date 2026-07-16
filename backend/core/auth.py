@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
@@ -32,7 +33,15 @@ def create_refresh_token(subject: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.jwt_refresh_token_expire_days
     )
-    payload = {"sub": subject, "exp": expire, "type": "refresh"}
+    # `jti` keeps every refresh token unique: without it two logins for the
+    # same user within the same second produce an identical JWT (exp only has
+    # second granularity), whose hash then collides on refresh_tokens.token_hash.
+    payload = {
+        "sub": subject,
+        "exp": expire,
+        "type": "refresh",
+        "jti": str(uuid.uuid4()),
+    }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 

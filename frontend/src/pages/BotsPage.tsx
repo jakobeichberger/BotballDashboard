@@ -83,11 +83,11 @@ export default function BotsPage() {
           <BotIcon className="w-6 h-6" /> Bot-Galerie
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <select className="input text-sm w-44" value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}>
+          <select aria-label="Saison filtern" className="input text-sm w-44" value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}>
             <option value="">Alle Saisons</option>
             {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name}</option>))}
           </select>
-          <select className="input text-sm w-40" value={scope} onChange={(e) => setScope(e.target.value as any)}>
+          <select aria-label="Teams filtern" className="input text-sm w-40" value={scope} onChange={(e) => setScope(e.target.value as any)}>
             <option value="">Alle Teams</option>
             <option value="own">Eigene Teams</option>
             <option value="external">Externe Teams</option>
