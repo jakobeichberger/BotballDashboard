@@ -28,6 +28,10 @@ offenen Features mehr.
 ## 🟢 Keine substanziell offenen Features mehr
 Alle ursprünglich offenen Punkte sind abgearbeitet.
 
+## 🐞 Bekannte Bugs (bestehend, bewusst nicht in diesem Branch gefixt)
+- [ ] **Doppelte Ränge bei gemischten Wettbewerbsstufen** – `scoring/service.py::_refresh_ranks` filtert nur nach `competition_level_id`, wenn dieses gesetzt ist. `Ranking.competition_level_id` wird zudem nur beim Anlegen der Zeile gesetzt. Folge: Ein Team ohne Stufe und eines mit Stufe können beide **Rang 1** haben, und die Reihenfolge hängt davon ab, welches Match zuletzt erfasst wurde. Braucht eine Produktentscheidung: Ist die Rangliste **global** oder **pro Stufe**? (Aktuell nutzt die Erfassung durchgängig `competition_level_id=None`, daher im Alltag unauffällig.)
+- [ ] **Race beim Quota-Upsert** – `team_season_print_quotas` hat nur einen **nicht-eindeutigen** Index auf `(team_id, season_id)` (Migration 0007). `_get_or_create_quota` macht check-then-insert; zwei parallele Requests können zwei Zeilen anlegen, danach wirft `scalar_one_or_none()` dauerhaft `MultipleResultsFound` (500). Verschärfend: `GET /printing/quotas` legt Zeilen an. Fix wäre ein Unique-Constraint per Migration + Upsert.
+
 ## ⚪ Bewusst nicht umgesetzt (redundant zu bereits Genutztem)
 - `GET /scoring/seasons/{id}/ranking` – Basis-Rangliste; Frontend nutzt `ranking/extended`.
 - `POST /scoring/seasons/{id}/matches/bulk` – Bulk-Eingabe; Einzeleingabe ist verdrahtet.
