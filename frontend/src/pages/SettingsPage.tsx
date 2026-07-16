@@ -81,7 +81,7 @@ function UsersSettings() {
             <th className="px-4 py-3 text-left font-medium">E-Mail</th>
             <th className="px-4 py-3 text-left font-medium">Rollen</th>
             <th className="px-4 py-3 text-left font-medium">Status</th>
-            <th className="px-4 py-3 text-right font-medium"></th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {users?.map((user: any) => (
@@ -174,7 +174,7 @@ function SeasonsSettings() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">Name</th><th className="px-4 py-3 text-left font-medium">Jahr</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"></th>
+            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {seasons?.map((s: any) => (
@@ -229,7 +229,7 @@ function SpoolsPanel() {
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">Material</th><th className="px-4 py-3 text-left font-medium">Farbe</th>
             <th className="px-4 py-3 text-left font-medium">Marke</th><th className="px-4 py-3 text-right font-medium">Rest</th>
-            <th className="px-4 py-3 text-right font-medium"></th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {spools?.map((s: any) => {
@@ -297,7 +297,7 @@ function PrintersSettings() {
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">Name</th><th className="px-4 py-3 text-left font-medium">Modell</th>
             <th className="px-4 py-3 text-left font-medium">Typ</th><th className="px-4 py-3 text-left font-medium">Status</th>
-            <th className="px-4 py-3 text-right font-medium"></th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {printers?.map((p: any) => (
@@ -357,7 +357,7 @@ function AnnouncementsSettings() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">Titel</th><th className="px-4 py-3 text-left font-medium">Zielgruppe</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"></th>
+            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {anns?.map((a: any) => (
@@ -517,7 +517,7 @@ function LevelsSettings() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">Name</th><th className="px-4 py-3 text-left font-medium">Code</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"></th>
+            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {levels?.map((l: any) => (

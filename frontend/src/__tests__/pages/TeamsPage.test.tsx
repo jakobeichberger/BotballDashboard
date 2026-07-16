@@ -4,8 +4,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import TeamsPage from "@/pages/TeamsPage";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
-vi.mock("@/lib/api", () => ({ api: { get: vi.fn() } }));
+vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn() } }));
+
+const ADMIN = {
+  id: "u1", email: "admin@test.local", display_name: "Admin", is_superuser: true,
+  preferred_language: "de", theme: "system", roles: [{ id: "r1", name: "admin", description: null }],
+};
 
 function mockApi(teams: any[] = []) {
   (api.get as any).mockImplementation((url: string) => {
@@ -28,13 +34,21 @@ function renderPage() {
 describe("TeamsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useAuthStore.setState({ user: ADMIN as any, accessToken: "test-token" });
   });
 
-  it("renders the heading and add button", () => {
+  it("renders the heading and add button for an admin", () => {
     mockApi([]);
     renderPage();
     expect(screen.getByRole("heading", { name: /teams/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /team hinzufügen/i })).toBeInTheDocument();
+  });
+
+  it("hides the add button for non-admins", () => {
+    useAuthStore.setState({ user: null, accessToken: null });
+    mockApi([]);
+    renderPage();
+    expect(screen.queryByRole("button", { name: /team hinzufügen/i })).not.toBeInTheDocument();
   });
 
   it("renders the empty state when there are no teams", async () => {

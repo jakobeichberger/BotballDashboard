@@ -210,7 +210,7 @@ export default function TeamDetailPage() {
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Name</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Rolle</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">E-Mail</th>
-              {canManage && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400"></th>}
+              {canManage && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400"><span className="sr-only">Aktionen</span></th>}
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
