@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import aiofiles
@@ -58,6 +59,8 @@ async def update_bot(db: AsyncSession, bot_id: str, **kwargs) -> Bot:
 async def delete_bot(db: AsyncSession, bot_id: str) -> None:
     bot = await get_bot(db, bot_id)
     await db.delete(bot)
+    # Don't leave the uploaded image orphaned on disk.
+    shutil.rmtree(Path(settings.upload_dir) / "bots" / bot_id, ignore_errors=True)
 
 
 async def save_image(db: AsyncSession, bot_id: str, file: UploadFile) -> Bot:
@@ -74,6 +77,12 @@ async def save_image(db: AsyncSession, bot_id: str, file: UploadFile) -> Bot:
 
     async with aiofiles.open(file_path, "wb") as f:
         await f.write(content)
+
+    # Replacing an image with a differently-named one would otherwise leave the
+    # old file behind, unreferenced.
+    if bot.image_name and bot.image_name != safe_name:
+        old = ensure_within(upload_dir, upload_dir / safe_filename(bot.image_name, "bot.png"))
+        old.unlink(missing_ok=True)
 
     bot.image_name = safe_name
     return bot

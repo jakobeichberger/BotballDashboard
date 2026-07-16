@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PaperCreate(BaseModel):
@@ -22,10 +22,13 @@ class ReviewerAssignmentCreate(BaseModel):
 
 
 class ReviewCreateUpdate(BaseModel):
-    score_content: float | None = None
-    score_methodology: float | None = None
-    score_presentation: float | None = None
-    score_originality: float | None = None
+    # Each criterion is scored 0-10; finalize_paper divides the mean by 10 to
+    # get final_score, so out-of-range values would push it outside 0-1 and
+    # skew the overall competition ranking.
+    score_content: float | None = Field(default=None, ge=0, le=10)
+    score_methodology: float | None = Field(default=None, ge=0, le=10)
+    score_presentation: float | None = Field(default=None, ge=0, le=10)
+    score_originality: float | None = Field(default=None, ge=0, le=10)
     comments: str | None = None
     private_notes: str | None = None
     recommendation: str | None = None

@@ -155,4 +155,4 @@ async def delete_season_event(
     _=Depends(require_permission("seasons:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    await service.delete_event(db, event_id)
+    await service.delete_event(db, season_id, event_id)

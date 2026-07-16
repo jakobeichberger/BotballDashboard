@@ -110,6 +110,9 @@ async def bulk_create_matches(
 ):
     results = []
     for entry in body.entries:
+        # Same scoping as the single-match route — otherwise this endpoint
+        # would be a way around it.
+        await assert_team_access(db, current_user, entry.team_id, "scoring:admin")
         data = entry.model_dump()
         data["season_id"] = season_id
         results.append(await service.create_match(db, data, current_user.id))
@@ -130,9 +133,12 @@ async def get_match(
 async def update_match(
     match_id: str,
     body: MatchUpdate,
-    _=Depends(require_permission("scoring:write")),
+    current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Organizers may edit any match; mentors only their own team's.
+    existing = await service.get_match(db, match_id)
+    await assert_team_access(db, current_user, existing.team_id, "scoring:admin")
     match = await service.update_match(db, match_id, **body.model_dump(exclude_none=True))
     await _broadcast_ranking_update(match.season_id)
     return match

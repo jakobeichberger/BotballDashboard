@@ -57,9 +57,11 @@ async def get_paper(
 async def update_paper(
     paper_id: str,
     body: PaperUpdate,
-    _=Depends(require_permission("papers:write")),
+    current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    paper = await service.get_paper(db, paper_id)
+    await assert_team_access(db, current_user, paper.team_id, "papers:admin")
     return await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
 
 

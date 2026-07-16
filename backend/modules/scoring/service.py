@@ -99,6 +99,10 @@ async def update_match(db: AsyncSession, match_id: str, **kwargs) -> Match:
         if value is not None:
             setattr(match, key, value)
 
+    # _recompute_ranking re-queries the matches in SQL; without a flush the
+    # session (autoflush=False) would still hand it the pre-update row, so e.g.
+    # disqualifying a match would leave it counted in the ranking.
+    await db.flush()
     await _recompute_ranking(db, match.season_id, match.team_id, match.competition_level_id)
     return match
 

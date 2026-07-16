@@ -38,11 +38,20 @@ class AnnouncementResponse(BaseModel):
 async def list_announcements(
     season_id: str | None = Query(None),
     include_unpublished: bool = Query(False),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(Announcement).order_by(Announcement.created_at.desc())
-    if not include_unpublished:
+    if include_unpublished:
+        # Drafts are internal — only those who may publish may read them.
+        from core.exceptions import ForbiddenError
+        from modules.auth.service import get_user_permissions
+
+        if not current_user.is_superuser and "dashboard:write" not in await get_user_permissions(
+            db, current_user.id
+        ):
+            raise ForbiddenError("Missing permissions: dashboard:write")
+    else:
         q = q.where(Announcement.is_published == True)
     if season_id:
         q = q.where(Announcement.season_id == season_id)

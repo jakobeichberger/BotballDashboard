@@ -137,8 +137,13 @@ async def create_event(db: AsyncSession, season_id: str, data: dict) -> SeasonEv
     return event
 
 
-async def delete_event(db: AsyncSession, event_id: str) -> None:
-    result = await db.execute(select(SeasonEvent).where(SeasonEvent.id == event_id))
+async def delete_event(db: AsyncSession, season_id: str, event_id: str) -> None:
+    result = await db.execute(
+        select(SeasonEvent).where(
+            SeasonEvent.id == event_id,
+            SeasonEvent.season_id == season_id,  # scope to the season in the path
+        )
+    )
     event = result.scalar_one_or_none()
     if not event:
         raise NotFoundError("Event not found")
