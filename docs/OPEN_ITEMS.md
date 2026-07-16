@@ -19,8 +19,11 @@ offenen Features mehr.
 - Team anlegen, Profilseite (Name/Sprache/Passwort), **Druck-Kontingent anzeigen + bearbeiten**
 - Einzelne Wertung bearbeiten, `matches.csv`-Export
 - **Benutzerdefinierte Rollen** anlegen (`GET /auth/permissions` + `POST /auth/roles`) mit Rechte-Auswahl
+- **Bot-Galerie** (`/bots`, Migration 0015): Roboter eigener **und externer** Teams mit Funktionsweise, Antrieb, Sensorik, Saison und Bild (Magic-Byte-validiert). Mentoren pflegen die Bots ihres Teams, externe Bots sind Organisator-Sache.
 - 4 latente Berechtigungs-Bugs behoben (Migrationen 0010–0014)
-- **Tests**: 14 neue Tests (Season-Events, Level-CRUD, Quota, Rollen, Finalisierung, Übungsläufe, Team-Zugriff); Gesamtsuite **574 grün**
+- **Dependabot: alle Alerts behoben** — Frontend `pnpm audit` meldet „No known vulnerabilities" (axios/vitest/vite/react-router/postcss + pnpm-overrides für Transitives), Backend cryptography 48.0.1, aiosmtplib 5.1.1, pytest 9.0.3
+- **Login-Bug behoben**: zwei Logins desselben Users in derselben Sekunde erzeugten ein identisches Refresh-JWT → Hash-Kollision → **409**. Refresh-Tokens haben jetzt eine `jti`.
+- **Tests**: **587 Backend**, **94 Frontend-Unit**, **11 Playwright-E2E**
 
 ## 🟢 Keine substanziell offenen Features mehr
 Alle ursprünglich offenen Punkte sind abgearbeitet.
@@ -35,5 +38,10 @@ Alle ursprünglich offenen Punkte sind abgearbeitet.
 
 ## ⚠️ Bekannte Einschränkungen / Hinweise
 - **`.local`-E-Mails**: `UserCreate.email` (`EmailStr`) lehnt reservierte TLDs wie `.local` ab. Die Seed-Logins (`@test.local`) funktionieren nur, weil das Seed-Script die Validierung umgeht. Im Formular echte Domains verwenden.
-- **Tests**: Pytest-Suite auf **574 grün** (14 neue Tests für die neuen Endpoints); Frontend via `tsc -b`, API-Stichproben und Browser-Checks verifiziert. Keine automatisierten Frontend-E2E-Tests.
-- **Dependabot**: GitHub meldet Sicherheits-Findings bei Abhängigkeiten (unabhängig von diesen Änderungen) – separat prüfen.
+- **E2E-Tests ausführen**: Der Playwright-Suite braucht den laufenden Dev-Stack (`make dev`) **mit Seed-Daten**, weil sie gegen die echten Test-Logins prüft:
+  ```bash
+  cd frontend && pnpm install && npx playwright install chromium
+  pnpm test:e2e            # bzw. npx playwright test --ui
+  ```
+  Die Specs laufen gegen `http://localhost:5173` (überschreibbar via `E2E_BASE_URL`).
+- **Tests**: 587 Backend · 94 Frontend-Unit · 11 E2E. Die E2E-Suite läuft noch **nicht in CI** (bräuchte dort Stack + Seed).
