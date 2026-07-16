@@ -145,6 +145,9 @@ async def _recompute_ranking(
                 Ranking.team_id == team_id,
             )
         )
+        # Close the gap the removed row leaves behind (…1, 2, 4 → 1, 2, 3).
+        await db.flush()
+        await _refresh_ranks(db, season_id, competition_level_id)
         return
 
     seed_score = compute_seed_score(scores)
@@ -164,6 +167,9 @@ async def _recompute_ranking(
         ranking.best_score = best_score
         ranking.average_score = avg_score
         ranking.rounds_played = len(scores)
+        # Keep the level in sync — otherwise the row would keep whatever level
+        # it was first created with and be ranked in the wrong group.
+        ranking.competition_level_id = competition_level_id
     else:
         ranking = Ranking(
             season_id=season_id,
@@ -184,9 +190,18 @@ async def _recompute_ranking(
 async def _refresh_ranks(
     db: AsyncSession, season_id: str, competition_level_id: str | None
 ) -> None:
-    """Re-number all ranks for a season/level by seed_score DESC."""
+    """Re-number ranks by seed_score DESC within one competition level.
+
+    Teams compete within their level, so each level is numbered from 1
+    independently — and teams without a level (the default) form their own
+    group. Previously a NULL level skipped the filter and renumbered the whole
+    season, so a level's 1..n could collide with the season-wide 1..n and two
+    teams ended up sharing rank 1.
+    """
     q = select(Ranking).where(Ranking.season_id == season_id)
-    if competition_level_id:
+    if competition_level_id is None:
+        q = q.where(Ranking.competition_level_id.is_(None))
+    else:
         q = q.where(Ranking.competition_level_id == competition_level_id)
     result = await db.execute(q.order_by(Ranking.seed_score.desc()))
     rankings = result.scalars().all()

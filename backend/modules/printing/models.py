@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -72,6 +72,11 @@ class PrintJob(Base):
 
 class TeamSeasonPrintQuota(Base):
     __tablename__ = "team_season_print_quotas"
+    # One quota per team+season. Without this, two concurrent requests could
+    # each insert a row and every later read would fail with MultipleResultsFound.
+    __table_args__ = (
+        UniqueConstraint("team_id", "season_id", name="uq_print_quotas_team_season"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     team_id: Mapped[str] = mapped_column(
