@@ -12,6 +12,14 @@ from core.exceptions import ValidationError
 _SAFE_CHARS = re.compile(r"[^A-Za-z0-9._-]")
 _PDF_MAGIC = b"%PDF-"
 
+# Magic-byte prefixes for the image types accepted by the bot gallery.
+_IMAGE_MAGIC: dict[bytes, str] = {
+    b"\x89PNG\r\n\x1a\n": "image/png",
+    b"\xff\xd8\xff": "image/jpeg",
+    b"GIF87a": "image/gif",
+    b"GIF89a": "image/gif",
+}
+
 
 def safe_filename(name: str | None, default: str = "upload.bin") -> str:
     """Return a safe base filename: strips any directory components and
@@ -60,3 +68,23 @@ def validate_pdf(content: bytes, *, max_mb: int | None = None) -> None:
         raise ValidationError(f"File too large (max {max_mb} MB)")
     if not content.startswith(_PDF_MAGIC):
         raise ValidationError("File is not a valid PDF")
+
+
+def validate_image(content: bytes, *, max_mb: int | None = None) -> str:
+    """Validate an uploaded image by magic bytes and size.
+
+    Returns the detected media type. Raises ValidationError on violation.
+    """
+    if max_mb is None:
+        max_mb = getattr(get_settings(), "max_upload_size_mb", 20)
+    if len(content) == 0:
+        raise ValidationError("Empty file")
+    if len(content) > max_mb * 1024 * 1024:
+        raise ValidationError(f"File too large (max {max_mb} MB)")
+    for magic, media_type in _IMAGE_MAGIC.items():
+        if content.startswith(magic):
+            return media_type
+    # WebP: "RIFF" .... "WEBP"
+    if content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        return "image/webp"
+    raise ValidationError("File is not a valid image (PNG, JPEG, GIF or WebP)")

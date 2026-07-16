@@ -6,6 +6,7 @@ import {
   Trophy,
   FileText,
   Printer,
+  Bot,
   Settings,
   LogOut,
   Sun,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { to: "/scoring", icon: Trophy, labelKey: "nav.scoring", roles: [] },
   { to: "/papers", icon: FileText, labelKey: "nav.papers", roles: [] },
   { to: "/printing", icon: Printer, labelKey: "nav.printing", roles: [] },
+  { to: "/bots", icon: Bot, labelKey: "nav.bots", roles: [] },
 ];
 
 export default function Layout() {

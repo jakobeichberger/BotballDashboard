@@ -18,6 +18,8 @@ const TeamDetailPage = lazy(() => import("@/pages/TeamDetailPage"));
 const PapersPage = lazy(() => import("@/pages/PapersPage"));
 const PaperDetailPage = lazy(() => import("@/pages/PaperDetailPage"));
 const PrintingPage = lazy(() => import("@/pages/PrintingPage"));
+const BotsPage = lazy(() => import("@/pages/BotsPage"));
+const BotDetailPage = lazy(() => import("@/pages/BotDetailPage"));
 const PrintJobDetailPage = lazy(() => import("@/pages/PrintJobDetailPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
@@ -57,6 +59,8 @@ function AppRoutes() {
             <Route path="papers/:id" element={<PaperDetailPage />} />
             <Route path="printing" element={<PrintingPage />} />
             <Route path="printing/jobs/:id" element={<PrintJobDetailPage />} />
+            <Route path="bots" element={<BotsPage />} />
+            <Route path="bots/:id" element={<BotDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route
               path="settings/*"
