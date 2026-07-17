@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from core.exceptions import ConflictError, NotFoundError, ValidationError
-from modules.events.models import Event, ScheduledMatch
+from modules.events.models import Event, EventRegistration, ScheduledMatch
 from modules.scoring import service as scoring_service
 from modules.scoring.score_sheets.models import ScoreSheetScan, ScoreSheetTemplate
 from modules.teams.models import Team
@@ -48,6 +48,14 @@ async def create_scan(
         raise ValidationError("Score-sheet template does not belong to this event's season")
     if not await db.get(Team, team_id):
         raise NotFoundError("Team not found")
+    registration = await db.execute(
+        select(EventRegistration.id).where(
+            EventRegistration.event_id == event_id,
+            EventRegistration.team_id == team_id,
+        )
+    )
+    if not registration.scalar_one_or_none():
+        raise ValidationError("Team is not registered for this event")
     if scheduled_match_id:
         scheduled = await db.get(ScheduledMatch, scheduled_match_id)
         if not scheduled or scheduled.event_id != event_id:

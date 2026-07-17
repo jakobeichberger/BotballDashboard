@@ -41,6 +41,9 @@ let queue: Array<(token: string | null) => void> = [];
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    if (error.response?.data?.message && !error.response.data.detail) {
+      error.response.data.detail = error.response.data.message;
+    }
     const original = error.config;
     if (
       error.response?.status === 401 &&

@@ -15,7 +15,7 @@ i18n
   .init({
     fallbackLng: "de",
     supportedLngs: ["de", "en"],
-    ns: ["common", "auth", "scoring", "teams", "papers", "printing", "dashboard"],
+    ns: ["common", "auth", "scoring", "teams", "papers", "printing", "dashboard", "events"],
     defaultNS: "common",
     detection: {
       order: ["localStorage", "navigator"],

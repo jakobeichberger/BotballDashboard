@@ -7,15 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import require_permission
 from core.database import get_db
+from core.rate_limit import rate_limit
 from modules.paper_review import service
 from modules.paper_review.schemas import (
     PaperCreate,
     PaperListItem,
     PaperResponse,
+    PaperStatusHistoryResponse,
     PaperUpdate,
     ReviewCreateUpdate,
     ReviewerAssignmentCreate,
     ReviewerAssignmentResponse,
+    ReviewerWorkloadResponse,
     ReviewResponse,
 )
 
@@ -27,10 +30,11 @@ async def list_papers(
     season_id: str | None = Query(None),
     team_id: str | None = Query(None),
     status: str | None = Query(None),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_papers(db, season_id, team_id, status)
+    return await service.list_papers(db, season_id, team_id, status, event_id)
 
 
 @router.post("", response_model=PaperResponse, status_code=201)
@@ -61,7 +65,11 @@ async def update_paper(
     return await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
 
 
-@router.post("/{paper_id}/upload", response_model=PaperResponse)
+@router.post(
+    "/{paper_id}/upload",
+    response_model=PaperResponse,
+    dependencies=[Depends(rate_limit("paper-upload", 20, 60))],
+)
 async def upload_paper_file(
     paper_id: str,
     file: UploadFile = File(...),
@@ -112,10 +120,10 @@ async def set_paper_status(
     status: Literal[
         "draft", "submitted", "under_review", "accepted", "rejected", "revision_requested"
     ] = Query(...),
-    _=Depends(require_permission("papers:admin")),
+    current_user=Depends(require_permission("papers:admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.set_paper_status(db, paper_id, status)
+    return await service.set_paper_status(db, paper_id, status, current_user.id)
 
 
 # ── Reviewer assignments ──────────────────────────────────────────────────────
@@ -128,7 +136,31 @@ async def assign_reviewer(
     current_user=Depends(require_permission("papers:admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.assign_reviewer(db, paper_id, body.reviewer_id, current_user.id)
+    return await service.assign_reviewer(
+        db, paper_id, body.reviewer_id, current_user.id, body.due_at
+    )
+
+
+@router.post(
+    "/{paper_id}/assignments/{assignment_id}/remind",
+    response_model=ReviewerAssignmentResponse,
+)
+async def remind_reviewer(
+    paper_id: str,
+    assignment_id: str,
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.mark_reminder_sent(db, paper_id, assignment_id)
+
+
+@router.get("/reviewers/workload", response_model=list[ReviewerWorkloadResponse])
+async def get_reviewer_workload(
+    event_id: str | None = Query(None),
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.reviewer_workload(db, event_id)
 
 
 # ── Reviews ───────────────────────────────────────────────────────────────────
@@ -155,3 +187,12 @@ async def list_reviews(
 ):
     paper = await service.get_paper(db, paper_id)
     return paper.reviews
+
+
+@router.get("/{paper_id}/history", response_model=list[PaperStatusHistoryResponse])
+async def get_paper_history(
+    paper_id: str,
+    _=Depends(require_permission("papers:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.list_status_history(db, paper_id)

@@ -91,6 +91,7 @@ async def list_registrations(db: AsyncSession, event_id: str) -> list[EventRegis
     await get_event(db, event_id)
     result = await db.execute(
         select(EventRegistration)
+        .options(selectinload(EventRegistration.team))
         .where(EventRegistration.event_id == event_id)
         .order_by(EventRegistration.seed_number.nullslast(), EventRegistration.registered_at)
     )
@@ -113,6 +114,7 @@ async def add_registration(db: AsyncSession, event_id: str, data: dict) -> Event
     except IntegrityError as exc:
         await db.rollback()
         raise ConflictError("Team is already registered for this event") from exc
+    await db.refresh(registration, ["team"])
     return registration
 
 
@@ -120,7 +122,9 @@ async def update_registration(
     db: AsyncSession, event_id: str, registration_id: str, data: dict
 ) -> EventRegistration:
     result = await db.execute(
-        select(EventRegistration).where(
+        select(EventRegistration)
+        .options(selectinload(EventRegistration.team))
+        .where(
             EventRegistration.id == registration_id,
             EventRegistration.event_id == event_id,
         )
@@ -193,7 +197,7 @@ async def list_scheduled_matches(
     await get_event(db, event_id)
     query = (
         select(ScheduledMatch)
-        .options(selectinload(ScheduledMatch.participants))
+        .options(selectinload(ScheduledMatch.participants).selectinload(MatchParticipant.team))
         .where(ScheduledMatch.event_id == event_id)
     )
     if phase_id:
@@ -381,7 +385,7 @@ async def update_scheduled_match(
 ) -> ScheduledMatch:
     result = await db.execute(
         select(ScheduledMatch)
-        .options(selectinload(ScheduledMatch.participants))
+        .options(selectinload(ScheduledMatch.participants).selectinload(MatchParticipant.team))
         .where(ScheduledMatch.id == match_id, ScheduledMatch.event_id == event_id)
     )
     match = result.scalar_one_or_none()

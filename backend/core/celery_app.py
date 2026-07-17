@@ -9,8 +9,27 @@ celery_app = Celery(
     "botball_dashboard",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["modules.scoring.score_sheets.tasks"],
+    include=[
+        "modules.scoring.score_sheets.tasks",
+        "modules.printing.tasks",
+        "modules.dashboard.tasks",
+        "modules.paper_review.tasks",
+    ],
 )
+celery_app.conf.beat_schedule = {
+    "poll-printers": {
+        "task": "printing.poll_printers",
+        "schedule": 15.0,
+    },
+    "deliver-notification-outbox": {
+        "task": "notifications.deliver_outbox",
+        "schedule": 10.0,
+    },
+    "process-paper-review-deadlines": {
+        "task": "papers.process_review_deadlines",
+        "schedule": 3600.0,
+    },
+}
 celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",

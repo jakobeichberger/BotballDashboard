@@ -1,13 +1,13 @@
-import asyncio
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, require_permission
 from core.database import get_db
+from core.domain_events import emit_event
 from modules.dashboard.models import Announcement
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 class AnnouncementCreate(BaseModel):
     season_id: str | None = None
+    event_id: str | None = None
     title: str
     body: str
     audience: str = "all"
@@ -26,6 +27,7 @@ class AnnouncementResponse(BaseModel):
 
     id: str
     season_id: str | None
+    event_id: str | None
     title: str
     body: str
     audience: str
@@ -67,7 +69,6 @@ async def create_announcement(
 @router.put("/announcements/{ann_id}/publish", response_model=AnnouncementResponse)
 async def publish_announcement(
     ann_id: str,
-    background_tasks: BackgroundTasks,
     _=Depends(require_permission("dashboard:write")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -79,40 +80,31 @@ async def publish_announcement(
         raise NotFoundError("Announcement not found")
     ann.is_published = True
     ann.published_at = datetime.now(UTC)
-    from modules.auth.models import PushSubscription
-
-    subscriptions = list((await db.execute(select(PushSubscription))).scalars())
-    if subscriptions:
-        from core.notifications import send_push_notification
-
-        async def notify() -> None:
-            await asyncio.gather(
-                *(
-                    send_push_notification(
-                        sub.endpoint,
-                        sub.p256dh,
-                        sub.auth,
-                        ann.title,
-                        ann.body,
-                        "/",
-                    )
-                    for sub in subscriptions
-                )
-            )
-
-        background_tasks.add_task(notify)
+    await emit_event(
+        db,
+        "announcement_published",
+        event_id=ann.event_id,
+        payload={
+            "title": ann.title,
+            "body": ann.body,
+            "announcementId": ann.id,
+            "publicLive": True,
+        },
+    )
     return ann
 
 
 @router.get("/stats")
 async def get_stats(
     season_id: str | None = Query(None),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("dashboard:read")),
     db: AsyncSession = Depends(get_db),
 ):
     """Returns aggregated stats for the dashboard overview widget."""
     from sqlalchemy import func as sqlfunc
 
+    from modules.events.models import EventRegistration
     from modules.paper_review.models import Paper
     from modules.printing.models import PrintJob
     from modules.scoring.models import Match
@@ -123,7 +115,26 @@ async def get_stats(
     print_count = 0
     match_count = 0
 
-    if season_id:
+    if event_id:
+        r = await db.execute(
+            select(sqlfunc.count())
+            .select_from(EventRegistration)
+            .where(EventRegistration.event_id == event_id)
+        )
+        team_count = r.scalar() or 0
+        r = await db.execute(
+            select(sqlfunc.count()).select_from(Paper).where(Paper.event_id == event_id)
+        )
+        paper_count = r.scalar() or 0
+        r = await db.execute(
+            select(sqlfunc.count()).select_from(PrintJob).where(PrintJob.event_id == event_id)
+        )
+        print_count = r.scalar() or 0
+        r = await db.execute(
+            select(sqlfunc.count()).select_from(Match).where(Match.event_id == event_id)
+        )
+        match_count = r.scalar() or 0
+    elif season_id:
         r = await db.execute(
             select(sqlfunc.count())
             .select_from(TeamSeasonRegistration)

@@ -33,6 +33,7 @@ class Printer(Base):
         String(50), nullable=False, default="bambu"
     )  # bambu | octoprint | generic
     api_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     api_key_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)  # Fernet-encrypted
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_online: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -77,6 +78,10 @@ class PrintJob(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
     # pending | approved | queued | printing | completed | failed | cancelled
     priority: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    progress: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    external_job_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     approved_by: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=True
@@ -93,9 +98,7 @@ class PrintJob(Base):
 
 class TeamSeasonPrintQuota(Base):
     __tablename__ = "team_season_print_quotas"
-    __table_args__ = (
-        UniqueConstraint("event_id", "team_id", name="uq_print_quota_event_team"),
-    )
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_print_quota_event_team"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     team_id: Mapped[str] = mapped_column(

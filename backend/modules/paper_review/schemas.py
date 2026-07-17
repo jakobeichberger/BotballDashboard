@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class PaperCreate(BaseModel):
     season_id: str
+    event_id: str | None = None
     team_id: str
     title: str
     abstract: str | None = None
@@ -23,6 +24,7 @@ class PaperUpdate(BaseModel):
 
 class ReviewerAssignmentCreate(BaseModel):
     reviewer_id: str
+    due_at: datetime | None = None
 
 
 class ReviewCreateUpdate(BaseModel):
@@ -61,6 +63,10 @@ class ReviewerAssignmentResponse(BaseModel):
     paper_id: str
     reviewer_id: str
     assigned_at: datetime
+    due_at: datetime | None
+    status: str
+    reminder_sent_at: datetime | None
+    completed_at: datetime | None
 
 
 class PaperResponse(BaseModel):
@@ -68,6 +74,7 @@ class PaperResponse(BaseModel):
 
     id: str
     season_id: str
+    event_id: str | None
     team_id: str
     title: str
     abstract: str | None
@@ -92,6 +99,7 @@ class PaperListItem(BaseModel):
 
     id: str
     season_id: str
+    event_id: str | None
     team_id: str
     title: str
     status: str
@@ -100,3 +108,23 @@ class PaperListItem(BaseModel):
     paper_rank: int | None
     submitted_at: datetime | None
     created_at: datetime
+
+
+class PaperStatusHistoryResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    paper_id: str
+    from_status: str | None
+    to_status: str
+    reason: str | None
+    changed_by: str | None
+    changed_at: datetime
+
+
+class ReviewerWorkloadResponse(BaseModel):
+    reviewer_id: str
+    assigned: int
+    open: int
+    overdue: int
+    completed: int

@@ -429,6 +429,15 @@ async def update_template_layout(
         raise ValueError("Every OCR region must reference a confirmed scoring field")
     if len(set(region_keys)) != len(region_keys):
         raise ValueError("OCR field regions must use unique keys")
+    for region in data["field_regions"]:
+        values = (region["x"], region["y"], region["width"], region["height"])
+        if max(values) <= 1:
+            continue
+        if (
+            region["x"] + region["width"] > data["page_width"]
+            or region["y"] + region["height"] > data["page_height"]
+        ):
+            raise ValueError("Pixel OCR regions must fit within the configured page")
     for key, value in data.items():
         setattr(template, key, value)
     await db.flush()

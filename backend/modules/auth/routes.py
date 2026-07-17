@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import get_current_user, require_permission
 from core.config import get_settings
 from core.database import get_db
+from core.rate_limit import rate_limit
 from modules.auth import service
 from modules.auth.schemas import (
     CurrentUserResponse,
@@ -30,7 +31,11 @@ REFRESH_COOKIE = "refresh_token"
 # ── Login / Logout ────────────────────────────────────────────────────────────
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("login", 10, 60))],
+)
 async def login(
     body: LoginRequest, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -51,7 +56,11 @@ async def login(
     )
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("refresh", 30, 60))],
+)
 async def refresh(
     request: Request, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):

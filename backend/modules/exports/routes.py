@@ -5,10 +5,13 @@ import io
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import require_any_permission
 from core.database import get_db
+from modules.events.models import EventRegistration
+from modules.events.service import get_event
 from modules.exports.pdf_builder import (
     build_paper_review_pdf,
     build_print_report_pdf,
@@ -19,6 +22,7 @@ from modules.paper_review.service import list_papers
 from modules.printing.service import list_print_jobs, list_printers
 from modules.scoring.service import get_ranking, list_matches
 from modules.seasons.service import get_season
+from modules.teams.models import Team
 from modules.teams.service import list_teams
 
 router = APIRouter(prefix="/exports", tags=["exports"])
@@ -35,6 +39,108 @@ async def _teams_map(db: AsyncSession, season_id: str | None = None) -> dict[str
 async def _printers_map(db: AsyncSession) -> dict[str, str]:
     printers = await list_printers(db)
     return {p.id: p.name for p in printers}
+
+
+async def _event_teams_map(db: AsyncSession, event_id: str) -> dict[str, str]:
+    result = await db.execute(
+        select(Team)
+        .join(EventRegistration, EventRegistration.team_id == Team.id)
+        .where(EventRegistration.event_id == event_id)
+    )
+    return {team.id: team.name for team in result.scalars().all()}
+
+
+@router.get("/events/{event_id}/ranking.csv")
+async def export_event_ranking_csv(
+    event_id: str,
+    _=Depends(require_any_permission("scoring:read", "dashboard:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await get_event(db, event_id)
+    ranking = await get_ranking(db, event_id=event.id)
+    teams = await _event_teams_map(db, event.id)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Rank", "Team", "Seed Score", "Best Score", "Average", "Rounds"])
+    for item in ranking:
+        writer.writerow(
+            [
+                item.rank,
+                teams.get(item.team_id, item.team_id),
+                item.seed_score,
+                item.best_score,
+                item.average_score,
+                item.rounds_played,
+            ]
+        )
+    return Response(
+        content=buf.getvalue().encode("utf-8-sig"),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="ranking-{event.slug}.csv"'},
+    )
+
+
+@router.get("/events/{event_id}/ranking.pdf")
+async def export_event_ranking_pdf(
+    event_id: str,
+    _=Depends(require_any_permission("scoring:read", "dashboard:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await get_event(db, event_id)
+    ranking = await get_ranking(db, event_id=event.id)
+    teams = await _event_teams_map(db, event.id)
+    content = build_ranking_pdf(
+        event.name,
+        "",
+        [
+            {
+                "rank": item.rank,
+                "team_id": item.team_id,
+                "seed_score": item.seed_score,
+                "best_score": item.best_score,
+                "average_score": item.average_score,
+                "rounds_played": item.rounds_played,
+            }
+            for item in ranking
+        ],
+        teams,
+    )
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="ranking-{event.slug}.pdf"'},
+    )
+
+
+@router.get("/events/{event_id}/matches.csv")
+async def export_event_matches_csv(
+    event_id: str,
+    _=Depends(require_any_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await get_event(db, event_id)
+    matches = await list_matches(db, event_id=event.id)
+    teams = await _event_teams_map(db, event.id)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Match ID", "Team", "Round", "Table", "Total", "Disqualified", "Created"])
+    for item in matches:
+        writer.writerow(
+            [
+                item.id,
+                teams.get(item.team_id, item.team_id),
+                item.round_number,
+                item.table_number or "",
+                item.total_score,
+                item.is_disqualified,
+                item.created_at.isoformat(),
+            ]
+        )
+    return Response(
+        content=buf.getvalue().encode("utf-8-sig"),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="matches-{event.slug}.csv"'},
+    )
 
 
 # ── Ranking PDF ───────────────────────────────────────────────────────────────

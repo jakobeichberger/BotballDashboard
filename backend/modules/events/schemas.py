@@ -136,6 +136,8 @@ class EventRegistrationResponse(BaseModel):
     id: str
     event_id: str
     team_id: str
+    team_name: str
+    team_number: str | None
     competition_level_id: str | None
     category: str
     seed_number: int | None
@@ -195,6 +197,8 @@ class MatchParticipantResponse(BaseModel):
 
     id: str
     team_id: str | None
+    team_name: str | None
+    team_number: str | None
     position: int
     side: str | None
     result: str | None
@@ -297,6 +301,18 @@ class PublicResultResponse(BaseModel):
     yellow_card: bool
     red_card: bool
     created_at: datetime
+
+
+class PublicRankingResponse(BaseModel):
+    rank: int
+    team_id: str
+    team_name: str
+    team_number: str | None
+    seed_score: float
+    best_score: float
+    average_score: float
+    rounds_played: int
+    updated_at: datetime
 
 
 class PublicAnnouncementResponse(BaseModel):

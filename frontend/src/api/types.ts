@@ -22,6 +22,8 @@ export interface EventRegistration {
   id: string;
   event_id: string;
   team_id: string;
+  team_name: string;
+  team_number: string | null;
   competition_level_id: string | null;
   category: string;
   seed_number: number | null;
@@ -55,13 +57,15 @@ export interface ScheduledMatch {
   status: string;
   bracket: string | null;
   version: number;
-  participants: Array<{ id: string; team_id: string | null; position: number; side: string | null }>;
+  participants: Array<{ id: string; team_id: string | null; team_name: string | null; team_number: string | null; position: number; side: string | null }>;
 }
 
 export interface RankingEntry {
   rank: number;
   event_id: string;
   team_id: string;
+  team_name?: string;
+  team_number?: string | null;
   seed_score: number;
   best_score: number;
   average_score: number;

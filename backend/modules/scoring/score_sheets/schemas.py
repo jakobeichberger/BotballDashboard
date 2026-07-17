@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Sub-schemas
@@ -115,11 +115,34 @@ class SetActiveRequest(BaseModel):
     sheet_id: UUID
 
 
+class OcrAnchor(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    x: float = Field(ge=0)
+    y: float = Field(ge=0)
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+
+
+class OcrFieldRegion(BaseModel):
+    key: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=100)
+    x: float = Field(ge=0)
+    y: float = Field(ge=0)
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_normalized_coordinates(self) -> OcrFieldRegion:
+        values = (self.x, self.y, self.width, self.height)
+        if max(values) <= 1 and (self.x + self.width > 1 or self.y + self.height > 1):
+            raise ValueError("Normalized OCR regions must fit within the page")
+        return self
+
+
 class ScoreSheetTemplateLayoutUpdate(BaseModel):
     page_width: int = Field(ge=100, le=20000)
     page_height: int = Field(ge=100, le=20000)
-    anchors: list[dict] = Field(default_factory=list)
-    field_regions: list[dict] = Field(min_length=1)
+    anchors: list[OcrAnchor] = Field(default_factory=list)
+    field_regions: list[OcrFieldRegion] = Field(min_length=1)
     validation_rules: dict = Field(default_factory=dict)
 
 

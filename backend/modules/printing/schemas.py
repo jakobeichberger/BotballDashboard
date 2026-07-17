@@ -9,6 +9,7 @@ class PrinterCreate(BaseModel):
     model: str | None = None
     printer_type: str = "bambu"
     api_url: str | None = None
+    device_id: str | None = None
     api_key: str | None = None  # plain text – will be encrypted on save
     notes: str | None = None
 
@@ -17,6 +18,7 @@ class PrinterUpdate(BaseModel):
     name: str | None = None
     model: str | None = None
     api_url: str | None = None
+    device_id: str | None = None
     api_key: str | None = None
     is_active: bool | None = None
     notes: str | None = None
@@ -30,6 +32,7 @@ class PrinterResponse(BaseModel):
     model: str | None
     printer_type: str
     api_url: str | None
+    device_id: str | None
     is_active: bool
     is_online: bool
     last_seen: datetime | None
@@ -40,6 +43,7 @@ class PrinterResponse(BaseModel):
 class PrintJobCreate(BaseModel):
     team_id: str
     season_id: str
+    event_id: str | None = None
     file_name: str
     material: str = "PLA"
     color: str | None = None
@@ -67,6 +71,7 @@ class PrintJobResponse(BaseModel):
     printer_id: str | None
     team_id: str
     season_id: str
+    event_id: str | None
     submitted_by: str | None
     file_name: str
     material: str
@@ -77,6 +82,10 @@ class PrintJobResponse(BaseModel):
     actual_minutes: int | None
     status: str
     priority: int
+    progress: float | None
+    status_message: str | None
+    external_job_id: str | None
+    last_polled_at: datetime | None
     notes: str | None
     approved_by: str | None
     approved_at: datetime | None

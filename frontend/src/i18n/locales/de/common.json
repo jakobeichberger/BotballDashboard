@@ -30,6 +30,12 @@
     "enable": "Push aktivieren",
     "enabled": "Push aktiviert"
   },
+  "event": "Event",
+  "closeMenu": "Menü schließen",
+  "openMenu": "Menü öffnen",
+  "mainNavigation": "Hauptnavigation",
+  "logout": "Abmelden",
+  "offlineReadOnly": "Keine Verbindung – Änderungen sind bis zur Wiederverbindung gesperrt.",
   "nav": {
     "dashboard": "Dashboard",
     "teams": "Teams",

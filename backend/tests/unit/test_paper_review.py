@@ -1,6 +1,7 @@
 """Unit tests for Paper Review module – status transitions and review logic."""
 
 import pytest
+import pytest_asyncio
 
 from core.exceptions import ConflictError, ForbiddenError
 from modules.paper_review.service import (
@@ -12,11 +13,16 @@ from modules.paper_review.service import (
 )
 
 
-@pytest.fixture
-def paper_data(season, team):
+@pytest_asyncio.fixture
+async def paper_data(db, season, event, team):
+    from modules.events.models import EventRegistration
+
+    db.add(EventRegistration(event_id=event.id, team_id=team.id))
+    await db.flush()
     return {
         "season_id": season.id,
         "team_id": team.id,
+        "event_id": event.id,
         "title": "Robot Navigation Using Computer Vision",
         "abstract": "This paper presents...",
         "status": "draft",

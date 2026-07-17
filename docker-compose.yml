@@ -106,6 +106,62 @@ services:
       timeout: 10s
       retries: 3
 
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A core.celery_app:celery_app beat --loglevel=INFO
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backup:
+    profiles: ["production"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["/bin/sh", "-c", "while true; do /app/scripts/backup.sh; sleep 86400; done"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      BACKUP_DIR: /backups
+      UPLOAD_DIR: /app/uploads
+      AGE_RECIPIENT: ${AGE_RECIPIENT:-}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-botball}
+      POSTGRES_USER: ${POSTGRES_USER:-botball}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-botball}
+    volumes:
+      - uploads:/app/uploads:ro
+      - backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=30d"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    depends_on: [backend, blackbox]
+    restart: unless-stopped
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    restart: unless-stopped
+
   # ── Frontend ──────────────────────────────────────────────────
   # dist/ is pre-built on the host by scripts/proxmox-setup.sh before docker compose build
   frontend:
@@ -141,3 +197,5 @@ volumes:
   uploads:
   letsencrypt:
   vapid:
+  backups:
+  prometheusdata:

@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     libglib2.0-0 \
     libgl1 \
+    postgresql-client \
+    age \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -28,6 +30,6 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 # ── Production target ─────────────────────────────────────────
 FROM deps AS production
 COPY . .
-RUN chmod +x scripts/migrate-then-start.sh
+RUN chmod +x scripts/*.sh
 EXPOSE 8000
 CMD ["./scripts/migrate-then-start.sh"]

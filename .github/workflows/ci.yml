@@ -2,6 +2,8 @@ name: CI
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main, develop]
   pull_request:
     branches: [main, develop]
 
@@ -65,6 +67,76 @@ jobs:
         with:
           files: backend/coverage.xml
           flags: backend
+
+  backend-postgres-redis:
+    name: Backend – PostgreSQL, Redis & Migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: botball_test
+          POSTGRES_USER: botball
+          POSTGRES_PASSWORD: botball-test-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U botball -d botball_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: development
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: botball_test
+      POSTGRES_USER: botball
+      POSTGRES_PASSWORD: botball-test-password
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: integration-test-jwt-secret
+      APP_SECRET_KEY: integration-test-app-secret
+      RUN_PLATFORM_INTEGRATION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: Upgrade, downgrade and re-upgrade migrations
+        run: |
+          alembic upgrade head
+          alembic downgrade 0011
+          alembic upgrade head
+      - name: PostgreSQL/Redis integration smoke tests
+        run: pytest tests/postgres -v --tb=short
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pip-audit ./backend
+      - run: pip-audit
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - run: pnpm --dir frontend audit --audit-level high
 
   # ── Frontend ───────────────────────────────────────────────────────────────
   frontend-lint:
@@ -141,3 +213,64 @@ jobs:
           VITE_API_URL: /api
           VITE_VAPID_PUBLIC_KEY: ""
         run: pnpm build
+
+      - name: Verify generated API contract is current
+        working-directory: backend
+        run: |
+          pip install -e .
+          python scripts/export_openapi.py --output ../frontend/openapi.json
+          cd ../frontend
+          pnpm exec openapi-typescript openapi.json -o src/api/generated.ts
+          git diff --exit-code -- openapi.json src/api/generated.ts
+
+  e2e-smoke:
+    name: End-to-end smoke
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: botball_e2e
+          POSTGRES_USER: botball
+          POSTGRES_PASSWORD: botball-e2e-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U botball -d botball_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: development
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: botball_e2e
+      POSTGRES_USER: botball
+      POSTGRES_PASSWORD: botball-e2e-password
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: e2e-jwt-secret
+      APP_SECRET_KEY: e2e-app-secret
+      ALLOWED_ORIGINS: http://127.0.0.1:5173
+      E2E_EVENT_SLUG: e2e-event
+      VITE_API_URL: http://127.0.0.1:8000/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.29.3 }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+      - run: pip install -e "backend[dev]"
+      - run: cd backend && alembic upgrade head
+      - run: python backend/scripts/seed_e2e.py
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - run: pnpm --dir frontend exec playwright install --with-deps chromium
+      - name: Start application
+        run: |
+          (cd backend && uvicorn main:app --host 127.0.0.1 --port 8000) &
+          pnpm --dir frontend dev --host 127.0.0.1 &
+          for attempt in {1..30}; do curl -fsS http://127.0.0.1:8000/api/system/health && curl -fsS http://127.0.0.1:5173 && break; sleep 2; done
+      - run: pnpm --dir frontend e2e --project=chromium

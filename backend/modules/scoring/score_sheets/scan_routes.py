@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import require_permission
 from core.config import get_settings
 from core.database import get_db
+from core.rate_limit import rate_limit
 from modules.scoring.schemas import MatchResponse
 from modules.scoring.score_sheets import scan_service
 from modules.scoring.score_sheets.schemas import (
@@ -26,6 +27,7 @@ ALLOWED_SCAN_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"
     "/{event_id}/score-sheet-scans",
     response_model=ScoreSheetScanResponse,
     status_code=202,
+    dependencies=[Depends(rate_limit("score-scan-upload", 30, 60))],
 )
 async def upload_scan(
     event_id: UUID,

@@ -37,15 +37,15 @@ async def test_event_crud_and_public_flags(client, auth_headers, season):
 
 
 @pytest.mark.asyncio
-async def test_registration_phase_and_schedule_generation(
-    client, auth_headers, event, team
-):
+async def test_registration_phase_and_schedule_generation(client, auth_headers, event, team):
     registration = await client.post(
         f"/api/v1/events/{event.id}/registrations",
         headers=auth_headers,
         json={"team_id": team.id, "seed_number": 1},
     )
     assert registration.status_code == 201
+    assert registration.json()["team_name"] == team.name
+    assert registration.json()["team_number"] == team.team_number
 
     phase = await client.post(
         f"/api/v1/events/{event.id}/phases",
@@ -71,16 +71,16 @@ async def test_registration_phase_and_schedule_generation(
     assert schedule.status_code == 201
     assert len(schedule.json()) == 2
     assert schedule.json()[0]["participants"][0]["team_id"] == team.id
+    assert schedule.json()[0]["participants"][0]["team_name"] == team.name
 
     public_schedule = await client.get(f"/api/v1/public/events/{event.slug}/schedule")
     assert public_schedule.status_code == 200
     assert len(public_schedule.json()) == 2
+    assert "email" not in str(public_schedule.json()).lower()
 
 
 @pytest.mark.asyncio
-async def test_score_is_idempotent_versioned_and_audited(
-    client, auth_headers, event, team
-):
+async def test_score_is_idempotent_versioned_and_audited(client, auth_headers, event, team):
     payload = {
         "team_id": team.id,
         "raw_scores": {"objects": 4},
@@ -116,9 +116,13 @@ async def test_score_is_idempotent_versioned_and_audited(
     )
     assert stale.status_code == 409
 
-    revisions = await client.get(
-        f"/api/scoring/matches/{match_id}/revisions", headers=auth_headers
-    )
+    revisions = await client.get(f"/api/scoring/matches/{match_id}/revisions", headers=auth_headers)
     assert revisions.status_code == 200
     assert [item["revision"] for item in revisions.json()] == [1, 2]
     assert revisions.json()[1]["reason"] == "Sheet recount"
+
+    public_ranking = await client.get(f"/api/v1/public/events/{event.slug}/ranking")
+    assert public_ranking.status_code == 200
+    assert public_ranking.json()[0]["team_name"] == team.name
+    assert public_ranking.json()[0]["team_number"] == team.team_number
+    assert "email" not in str(public_ranking.json()).lower()

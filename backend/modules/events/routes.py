@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import require_permission
 from core.database import get_db
+from core.domain_events import emit_event
 from core.live import publish_live_event, stream_live_events
 from modules.events import service
 from modules.events.schemas import (
@@ -19,6 +20,7 @@ from modules.events.schemas import (
     EventScoreCreate,
     EventUpdate,
     PublicAnnouncementResponse,
+    PublicRankingResponse,
     PublicResultResponse,
     ScheduledMatchResponse,
     ScheduledMatchUpdate,
@@ -28,6 +30,7 @@ from modules.events.schemas import (
 )
 from modules.scoring import service as scoring_service
 from modules.scoring.schemas import MatchResponse, RankingResponse
+from modules.teams.models import Team
 
 router = APIRouter(prefix="/v1/events", tags=["events"])
 public_router = APIRouter(prefix="/v1/public/events", tags=["public-events"])
@@ -188,6 +191,12 @@ async def generate_schedule(
 ):
     schedule = await service.generate_schedule(db, event_id, body.model_dump())
     await publish_live_event(event_id, "schedule_updated")
+    await emit_event(
+        db,
+        "schedule_updated",
+        event_id=event_id,
+        payload={"message": "The event schedule was regenerated.", "publicLive": True},
+    )
     return schedule
 
 
@@ -203,6 +212,12 @@ async def update_scheduled_match(
         db, event_id, match_id, body.model_dump(exclude_unset=True)
     )
     await publish_live_event(event_id, "schedule_updated", {"matchId": match.id})
+    await emit_event(
+        db,
+        "schedule_updated",
+        event_id=event_id,
+        payload={"matchId": match.id, "message": "A match time changed.", "publicLive": True},
+    )
     return match
 
 
@@ -305,14 +320,32 @@ async def get_public_schedule(slug: str, db: AsyncSession = Depends(get_db)):
     return await service.list_scheduled_matches(db, event.id)
 
 
-@public_router.get("/{slug}/ranking", response_model=list[RankingResponse])
+@public_router.get("/{slug}/ranking", response_model=list[PublicRankingResponse])
 async def get_public_ranking(slug: str, db: AsyncSession = Depends(get_db)):
     event = await service.get_public_event(db, slug)
     if not event.public_scoreboard:
         from core.exceptions import NotFoundError
 
         raise NotFoundError("Public scoreboard is disabled")
-    return await scoring_service.get_ranking(db, event_id=event.id)
+    ranking = await scoring_service.get_ranking(db, event_id=event.id)
+    team_ids = [entry.team_id for entry in ranking]
+    teams_result = await db.execute(select(Team).where(Team.id.in_(team_ids)))
+    teams = {team.id: team for team in teams_result.scalars().all()}
+    return [
+        {
+            "rank": entry.rank,
+            "team_id": entry.team_id,
+            "team_name": teams[entry.team_id].name,
+            "team_number": teams[entry.team_id].team_number,
+            "seed_score": entry.seed_score,
+            "best_score": entry.best_score,
+            "average_score": entry.average_score,
+            "rounds_played": entry.rounds_played,
+            "updated_at": entry.updated_at,
+        }
+        for entry in ranking
+        if entry.team_id in teams
+    ]
 
 
 @public_router.get("/{slug}/results", response_model=list[PublicResultResponse])

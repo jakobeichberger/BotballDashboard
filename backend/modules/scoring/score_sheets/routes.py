@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, require_permission
 from core.database import get_db
+from core.rate_limit import rate_limit
 
 from . import schemas, service
 
@@ -38,7 +39,10 @@ MAX_PDF_SIZE = 20 * 1024 * 1024  # 20 MB
     response_model=schemas.ScoreSheetTemplateResponse,
     status_code=201,
     summary="Upload a scoring sheet PDF for a season",
-    dependencies=[Depends(require_permission("scoring:admin"))],
+    dependencies=[
+        Depends(require_permission("scoring:admin")),
+        Depends(rate_limit("score-template-upload", 10, 60)),
+    ],
 )
 async def upload_score_sheet(
     season_id: UUID,

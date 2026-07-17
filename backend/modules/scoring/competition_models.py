@@ -22,9 +22,7 @@ class DEResult(Base):
     """Double-Elimination bracket result for one team in one season."""
 
     __tablename__ = "de_results"
-    __table_args__ = (
-        UniqueConstraint("event_id", "team_id", name="uq_de_result_event_team"),
-    )
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_de_result_event_team"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
@@ -53,9 +51,7 @@ class AerialResult(Base):
     """Aerial competition results for one team – up to 4 timed/scored runs."""
 
     __tablename__ = "aerial_results"
-    __table_args__ = (
-        UniqueConstraint("event_id", "team_id", name="uq_aerial_result_event_team"),
-    )
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_aerial_result_event_team"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
@@ -86,9 +82,7 @@ class DocumentationScore(Base):
     """Documentation evaluation (3 written parts + onsite) for one team."""
 
     __tablename__ = "documentation_scores"
-    __table_args__ = (
-        UniqueConstraint("event_id", "team_id", name="uq_doc_score_event_team"),
-    )
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_doc_score_event_team"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(

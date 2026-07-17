@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -14,6 +15,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
+
+if TYPE_CHECKING:
+    from modules.teams.models import Team
 
 
 def _uuid() -> str:
@@ -88,6 +92,15 @@ class EventRegistration(Base):
     )
 
     event: Mapped[Event] = relationship(Event, back_populates="registrations")
+    team: Mapped["Team"] = relationship("Team")
+
+    @property
+    def team_name(self) -> str:
+        return self.team.name
+
+    @property
+    def team_number(self) -> str | None:
+        return self.team.team_number
 
 
 class EventPhase(Base):
@@ -172,3 +185,12 @@ class MatchParticipant(Base):
     scheduled_match: Mapped[ScheduledMatch] = relationship(
         ScheduledMatch, back_populates="participants"
     )
+    team: Mapped["Team | None"] = relationship("Team")
+
+    @property
+    def team_name(self) -> str | None:
+        return self.team.name if self.team else None
+
+    @property
+    def team_number(self) -> str | None:
+        return self.team.team_number if self.team else None
