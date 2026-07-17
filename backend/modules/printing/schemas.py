@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class PrinterCreate(BaseModel):
     name: str
     model: str | None = None
-    printer_type: str = "bambu"
+    printer_type: Literal["bambu", "octoprint"] = "bambu"
     api_url: str | None = None
     device_id: str | None = None
     api_key: str | None = None  # plain text – will be encrypted on save

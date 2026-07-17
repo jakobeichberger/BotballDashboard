@@ -18,10 +18,11 @@ const base = __ENV.BASE_URL || "http://localhost:8000/api";
 const eventId = __ENV.EVENT_ID;
 const eventSlug = __ENV.EVENT_SLUG;
 const token = __ENV.ACCESS_TOKEN;
-const teamId = __ENV.TEAM_ID;
+const teamIds = (__ENV.TEAM_IDS || __ENV.TEAM_ID || "").split(",").filter(Boolean);
 
 export function score() {
   const started = Date.now();
+  const teamId = teamIds[(__VU - 1) % teamIds.length];
   const response = http.post(`${base}/v1/events/${eventId}/matches`, JSON.stringify({
     team_id: teamId,
     raw_scores: {},
@@ -33,10 +34,12 @@ export function score() {
 
 export function watch() {
   const url = base.replace(/^http/, "ws") + `/v1/public/events/${eventSlug}/ws`;
-  const started = Date.now();
   const response = ws.connect(url, {}, (socket) => {
-    socket.on("message", () => {
-      check(Date.now() - started, { "live update below two seconds": (ms) => ms < 2000 }, { kind: "live_latency" });
+    socket.on("message", (message) => {
+      const payload = JSON.parse(message);
+      if (!payload.sentAt) return;
+      const latency = Date.now() - Date.parse(payload.sentAt);
+      check(latency, { "live update below two seconds": (ms) => ms >= 0 && ms < 2000 }, { kind: "live_latency" });
       socket.close();
     });
     socket.setTimeout(() => socket.close(), 10000);

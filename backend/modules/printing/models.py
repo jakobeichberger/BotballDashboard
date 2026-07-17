@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -23,6 +24,9 @@ def _uuid() -> str:
 
 class Printer(Base):
     __tablename__ = "printers"
+    __table_args__ = (
+        CheckConstraint("printer_type IN ('octoprint','bambu')", name="ck_printer_type"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

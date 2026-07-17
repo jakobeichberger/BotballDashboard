@@ -13,7 +13,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { EventSummary, RankingEntry, ScheduledMatch } from "@/api/types";
+import type { EventSummary, PublicResult, RankingEntry, ScheduledMatch } from "@/api/types";
 
 interface Announcement {
   id: string;
@@ -57,12 +57,18 @@ export default function PublicEventPage() {
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/announcements`)).data,
     enabled: !!event.data?.public_announcements,
   });
+  const results = useQuery<PublicResult[]>({
+    queryKey: ["public-results", eventSlug],
+    queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/results`)).data,
+    enabled: !!event.data?.public_results,
+  });
   const panels = useMemo(
     () =>
       [
         event.data?.public_scoreboard && "ranking",
         event.data?.public_schedule && "schedule",
         event.data?.public_announcements && "announcements",
+        event.data?.public_results && "results",
       ].filter(Boolean) as string[],
     [event.data],
   );
@@ -89,6 +95,7 @@ export default function PublicEventPage() {
         const data = JSON.parse(message.data) as { event?: string };
         if (data.event === "ranking_updated") {
           queryClient.invalidateQueries({ queryKey: ["public-ranking", eventSlug] });
+          queryClient.invalidateQueries({ queryKey: ["public-results", eventSlug] });
         }
         if (data.event === "schedule_updated") {
           queryClient.invalidateQueries({ queryKey: ["public-schedule", eventSlug] });
@@ -188,6 +195,13 @@ export default function PublicEventPage() {
         <section>
           <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Megaphone className="text-cyan-400" />{t("announcements")}</h2>
           <div className="grid gap-5 md:grid-cols-2">{announcements.data?.map((item) => <article key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-6"><h3 className="text-2xl font-bold">{item.title}</h3><p className="mt-3 whitespace-pre-wrap text-lg text-slate-300">{item.body}</p></article>)}</div>
+        </section>
+      )}
+
+      {current === "results" && (
+        <section>
+          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-cyan-400" />{t("results")}</h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.data?.slice(-12).reverse().map((result) => <article key={result.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between text-slate-400"><span>{t("round", { number: result.round_number })}</span><span>{t("table", { number: result.table_number ?? "–" })}</span></div><p className="mt-2 text-lg font-bold">{result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</p><p className="mt-3 text-3xl font-black text-cyan-300">{result.is_disqualified ? "DQ" : result.total_score.toFixed(2)}</p><dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-slate-400">{Object.entries(result.raw_scores).map(([key, value]) => <div key={key} className="contents"><dt>{key}</dt><dd className="text-right text-slate-200">{String(value)}</dd></div>)}</dl></article>)}</div>
         </section>
       )}
 

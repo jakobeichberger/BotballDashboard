@@ -7,6 +7,9 @@ from core.exceptions import ConflictError, ForbiddenError
 from modules.paper_review.service import (
     assign_reviewer,
     create_paper,
+    list_status_history,
+    mark_reminder_sent,
+    reviewer_workload,
     save_review,
     set_paper_status,
     submit_paper,
@@ -100,6 +103,14 @@ class TestPaperStatusTransitions:
         await db.commit()
         assert paper.status == "rejected"
 
+    @pytest.mark.asyncio
+    async def test_status_changes_are_append_only_history(self, db, paper_data, admin_user):
+        paper = await create_paper(db, paper_data)
+        await submit_paper(db, paper.id, admin_user.id)
+        await set_paper_status(db, paper.id, "accepted", admin_user.id)
+        history = await list_status_history(db, paper.id)
+        assert [item.to_status for item in history] == ["draft", "submitted", "accepted"]
+
 
 class TestReviewerAssignment:
     @pytest.mark.asyncio
@@ -122,6 +133,23 @@ class TestReviewerAssignment:
 
         with pytest.raises(ConflictError):
             await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
+
+    @pytest.mark.asyncio
+    async def test_workload_and_reminder_are_auditable(self, db, paper_data, admin_user):
+        paper = await create_paper(db, paper_data)
+        assignment = await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
+        await mark_reminder_sent(db, paper.id, assignment.id)
+        workload = await reviewer_workload(db, paper.event_id)
+        assert workload == [
+            {
+                "reviewer_id": admin_user.id,
+                "assigned": 1,
+                "open": 1,
+                "overdue": 0,
+                "completed": 0,
+            }
+        ]
+        assert assignment.reminder_sent_at is not None
 
     @pytest.mark.asyncio
     async def test_unassigned_reviewer_cannot_review(self, db, paper_data, admin_user):

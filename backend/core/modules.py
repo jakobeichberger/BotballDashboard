@@ -32,10 +32,14 @@ MODULES: tuple[ModuleDefinition, ...] = (
     ModuleDefinition("teams", teams_router, ("teams:read", "teams:write")),
     ModuleDefinition("scoring", scoring_router, ("scoring:read", "scoring:write", "scoring:admin")),
     ModuleDefinition("score-sheet-scans", score_scans_router, ("scoring:read", "scoring:write")),
-    ModuleDefinition("papers", paper_router, ("papers:read", "papers:review", "papers:admin")),
+    ModuleDefinition(
+        "papers",
+        paper_router,
+        ("papers:read", "papers:write", "papers:review", "papers:admin"),
+    ),
     ModuleDefinition(
         "printing", printing_router, ("printing:read", "printing:write", "printing:admin")
     ),
-    ModuleDefinition("dashboard", dashboard_router, ("dashboard:read",)),
+    ModuleDefinition("dashboard", dashboard_router, ("dashboard:read", "dashboard:write")),
     ModuleDefinition("exports", exports_router),
 )

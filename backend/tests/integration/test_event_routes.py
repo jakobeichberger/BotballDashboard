@@ -80,7 +80,9 @@ async def test_registration_phase_and_schedule_generation(client, auth_headers, 
 
 
 @pytest.mark.asyncio
-async def test_score_is_idempotent_versioned_and_audited(client, auth_headers, event, team):
+async def test_score_is_idempotent_versioned_and_audited(client, auth_headers, event, team, db):
+    event.public_results = True
+    await db.flush()
     payload = {
         "team_id": team.id,
         "raw_scores": {"objects": 4},
@@ -126,3 +128,8 @@ async def test_score_is_idempotent_versioned_and_audited(client, auth_headers, e
     assert public_ranking.json()[0]["team_name"] == team.name
     assert public_ranking.json()[0]["team_number"] == team.team_number
     assert "email" not in str(public_ranking.json()).lower()
+
+    public_results = await client.get(f"/api/v1/public/events/{event.slug}/results")
+    assert public_results.status_code == 200
+    assert public_results.json()[0]["team_name"] == team.name
+    assert "email" not in str(public_results.json()).lower()

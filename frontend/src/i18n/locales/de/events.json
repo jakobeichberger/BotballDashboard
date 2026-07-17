@@ -14,6 +14,8 @@
   "tbd": "Noch offen",
   "open": "Noch offen",
   "announcements": "Ankündigungen",
+  "results": "Detailergebnisse",
+  "round": "Runde {{number}}",
   "showPanel": "{{panel}} anzeigen",
   "schedule": "Zeitplan",
   "scoring": "Wertung",

@@ -100,6 +100,22 @@ class TestPrintQuota:
         job = await create_print_job(db, data, admin_user.id)
         assert job is not None
 
+    @pytest.mark.asyncio
+    async def test_invalid_job_transition_is_rejected(self, db, season, team, admin_user):
+        job = await create_print_job(
+            db,
+            {
+                "team_id": team.id,
+                "season_id": season.id,
+                "file_name": "unsafe-transition.3mf",
+                "material": "PLA",
+            },
+            admin_user.id,
+        )
+        await db.flush()
+        with pytest.raises(ConflictError, match="Invalid print job transition"):
+            await update_print_job(db, job.id, status="completed")
+
 
 class TestFilamentTracking:
     @pytest.mark.asyncio

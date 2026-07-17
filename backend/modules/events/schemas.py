@@ -293,6 +293,8 @@ class PublicResultResponse(BaseModel):
     event_id: str
     scheduled_match_id: str | None
     team_id: str
+    team_name: str
+    team_number: str | None
     round_number: int
     table_number: int | None
     raw_scores: dict

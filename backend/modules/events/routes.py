@@ -355,7 +355,30 @@ async def get_public_results(slug: str, db: AsyncSession = Depends(get_db)):
         from core.exceptions import NotFoundError
 
         raise NotFoundError("Public detailed results are disabled")
-    return await scoring_service.list_matches(db, event_id=event.id)
+    matches = await scoring_service.list_matches(db, event_id=event.id)
+    team_ids = [match.team_id for match in matches]
+    teams_result = await db.execute(select(Team).where(Team.id.in_(team_ids)))
+    teams = {team.id: team for team in teams_result.scalars().all()}
+    return [
+        {
+            "id": match.id,
+            "event_id": match.event_id,
+            "scheduled_match_id": match.scheduled_match_id,
+            "team_id": match.team_id,
+            "team_name": teams[match.team_id].name,
+            "team_number": teams[match.team_id].team_number,
+            "round_number": match.round_number,
+            "table_number": match.table_number,
+            "raw_scores": match.raw_scores,
+            "total_score": match.total_score,
+            "is_disqualified": match.is_disqualified,
+            "yellow_card": match.yellow_card,
+            "red_card": match.red_card,
+            "created_at": match.created_at,
+        }
+        for match in matches
+        if match.team_id in teams
+    ]
 
 
 @public_router.get("/{slug}/announcements", response_model=list[PublicAnnouncementResponse])

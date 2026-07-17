@@ -17,6 +17,21 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    op.execute(
+        "INSERT INTO permissions (id, name, description) VALUES "
+        "(gen_random_uuid()::text, 'papers:write', 'Submit and update team papers'), "
+        "(gen_random_uuid()::text, 'dashboard:write', 'Manage announcements')"
+    )
+    op.execute(
+        "INSERT INTO role_permissions (role_id, permission_id) "
+        "SELECT r.id, p.id FROM roles r, permissions p "
+        "WHERE r.name = 'admin' AND p.name IN ('papers:write', 'dashboard:write')"
+    )
+    op.execute(
+        "INSERT INTO role_permissions (role_id, permission_id) "
+        "SELECT r.id, p.id FROM roles r, permissions p "
+        "WHERE r.name = 'mentor' AND p.name = 'papers:write'"
+    )
     op.create_table(
         "notification_events",
         sa.Column("id", sa.String(36), primary_key=True),
@@ -45,6 +60,11 @@ def upgrade() -> None:
     op.create_index("ix_notification_events_status", "notification_events", ["status"])
 
     op.add_column("printers", sa.Column("device_id", sa.String(100), nullable=True))
+    op.create_check_constraint(
+        "ck_printer_type",
+        "printers",
+        "printer_type IN ('octoprint','bambu')",
+    )
     op.add_column("print_jobs", sa.Column("progress", sa.Float(), nullable=True))
     op.add_column("print_jobs", sa.Column("status_message", sa.String(500), nullable=True))
     op.add_column("print_jobs", sa.Column("external_job_id", sa.String(255), nullable=True))
@@ -139,4 +159,10 @@ def downgrade() -> None:
     for column in ("last_polled_at", "external_job_id", "status_message", "progress"):
         op.drop_column("print_jobs", column)
     op.drop_column("printers", "device_id")
+    op.drop_constraint("ck_printer_type", "printers", type_="check")
     op.drop_table("notification_events")
+    op.execute(
+        "DELETE FROM role_permissions WHERE permission_id IN "
+        "(SELECT id FROM permissions WHERE name IN ('papers:write', 'dashboard:write'))"
+    )
+    op.execute("DELETE FROM permissions WHERE name IN ('papers:write', 'dashboard:write')")

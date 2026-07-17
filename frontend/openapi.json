@@ -11041,6 +11041,10 @@
           },
           "printer_type": {
             "type": "string",
+            "enum": [
+              "bambu",
+              "octoprint"
+            ],
             "title": "Printer Type",
             "default": "bambu"
           },
@@ -11407,6 +11411,21 @@
             "type": "string",
             "title": "Team Id"
           },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "team_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Number"
+          },
           "round_number": {
             "type": "integer",
             "title": "Round Number"
@@ -11454,6 +11473,8 @@
           "event_id",
           "scheduled_match_id",
           "team_id",
+          "team_name",
+          "team_number",
           "round_number",
           "table_number",
           "raw_scores",

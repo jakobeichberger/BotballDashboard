@@ -73,6 +73,19 @@ export interface RankingEntry {
   updated_at: string;
 }
 
+export interface PublicResult {
+  id: string;
+  team_id: string;
+  team_name: string;
+  team_number: string | null;
+  round_number: number;
+  table_number: number | null;
+  raw_scores: Record<string, number | boolean>;
+  total_score: number;
+  is_disqualified: boolean;
+  created_at: string;
+}
+
 export interface ScoringField {
   key: string;
   label: string;

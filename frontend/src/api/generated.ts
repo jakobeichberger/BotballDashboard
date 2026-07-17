@@ -2880,8 +2880,9 @@ export interface components {
             /**
              * Printer Type
              * @default bambu
+             * @enum {string}
              */
-            printer_type: string;
+            printer_type: "bambu" | "octoprint";
             /** Api Url */
             api_url?: string | null;
             /** Device Id */
@@ -2978,6 +2979,10 @@ export interface components {
             scheduled_match_id: string | null;
             /** Team Id */
             team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Team Number */
+            team_number: string | null;
             /** Round Number */
             round_number: number;
             /** Table Number */
