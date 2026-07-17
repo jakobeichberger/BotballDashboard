@@ -415,3 +415,21 @@ async def delete_template(db: AsyncSession, template_id: str) -> None:
             pdf_path.unlink()
         await db.delete(template)
         await db.commit()
+
+
+async def update_template_layout(
+    db: AsyncSession, template_id: str, data: dict
+) -> ScoreSheetTemplate:
+    template = await get_template(db, template_id)
+    if not template:
+        raise ValueError("Score sheet not found")
+    keys = {field.get("key") for field in (template.confirmed_fields or [])}
+    region_keys = [region.get("key") for region in data["field_regions"]]
+    if any(not key or key not in keys for key in region_keys):
+        raise ValueError("Every OCR region must reference a confirmed scoring field")
+    if len(set(region_keys)) != len(region_keys):
+        raise ValueError("OCR field regions must use unique keys")
+    for key, value in data.items():
+        setattr(template, key, value)
+    await db.flush()
+    return template

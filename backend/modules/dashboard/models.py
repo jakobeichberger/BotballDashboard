@@ -18,6 +18,9 @@ class Announcement(Base):
     season_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    event_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     audience: Mapped[str] = mapped_column(String(50), default="all", nullable=False)

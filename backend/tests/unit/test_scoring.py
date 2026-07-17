@@ -135,7 +135,7 @@ class TestRankingLogic:
         assert ranking[0].rank == 1
 
     @pytest.mark.asyncio
-    async def test_multiple_teams_ranked_by_seed_score(self, db, season):
+    async def test_multiple_teams_ranked_by_seed_score(self, db, season, event):
         from modules.scoring.models import Match
         from modules.scoring.service import _recompute_ranking, get_ranking
         from modules.teams.models import Team
@@ -151,6 +151,7 @@ class TestRankingLogic:
         for score in [90.0, 80.0, 70.0]:
             m = Match(
                 season_id=season.id,
+                event_id=event.id,
                 team_id=team_a.id,
                 round_number=1,
                 raw_scores={},
@@ -163,6 +164,7 @@ class TestRankingLogic:
         for score in [100.0, 50.0, 30.0]:
             m = Match(
                 season_id=season.id,
+                event_id=event.id,
                 team_id=team_b.id,
                 round_number=1,
                 raw_scores={},
@@ -174,8 +176,8 @@ class TestRankingLogic:
             db.add(m)
         await db.flush()
 
-        await _recompute_ranking(db, season.id, team_a.id, None)
-        await _recompute_ranking(db, season.id, team_b.id, None)
+        await _recompute_ranking(db, event.id, team_a.id, None)
+        await _recompute_ranking(db, event.id, team_b.id, None)
         await db.commit()
 
         ranking = await get_ranking(db, season.id)
@@ -185,19 +187,20 @@ class TestRankingLogic:
         assert ranking[1].rank == 2
 
     @pytest.mark.asyncio
-    async def test_disqualification_removes_match_from_ranking(self, db, season, team):
+    async def test_disqualification_removes_match_from_ranking(self, db, season, event, team):
         from modules.scoring.models import Match
         from modules.scoring.service import _recompute_ranking, get_ranking, update_match
 
         match = Match(
             season_id=season.id,
+            event_id=event.id,
             team_id=team.id,
             total_score=100,
             raw_scores={},
         )
         db.add(match)
         await db.flush()
-        await _recompute_ranking(db, season.id, team.id, None)
+        await _recompute_ranking(db, event.id, team.id, None)
         assert len(await get_ranking(db, season.id)) == 1
 
         await update_match(db, match.id, is_disqualified=True)

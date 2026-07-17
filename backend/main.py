@@ -14,16 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import get_settings
 from core.logging import configure_logging
-
-# Module routers
-from modules.auth.routes import router as auth_router
-from modules.dashboard.routes import router as dashboard_router
-from modules.exports.routes import router as exports_router
-from modules.paper_review.routes import router as paper_router
-from modules.printing.routes import router as printing_router
-from modules.scoring import router as scoring_router
-from modules.seasons.routes import router as seasons_router
-from modules.teams.routes import router as teams_router
+from core.modules import MODULES
 
 settings = get_settings()
 configure_logging()
@@ -103,15 +94,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register all module routers under /api
-app.include_router(auth_router, prefix="/api")
-app.include_router(seasons_router, prefix="/api")
-app.include_router(teams_router, prefix="/api")
-app.include_router(scoring_router, prefix="/api")
-app.include_router(paper_router, prefix="/api")
-app.include_router(printing_router, prefix="/api")
-app.include_router(dashboard_router, prefix="/api")
-app.include_router(exports_router, prefix="/api")
+# Register all modules from one explicit, static registry.
+for module in MODULES:
+    app.include_router(module.router, prefix="/api")
 
 
 @app.get("/api/system/health", tags=["system"])

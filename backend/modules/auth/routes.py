@@ -8,6 +8,7 @@ from core.config import get_settings
 from core.database import get_db
 from modules.auth import service
 from modules.auth.schemas import (
+    CurrentUserResponse,
     LoginRequest,
     PushSubscriptionCreate,
     RoleCreate,
@@ -95,9 +96,17 @@ async def logout(
 # ── Current user ──────────────────────────────────────────────────────────────
 
 
-@router.get("/me", response_model=UserResponse)
-async def get_me(current_user=Depends(get_current_user)):
-    return current_user
+@router.get("/me", response_model=CurrentUserResponse)
+async def get_me(current_user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    permissions = await service.get_user_permissions(db, current_user.id)
+    return {
+        **{
+            column.name: getattr(current_user, column.name)
+            for column in current_user.__table__.columns
+        },
+        "roles": current_user.roles,
+        "permissions": sorted(permissions),
+    }
 
 
 @router.patch("/me", response_model=UserResponse)

@@ -55,7 +55,7 @@ async def get_current_user(
 ):
     """Dependency that returns the current authenticated User ORM object."""
     # Import here to avoid circular imports at module load time
-    from modules.auth.models import User
+    from modules.auth.models import Role, User
 
     if not credentials:
         raise UnauthorizedError()
@@ -65,7 +65,7 @@ async def get_current_user(
 
     result = await db.execute(
         select(User)
-        .options(selectinload(User.roles))
+        .options(selectinload(User.roles).selectinload(Role.permissions))
         .where(User.id == user_id, User.is_active == True)
     )
     user = result.scalar_one_or_none()

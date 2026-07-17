@@ -8,7 +8,7 @@ Models for extended competition scoring:
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -22,10 +22,16 @@ class DEResult(Base):
     """Double-Elimination bracket result for one team in one season."""
 
     __tablename__ = "de_results"
+    __table_args__ = (
+        UniqueConstraint("event_id", "team_id", name="uq_de_result_event_team"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
@@ -47,10 +53,16 @@ class AerialResult(Base):
     """Aerial competition results for one team – up to 4 timed/scored runs."""
 
     __tablename__ = "aerial_results"
+    __table_args__ = (
+        UniqueConstraint("event_id", "team_id", name="uq_aerial_result_event_team"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
@@ -74,10 +86,16 @@ class DocumentationScore(Base):
     """Documentation evaluation (3 written parts + onsite) for one team."""
 
     __tablename__ = "documentation_scores"
+    __table_args__ = (
+        UniqueConstraint("event_id", "team_id", name="uq_doc_score_event_team"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True

@@ -80,6 +80,10 @@ class UserResponse(BaseModel):
     roles: list[RoleResponse]
 
 
+class CurrentUserResponse(UserResponse):
+    permissions: list[str]
+
+
 class UserListItem(BaseModel):
     model_config = {"from_attributes": True}
 

@@ -1,7 +1,17 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -17,6 +27,9 @@ class Paper(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=True, index=True
     )
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
@@ -58,6 +71,11 @@ class Paper(Base):
 
 class ReviewerAssignment(Base):
     __tablename__ = "reviewer_assignments"
+    __table_args__ = (
+        UniqueConstraint(
+            "paper_id", "reviewer_id", name="uq_reviewer_assignment_paper_reviewer"
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     paper_id: Mapped[str] = mapped_column(
@@ -78,6 +96,14 @@ class ReviewerAssignment(Base):
 
 class PaperReview(Base):
     __tablename__ = "paper_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "paper_id",
+            "reviewer_id",
+            "revision_number",
+            name="uq_paper_review_revision",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     paper_id: Mapped[str] = mapped_column(

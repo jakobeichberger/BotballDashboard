@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from modules.paper_review.models import Paper
 from modules.scoring.competition_models import AerialResult, DEResult, DocumentationScore
 from modules.scoring.models import Ranking
+from modules.scoring.service import get_default_event
 from modules.teams.models import Team, TeamSeasonRegistration
 
 
@@ -47,20 +48,22 @@ async def _team_map(db: AsyncSession, season_id: str) -> dict[str, dict]:
 
 
 async def get_de_results(db: AsyncSession, season_id: str) -> list[DEResult]:
-    result = await db.execute(select(DEResult).where(DEResult.season_id == season_id))
+    event = await get_default_event(db, season_id)
+    result = await db.execute(select(DEResult).where(DEResult.event_id == event.id))
     return list(result.scalars())
 
 
 async def upsert_de_result(db: AsyncSession, season_id: str, data: dict) -> DEResult:
+    event = await get_default_event(db, season_id)
     existing = await db.execute(
         select(DEResult).where(
-            DEResult.season_id == season_id,
+            DEResult.event_id == event.id,
             DEResult.team_id == data["team_id"],
         )
     )
     row = existing.scalar_one_or_none()
     if row is None:
-        row = DEResult(season_id=season_id, **data)
+        row = DEResult(season_id=season_id, event_id=event.id, **data)
         db.add(row)
     else:
         for k, v in data.items():
@@ -92,20 +95,22 @@ async def bulk_upsert_de_results(
 
 
 async def get_aerial_results(db: AsyncSession, season_id: str) -> list[AerialResult]:
-    result = await db.execute(select(AerialResult).where(AerialResult.season_id == season_id))
+    event = await get_default_event(db, season_id)
+    result = await db.execute(select(AerialResult).where(AerialResult.event_id == event.id))
     return list(result.scalars())
 
 
 async def upsert_aerial_result(db: AsyncSession, season_id: str, data: dict) -> AerialResult:
+    event = await get_default_event(db, season_id)
     existing = await db.execute(
         select(AerialResult).where(
-            AerialResult.season_id == season_id,
+            AerialResult.event_id == event.id,
             AerialResult.team_id == data["team_id"],
         )
     )
     row = existing.scalar_one_or_none()
     if row is None:
-        row = AerialResult(season_id=season_id, **data)
+        row = AerialResult(season_id=season_id, event_id=event.id, **data)
         db.add(row)
     else:
         for k, v in data.items():
@@ -134,22 +139,24 @@ async def bulk_upsert_aerial_results(
 
 
 async def get_doc_scores(db: AsyncSession, season_id: str) -> list[DocumentationScore]:
+    event = await get_default_event(db, season_id)
     result = await db.execute(
-        select(DocumentationScore).where(DocumentationScore.season_id == season_id)
+        select(DocumentationScore).where(DocumentationScore.event_id == event.id)
     )
     return list(result.scalars())
 
 
 async def upsert_doc_score(db: AsyncSession, season_id: str, data: dict) -> DocumentationScore:
+    event = await get_default_event(db, season_id)
     existing = await db.execute(
         select(DocumentationScore).where(
-            DocumentationScore.season_id == season_id,
+            DocumentationScore.event_id == event.id,
             DocumentationScore.team_id == data["team_id"],
         )
     )
     row = existing.scalar_one_or_none()
     if row is None:
-        row = DocumentationScore(season_id=season_id, **data)
+        row = DocumentationScore(season_id=season_id, event_id=event.id, **data)
         db.add(row)
     else:
         for k, v in data.items():

@@ -46,6 +46,10 @@ dependencies = [
     # ── OCR / file handling ───────────────────────────────────
     "aiofiles==23.2.1",
     "python-magic==0.4.27",
+    "opencv-python-headless==4.10.0.84",
+    "pytesseract==0.3.13",
+    "Pillow==10.4.0",
+    "qrcode==7.4.2",
 
     # ── Structured logging ────────────────────────────────────
     "structlog==24.1.0",

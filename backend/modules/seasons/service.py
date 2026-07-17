@@ -31,12 +31,33 @@ async def get_active_season(db: AsyncSession) -> Season | None:
 
 
 async def create_season(db: AsyncSession, data: dict, phases: list[dict]) -> Season:
+    from modules.events.models import Event, EventPhase
+
     season = Season(**data)
     db.add(season)
     await db.flush()
 
-    for phase_data in phases:
+    event = Event(
+        season_id=season.id,
+        name=f"{season.name} – Main Event",
+        slug=f"season-{season.year}-{season.id[:8]}",
+        status="draft",
+        active_modules=["seeding"],
+    )
+    db.add(event)
+    await db.flush()
+
+    for sort_order, phase_data in enumerate(phases):
         db.add(SeasonPhase(season_id=season.id, **phase_data))
+        db.add(
+            EventPhase(
+                event_id=event.id,
+                name=phase_data["name"],
+                phase_type="seeding",
+                sort_order=sort_order,
+                status="live" if phase_data.get("is_active") else "draft",
+            )
+        )
 
     await db.refresh(season, ["phases"])
     return season

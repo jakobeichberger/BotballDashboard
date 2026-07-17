@@ -14,7 +14,7 @@ Endpoints:
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,7 +42,6 @@ MAX_PDF_SIZE = 20 * 1024 * 1024  # 20 MB
 )
 async def upload_score_sheet(
     season_id: UUID,
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="PDF file of the official scoring sheet"),
     label: str = Form(..., description="Display name, e.g. 'ECER 2026 Official Sheet'"),
     year: int = Form(...),
@@ -83,8 +82,14 @@ async def upload_score_sheet(
         uploaded_by=str(current_user.id),
     )
 
-    # Run OCR extraction in the background so the upload response is fast
-    background_tasks.add_task(service.run_ocr_pipeline, db, template.id)
+    # Queue OCR outside the request process. The worker has its own DB session.
+    try:
+        from .tasks import extract_template
+
+        extract_template.delay(template.id)
+    except Exception:
+        # Readiness monitoring surfaces a missing broker; the record remains retryable.
+        pass
 
     return template
 
@@ -253,3 +258,19 @@ async def delete_score_sheet(
             detail="Cannot delete the active score sheet. Set another sheet as active first.",
         )
     await service.delete_template(db, str(sheet_id))
+
+
+@router.patch(
+    "/score-sheets/{sheet_id}/layout",
+    response_model=schemas.ScoreSheetTemplateResponse,
+    dependencies=[Depends(require_permission("scoring:admin"))],
+)
+async def update_score_sheet_layout(
+    sheet_id: UUID,
+    body: schemas.ScoreSheetTemplateLayoutUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await service.update_template_layout(db, str(sheet_id), body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

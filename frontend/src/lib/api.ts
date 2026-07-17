@@ -3,6 +3,19 @@ import { useAuthStore } from "@/store/authStore";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
+export async function restoreAccessToken(): Promise<string | null> {
+  try {
+    const { data } = await axios.post(
+      `${BASE_URL}/auth/refresh`,
+      {},
+      { withCredentials: true }
+    );
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+
 export const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
@@ -10,6 +23,10 @@ export const api = axios.create({
 
 // Attach access token to every request
 api.interceptors.request.use((config) => {
+  const method = config.method?.toUpperCase();
+  if (method && !["GET", "HEAD", "OPTIONS"].includes(method) && !navigator.onLine) {
+    return Promise.reject(new Error("OFFLINE_WRITE_BLOCKED"));
+  }
   const token = useAuthStore.getState().accessToken;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -25,7 +42,11 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    if (
+      error.response?.status === 401 &&
+      !original._retry &&
+      !String(original.url).includes("/auth/refresh")
+    ) {
       original._retry = true;
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

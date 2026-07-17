@@ -105,13 +105,35 @@ async def auth_headers(admin_token: str) -> dict:
 @pytest_asyncio.fixture
 async def season(db: AsyncSession):
     """Create a test season."""
+    from modules.events.models import Event
     from modules.seasons.models import Season
 
     s = Season(name="Test Season 2026", year=2026, is_active=True)
     db.add(s)
+    await db.flush()
+    db.add(
+        Event(
+            season_id=s.id,
+            name="Test Event",
+            slug=f"test-event-{s.id}",
+            status="published",
+            public_scoreboard=True,
+            public_schedule=True,
+        )
+    )
     await db.commit()
     await db.refresh(s)
     return s
+
+
+@pytest_asyncio.fixture
+async def event(db: AsyncSession, season):
+    """Return the default event belonging to the test season."""
+    from sqlalchemy import select
+
+    from modules.events.models import Event
+
+    return (await db.execute(select(Event).where(Event.season_id == season.id))).scalar_one()
 
 
 @pytest_asyncio.fixture

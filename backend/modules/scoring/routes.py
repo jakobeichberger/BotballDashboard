@@ -1,10 +1,9 @@
-import asyncio
-
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import require_permission
 from core.database import get_db
+from core.live import publish_live_event, stream_live_events
 from modules.scoring import competition_service as comp_svc
 from modules.scoring import service
 from modules.scoring.competition_schemas import (
@@ -23,40 +22,21 @@ from modules.scoring.schemas import (
     MatchUpdate,
     RankingResponse,
     ScoreBulkEntry,
+    ScoreRevisionResponse,
 )
 from modules.seasons import service as season_svc
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
-# WebSocket connections for live scoreboard (set + lock for safe concurrent access)
-_scoreboard_connections: set[WebSocket] = set()
-_connection_lock = asyncio.Lock()
-
 
 @router.websocket("/scoreboard/ws")
 async def scoreboard_ws(websocket: WebSocket):
-    await websocket.accept()
-    async with _connection_lock:
-        _scoreboard_connections.add(websocket)
-    try:
-        while True:
-            await websocket.receive_text()  # keep-alive
-    except WebSocketDisconnect:
-        pass
-    finally:
-        async with _connection_lock:
-            _scoreboard_connections.discard(websocket)
+    """Legacy global stream. New screens use the event-specific public stream."""
+    await stream_live_events(websocket, None)
 
 
-async def _broadcast_ranking_update(season_id: str) -> None:
-    async with _connection_lock:
-        dead: set[WebSocket] = set()
-        for ws in list(_scoreboard_connections):
-            try:
-                await ws.send_json({"event": "ranking_updated", "season_id": season_id})
-            except Exception:
-                dead.add(ws)
-        _scoreboard_connections.difference_update(dead)
+async def _broadcast_ranking_update(event_id: str) -> None:
+    await publish_live_event(event_id, "ranking_updated")
 
 
 # ── Matches ───────────────────────────────────────────────────────────────────
@@ -83,7 +63,7 @@ async def create_match(
     data = body.model_dump()
     data["season_id"] = season_id
     match = await service.create_match(db, data, current_user.id)
-    await _broadcast_ranking_update(season_id)
+    await _broadcast_ranking_update(match.event_id)
     return match
 
 
@@ -101,7 +81,8 @@ async def bulk_create_matches(
         data = entry.model_dump()
         data["season_id"] = season_id
         results.append(await service.create_match(db, data, current_user.id))
-    await _broadcast_ranking_update(season_id)
+    if results:
+        await _broadcast_ranking_update(results[0].event_id)
     return results
 
 
@@ -118,12 +99,26 @@ async def get_match(
 async def update_match(
     match_id: str,
     body: MatchUpdate,
-    _=Depends(require_permission("scoring:write")),
+    current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    match = await service.update_match(db, match_id, **body.model_dump(exclude_none=True))
-    await _broadcast_ranking_update(match.season_id)
+    match = await service.update_match(
+        db,
+        match_id,
+        changed_by=current_user.id,
+        **body.model_dump(exclude_none=True),
+    )
+    await _broadcast_ranking_update(match.event_id)
     return match
+
+
+@router.get("/matches/{match_id}/revisions", response_model=list[ScoreRevisionResponse])
+async def list_score_revisions(
+    match_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.list_revisions(db, match_id)
 
 
 @router.put("/matches/{match_id}/confirm", response_model=MatchResponse)

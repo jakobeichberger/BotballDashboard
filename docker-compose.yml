@@ -81,6 +81,31 @@ services:
       - "traefik.http.routers.api.tls.certresolver=le"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
 
+  # ── Background worker (local OCR + printer polling) ───────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A core.celery_app:celery_app worker --loglevel=INFO --concurrency=2
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A core.celery_app:celery_app inspect ping -d celery@$$HOSTNAME | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # ── Frontend ──────────────────────────────────────────────────
   # dist/ is pre-built on the host by scripts/proxmox-setup.sh before docker compose build
   frontend:

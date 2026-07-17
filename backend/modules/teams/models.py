@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -61,6 +61,9 @@ class TeamMember(Base):
 
 class TeamSeasonRegistration(Base):
     __tablename__ = "team_season_registrations"
+    __table_args__ = (
+        UniqueConstraint("team_id", "season_id", name="uq_team_registration_team_season"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     team_id: Mapped[str] = mapped_column(
