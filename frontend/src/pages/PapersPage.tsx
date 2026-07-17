@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText } from "lucide-react";
 import { api } from "@/lib/api";
+import Modal from "@/components/Modal";
 
 const STATUS_BADGE: Record<string, string> = {
   draft: "badge-gray",
@@ -21,11 +23,41 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function PapersPage() {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ team_id: "", title: "", abstract: "" });
+  const [file, setFile] = useState<File | null>(null);
+  const { data: activeSeason } = useQuery({
+    queryKey: ["seasons", "active"],
+    queryFn: async () => (await api.get("/seasons/active")).data,
+  });
+  const { data: teams } = useQuery<any[]>({
+    queryKey: ["teams"],
+    queryFn: async () => (await api.get("/teams")).data,
+  });
   const { data: papers, isLoading } = useQuery({
     queryKey: ["papers"],
     queryFn: async () => {
       const { data } = await api.get("/papers");
       return data;
+    },
+  });
+
+  const createPaper = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post("/papers", { ...form, season_id: activeSeason.id });
+      if (file) {
+        const body = new FormData();
+        body.append("file", file);
+        await api.post(`/papers/${data.id}/upload`, body);
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["papers"] });
+      setForm({ team_id: "", title: "", abstract: "" });
+      setFile(null);
+      setOpen(false);
     },
   });
 
@@ -36,7 +68,7 @@ export default function PapersPage() {
           <FileText className="w-6 h-6" />
           Paper Review
         </h1>
-        <button className="btn-primary">+ Paper einreichen</button>
+        <button onClick={() => setOpen(true)} className="btn-primary">+ Paper einreichen</button>
       </div>
 
       {isLoading && <p className="text-gray-500">Laden...</p>}
@@ -78,6 +110,30 @@ export default function PapersPage() {
           </tbody>
         </table>
       </div>
+      <Modal open={open} title="Paper einreichen" onClose={() => setOpen(false)}>
+        <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); createPaper.mutate(); }}>
+          <label className="block text-sm font-medium">Team *
+            <select className="input mt-1 w-full" required value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
+              <option value="">Bitte wählen</option>
+              {teams?.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm font-medium">Titel *
+            <input className="input mt-1 w-full" required value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
+          </label>
+          <label className="block text-sm font-medium">Kurzfassung
+            <textarea className="input mt-1 min-h-24 w-full" value={form.abstract} onChange={(event) => setForm((current) => ({ ...current, abstract: event.target.value }))} />
+          </label>
+          <label className="block text-sm font-medium">PDF
+            <input className="mt-1 block w-full text-sm" type="file" accept="application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+          </label>
+          {createPaper.isError && <p className="text-sm text-red-600">Paper konnte nicht angelegt werden.</p>}
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Abbrechen</button>
+            <button type="submit" className="btn-primary" disabled={!activeSeason || !form.team_id || !form.title || createPaper.isPending}>Einreichen</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

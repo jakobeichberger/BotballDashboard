@@ -1,20 +1,22 @@
 """
 Service logic for DE, aerial, documentation scoring and overall ranking.
 """
-from sqlalchemy import select, delete
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from modules.scoring.competition_models import DEResult, AerialResult, DocumentationScore
+from modules.paper_review.models import Paper
+from modules.scoring.competition_models import AerialResult, DEResult, DocumentationScore
 from modules.scoring.models import Ranking
 from modules.teams.models import Team, TeamSeasonRegistration
-from modules.paper_review.models import Paper
 
 
 def _avg_best_n(values: list[float], n: int = 2) -> float:
     valid = sorted([v for v in values if v is not None], reverse=True)
     if not valid:
         return 0.0
-    return sum(valid[:n]) / n
+    selected = valid[:n]
+    return sum(selected) / len(selected)
 
 
 def _normalize(values: list[float]) -> list[float]:
@@ -30,6 +32,7 @@ def _normalize(values: list[float]) -> list[float]:
 
 # ── Team helpers ──────────────────────────────────────────────────────────────
 
+
 async def _team_map(db: AsyncSession, season_id: str) -> dict[str, dict]:
     """Returns {team_id: {name, category}} for all teams registered in season."""
     result = await db.execute(
@@ -42,10 +45,9 @@ async def _team_map(db: AsyncSession, season_id: str) -> dict[str, dict]:
 
 # ── Double Elimination ────────────────────────────────────────────────────────
 
+
 async def get_de_results(db: AsyncSession, season_id: str) -> list[DEResult]:
-    result = await db.execute(
-        select(DEResult).where(DEResult.season_id == season_id)
-    )
+    result = await db.execute(select(DEResult).where(DEResult.season_id == season_id))
     return list(result.scalars())
 
 
@@ -67,13 +69,15 @@ async def upsert_de_result(db: AsyncSession, season_id: str, data: dict) -> DERe
     return row
 
 
-async def bulk_upsert_de_results(db: AsyncSession, season_id: str, entries: list[dict]) -> list[DEResult]:
+async def bulk_upsert_de_results(
+    db: AsyncSession, season_id: str, entries: list[dict]
+) -> list[DEResult]:
     rows = [await upsert_de_result(db, season_id, e) for e in entries]
     # Recompute ranks per bracket
     for bracket in ("A", "B"):
         bracket_rows = sorted(
             [r for r in rows if r.bracket == bracket and r.de_rank is not None],
-            key=lambda r: r.de_rank,
+            key=lambda r: r.de_rank or 0,
         )
         max_rank = len(bracket_rows)
         for r in bracket_rows:
@@ -86,10 +90,9 @@ async def bulk_upsert_de_results(db: AsyncSession, season_id: str, entries: list
 
 # ── Aerial ────────────────────────────────────────────────────────────────────
 
+
 async def get_aerial_results(db: AsyncSession, season_id: str) -> list[AerialResult]:
-    result = await db.execute(
-        select(AerialResult).where(AerialResult.season_id == season_id)
-    )
+    result = await db.execute(select(AerialResult).where(AerialResult.season_id == season_id))
     return list(result.scalars())
 
 
@@ -114,16 +117,21 @@ async def upsert_aerial_result(db: AsyncSession, season_id: str, data: dict) -> 
     return row
 
 
-async def bulk_upsert_aerial_results(db: AsyncSession, season_id: str, entries: list[dict]) -> list[AerialResult]:
+async def bulk_upsert_aerial_results(
+    db: AsyncSession, season_id: str, entries: list[dict]
+) -> list[AerialResult]:
     rows = [await upsert_aerial_result(db, season_id, e) for e in entries]
     # Rank by score descending
-    scored = sorted([r for r in rows if r.score is not None], key=lambda r: r.score, reverse=True)
+    scored = sorted(
+        [r for r in rows if r.score is not None], key=lambda r: r.score or 0.0, reverse=True
+    )
     for i, r in enumerate(scored, 1):
         r.rank = i
     return rows
 
 
 # ── Documentation ─────────────────────────────────────────────────────────────
+
 
 async def get_doc_scores(db: AsyncSession, season_id: str) -> list[DocumentationScore]:
     result = await db.execute(
@@ -146,23 +154,30 @@ async def upsert_doc_score(db: AsyncSession, season_id: str, data: dict) -> Docu
     else:
         for k, v in data.items():
             setattr(row, k, v)
-    # Compute doc_score as average of available parts (0-1)
-    parts = [row.part1, row.part2, row.part3]
+    # Compute doc_score as average of all available parts (0-1), including onsite.
+    parts = [row.part1, row.part2, row.part3, row.onsite]
     valid = [p / 100.0 for p in parts if p is not None]
     row.doc_score = sum(valid) / len(valid) if valid else None
     await db.flush()
     return row
 
 
-async def bulk_upsert_doc_scores(db: AsyncSession, season_id: str, entries: list[dict]) -> list[DocumentationScore]:
+async def bulk_upsert_doc_scores(
+    db: AsyncSession, season_id: str, entries: list[dict]
+) -> list[DocumentationScore]:
     rows = [await upsert_doc_score(db, season_id, e) for e in entries]
-    scored = sorted([r for r in rows if r.doc_score is not None], key=lambda r: r.doc_score, reverse=True)
+    scored = sorted(
+        [r for r in rows if r.doc_score is not None],
+        key=lambda r: r.doc_score or 0.0,
+        reverse=True,
+    )
     for i, r in enumerate(scored, 1):
         r.doc_rank = i
     return rows
 
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
+
 
 async def get_overall_ranking(
     db: AsyncSession,
@@ -180,37 +195,35 @@ async def get_overall_ranking(
     # Gather per-module scores keyed by team_id
     seed_scores: dict[str, float] = {}
     if use_seeding:
-        result = await db.execute(
-            select(Ranking).where(Ranking.season_id == season_id)
-        )
-        for r in result.scalars():
-            seed_scores[r.team_id] = r.seed_score
+        ranking_result = await db.execute(select(Ranking).where(Ranking.season_id == season_id))
+        rankings = list(ranking_result.scalars())
+        normalized = _normalize([r.seed_score for r in rankings])
+        seed_scores = {r.team_id: score for r, score in zip(rankings, normalized)}
 
     de_scores: dict[str, float] = {}
     if use_double_elimination:
-        result = await db.execute(
-            select(DEResult).where(DEResult.season_id == season_id)
-        )
-        for r in result.scalars():
-            if r.de_score is not None:
-                de_scores[r.team_id] = r.de_score
+        de_result = await db.execute(select(DEResult).where(DEResult.season_id == season_id))
+        for de_row in de_result.scalars():
+            if de_row.de_score is not None:
+                de_scores[de_row.team_id] = de_row.de_score
 
     paper_scores: dict[str, float] = {}
     if use_paper_scoring:
-        result = await db.execute(
+        paper_result = await db.execute(
             select(Paper).where(Paper.season_id == season_id, Paper.final_score.isnot(None))
         )
-        for p in result.scalars():
-            paper_scores[p.team_id] = p.final_score
+        for paper in paper_result.scalars():
+            if paper.final_score is not None:
+                paper_scores[paper.team_id] = paper.final_score
 
     doc_scores: dict[str, float] = {}
     if use_documentation_scoring:
-        result = await db.execute(
+        doc_result = await db.execute(
             select(DocumentationScore).where(DocumentationScore.season_id == season_id)
         )
-        for d in result.scalars():
-            if d.doc_score is not None:
-                doc_scores[d.team_id] = d.doc_score
+        for doc_row in doc_result.scalars():
+            if doc_row.doc_score is not None:
+                doc_scores[doc_row.team_id] = doc_row.doc_score
 
     # Combine scores
     entries = []
@@ -223,17 +236,19 @@ async def get_overall_ranking(
         parts = [v for v in [s, d, p, doc] if v is not None]
         overall = sum(parts)
 
-        entries.append({
-            "team_id": team_id,
-            "team_name": info["name"],
-            "category": info["category"],
-            "overall_score": overall,
-            "seeding_score": s,
-            "de_score": d,
-            "paper_score": p,
-            "doc_score": doc,
-            "aerial_score": None,
-        })
+        entries.append(
+            {
+                "team_id": team_id,
+                "team_name": info["name"],
+                "category": info["category"],
+                "overall_score": overall,
+                "seeding_score": s,
+                "de_score": d,
+                "paper_score": p,
+                "doc_score": doc,
+                "aerial_score": None,
+            }
+        )
 
     entries.sort(key=lambda e: e["overall_score"], reverse=True)
     for i, e in enumerate(entries, 1):
@@ -245,19 +260,24 @@ async def get_overall_ranking(
 async def get_aerial_ranking(db: AsyncSession, season_id: str) -> list[dict]:
     """Aerial ranking with team info."""
     teams = await _team_map(db, season_id)
-    result = await db.execute(
-        select(AerialResult).where(AerialResult.season_id == season_id)
-    )
+    result = await db.execute(select(AerialResult).where(AerialResult.season_id == season_id))
     rows = list(result.scalars())
-    scored = sorted([r for r in rows if r.score is not None], key=lambda r: r.score, reverse=True)
+    scored = sorted(
+        [r for r in rows if r.score is not None], key=lambda r: r.score or 0.0, reverse=True
+    )
     out = []
     for i, r in enumerate(scored, 1):
         info = teams.get(r.team_id, {})
-        out.append({
-            "rank": i,
-            "team_id": r.team_id,
-            "team_name": info.get("name"),
-            "run1": r.run1, "run2": r.run2, "run3": r.run3, "run4": r.run4,
-            "score": r.score,
-        })
+        out.append(
+            {
+                "rank": i,
+                "team_id": r.team_id,
+                "team_name": info.get("name"),
+                "run1": r.run1,
+                "run2": r.run2,
+                "run3": r.run3,
+                "run4": r.run4,
+                "score": r.score,
+            }
+        )
     return out

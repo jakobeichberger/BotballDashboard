@@ -11,17 +11,17 @@ Endpoints:
   DELETE /scoring/score-sheets/{sheet_id}                       Delete
 """
 
-from uuid import UUID
-from typing import Optional
-
-from fastapi import APIRouter, Depends, File, Form, HTTPException, BackgroundTasks, UploadFile
-from fastapi.responses import FileResponse
 from pathlib import Path
+from uuid import UUID
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission, get_current_user
+from core.auth import get_current_user, require_permission
 from core.database import get_db
-from . import service, schemas
+
+from . import schemas, service
 
 router = APIRouter(prefix="/scoring", tags=["scoring", "score-sheets"])
 
@@ -31,6 +31,7 @@ MAX_PDF_SIZE = 20 * 1024 * 1024  # 20 MB
 # ---------------------------------------------------------------------------
 # Upload
 # ---------------------------------------------------------------------------
+
 
 @router.post(
     "/seasons/{season_id}/score-sheets",
@@ -45,8 +46,8 @@ async def upload_score_sheet(
     file: UploadFile = File(..., description="PDF file of the official scoring sheet"),
     label: str = Form(..., description="Display name, e.g. 'ECER 2026 Official Sheet'"),
     year: int = Form(...),
-    game_theme: Optional[str] = Form(None),
-    competition_level_id: Optional[UUID] = Form(None),
+    game_theme: str | None = Form(None),
+    competition_level_id: UUID | None = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -72,14 +73,14 @@ async def upload_score_sheet(
     # Persist metadata
     template = await service.create_template(
         db=db,
-        season_id=season_id,
-        competition_level_id=competition_level_id,
+        season_id=str(season_id),
+        competition_level_id=str(competition_level_id) if competition_level_id else None,
         label=label,
         year=year,
         game_theme=game_theme,
         file_path=file_path,
         file_size=file_size,
-        uploaded_by=current_user.id,
+        uploaded_by=str(current_user.id),
     )
 
     # Run OCR extraction in the background so the upload response is fast
@@ -92,6 +93,7 @@ async def upload_score_sheet(
 # List
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/seasons/{season_id}/score-sheets",
     response_model=list[schemas.ScoreSheetTemplateListItem],
@@ -100,18 +102,20 @@ async def upload_score_sheet(
 )
 async def list_score_sheets(
     season_id: UUID,
-    competition_level_id: Optional[UUID] = None,
+    competition_level_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    templates = await service.list_templates(db, season_id, competition_level_id)
+    templates = await service.list_templates(
+        db,
+        str(season_id),
+        str(competition_level_id) if competition_level_id else None,
+    )
 
     # Enrich with confirmed_fields_count
     result = []
     for t in templates:
         item = schemas.ScoreSheetTemplateListItem.model_validate(t)
-        item.confirmed_fields_count = (
-            len(t.confirmed_fields) if t.confirmed_fields else None
-        )
+        item.confirmed_fields_count = len(t.confirmed_fields) if t.confirmed_fields else None
         result.append(item)
     return result
 
@@ -119,6 +123,7 @@ async def list_score_sheets(
 # ---------------------------------------------------------------------------
 # Get one
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/score-sheets/{sheet_id}",
@@ -130,7 +135,7 @@ async def get_score_sheet(
     sheet_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    template = await service.get_template(db, sheet_id)
+    template = await service.get_template(db, str(sheet_id))
     if not template:
         raise HTTPException(status_code=404, detail="Score sheet not found.")
     return template
@@ -139,6 +144,7 @@ async def get_score_sheet(
 # ---------------------------------------------------------------------------
 # Download PDF
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/score-sheets/{sheet_id}/file",
@@ -149,7 +155,7 @@ async def download_score_sheet_pdf(
     sheet_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    template = await service.get_template(db, sheet_id)
+    template = await service.get_template(db, str(sheet_id))
     if not template:
         raise HTTPException(status_code=404, detail="Score sheet not found.")
 
@@ -168,6 +174,7 @@ async def download_score_sheet_pdf(
 # Confirm fields
 # ---------------------------------------------------------------------------
 
+
 @router.post(
     "/score-sheets/{sheet_id}/confirm",
     response_model=schemas.ScoreSheetTemplateResponse,
@@ -180,7 +187,7 @@ async def confirm_score_sheet_fields(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    template = await service.get_template(db, sheet_id)
+    template = await service.get_template(db, str(sheet_id))
     if not template:
         raise HTTPException(status_code=404, detail="Score sheet not found.")
     if not body.fields:
@@ -188,9 +195,9 @@ async def confirm_score_sheet_fields(
 
     return await service.confirm_fields(
         db=db,
-        template_id=sheet_id,
+        template_id=str(sheet_id),
         fields=body.fields,
-        confirmed_by=current_user.id,
+        confirmed_by=str(current_user.id),
         apply_to_schema=body.apply_to_schema,
     )
 
@@ -198,6 +205,7 @@ async def confirm_score_sheet_fields(
 # ---------------------------------------------------------------------------
 # Set active
 # ---------------------------------------------------------------------------
+
 
 @router.put(
     "/score-sheets/{sheet_id}/active",
@@ -209,7 +217,7 @@ async def set_active_score_sheet(
     sheet_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    template = await service.get_template(db, sheet_id)
+    template = await service.get_template(db, str(sheet_id))
     if not template:
         raise HTTPException(status_code=404, detail="Score sheet not found.")
 
@@ -217,13 +225,14 @@ async def set_active_score_sheet(
         db=db,
         season_id=template.season_id,
         competition_level_id=template.competition_level_id,
-        template_id=sheet_id,
+        template_id=str(sheet_id),
     )
 
 
 # ---------------------------------------------------------------------------
 # Delete
 # ---------------------------------------------------------------------------
+
 
 @router.delete(
     "/score-sheets/{sheet_id}",
@@ -235,7 +244,7 @@ async def delete_score_sheet(
     sheet_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    template = await service.get_template(db, sheet_id)
+    template = await service.get_template(db, str(sheet_id))
     if not template:
         raise HTTPException(status_code=404, detail="Score sheet not found.")
     if template.is_active:
@@ -243,4 +252,4 @@ async def delete_score_sheet(
             status_code=409,
             detail="Cannot delete the active score sheet. Set another sheet as active first.",
         )
-    await service.delete_template(db, sheet_id)
+    await service.delete_template(db, str(sheet_id))

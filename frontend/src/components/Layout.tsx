@@ -12,11 +12,14 @@ import {
   Moon,
   Monitor,
   Globe,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useLogout } from "@/hooks/useAuth";
+import { usePushSubscription } from "@/hooks/usePushNotifications";
 import i18n from "@/i18n/config";
 
 const NAV_ITEMS = [
@@ -33,6 +36,7 @@ export default function Layout() {
   const { theme, setTheme } = useThemeStore();
   const logout = useLogout();
   const navigate = useNavigate();
+  const push = usePushSubscription();
 
   const handleLogout = async () => {
     await logout();
@@ -110,6 +114,14 @@ export default function Layout() {
 
         {/* Footer */}
         <div className="border-t p-3 space-y-1">
+          <button
+            onClick={() => push.isSubscribed ? push.unsubscribe.mutate() : push.subscribe.mutate()}
+            disabled={push.subscribe.isPending || push.unsubscribe.isPending}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+          >
+            {push.isSubscribed ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+            {push.isSubscribed ? t("push.enabled") : t("push.enable")}
+          </button>
           <button
             onClick={toggleLanguage}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"

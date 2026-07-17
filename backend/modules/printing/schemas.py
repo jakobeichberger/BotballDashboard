@@ -1,5 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 
 class PrinterCreate(BaseModel):
@@ -41,16 +43,19 @@ class PrintJobCreate(BaseModel):
     file_name: str
     material: str = "PLA"
     color: str | None = None
-    estimated_grams: float | None = None
-    estimated_minutes: int | None = None
+    estimated_grams: float | None = Field(default=None, ge=0)
+    estimated_minutes: int | None = Field(default=None, ge=0)
     notes: str | None = None
 
 
 class PrintJobUpdate(BaseModel):
     printer_id: str | None = None
-    status: str | None = None
-    actual_grams: float | None = None
-    actual_minutes: int | None = None
+    status: (
+        Literal["pending", "approved", "queued", "printing", "completed", "failed", "cancelled"]
+        | None
+    ) = None
+    actual_grams: float | None = Field(default=None, ge=0)
+    actual_minutes: int | None = Field(default=None, ge=0)
     notes: str | None = None
     priority: int | None = None
 
@@ -99,7 +104,7 @@ class FilamentSpoolCreate(BaseModel):
     material: str = "PLA"
     color: str | None = None
     brand: str | None = None
-    initial_grams: float = 1000.0
+    initial_grams: float = Field(default=1000.0, gt=0)
 
 
 class FilamentSpoolResponse(BaseModel):

@@ -1,9 +1,9 @@
 from datetime import datetime
+
 from pydantic import BaseModel
 
 
 class MatchCreate(BaseModel):
-    season_id: str
     phase_id: str | None = None
     team_id: str
     competition_level_id: str | None = None
@@ -58,4 +58,5 @@ class RankingResponse(BaseModel):
 
 class ScoreBulkEntry(BaseModel):
     """Used for rapid multi-match entry (e.g., score table entry)."""
+
     entries: list[MatchCreate]

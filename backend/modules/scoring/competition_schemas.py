@@ -1,15 +1,16 @@
 from datetime import datetime
-from pydantic import BaseModel, field_validator
 
+from pydantic import BaseModel, Field, field_validator
 
 # ── Double Elimination ────────────────────────────────────────────────────────
+
 
 class DEResultUpsert(BaseModel):
     team_id: str
     bracket: str  # "A" | "B"
-    de_rank: int | None = None
-    bracket_score: float | None = None
-    de_score: float | None = None
+    de_rank: int | None = Field(default=None, ge=1)
+    bracket_score: float | None = Field(default=None, ge=0, le=1)
+    de_score: float | None = Field(default=None, ge=0, le=1)
     notes: str | None = None
 
     @field_validator("bracket")
@@ -36,12 +37,13 @@ class DEResultResponse(BaseModel):
 
 # ── Aerial ────────────────────────────────────────────────────────────────────
 
+
 class AerialResultUpsert(BaseModel):
     team_id: str
-    run1: float | None = None
-    run2: float | None = None
-    run3: float | None = None
-    run4: float | None = None
+    run1: float | None = Field(default=None, ge=0)
+    run2: float | None = Field(default=None, ge=0)
+    run3: float | None = Field(default=None, ge=0)
+    run4: float | None = Field(default=None, ge=0)
     notes: str | None = None
 
 
@@ -63,12 +65,13 @@ class AerialResultResponse(BaseModel):
 
 # ── Documentation ─────────────────────────────────────────────────────────────
 
+
 class DocScoreUpsert(BaseModel):
     team_id: str
-    part1: float | None = None
-    part2: float | None = None
-    part3: float | None = None
-    onsite: float | None = None
+    part1: float | None = Field(default=None, ge=0, le=100)
+    part2: float | None = Field(default=None, ge=0, le=100)
+    part3: float | None = Field(default=None, ge=0, le=100)
+    onsite: float | None = Field(default=None, ge=0, le=100)
     notes: str | None = None
 
 
@@ -90,6 +93,7 @@ class DocScoreResponse(BaseModel):
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
 
+
 class OverallRankingEntry(BaseModel):
     rank: int
     team_id: str
@@ -105,6 +109,7 @@ class OverallRankingEntry(BaseModel):
 
 class TeamRankingEntry(BaseModel):
     """Extended seeding ranking entry with team name and category."""
+
     rank: int
     team_id: str
     team_name: str | None

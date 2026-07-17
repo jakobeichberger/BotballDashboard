@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -52,7 +52,9 @@ class TeamMember(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(50), default="member", nullable=False)  # mentor | member
+    role: Mapped[str] = mapped_column(
+        String(50), default="member", nullable=False
+    )  # mentor | member
 
     team: Mapped[Team] = relationship(Team, back_populates="members")
 

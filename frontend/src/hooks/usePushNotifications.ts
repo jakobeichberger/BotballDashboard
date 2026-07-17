@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -11,6 +12,16 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 export function usePushSubscription() {
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.ready
+      .then((registration) => registration.pushManager.getSubscription())
+      .then((subscription) => setIsSubscribed(!!subscription))
+      .catch(() => setIsSubscribed(false));
+  }, []);
+
   const subscribe = useMutation({
     mutationFn: async () => {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -34,6 +45,7 @@ export function usePushSubscription() {
         user_agent: navigator.userAgent,
       });
 
+      setIsSubscribed(true);
       return subscription;
     },
   });
@@ -49,8 +61,9 @@ export function usePushSubscription() {
         data: { endpoint, p256dh: keys.p256dh, auth: keys.auth },
       });
       await subscription.unsubscribe();
+      setIsSubscribed(false);
     },
   });
 
-  return { subscribe, unsubscribe };
+  return { subscribe, unsubscribe, isSubscribed };
 }

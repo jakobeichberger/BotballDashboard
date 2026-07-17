@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission, require_any_permission
+from core.auth import require_permission
 from core.database import get_db
 from modules.teams import service
 from modules.teams.schemas import (
@@ -41,6 +41,7 @@ async def create_team(
 
 # ── Season registrations (must come before /{team_id} to avoid path shadowing) ─
 
+
 @router.get("/registrations", response_model=list[TeamSeasonRegistrationResponse])
 async def list_registrations(
     season_id: str | None = Query(None),
@@ -58,13 +59,17 @@ async def register_for_season(
     db: AsyncSession = Depends(get_db),
 ):
     return await service.register_for_season(
-        db, body.team_id, body.season_id,
+        db,
+        body.team_id,
+        body.season_id,
         competition_level_id=body.competition_level_id,
         notes=body.notes,
     )
 
 
-@router.put("/registrations/{registration_id}/confirm", response_model=TeamSeasonRegistrationResponse)
+@router.put(
+    "/registrations/{registration_id}/confirm", response_model=TeamSeasonRegistrationResponse
+)
 async def confirm_registration(
     registration_id: str,
     _=Depends(require_permission("teams:write")),
@@ -74,6 +79,7 @@ async def confirm_registration(
 
 
 # ── Individual team routes ────────────────────────────────────────────────────
+
 
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(

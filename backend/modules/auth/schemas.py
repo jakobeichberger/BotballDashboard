@@ -1,8 +1,9 @@
 from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, field_validator
 
-
 # ── Auth ──────────────────────────────────────────────────────────────────────
+
 
 class LoginRequest(BaseModel):
     email: str  # str not EmailStr: login shouldn't reject unusual addresses (e.g. .local TLD)
@@ -20,6 +21,7 @@ class RefreshRequest(BaseModel):
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -90,6 +92,7 @@ class UserListItem(BaseModel):
 
 # ── Roles ─────────────────────────────────────────────────────────────────────
 
+
 class RoleCreate(BaseModel):
     name: str
     description: str | None = None
@@ -107,6 +110,7 @@ class RoleDetailResponse(BaseModel):
 
 
 # ── Push subscriptions ────────────────────────────────────────────────────────
+
 
 class PushSubscriptionCreate(BaseModel):
     endpoint: str

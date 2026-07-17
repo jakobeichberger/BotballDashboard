@@ -26,6 +26,10 @@
   "email": "E-Mail",
   "date": "Datum",
   "notes": "Notizen",
+  "push": {
+    "enable": "Push aktivieren",
+    "enabled": "Push aktiviert"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "teams": "Teams",

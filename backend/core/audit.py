@@ -1,8 +1,10 @@
+from datetime import datetime
+
+from sqlalchemy import JSON, DateTime, String, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Text, JSON, DateTime, func
+
 from core.database import Base
-from datetime import datetime
 
 
 class AuditLog(Base):

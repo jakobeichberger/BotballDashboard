@@ -1,10 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import (
-    Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, func
-)
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
 
@@ -15,6 +13,7 @@ def _uuid() -> str:
 
 class ScoringSchema(Base):
     """Defines which fields are scored and their multipliers for a season/level."""
+
     __tablename__ = "scoring_schemas"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -56,8 +55,12 @@ class Match(Base):
     yellow_card: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     red_card: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    entered_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
-    confirmed_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    entered_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True
+    )
+    confirmed_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True
+    )
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -69,6 +72,7 @@ class Match(Base):
 
 class Ranking(Base):
     """Computed ranking cache – recalculated after each score entry."""
+
     __tablename__ = "rankings"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)

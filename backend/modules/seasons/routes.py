@@ -23,9 +23,7 @@ async def list_seasons(
 
 
 @router.get("/active", response_model=SeasonResponse | None)
-async def get_active_season(
-    _=Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+async def get_active_season(_=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await service.get_active_season(db)
 
 
@@ -88,7 +86,5 @@ async def activate_phase(
 
 
 @router.get("/competition-levels/all", response_model=list[CompetitionLevelResponse])
-async def list_competition_levels(
-    _=Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+async def list_competition_levels(_=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await service.list_competition_levels(db)

@@ -66,7 +66,7 @@ Das Script erledigt automatisch:
 
 #### Voraussetzungen
 - Docker & Docker Compose
-- (Optional) pnpm 9+ für lokale Frontend-Entwicklung
+- (Optional) pnpm 10 für lokale Frontend-Entwicklung
 
 #### Produktion
 
@@ -74,7 +74,7 @@ Das Script erledigt automatisch:
 cp .env.example .env
 # .env anpassen (Passwörter, DOMAIN, SMTP optional, VAPID-Keys)
 
-make up          # startet alle Container inkl. Traefik
+make up          # baut und startet alle Container inkl. Traefik
 make migrate     # ggf. Migrationen manuell anstoßen (läuft automatisch beim Start)
 ```
 

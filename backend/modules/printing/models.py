@@ -16,8 +16,12 @@ class Printer(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    model: Mapped[str | None] = mapped_column(String(255), nullable=True)  # e.g. "Bambu X1C", "Ender 3"
-    printer_type: Mapped[str] = mapped_column(String(50), nullable=False, default="bambu")  # bambu | octoprint | generic
+    model: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # e.g. "Bambu X1C", "Ender 3"
+    printer_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="bambu"
+    )  # bambu | octoprint | generic
     api_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_key_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)  # Fernet-encrypted
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -46,7 +50,9 @@ class PrintJob(Base):
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    submitted_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    submitted_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True
+    )
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     material: Mapped[str] = mapped_column(String(50), default="PLA", nullable=False)  # PLA | PETG
@@ -59,7 +65,9 @@ class PrintJob(Base):
     # pending | approved | queued | printing | completed | failed | cancelled
     priority: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    approved_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True
+    )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

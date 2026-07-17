@@ -26,6 +26,10 @@
   "email": "Email",
   "date": "Date",
   "notes": "Notes",
+  "push": {
+    "enable": "Enable push",
+    "enabled": "Push enabled"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "teams": "Teams",

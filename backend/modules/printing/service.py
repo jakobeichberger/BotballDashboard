@@ -1,14 +1,14 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import ConflictError, NotFoundError
 from modules.printing.crypto import decrypt_credential, encrypt_credential
-from modules.printing.models import FilamentSpool, PrintJob, Printer, TeamSeasonPrintQuota
-
+from modules.printing.models import FilamentSpool, Printer, PrintJob, TeamSeasonPrintQuota
 
 # ── Printers ──────────────────────────────────────────────────────────────────
+
 
 async def list_printers(db: AsyncSession) -> list[Printer]:
     result = await db.execute(select(Printer).order_by(Printer.name))
@@ -52,6 +52,7 @@ async def get_printer_api_key(db: AsyncSession, printer_id: str) -> str:
 
 # ── Print Jobs ────────────────────────────────────────────────────────────────
 
+
 async def list_print_jobs(
     db: AsyncSession,
     season_id: str | None = None,
@@ -93,12 +94,15 @@ async def create_print_job(db: AsyncSession, data: dict, submitted_by: str) -> P
 async def update_print_job(db: AsyncSession, job_id: str, **kwargs) -> PrintJob:
     job = await get_print_job(db, job_id)
     old_status = job.status
+    new_status = kwargs.get("status")
+    if old_status == "completed" and new_status and new_status != "completed":
+        raise ConflictError("Completed jobs cannot be reopened because quota was already counted")
 
     for key, value in kwargs.items():
         if value is not None:
             setattr(job, key, value)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if kwargs.get("status") == "printing" and old_status != "printing":
         job.started_at = now
     if kwargs.get("status") == "completed" and old_status != "completed":
@@ -112,7 +116,7 @@ async def approve_print_job(db: AsyncSession, job_id: str, approved_by: str) -> 
     job = await get_print_job(db, job_id)
     job.status = "approved"
     job.approved_by = approved_by
-    job.approved_at = datetime.now(timezone.utc)
+    job.approved_at = datetime.now(UTC)
     return job
 
 
@@ -146,6 +150,7 @@ async def get_quota(db: AsyncSession, team_id: str, season_id: str) -> TeamSeaso
 
 # ── Filament spools ───────────────────────────────────────────────────────────
 
+
 async def list_spools(db: AsyncSession, printer_id: str | None = None) -> list[FilamentSpool]:
     q = select(FilamentSpool).where(FilamentSpool.is_active == True)
     if printer_id:
@@ -155,7 +160,9 @@ async def list_spools(db: AsyncSession, printer_id: str | None = None) -> list[F
 
 
 async def create_spool(db: AsyncSession, data: dict) -> FilamentSpool:
-    spool = FilamentSpool(**data)
+    spool_data = data.copy()
+    spool_data.setdefault("remaining_grams", spool_data.get("initial_grams", 1000.0))
+    spool = FilamentSpool(**spool_data)
     db.add(spool)
     return spool
 

@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -72,7 +72,9 @@ async def remove_member(db: AsyncSession, team_id: str, member_id: str) -> None:
     await db.delete(member)
 
 
-async def register_for_season(db: AsyncSession, team_id: str, season_id: str, **kwargs) -> TeamSeasonRegistration:
+async def register_for_season(
+    db: AsyncSession, team_id: str, season_id: str, **kwargs
+) -> TeamSeasonRegistration:
     existing = await db.execute(
         select(TeamSeasonRegistration).where(
             TeamSeasonRegistration.team_id == team_id,
@@ -84,6 +86,7 @@ async def register_for_season(db: AsyncSession, team_id: str, season_id: str, **
 
     reg = TeamSeasonRegistration(team_id=team_id, season_id=season_id, **kwargs)
     db.add(reg)
+    await db.flush()
     return reg
 
 

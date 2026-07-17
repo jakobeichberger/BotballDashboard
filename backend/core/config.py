@@ -1,5 +1,8 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+
+from pydantic import model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 
 class Settings(BaseSettings):
@@ -49,9 +52,31 @@ class Settings(BaseSettings):
     upload_dir: str = "/app/uploads"
     max_upload_size_mb: int = 20
 
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.app_env != "production":
+            return self
+
+        invalid: list[str] = []
+        secrets = {
+            "APP_SECRET_KEY": self.app_secret_key,
+            "JWT_SECRET_KEY": self.jwt_secret_key,
+            "POSTGRES_PASSWORD": self.postgres_password,
+            "PRINTER_CREDENTIAL_ENCRYPTION_KEY": self.printer_credential_encryption_key,
+        }
+        for name, value in secrets.items():
+            lowered = value.lower()
+            if len(value) < 24 or "change-me" in lowered or "placeholder" in lowered:
+                invalid.append(name)
+        if "example.com" in self.app_base_url or "example.com" in self.allowed_origins:
+            invalid.extend(["APP_BASE_URL", "ALLOWED_ORIGINS"])
+        if invalid:
+            names = ", ".join(sorted(set(invalid)))
+            raise ValueError(f"Unsafe production configuration: replace {names}")
+        return self
+
     @property
-    def database_url(self):
-        from sqlalchemy.engine import URL
+    def database_url(self) -> URL:
         return URL.create(
             drivername="postgresql+asyncpg",
             username=self.postgres_user,

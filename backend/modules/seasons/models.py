@@ -1,10 +1,14 @@
 import uuid
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, JSON, String, Text, Integer, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
+
+if TYPE_CHECKING:
+    from modules.scoring.score_sheets.models import ScoreSheetTemplate
 
 
 def _uuid() -> str:
@@ -34,7 +38,9 @@ class Season(Base):
     use_documentation_scoring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     use_aerial: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Active team categories in this season: ["botball", "open", "aerial", "jbc"]
-    active_categories: Mapped[list] = mapped_column(JSON, default=lambda: ["botball"], nullable=False)
+    active_categories: Mapped[list] = mapped_column(
+        JSON, default=lambda: ["botball"], nullable=False
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -44,7 +50,10 @@ class Season(Base):
     )
 
     phases: Mapped[list["SeasonPhase"]] = relationship(
-        "SeasonPhase", back_populates="season", cascade="all, delete-orphan", order_by="SeasonPhase.sort_order"
+        "SeasonPhase",
+        back_populates="season",
+        cascade="all, delete-orphan",
+        order_by="SeasonPhase.sort_order",
     )
     score_sheet_templates: Mapped[list["ScoreSheetTemplate"]] = relationship(
         "ScoreSheetTemplate", back_populates="season", cascade="all, delete-orphan"
@@ -59,7 +68,9 @@ class SeasonPhase(Base):
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    phase_type: Mapped[str] = mapped_column(String(50), nullable=False)  # seeding | double_seeding | elimination | final
+    phase_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # seeding | double_seeding | elimination | final
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rounds: Mapped[int] = mapped_column(Integer, nullable=False, default=3)

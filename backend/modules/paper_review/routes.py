@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission, require_any_permission
+from core.auth import require_permission
 from core.database import get_db
 from modules.paper_review import service
 from modules.paper_review.schemas import (
@@ -68,9 +68,12 @@ async def upload_paper_file(
     _=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    file_path, file_name, file_size = await service.save_file(file, paper_id)
+    # Validate the record before writing anything to disk.
+    await service.get_paper(db, paper_id)
+    _file_path, file_name, file_size = await service.save_file(file, paper_id)
     return await service.update_paper(
-        db, paper_id,
+        db,
+        paper_id,
         file_url=f"/api/papers/{paper_id}/download",
         file_name=file_name,
         file_size_bytes=file_size,
@@ -86,8 +89,10 @@ async def download_paper(
     paper = await service.get_paper(db, paper_id)
     if not paper.file_name:
         from core.exceptions import NotFoundError
+
         raise NotFoundError("No file uploaded")
     from core.config import get_settings as _gs
+
     file_path = Path(_gs().upload_dir) / "papers" / paper_id / paper.file_name
     return FileResponse(str(file_path), filename=paper.file_name, media_type="application/pdf")
 
@@ -104,7 +109,9 @@ async def submit_paper(
 @router.put("/{paper_id}/status")
 async def set_paper_status(
     paper_id: str,
-    status: str = Query(...),
+    status: Literal[
+        "draft", "submitted", "under_review", "accepted", "rejected", "revision_requested"
+    ] = Query(...),
     _=Depends(require_permission("papers:admin")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -112,6 +119,7 @@ async def set_paper_status(
 
 
 # ── Reviewer assignments ──────────────────────────────────────────────────────
+
 
 @router.post("/{paper_id}/assignments", response_model=ReviewerAssignmentResponse, status_code=201)
 async def assign_reviewer(
@@ -124,6 +132,7 @@ async def assign_reviewer(
 
 
 # ── Reviews ───────────────────────────────────────────────────────────────────
+
 
 @router.put("/{paper_id}/reviews", response_model=ReviewResponse)
 async def save_review(

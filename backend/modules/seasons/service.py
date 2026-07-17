@@ -67,24 +67,24 @@ async def delete_season(db: AsyncSession, season_id: str) -> None:
 
 async def activate_phase(db: AsyncSession, season_id: str, phase_id: str) -> SeasonPhase:
     # Deactivate all phases in this season
-    result = await db.execute(
-        select(SeasonPhase).where(SeasonPhase.season_id == season_id)
-    )
-    for phase in result.scalars().all():
-        phase.is_active = False
+    result = await db.execute(select(SeasonPhase).where(SeasonPhase.season_id == season_id))
+    for existing_phase in result.scalars().all():
+        existing_phase.is_active = False
 
     result = await db.execute(
         select(SeasonPhase).where(SeasonPhase.id == phase_id, SeasonPhase.season_id == season_id)
     )
-    phase = result.scalar_one_or_none()
-    if not phase:
+    selected_phase = result.scalar_one_or_none()
+    if not selected_phase:
         raise NotFoundError("Phase not found")
-    phase.is_active = True
-    return phase
+    selected_phase.is_active = True
+    return selected_phase
 
 
 async def list_competition_levels(db: AsyncSession) -> list[CompetitionLevel]:
     result = await db.execute(
-        select(CompetitionLevel).where(CompetitionLevel.is_active == True).order_by(CompetitionLevel.name)
+        select(CompetitionLevel)
+        .where(CompetitionLevel.is_active == True)
+        .order_by(CompetitionLevel.name)
     )
     return list(result.scalars().all())

@@ -1,14 +1,16 @@
 """Unit tests for authentication module."""
+
 import pytest
+
+from core.auth import create_access_token, create_refresh_token, decode_token
+from core.exceptions import ConflictError, UnauthorizedError
 from modules.auth.service import (
-    hash_password,
-    verify_password,
     authenticate_user,
     create_user,
     get_user_permissions,
+    hash_password,
+    verify_password,
 )
-from core.auth import create_access_token, create_refresh_token, decode_token
-from core.exceptions import UnauthorizedError, ConflictError
 
 
 class TestPasswordHashing:
@@ -42,6 +44,9 @@ class TestJWTTokens:
         payload = decode_token(token, expected_type="refresh")
         assert payload["sub"] == "user-456"
         assert payload["type"] == "refresh"
+
+    def test_refresh_tokens_are_unique(self):
+        assert create_refresh_token("same-user") != create_refresh_token("same-user")
 
     def test_wrong_token_type_raises(self):
         access_token = create_access_token("user-789")

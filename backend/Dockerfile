@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # ── Development target ────────────────────────────────────────
 FROM deps AS development
-RUN pip install watchfiles
+RUN pip install ".[dev]" watchfiles
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # ── Production target ─────────────────────────────────────────

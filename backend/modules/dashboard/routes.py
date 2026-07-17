@@ -1,13 +1,14 @@
-from datetime import datetime, timezone
+import asyncio
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, require_permission
 from core.database import get_db
 from modules.dashboard.models import Announcement
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -40,8 +41,10 @@ async def list_announcements(
     _=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Announcement).where(Announcement.is_published == True).order_by(
-        Announcement.created_at.desc()
+    q = (
+        select(Announcement)
+        .where(Announcement.is_published == True)
+        .order_by(Announcement.created_at.desc())
     )
     if season_id:
         q = q.where(Announcement.season_id == season_id)
@@ -64,6 +67,7 @@ async def create_announcement(
 @router.put("/announcements/{ann_id}/publish", response_model=AnnouncementResponse)
 async def publish_announcement(
     ann_id: str,
+    background_tasks: BackgroundTasks,
     _=Depends(require_permission("dashboard:write")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -71,9 +75,32 @@ async def publish_announcement(
     ann = result.scalar_one_or_none()
     if not ann:
         from core.exceptions import NotFoundError
+
         raise NotFoundError("Announcement not found")
     ann.is_published = True
-    ann.published_at = datetime.now(timezone.utc)
+    ann.published_at = datetime.now(UTC)
+    from modules.auth.models import PushSubscription
+
+    subscriptions = list((await db.execute(select(PushSubscription))).scalars())
+    if subscriptions:
+        from core.notifications import send_push_notification
+
+        async def notify() -> None:
+            await asyncio.gather(
+                *(
+                    send_push_notification(
+                        sub.endpoint,
+                        sub.p256dh,
+                        sub.auth,
+                        ann.title,
+                        ann.body,
+                        "/",
+                    )
+                    for sub in subscriptions
+                )
+            )
+
+        background_tasks.add_task(notify)
     return ann
 
 
@@ -85,10 +112,11 @@ async def get_stats(
 ):
     """Returns aggregated stats for the dashboard overview widget."""
     from sqlalchemy import func as sqlfunc
-    from modules.teams.models import TeamSeasonRegistration
+
     from modules.paper_review.models import Paper
     from modules.printing.models import PrintJob
     from modules.scoring.models import Match
+    from modules.teams.models import TeamSeasonRegistration
 
     team_count = 0
     paper_count = 0
@@ -97,7 +125,8 @@ async def get_stats(
 
     if season_id:
         r = await db.execute(
-            select(sqlfunc.count()).select_from(TeamSeasonRegistration)
+            select(sqlfunc.count())
+            .select_from(TeamSeasonRegistration)
             .where(TeamSeasonRegistration.season_id == season_id)
         )
         team_count = r.scalar() or 0

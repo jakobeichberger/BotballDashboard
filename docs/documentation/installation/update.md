@@ -26,15 +26,15 @@ cd /opt/botballdashboard
 # 2. Neueste Änderungen holen
 git pull origin main
 
-# 3. Neue Images bauen/pullen und starten
-docker compose pull
+# 3. Neue Images bauen und starten
+docker compose build --pull
 docker compose up -d
 
 # 4. Logs prüfen
 docker compose logs backend --tail=50
 ```
 
-Der Befehl `docker compose up -d` startet automatisch nur die Container neu, deren Image sich geändert hat. Das DB-Volume `db_data` wird dabei **nie** angefasst.
+Der Build aktualisiert Backend und Frontend. `docker compose up -d` ersetzt anschließend nur geänderte Container. Das DB-Volume `pgdata` wird dabei nicht angefasst.
 
 ---
 
@@ -42,7 +42,7 @@ Der Befehl `docker compose up -d` startet automatisch nur die Container neu, der
 
 ```bash
 # Datenbank-Backup (manuell vor dem Update)
-docker compose exec db pg_dump -U botball botball_db \
+docker compose exec db pg_dump -U botball botball \
   | gzip > /data/backups/pre-update-$(date +%Y%m%d-%H%M).sql.gz
 
 # Proxmox-Snapshot (über Proxmox-WebUI oder CLI)
@@ -68,7 +68,7 @@ pvesh create /nodes/proxmox/qemu/100/snapshot/pre-update-20240315/rollback
 ```bash
 # Alte Datenbankversion wiederherstellen
 gunzip < /data/backups/pre-update-20240315.sql.gz \
-  | docker compose exec -T db psql -U botball botball_db
+  | docker compose exec -T db psql -U botball botball
 
 # Altes Docker-Image starten (Tag aus Git-History)
 git checkout v1.2.3
@@ -94,17 +94,6 @@ docker compose exec backend alembic current
 Downgrade (eine Version zurück):
 ```bash
 docker compose exec backend alembic downgrade -1
-```
-
----
-
-## Schema-Versionscheck
-
-Das System speichert Backend-Version und DB-Schema-Version in der `schema_version`-Tabelle. Bei Inkompatibilität wird der Start mit einer klaren Fehlermeldung abgebrochen:
-
-```
-ERROR: Backend v2.0.0 requires DB schema v10, but current schema is v8.
-       Run migrations first: docker compose exec backend alembic upgrade head
 ```
 
 ---

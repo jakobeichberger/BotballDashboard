@@ -13,6 +13,7 @@ Reset / force-update an existing user's password:
     docker compose exec -T -e ADMIN_PASSWORD backend python scripts/create_admin.py \
         --email admin@example.com --name "Administrator" --reset
 """
+
 import argparse
 import asyncio
 import os
@@ -22,13 +23,12 @@ sys.path.insert(0, "/app")
 
 
 async def main(email: str, password: str, display_name: str, reset: bool) -> None:
-    from core.database import AsyncSessionLocal
-    from modules.auth.models import User, Role, UserRole  # noqa: F401
-    from modules.auth.service import create_user, hash_password
-
-    import modules.seasons.models       # noqa: F401
-    import modules.teams.models         # noqa: F401
     import modules.paper_review.models  # noqa: F401
+    import modules.seasons.models  # noqa: F401
+    import modules.teams.models  # noqa: F401
+    from core.database import AsyncSessionLocal
+    from modules.auth.models import Role, User, UserRole  # noqa: F401
+    from modules.auth.service import create_user, hash_password
 
     for mod in ("modules.scoring.models", "modules.printing.models", "modules.dashboard.models"):
         try:
@@ -44,7 +44,9 @@ async def main(email: str, password: str, display_name: str, reset: bool) -> Non
 
         if existing:
             if not reset:
-                print(f"[INFO] User '{email.lower()}' already exists – skipping. Use --reset to force password update.")
+                print(
+                    f"[INFO] User '{email.lower()}' already exists – skipping. Use --reset to force password update."
+                )
                 return
             # Reset: update password, ensure active + superuser
             existing.hashed_password = hash_password(password)
@@ -67,16 +69,23 @@ async def main(email: str, password: str, display_name: str, reset: bool) -> Non
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create or reset a BotballDashboard admin user")
-    parser.add_argument("--email",    required=True,      help="Admin email address")
-    parser.add_argument("--password", default=None,       help="Password (min. 8 chars); or set ADMIN_PASSWORD env var")
-    parser.add_argument("--name",     default="Administrator", help="Display name")
-    parser.add_argument("--reset",    action="store_true", help="Force-update password even if user already exists")
+    parser.add_argument("--email", required=True, help="Admin email address")
+    parser.add_argument(
+        "--password", default=None, help="Password (min. 8 chars); or set ADMIN_PASSWORD env var"
+    )
+    parser.add_argument("--name", default="Administrator", help="Display name")
+    parser.add_argument(
+        "--reset", action="store_true", help="Force-update password even if user already exists"
+    )
     args = parser.parse_args()
 
     password = args.password or os.environ.get("ADMIN_PASSWORD", "")
 
     if not password:
-        print("[ERROR] Provide --password or set the ADMIN_PASSWORD environment variable.", file=sys.stderr)
+        print(
+            "[ERROR] Provide --password or set the ADMIN_PASSWORD environment variable.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if len(password) < 8:
@@ -89,6 +98,7 @@ if __name__ == "__main__":
     # seccomp/AppArmor profile. uvloop uses libuv and does not have this issue.
     try:
         import uvloop
+
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     except ImportError:
         pass

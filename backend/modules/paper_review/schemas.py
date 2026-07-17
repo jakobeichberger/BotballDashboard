@@ -1,5 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 
 class PaperCreate(BaseModel):
@@ -15,6 +17,8 @@ class PaperUpdate(BaseModel):
     title: str | None = None
     abstract: str | None = None
     notes: str | None = None
+    final_score: float | None = Field(default=None, ge=0, le=1)
+    paper_rank: int | None = Field(default=None, ge=1)
 
 
 class ReviewerAssignmentCreate(BaseModel):
@@ -22,13 +26,13 @@ class ReviewerAssignmentCreate(BaseModel):
 
 
 class ReviewCreateUpdate(BaseModel):
-    score_content: float | None = None
-    score_methodology: float | None = None
-    score_presentation: float | None = None
-    score_originality: float | None = None
+    score_content: float | None = Field(default=None, ge=0, le=10)
+    score_methodology: float | None = Field(default=None, ge=0, le=10)
+    score_presentation: float | None = Field(default=None, ge=0, le=10)
+    score_originality: float | None = Field(default=None, ge=0, le=10)
     comments: str | None = None
     private_notes: str | None = None
-    recommendation: str | None = None
+    recommendation: Literal["accept", "reject", "revision_minor", "revision_major"] | None = None
 
 
 class ReviewResponse(BaseModel):
@@ -74,6 +78,8 @@ class PaperResponse(BaseModel):
     file_size_bytes: int | None
     submitted_at: datetime | None
     revision_number: int
+    final_score: float | None
+    paper_rank: int | None
     notes: str | None
     created_at: datetime
     updated_at: datetime
@@ -90,5 +96,7 @@ class PaperListItem(BaseModel):
     title: str
     status: str
     revision_number: int
+    final_score: float | None
+    paper_rank: int | None
     submitted_at: datetime | None
     created_at: datetime

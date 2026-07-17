@@ -64,8 +64,10 @@ services:
         required: false   # optional so dev works without a .env file
     environment:
       REDIS_URL: redis://redis:6379/0
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-/app/vapid/private_key.pem}
     volumes:
       - uploads:/app/uploads
+      - vapid:/app/vapid
     depends_on:
       db:
         condition: service_healthy
@@ -82,9 +84,13 @@ services:
   # ── Frontend ──────────────────────────────────────────────────
   # dist/ is pre-built on the host by scripts/proxmox-setup.sh before docker compose build
   frontend:
+    image: botballdashboard-frontend:local
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -109,3 +115,4 @@ volumes:
   redisdata:
   uploads:
   letsencrypt:
+  vapid:

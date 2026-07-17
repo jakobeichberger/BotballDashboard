@@ -1,5 +1,7 @@
 """Fernet encryption for printer API credentials."""
+
 from cryptography.fernet import Fernet, InvalidToken
+
 from core.config import get_settings
 
 

@@ -1,9 +1,9 @@
-import os
-from datetime import datetime, timezone
+import re
+from datetime import UTC, datetime
 from pathlib import Path
 
 import aiofiles
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -16,15 +16,38 @@ settings = get_settings()
 
 
 async def save_file(file: UploadFile, paper_id: str) -> tuple[str, str, int]:
+    if file.content_type not in ("application/pdf", "application/octet-stream"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+
     upload_dir = Path(settings.upload_dir) / "papers" / paper_id
     upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = upload_dir / (file.filename or "paper.pdf")
+    original_name = Path(file.filename or "paper.pdf").name
+    safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", original_name) or "paper.pdf"
+    if not safe_name.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
 
-    content = await file.read()
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(content)
+    file_path = upload_dir / safe_name
+    temp_path = upload_dir / f".{safe_name}.upload"
+    max_bytes = settings.max_upload_size_mb * 1024 * 1024
+    size = 0
+    signature = b""
+    try:
+        async with aiofiles.open(temp_path, "wb") as target:
+            while chunk := await file.read(1024 * 1024):
+                if not signature:
+                    signature = chunk[:5]
+                size += len(chunk)
+                if size > max_bytes:
+                    raise HTTPException(status_code=413, detail="File too large")
+                await target.write(chunk)
+        if signature != b"%PDF-":
+            raise HTTPException(status_code=400, detail="Uploaded file is not a PDF")
+        temp_path.replace(file_path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
 
-    return str(file_path), file.filename or "paper.pdf", len(content)
+    return str(file_path), safe_name, size
 
 
 async def list_papers(
@@ -33,10 +56,14 @@ async def list_papers(
     team_id: str | None = None,
     status: str | None = None,
 ) -> list[Paper]:
-    q = select(Paper).options(
-        selectinload(Paper.assignments),
-        selectinload(Paper.reviews),
-    ).order_by(Paper.created_at.desc())
+    q = (
+        select(Paper)
+        .options(
+            selectinload(Paper.assignments),
+            selectinload(Paper.reviews),
+        )
+        .order_by(Paper.created_at.desc())
+    )
     if season_id:
         q = q.where(Paper.season_id == season_id)
     if team_id:
@@ -78,7 +105,7 @@ async def submit_paper(db: AsyncSession, paper_id: str, submitted_by: str) -> Pa
     if paper.status not in ("draft", "revision_requested"):
         raise ConflictError("Paper cannot be submitted in its current state")
     paper.status = "submitted"
-    paper.submitted_at = datetime.now(timezone.utc)
+    paper.submitted_at = datetime.now(UTC)
     paper.submitted_by = submitted_by
     return paper
 
@@ -108,6 +135,7 @@ async def assign_reviewer(
         paper_id=paper_id, reviewer_id=reviewer_id, assigned_by=assigned_by
     )
     db.add(assignment)
+    await db.flush()
     return assignment
 
 
@@ -170,7 +198,8 @@ async def save_review(
 
     if submit:
         review.is_submitted = True
-        review.submitted_at = datetime.now(timezone.utc)
+        review.submitted_at = datetime.now(UTC)
+        await db.flush()
         # If all reviewers submitted → transition paper to under_review
         assignments = await db.execute(
             select(ReviewerAssignment).where(ReviewerAssignment.paper_id == paper_id)

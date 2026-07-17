@@ -78,6 +78,19 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+ignore = ["E712"]  # SQLAlchemy expressions require explicit boolean comparisons.
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*.py" = ["E501"]
+"modules/exports/pdf_builder.py" = ["E501"]
+"scripts/create_admin.py" = ["E501"]
+"tests/conftest.py" = ["E402"]
+
+[tool.mypy]
+explicit_package_bases = true
+ignore_missing_imports = true
+disable_error_code = ["import-untyped"]
+exclude = ["alembic/versions", "tests"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

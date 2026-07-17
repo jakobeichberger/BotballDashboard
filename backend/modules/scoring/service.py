@@ -1,14 +1,15 @@
 """Scoring service: match CRUD + ranking computation."""
-from datetime import datetime, timezone
 
-from sqlalchemy import select, delete, func as sqlfunc
+from datetime import UTC, datetime
+
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
 from modules.scoring.models import Match, Ranking, ScoringSchema
 
-
 # ── Score formulas ────────────────────────────────────────────────────────────
+
 
 def compute_seed_score(scores: list[float]) -> float:
     """Average of the top 2 scores (or fewer if less available)."""
@@ -31,6 +32,7 @@ def compute_match_total(raw_scores: dict, schema_fields: list[dict]) -> float:
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
+
 async def get_active_schema(
     db: AsyncSession, season_id: str, competition_level_id: str | None = None
 ) -> ScoringSchema | None:
@@ -46,14 +48,17 @@ async def get_active_schema(
 
 # ── Matches ───────────────────────────────────────────────────────────────────
 
+
 async def list_matches(
     db: AsyncSession,
     season_id: str,
     team_id: str | None = None,
     phase_id: str | None = None,
 ) -> list[Match]:
-    q = select(Match).where(Match.season_id == season_id).order_by(
-        Match.round_number, Match.created_at
+    q = (
+        select(Match)
+        .where(Match.season_id == season_id)
+        .order_by(Match.round_number, Match.created_at)
     )
     if team_id:
         q = q.where(Match.team_id == team_id)
@@ -72,16 +77,29 @@ async def get_match(db: AsyncSession, match_id: str) -> Match:
 
 
 async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
-    schema = await get_active_schema(db, data["season_id"], data.get("competition_level_id"))
+    match_data = data.copy()
+    provided_total = match_data.pop("total_score", None)
+    schema = await get_active_schema(
+        db, match_data["season_id"], match_data.get("competition_level_id")
+    )
     schema_fields = schema.fields if schema else []
 
-    raw_scores = data.get("raw_scores", {})
-    total = compute_match_total(raw_scores, schema_fields)
+    raw_scores = match_data.get("raw_scores", {})
+    total = (
+        compute_match_total(raw_scores, schema_fields)
+        if raw_scores or schema
+        else float(provided_total or 0.0)
+    )
 
-    match = Match(**data, total_score=total, entered_by=entered_by)
+    match = Match(**match_data, total_score=total, entered_by=entered_by)
     db.add(match)
     await db.flush()
-    await _recompute_ranking(db, data["season_id"], data["team_id"], data.get("competition_level_id"))
+    await _recompute_ranking(
+        db,
+        match_data["season_id"],
+        match_data["team_id"],
+        match_data.get("competition_level_id"),
+    )
     return match
 
 
@@ -96,6 +114,9 @@ async def update_match(db: AsyncSession, match_id: str, **kwargs) -> Match:
         if value is not None:
             setattr(match, key, value)
 
+    # Sessions intentionally use autoflush=False. Persist status and score
+    # changes before selecting eligible matches for the ranking.
+    await db.flush()
     await _recompute_ranking(db, match.season_id, match.team_id, match.competition_level_id)
     return match
 
@@ -103,7 +124,7 @@ async def update_match(db: AsyncSession, match_id: str, **kwargs) -> Match:
 async def confirm_match(db: AsyncSession, match_id: str, confirmed_by: str) -> Match:
     match = await get_match(db, match_id)
     match.confirmed_by = confirmed_by
-    match.confirmed_at = datetime.now(timezone.utc)
+    match.confirmed_at = datetime.now(UTC)
     return match
 
 
@@ -117,17 +138,18 @@ async def delete_match(db: AsyncSession, match_id: str) -> None:
 
 # ── Ranking ───────────────────────────────────────────────────────────────────
 
+
 async def _recompute_ranking(
     db: AsyncSession, season_id: str, team_id: str, competition_level_id: str | None
 ) -> None:
-    result = await db.execute(
+    match_result = await db.execute(
         select(Match).where(
             Match.season_id == season_id,
             Match.team_id == team_id,
             Match.is_disqualified == False,
         )
     )
-    matches = result.scalars().all()
+    matches = match_result.scalars().all()
     scores = [m.total_score for m in matches]
 
     if not scores:
@@ -144,13 +166,13 @@ async def _recompute_ranking(
     avg_score = sum(scores) / len(scores)
 
     # Upsert ranking row for this team
-    result = await db.execute(
+    ranking_result = await db.execute(
         select(Ranking).where(
             Ranking.season_id == season_id,
             Ranking.team_id == team_id,
         )
     )
-    ranking = result.scalar_one_or_none()
+    ranking = ranking_result.scalar_one_or_none()
     if ranking:
         ranking.seed_score = seed_score
         ranking.best_score = best_score
