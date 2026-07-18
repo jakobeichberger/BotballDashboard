@@ -1,17 +1,17 @@
 # API-Referenz
 
-Das BotballDashboard stellt eine REST-API bereit. Die vollständige, interaktive API-Dokumentation ist automatisch generiert und unter folgender URL erreichbar:
+Das BotballDashboard stellt eine REST-API bereit. Im Entwicklungsmodus ist die automatisch generierte Dokumentation erreichbar unter:
 
 ```
-https://dashboard.meineschule.at/api/docs      ← Swagger UI
-https://dashboard.meineschule.at/api/redoc     ← ReDoc
+http://localhost:8000/api/docs      ← Swagger UI
+http://localhost:8000/api/redoc     ← ReDoc
 ```
 
 ---
 
 ## Authentifizierung
 
-Alle Endpunkte (außer Login/Refresh) erfordern einen gültigen JWT Access Token:
+Geschützte Endpunkte erfordern einen gültigen JWT Access Token. Healthcheck und öffentliche Ranglisten sind ohne Token erreichbar.
 
 ```http
 Authorization: Bearer <access_token>

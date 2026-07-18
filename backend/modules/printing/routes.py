@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission
+from core.auth import require_permission
 from core.database import get_db
 from modules.printing import service
 from modules.printing.schemas import (
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/printing", tags=["printing"])
 
 
 # ── Printers ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/printers", response_model=list[PrinterResponse])
 async def list_printers(
@@ -49,15 +50,17 @@ async def update_printer(
 
 # ── Print jobs ────────────────────────────────────────────────────────────────
 
+
 @router.get("/jobs", response_model=list[PrintJobResponse])
 async def list_print_jobs(
     season_id: str | None = Query(None),
     team_id: str | None = Query(None),
     status: str | None = Query(None),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("printing:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_print_jobs(db, season_id, team_id, status)
+    return await service.list_print_jobs(db, season_id, team_id, status, event_id)
 
 
 @router.post("/jobs", response_model=PrintJobResponse, status_code=201)
@@ -90,17 +93,20 @@ async def approve_print_job(
 
 # ── Quotas ────────────────────────────────────────────────────────────────────
 
+
 @router.get("/quotas", response_model=QuotaResponse)
 async def get_quota(
     team_id: str = Query(...),
     season_id: str = Query(...),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("printing:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_quota(db, team_id, season_id)
+    return await service.get_quota(db, team_id, season_id, event_id)
 
 
 # ── Filament spools ───────────────────────────────────────────────────────────
+
 
 @router.get("/spools", response_model=list[FilamentSpoolResponse])
 async def list_spools(

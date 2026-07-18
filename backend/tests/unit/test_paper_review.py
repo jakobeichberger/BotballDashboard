@@ -1,22 +1,31 @@
 """Unit tests for Paper Review module – status transitions and review logic."""
+
 import pytest
-from modules.paper_review.models import Paper, PaperReview, ReviewerAssignment
-from modules.paper_review.service import (
-    create_paper,
-    submit_paper,
-    set_paper_status,
-    assign_reviewer,
-    save_review,
-    get_paper,
-)
+import pytest_asyncio
+
 from core.exceptions import ConflictError, ForbiddenError
+from modules.paper_review.service import (
+    assign_reviewer,
+    create_paper,
+    list_status_history,
+    mark_reminder_sent,
+    reviewer_workload,
+    save_review,
+    set_paper_status,
+    submit_paper,
+)
 
 
-@pytest.fixture
-def paper_data(season, team):
+@pytest_asyncio.fixture
+async def paper_data(db, season, event, team):
+    from modules.events.models import EventRegistration
+
+    db.add(EventRegistration(event_id=event.id, team_id=team.id))
+    await db.flush()
     return {
         "season_id": season.id,
         "team_id": team.id,
+        "event_id": event.id,
         "title": "Robot Navigation Using Computer Vision",
         "abstract": "This paper presents...",
         "status": "draft",
@@ -94,6 +103,14 @@ class TestPaperStatusTransitions:
         await db.commit()
         assert paper.status == "rejected"
 
+    @pytest.mark.asyncio
+    async def test_status_changes_are_append_only_history(self, db, paper_data, admin_user):
+        paper = await create_paper(db, paper_data)
+        await submit_paper(db, paper.id, admin_user.id)
+        await set_paper_status(db, paper.id, "accepted", admin_user.id)
+        history = await list_status_history(db, paper.id)
+        assert [item.to_status for item in history] == ["draft", "submitted", "accepted"]
+
 
 class TestReviewerAssignment:
     @pytest.mark.asyncio
@@ -118,6 +135,23 @@ class TestReviewerAssignment:
             await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
     @pytest.mark.asyncio
+    async def test_workload_and_reminder_are_auditable(self, db, paper_data, admin_user):
+        paper = await create_paper(db, paper_data)
+        assignment = await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
+        await mark_reminder_sent(db, paper.id, assignment.id)
+        workload = await reviewer_workload(db, paper.event_id)
+        assert workload == [
+            {
+                "reviewer_id": admin_user.id,
+                "assigned": 1,
+                "open": 1,
+                "overdue": 0,
+                "completed": 0,
+            }
+        ]
+        assert assignment.reminder_sent_at is not None
+
+    @pytest.mark.asyncio
     async def test_unassigned_reviewer_cannot_review(self, db, paper_data, admin_user):
         paper = await create_paper(db, paper_data)
         await db.flush()
@@ -134,12 +168,17 @@ class TestReviewScores:
         await db.flush()
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
-        review = await save_review(db, paper.id, admin_user.id, {
-            "score_content": 8.0,
-            "score_methodology": 6.0,
-            "score_presentation": 7.0,
-            "score_originality": 9.0,
-        })
+        review = await save_review(
+            db,
+            paper.id,
+            admin_user.id,
+            {
+                "score_content": 8.0,
+                "score_methodology": 6.0,
+                "score_presentation": 7.0,
+                "score_originality": 9.0,
+            },
+        )
         await db.commit()
 
         # avg(8, 6, 7, 9) = 7.5
@@ -151,10 +190,15 @@ class TestReviewScores:
         await db.flush()
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
-        review = await save_review(db, paper.id, admin_user.id, {
-            "score_content": 8.0,
-            "score_methodology": 6.0,
-        })
+        review = await save_review(
+            db,
+            paper.id,
+            admin_user.id,
+            {
+                "score_content": 8.0,
+                "score_methodology": 6.0,
+            },
+        )
         await db.commit()
 
         # avg(8, 6) = 7.0
@@ -167,7 +211,9 @@ class TestReviewScores:
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
         review = await save_review(
-            db, paper.id, admin_user.id,
+            db,
+            paper.id,
+            admin_user.id,
             {"score_content": 7.0, "recommendation": "accept"},
             submit=True,
         )
@@ -175,3 +221,4 @@ class TestReviewScores:
 
         assert review.is_submitted is True
         assert review.submitted_at is not None
+        assert paper.status == "under_review"

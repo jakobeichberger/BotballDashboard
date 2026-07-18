@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -87,3 +88,16 @@ class TeamSeasonRegistrationResponse(BaseModel):
     registered_at: datetime
     confirmed: bool
     notes: str | None
+
+
+class TeamEventHistoryResponse(BaseModel):
+    event_id: str
+    event_name: str
+    season_id: str
+    season_name: str
+    season_year: int
+    category: str
+    rank: int | None
+    seed_score: float | None
+    best_score: float | None
+    rounds_played: int

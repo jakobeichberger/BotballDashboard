@@ -1,12 +1,11 @@
 """Route-level security regression tests: self-service privilege boundaries,
 security headers, and path-traversal-safe uploads."""
-import io
 
 import pytest
 from sqlalchemy import select
 
 from core.auth import create_access_token
-from modules.auth.models import User, Role
+from modules.auth.models import Role, User
 from modules.auth.service import hash_password
 
 
@@ -47,13 +46,9 @@ class TestSelfServicePrivilegeBoundary:
         assert resp.json()["display_name"] == "Renamed"  # allowed field applied
 
         await db.commit()
-        refreshed = (
-            await db.execute(
-                select(User).where(User.id == user.id)
-            )
-        ).scalar_one()
+        refreshed = (await db.execute(select(User).where(User.id == user.id))).scalar_one()
         await db.refresh(refreshed, ["roles"])
-        assert refreshed.is_active is True          # NOT deactivated
+        assert refreshed.is_active is True  # NOT deactivated
         assert [r.name for r in refreshed.roles] == []  # NOT escalated
 
     @pytest.mark.asyncio
@@ -92,11 +87,10 @@ class TestUnauthenticatedRejected:
     @pytest.mark.asyncio
     async def test_protected_route_requires_auth(self, client):
         assert (await client.get("/api/auth/users")).status_code == 401
-        assert (await client.post("/api/seasons", json={"name": "x", "year": 2026})).status_code == 401
+        response = await client.post("/api/seasons", json={"name": "x", "year": 2026})
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_tampered_token_rejected(self, client):
-        resp = await client.get(
-            "/api/auth/me", headers={"Authorization": "Bearer not.a.jwt"}
-        )
+        resp = await client.get("/api/auth/me", headers={"Authorization": "Bearer not.a.jwt"})
         assert resp.status_code == 401

@@ -1,6 +1,7 @@
 """Secure file-handling helpers — filename sanitisation, path-containment and
 upload validation. Used by every endpoint that writes or serves user files.
 """
+
 import os
 import re
 from pathlib import Path
@@ -30,7 +31,7 @@ def safe_filename(name: str | None, default: str = "upload.bin") -> str:
     # Bound the length to avoid filesystem limits / abuse.
     if len(base) > 200:
         root, ext = os.path.splitext(base)
-        base = root[:200 - len(ext)] + ext
+        base = root[: 200 - len(ext)] + ext
     return base or default
 
 

@@ -1,4 +1,5 @@
 """Integration tests for Scoring API routes."""
+
 import pytest
 
 

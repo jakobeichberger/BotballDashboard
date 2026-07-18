@@ -75,4 +75,21 @@ describe("authStore", () => {
     } as any);
     expect(useAuthStore.getState().hasRole("anything")).toBe(true);
   });
+
+  it("uses concrete permissions instead of role names", () => {
+    useAuthStore.setState({
+      user: {
+        id: "1",
+        email: "juror@example.com",
+        display_name: "Juror",
+        is_superuser: false,
+        preferred_language: "de",
+        theme: "system",
+        roles: [{ id: "r1", name: "juror", description: null }],
+        permissions: ["scoring:read"],
+      },
+    } as any);
+    expect(useAuthStore.getState().hasPermission("scoring:read")).toBe(true);
+    expect(useAuthStore.getState().hasPermission("scoring:write")).toBe(false);
+  });
 });

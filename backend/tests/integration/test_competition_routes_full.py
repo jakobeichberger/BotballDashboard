@@ -16,12 +16,13 @@ Score-sheet routes:
   - POST confirm / 404 / 400 empty
   - DELETE / 404
 """
+
 import io
 
 import pytest
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 async def comp_season(db):
@@ -57,13 +58,11 @@ async def _register(db, season_id, name):
 
 
 def _minimal_pdf() -> bytes:
-    return (
-        b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n"
-        b"trailer<</Root 1 0 R>>\n%%EOF\n"
-    )
+    return b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n" b"trailer<</Root 1 0 R>>\n%%EOF\n"
 
 
 # ── Double Elimination routes ─────────────────────────────────────────────────
+
 
 class TestDERoutes:
     @pytest.mark.asyncio
@@ -75,12 +74,14 @@ class TestDERoutes:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["team_id"] == team.id           # taken from path, not body
-        assert data["bracket"] == "A"               # normalized to upper
+        assert data["team_id"] == team.id  # taken from path, not body
+        assert data["bracket"] == "A"  # normalized to upper
         assert data["de_rank"] == 1
 
     @pytest.mark.asyncio
-    async def test_upsert_then_update_idempotent_in_db(self, client, auth_headers, comp_season, team, db):
+    async def test_upsert_then_update_idempotent_in_db(
+        self, client, auth_headers, comp_season, team, db
+    ):
         """Re-submitting the same team updates in place (no duplicate row).
 
         Both the insert and the update path serialize correctly (the service
@@ -99,7 +100,7 @@ class TestDERoutes:
         assert second.json()["de_rank"] == 5
 
         rows = await comp_svc.get_de_results(db, comp_season.id)
-        assert len(rows) == 1                 # updated in place, not duplicated
+        assert len(rows) == 1  # updated in place, not duplicated
         assert rows[0].bracket == "B"
         assert rows[0].de_rank == 5
 
@@ -151,6 +152,7 @@ class TestDERoutes:
 
 # ── Aerial routes ─────────────────────────────────────────────────────────────
 
+
 class TestAerialRoutes:
     @pytest.mark.asyncio
     async def test_upsert_best_two_score(self, client, auth_headers, comp_season, team):
@@ -162,7 +164,7 @@ class TestAerialRoutes:
         assert resp.status_code == 200
         data = resp.json()
         assert data["team_id"] == team.id
-        assert data["score"] == 9.0   # (10 + 8) / 2
+        assert data["score"] == 9.0  # (10 + 8) / 2
 
     @pytest.mark.asyncio
     async def test_bulk_and_ranking(self, client, auth_headers, comp_season, db):
@@ -176,9 +178,7 @@ class TestAerialRoutes:
                 {"team_id": t2.id, "run1": 10.0, "run2": 8.0},
             ],
         )
-        ranking = await client.get(
-            f"/api/scoring/seasons/{comp_season.id}/aerial-ranking"
-        )
+        ranking = await client.get(f"/api/scoring/seasons/{comp_season.id}/aerial-ranking")
         assert ranking.status_code == 200
         rows = ranking.json()
         assert rows[0]["team_id"] == t2.id
@@ -200,6 +200,7 @@ class TestAerialRoutes:
 
 
 # ── Documentation routes ──────────────────────────────────────────────────────
+
 
 class TestDocRoutes:
     @pytest.mark.asyncio
@@ -247,6 +248,7 @@ class TestDocRoutes:
 
 # ── Overall ranking route ─────────────────────────────────────────────────────
 
+
 class TestOverallRankingRoute:
     @pytest.mark.asyncio
     async def test_overall_combines_modules(self, client, auth_headers, comp_season, db):
@@ -254,23 +256,25 @@ class TestOverallRankingRoute:
         t2 = await _register(db, comp_season.id, "T2")
         await client.put(
             f"/api/scoring/seasons/{comp_season.id}/de-results/{t1.id}",
-            headers=auth_headers, json={"bracket": "A", "de_score": 0.3},
+            headers=auth_headers,
+            json={"bracket": "A", "de_score": 0.3},
         )
         await client.put(
             f"/api/scoring/seasons/{comp_season.id}/de-results/{t2.id}",
-            headers=auth_headers, json={"bracket": "A", "de_score": 0.9},
+            headers=auth_headers,
+            json={"bracket": "A", "de_score": 0.9},
         )
         await client.put(
             f"/api/scoring/seasons/{comp_season.id}/doc-scores/{t1.id}",
-            headers=auth_headers, json={"part1": 100.0},
+            headers=auth_headers,
+            json={"part1": 100.0},
         )
         await client.put(
             f"/api/scoring/seasons/{comp_season.id}/doc-scores/{t2.id}",
-            headers=auth_headers, json={"part1": 10.0},
+            headers=auth_headers,
+            json={"part1": 10.0},
         )
-        resp = await client.get(
-            f"/api/scoring/seasons/{comp_season.id}/ranking/overall"
-        )
+        resp = await client.get(f"/api/scoring/seasons/{comp_season.id}/ranking/overall")
         assert resp.status_code == 200
         entries = resp.json()
         by_team = {e["team_id"]: e for e in entries}
@@ -291,6 +295,7 @@ class TestOverallRankingRoute:
 
 
 # ── Score-sheet routes ────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 async def score_sheet(db, season, admin_user, tmp_path):
@@ -327,9 +332,7 @@ class TestScoreSheetRoutes:
 
     @pytest.mark.asyncio
     async def test_get_one(self, client, auth_headers, score_sheet):
-        resp = await client.get(
-            f"/api/scoring/score-sheets/{score_sheet.id}", headers=auth_headers
-        )
+        resp = await client.get(f"/api/scoring/score-sheets/{score_sheet.id}", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["id"] == str(score_sheet.id)
 

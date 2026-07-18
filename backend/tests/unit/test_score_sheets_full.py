@@ -11,20 +11,21 @@ Covers:
   - run_ocr_pipeline status transitions (text extraction stubbed; no poppler needed)
   - field-detection helpers that need no external binaries
 """
+
 import uuid
 from pathlib import Path
 
 import pytest
 
 from modules.scoring.score_sheets import service as svc
-from modules.scoring.score_sheets.models import ScoreSheetTemplate
 from modules.scoring.score_sheets.schemas import ScoringField
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def _make_template(db, season, admin_user, tmp_path, label="Sheet", active=False,
-                         level_id=None):
+
+async def _make_template(
+    db, season, admin_user, tmp_path, label="Sheet", active=False, level_id=None
+):
     pdf = tmp_path / f"{uuid.uuid4()}.pdf"
     pdf.write_bytes(b"%PDF-1.4 dummy")
     tpl = await svc.create_template(
@@ -47,6 +48,7 @@ async def _make_template(db, season, admin_user, tmp_path, label="Sheet", active
 
 # ── Field-detection helpers (no poppler required) ─────────────────────────────
 
+
 class TestFieldHelpers:
     def test_to_snake_case(self):
         assert svc._to_snake_case("Sorted Poms") == "sorted_poms"
@@ -67,12 +69,7 @@ class TestFieldHelpers:
         # "Area 1" is a section header; the two ×-lines are scoring fields.
         # (Lines beginning with a section keyword like "solar"/"habitat" are
         # themselves treated as section headers, so we avoid those here.)
-        raw = (
-            "Area 1\n"
-            "Sorted Poms ×5\n"
-            "Botguy ×15\n"
-            "page 1\n"
-        )
+        raw = "Area 1\n" "Sorted Poms ×5\n" "Botguy ×15\n" "page 1\n"
         candidates = svc.detect_fields(raw)
         keys = {c.suggested_key for c in candidates}
         assert "sorted_poms" in keys
@@ -109,6 +106,7 @@ class TestFieldHelpers:
 
 # ── create_template ───────────────────────────────────────────────────────────
 
+
 class TestCreateTemplate:
     @pytest.mark.asyncio
     async def test_initial_state(self, db, season, admin_user, tmp_path):
@@ -124,6 +122,7 @@ class TestCreateTemplate:
 
 
 # ── list_templates ────────────────────────────────────────────────────────────
+
 
 class TestListTemplates:
     @pytest.mark.asyncio
@@ -147,8 +146,7 @@ class TestListTemplates:
         await db.flush()
 
         await _make_template(db, season, admin_user, tmp_path, label="NoLevel")
-        await _make_template(db, season, admin_user, tmp_path, label="Leveled",
-                             level_id=level.id)
+        await _make_template(db, season, admin_user, tmp_path, label="Leveled", level_id=level.id)
 
         leveled = await svc.list_templates(db, season.id, competition_level_id=level.id)
         assert len(leveled) == 1
@@ -156,6 +154,7 @@ class TestListTemplates:
 
 
 # ── get_template ──────────────────────────────────────────────────────────────
+
 
 class TestGetTemplate:
     @pytest.mark.asyncio
@@ -171,6 +170,7 @@ class TestGetTemplate:
 
 
 # ── set_active_template ───────────────────────────────────────────────────────
+
 
 class TestSetActive:
     @pytest.mark.asyncio
@@ -193,10 +193,12 @@ class TestSetActive:
         db.add(level)
         await db.flush()
 
-        no_level = await _make_template(db, season, admin_user, tmp_path,
-                                        label="NoLevel", active=True)
-        leveled = await _make_template(db, season, admin_user, tmp_path,
-                                       label="Leveled", level_id=level.id)
+        no_level = await _make_template(
+            db, season, admin_user, tmp_path, label="NoLevel", active=True
+        )
+        leveled = await _make_template(
+            db, season, admin_user, tmp_path, label="Leveled", level_id=level.id
+        )
 
         # Activate the leveled one; the NULL-level template must stay active
         await svc.set_active_template(db, season.id, level.id, leveled.id)
@@ -208,6 +210,7 @@ class TestSetActive:
 
 
 # ── delete_template ───────────────────────────────────────────────────────────
+
 
 class TestDeleteTemplate:
     @pytest.mark.asyncio
@@ -228,6 +231,7 @@ class TestDeleteTemplate:
 
 
 # ── confirm_fields ────────────────────────────────────────────────────────────
+
 
 class TestConfirmFields:
     @pytest.mark.asyncio
@@ -251,6 +255,7 @@ class TestConfirmFields:
         ScoringSchema row for the template's season + level.
         """
         from sqlalchemy import select
+
         from modules.scoring.models import ScoringSchema
 
         tpl = await _make_template(db, season, admin_user, tmp_path)
@@ -262,15 +267,14 @@ class TestConfirmFields:
         assert result.confirmed_by == admin_user.id
 
         # A ScoringSchema row was created from the confirmed fields.
-        res = await db.execute(
-            select(ScoringSchema).where(ScoringSchema.season_id == season.id)
-        )
+        res = await db.execute(select(ScoringSchema).where(ScoringSchema.season_id == season.id))
         schemas = res.scalars().all()
         assert len(schemas) == 1
         assert schemas[0].fields[0]["key"] == "cubes"
 
 
 # ── run_ocr_pipeline (status transitions, text extraction stubbed) ────────────
+
 
 class TestOcrPipeline:
     @pytest.mark.asyncio
@@ -279,7 +283,8 @@ class TestOcrPipeline:
 
         # Stub the poppler-dependent text extraction
         monkeypatch.setattr(
-            svc, "extract_text_from_pdf",
+            svc,
+            "extract_text_from_pdf",
             lambda path: "Area 1\nSorted Poms ×5\n",
         )
 
@@ -293,7 +298,9 @@ class TestOcrPipeline:
         assert "sorted_poms" in keys
 
     @pytest.mark.asyncio
-    async def test_pipeline_marks_failed_on_error(self, db, season, admin_user, tmp_path, monkeypatch):
+    async def test_pipeline_marks_failed_on_error(
+        self, db, season, admin_user, tmp_path, monkeypatch
+    ):
         tpl = await _make_template(db, season, admin_user, tmp_path)
 
         def boom(path):

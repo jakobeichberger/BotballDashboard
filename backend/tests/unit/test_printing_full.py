@@ -7,12 +7,14 @@ printer CRUD + credential handling, print-job listing / filtering / ordering /
 status transitions / approval, deeper quota accounting, spool listing + creation
 defaults, and the crypto edge cases (env passthrough + InvalidToken).
 """
+
 import pytest
 from cryptography.fernet import Fernet
 
 from core.exceptions import ConflictError, NotFoundError
 from modules.printing.crypto import decrypt_credential, encrypt_credential
 from modules.printing.service import (
+    _get_or_create_quota,
     approve_print_job,
     consume_filament,
     create_print_job,
@@ -27,8 +29,8 @@ from modules.printing.service import (
     list_spools,
     update_print_job,
     update_printer,
-    _get_or_create_quota,
 )
+from modules.scoring.service import get_default_event
 
 
 def _fernet_settings(key: str):
@@ -37,6 +39,7 @@ def _fernet_settings(key: str):
 
 
 # ── Printers ────────────────────────────────────────────────────────────────
+
 
 class TestPrinterService:
     @pytest.mark.asyncio
@@ -56,9 +59,7 @@ class TestPrinterService:
             "modules.printing.crypto.get_settings",
             _fernet_settings(Fernet.generate_key().decode()),
         )
-        printer = await create_printer(
-            db, {"name": "Secure", "api_key": "super-secret"}
-        )
+        printer = await create_printer(db, {"name": "Secure", "api_key": "super-secret"})
         # Stored value is encrypted (not the plaintext) and "api_key" was popped.
         assert printer.api_key_encrypted is not None
         assert printer.api_key_encrypted != "super-secret"
@@ -66,9 +67,7 @@ class TestPrinterService:
 
     @pytest.mark.asyncio
     async def test_create_printer_with_api_key_dev_passthrough(self, db, monkeypatch):
-        monkeypatch.setattr(
-            "modules.printing.crypto.get_settings", _fernet_settings("")
-        )
+        monkeypatch.setattr("modules.printing.crypto.get_settings", _fernet_settings(""))
         printer = await create_printer(db, {"name": "Dev", "api_key": "plain"})
         # No key configured => stored as-is (dev only).
         assert printer.api_key_encrypted == "plain"
@@ -89,9 +88,7 @@ class TestPrinterService:
     @pytest.mark.asyncio
     async def test_update_printer_sets_fields_and_skips_none(self, db):
         printer = await create_printer(db, {"name": "Orig", "notes": "keep-me"})
-        updated = await update_printer(
-            db, printer.id, name="Renamed", notes=None, is_active=False
-        )
+        updated = await update_printer(db, printer.id, name="Renamed", notes=None, is_active=False)
         await db.flush()
         assert updated.name == "Renamed"
         # notes=None must NOT overwrite the existing value.
@@ -133,6 +130,7 @@ class TestPrinterService:
 
 # ── Print jobs ──────────────────────────────────────────────────────────────
 
+
 class TestPrintJobService:
     async def _job(self, db, team, season, admin_user, **overrides):
         data = {
@@ -146,10 +144,12 @@ class TestPrintJobService:
         await db.flush()
         return job
 
+    async def _queue(self, db, job, admin_user):
+        await approve_print_job(db, job.id, admin_user.id)
+        await update_print_job(db, job.id, status="queued")
+
     @pytest.mark.asyncio
-    async def test_create_print_job_sets_submitter_and_defaults(
-        self, db, team, season, admin_user
-    ):
+    async def test_create_print_job_sets_submitter_and_defaults(self, db, team, season, admin_user):
         job = await self._job(db, team, season, admin_user)
         assert job.id is not None  # flush+refresh
         assert job.submitted_by == admin_user.id
@@ -162,9 +162,7 @@ class TestPrintJobService:
             await get_print_job(db, "missing")
 
     @pytest.mark.asyncio
-    async def test_list_jobs_filters_by_team_season_status(
-        self, db, team, season, admin_user
-    ):
+    async def test_list_jobs_filters_by_team_season_status(self, db, team, season, admin_user):
         from modules.teams.models import Team
 
         other_team = Team(name="Other", team_number="OT-1", country="DE")
@@ -200,11 +198,10 @@ class TestPrintJobService:
         assert jobs[1].id == low.id
 
     @pytest.mark.asyncio
-    async def test_update_job_to_printing_sets_started_at(
-        self, db, team, season, admin_user
-    ):
+    async def test_update_job_to_printing_sets_started_at(self, db, team, season, admin_user):
         job = await self._job(db, team, season, admin_user)
         assert job.started_at is None
+        await self._queue(db, job, admin_user)
         updated = await update_print_job(db, job.id, status="printing")
         await db.flush()
         assert updated.status == "printing"
@@ -216,6 +213,7 @@ class TestPrintJobService:
         self, db, team, season, admin_user
     ):
         job = await self._job(db, team, season, admin_user)
+        await self._queue(db, job, admin_user)
         await update_print_job(db, job.id, status="printing")
         await db.flush()
         first_started = job.started_at
@@ -225,11 +223,10 @@ class TestPrintJobService:
         assert job.started_at == first_started
 
     @pytest.mark.asyncio
-    async def test_update_job_completed_without_actual_grams(
-        self, db, team, season, admin_user
-    ):
+    async def test_update_job_completed_without_actual_grams(self, db, team, season, admin_user):
         """Completing a job with no actual_grams still bumps used_parts only."""
         job = await self._job(db, team, season, admin_user)
+        await self._queue(db, job, admin_user)
         await update_print_job(db, job.id, status="completed")
         await db.flush()
         quota = await _get_or_create_quota(db, team.id, season.id)
@@ -238,11 +235,10 @@ class TestPrintJobService:
         assert job.completed_at is not None
 
     @pytest.mark.asyncio
-    async def test_update_job_completed_twice_counts_once(
-        self, db, team, season, admin_user
-    ):
+    async def test_update_job_completed_twice_counts_once(self, db, team, season, admin_user):
         """Re-saving an already-completed job must not double count usage."""
         job = await self._job(db, team, season, admin_user)
+        await self._queue(db, job, admin_user)
         await update_print_job(db, job.id, status="completed", actual_grams=10.0)
         await db.flush()
         await update_print_job(db, job.id, status="completed", notes="touch")
@@ -268,6 +264,7 @@ class TestPrintJobService:
 
 # ── Quotas ──────────────────────────────────────────────────────────────────
 
+
 class TestQuotaService:
     @pytest.mark.asyncio
     async def test_get_quota_is_idempotent(self, db, team, season):
@@ -284,9 +281,7 @@ class TestQuotaService:
         assert quota.used_grams == 0.0
 
     @pytest.mark.asyncio
-    async def test_used_grams_accumulate_across_completed_jobs(
-        self, db, team, season, admin_user
-    ):
+    async def test_used_grams_accumulate_across_completed_jobs(self, db, team, season, admin_user):
         for grams in (12.5, 7.5):
             data = {
                 "team_id": team.id,
@@ -296,6 +291,8 @@ class TestQuotaService:
             }
             job = await create_print_job(db, data, admin_user.id)
             await db.flush()
+            await approve_print_job(db, job.id, admin_user.id)
+            await update_print_job(db, job.id, status="queued")
             await update_print_job(db, job.id, status="completed", actual_grams=grams)
             await db.flush()
         quota = await _get_or_create_quota(db, team.id, season.id)
@@ -305,7 +302,8 @@ class TestQuotaService:
     @pytest.mark.asyncio
     async def test_hard_limit_at_exact_max_blocks(self, db, team, season, admin_user):
         """used_parts == max_parts (not just >) must block the next job."""
-        quota = await _get_or_create_quota(db, team.id, season.id)
+        event = await get_default_event(db, season.id)
+        quota = await _get_or_create_quota(db, team.id, season.id, event.id)
         quota.max_parts = 3
         quota.used_parts = 3
         await db.flush()
@@ -320,6 +318,7 @@ class TestQuotaService:
 
 
 # ── Filament spools ─────────────────────────────────────────────────────────
+
 
 class TestSpoolService:
     @pytest.mark.asyncio
@@ -378,37 +377,30 @@ class TestSpoolService:
 
 # ── Crypto edge cases ───────────────────────────────────────────────────────
 
+
 class TestCrypto:
     def test_env_empty_key_passthrough(self, monkeypatch):
         """Empty PRINTER_CREDENTIAL_ENCRYPTION_KEY env => dev passthrough."""
-        monkeypatch.setattr(
-            "modules.printing.crypto.get_settings", _fernet_settings("")
-        )
+        monkeypatch.setattr("modules.printing.crypto.get_settings", _fernet_settings(""))
         token = encrypt_credential("hello")
         assert token == "hello"
         assert decrypt_credential(token) == "hello"
 
     def test_real_fernet_roundtrip(self, monkeypatch):
         key = Fernet.generate_key().decode()
-        monkeypatch.setattr(
-            "modules.printing.crypto.get_settings", _fernet_settings(key)
-        )
+        monkeypatch.setattr("modules.printing.crypto.get_settings", _fernet_settings(key))
         token = encrypt_credential("api-token")
         assert token != "api-token"
         assert decrypt_credential(token) == "api-token"
 
     def test_decrypt_invalid_token_returns_empty(self, monkeypatch):
         key = Fernet.generate_key().decode()
-        monkeypatch.setattr(
-            "modules.printing.crypto.get_settings", _fernet_settings(key)
-        )
+        monkeypatch.setattr("modules.printing.crypto.get_settings", _fernet_settings(key))
         # A token encrypted with a *different* key cannot be decrypted.
         other = Fernet(Fernet.generate_key()).encrypt(b"x").decode()
         assert decrypt_credential(other) == ""
 
     def test_decrypt_garbage_returns_empty(self, monkeypatch):
         key = Fernet.generate_key().decode()
-        monkeypatch.setattr(
-            "modules.printing.crypto.get_settings", _fernet_settings(key)
-        )
+        monkeypatch.setattr("modules.printing.crypto.get_settings", _fernet_settings(key))
         assert decrypt_credential("not-a-fernet-token") == ""

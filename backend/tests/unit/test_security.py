@@ -1,12 +1,13 @@
 """Security regression tests — filename sanitisation, path containment,
 upload validation, secret-validation, and self-service privilege boundaries."""
+
 import io
 
 import pytest
 
-from core.files import safe_filename, ensure_within, validate_pdf
-from core.exceptions import ValidationError
 from core.config import Settings
+from core.exceptions import ValidationError
+from core.files import ensure_within, safe_filename, validate_pdf
 
 
 # ── Filename sanitisation / path traversal ──────────────────────────────────
@@ -67,8 +68,9 @@ class TestValidatePdf:
 class TestUploadTraversal:
     @pytest.mark.asyncio
     async def test_save_file_neutralises_traversal_filename(self, tmp_path, monkeypatch):
-        import modules.paper_review.service as svc
         from fastapi import UploadFile
+
+        import modules.paper_review.service as svc
 
         monkeypatch.setattr(svc.settings, "upload_dir", str(tmp_path))
         pdf = b"%PDF-1.4 data"
@@ -82,8 +84,9 @@ class TestUploadTraversal:
 
     @pytest.mark.asyncio
     async def test_save_file_rejects_non_pdf(self, tmp_path, monkeypatch):
-        import modules.paper_review.service as svc
         from fastapi import UploadFile
+
+        import modules.paper_review.service as svc
 
         monkeypatch.setattr(svc.settings, "upload_dir", str(tmp_path))
         upload = UploadFile(filename="evil.pdf", file=io.BytesIO(b"<script>alert(1)</script>"))
@@ -116,6 +119,8 @@ class TestSecretValidation:
             app_env="production",
             app_secret_key="A" * 40,
             jwt_secret_key="B" * 40,
+            postgres_password="C" * 40,
+            printer_credential_encryption_key="D" * 40,
             _env_file=None,
         )
         assert s.app_env == "production"
@@ -134,8 +139,9 @@ class TestSecretValidation:
 class TestIntegrityHandler:
     @pytest.mark.asyncio
     async def test_integrity_error_mapped_to_409(self):
-        from main import integrity_error_handler
         from sqlalchemy.exc import IntegrityError
+
+        from main import integrity_error_handler
 
         exc = IntegrityError("INSERT ...", {}, Exception("FK violation on team_id"))
         resp = await integrity_error_handler(None, exc)

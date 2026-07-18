@@ -1,8 +1,9 @@
 from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, field_validator
 
-
 # ── Auth ──────────────────────────────────────────────────────────────────────
+
 
 class LoginRequest(BaseModel):
     email: str  # str not EmailStr: login shouldn't reject unusual addresses (e.g. .local TLD)
@@ -20,6 +21,7 @@ class RefreshRequest(BaseModel):
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -46,6 +48,7 @@ class UserUpdate(BaseModel):
 class MeUpdate(BaseModel):
     """Self-service profile update. Deliberately excludes privilege fields
     (is_active, role_ids) so a user can never escalate or lock themselves out."""
+
     display_name: str | None = None
     preferred_language: str | None = None
     theme: str | None = None
@@ -86,6 +89,10 @@ class UserResponse(BaseModel):
     roles: list[RoleResponse]
 
 
+class CurrentUserResponse(UserResponse):
+    permissions: list[str]
+
+
 class UserListItem(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -97,6 +104,7 @@ class UserListItem(BaseModel):
 
 
 # ── Roles ─────────────────────────────────────────────────────────────────────
+
 
 class RoleCreate(BaseModel):
     name: str
@@ -115,6 +123,7 @@ class RoleDetailResponse(BaseModel):
 
 
 # ── Push subscriptions ────────────────────────────────────────────────────────
+
 
 class PushSubscriptionCreate(BaseModel):
     endpoint: str

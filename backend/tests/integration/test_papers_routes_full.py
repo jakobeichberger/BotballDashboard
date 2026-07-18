@@ -16,6 +16,7 @@ Exercises every endpoint end-to-end through the ASGI client:
 The admin_user fixture is a superuser, so it bypasses all permission checks
 (papers:read / write / admin / review).
 """
+
 import pytest
 
 
@@ -41,6 +42,7 @@ async def _create_paper(client, auth_headers, season, team, **overrides):
 
 
 # ── create / get / list ──────────────────────────────────────────────────────
+
 
 class TestCreateGetList:
     @pytest.mark.asyncio
@@ -104,9 +106,7 @@ class TestCreateGetList:
         a = await _create_paper(client, auth_headers, season, team, title="Draft A")
         b = await _create_paper(client, auth_headers, season, team, title="Draft B")
 
-        resp = await client.get(
-            "/api/papers", headers=auth_headers, params={"status": "draft"}
-        )
+        resp = await client.get("/api/papers", headers=auth_headers, params={"status": "draft"})
         assert resp.status_code == 200
         data = resp.json()
         ids = {item["id"] for item in data}
@@ -114,9 +114,7 @@ class TestCreateGetList:
         assert all(item["status"] == "draft" for item in data)
 
         # A status with no matching rows returns an empty list.
-        empty = await client.get(
-            "/api/papers", headers=auth_headers, params={"status": "rejected"}
-        )
+        empty = await client.get("/api/papers", headers=auth_headers, params={"status": "rejected"})
         assert empty.status_code == 200
         assert empty.json() == []
 
@@ -145,6 +143,7 @@ class TestCreateGetList:
 
 
 # ── update ───────────────────────────────────────────────────────────────────
+
 
 class TestUpdate:
     @pytest.mark.asyncio
@@ -175,13 +174,12 @@ class TestUpdate:
 
     @pytest.mark.asyncio
     async def test_patch_404(self, client, auth_headers):
-        resp = await client.patch(
-            "/api/papers/missing", headers=auth_headers, json={"title": "x"}
-        )
+        resp = await client.patch("/api/papers/missing", headers=auth_headers, json={"title": "x"})
         assert resp.status_code == 404
 
 
 # ── upload / download ────────────────────────────────────────────────────────
+
 
 class TestUploadDownload:
     @pytest.mark.asyncio
@@ -209,21 +207,18 @@ class TestUploadDownload:
     @pytest.mark.asyncio
     async def test_download_without_upload_404(self, client, auth_headers, season, team):
         created = await _create_paper(client, auth_headers, season, team)
-        resp = await client.get(
-            f"/api/papers/{created['id']}/download", headers=auth_headers
-        )
+        resp = await client.get(f"/api/papers/{created['id']}/download", headers=auth_headers)
         assert resp.status_code == 404
 
 
 # ── submit ───────────────────────────────────────────────────────────────────
 
+
 class TestSubmit:
     @pytest.mark.asyncio
     async def test_submit_paper(self, client, auth_headers, season, team):
         created = await _create_paper(client, auth_headers, season, team)
-        resp = await client.put(
-            f"/api/papers/{created['id']}/submit", headers=auth_headers
-        )
+        resp = await client.put(f"/api/papers/{created['id']}/submit", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "submitted"
@@ -233,9 +228,7 @@ class TestSubmit:
     async def test_double_submit_conflict(self, client, auth_headers, season, team):
         created = await _create_paper(client, auth_headers, season, team)
         await client.put(f"/api/papers/{created['id']}/submit", headers=auth_headers)
-        resp = await client.put(
-            f"/api/papers/{created['id']}/submit", headers=auth_headers
-        )
+        resp = await client.put(f"/api/papers/{created['id']}/submit", headers=auth_headers)
         assert resp.status_code == 409
 
     @pytest.mark.asyncio
@@ -245,6 +238,7 @@ class TestSubmit:
 
 
 # ── status (admin) ───────────────────────────────────────────────────────────
+
 
 class TestStatus:
     @pytest.mark.asyncio
@@ -284,13 +278,12 @@ class TestStatus:
     @pytest.mark.asyncio
     async def test_status_missing_query_param_422(self, client, auth_headers, season, team):
         created = await _create_paper(client, auth_headers, season, team)
-        resp = await client.put(
-            f"/api/papers/{created['id']}/status", headers=auth_headers
-        )
+        resp = await client.put(f"/api/papers/{created['id']}/status", headers=auth_headers)
         assert resp.status_code == 422
 
 
 # ── reviewer assignments ─────────────────────────────────────────────────────
+
 
 class TestAssignments:
     @pytest.mark.asyncio
@@ -335,6 +328,7 @@ class TestAssignments:
 
 # ── reviews ──────────────────────────────────────────────────────────────────
 
+
 class TestReviews:
     @pytest.mark.asyncio
     async def test_save_review_after_assignment(
@@ -363,9 +357,7 @@ class TestReviews:
         assert data["is_submitted"] is False
 
     @pytest.mark.asyncio
-    async def test_review_without_assignment_403(
-        self, client, auth_headers, season, team
-    ):
+    async def test_review_without_assignment_403(self, client, auth_headers, season, team):
         created = await _create_paper(client, auth_headers, season, team)
         # no assignment for the current (admin) user
         resp = await client.put(
@@ -399,9 +391,7 @@ class TestReviews:
         assert data["recommendation"] == "accept"
 
     @pytest.mark.asyncio
-    async def test_review_idempotent_update(
-        self, client, auth_headers, season, team, admin_user
-    ):
+    async def test_review_idempotent_update(self, client, auth_headers, season, team, admin_user):
         created = await _create_paper(client, auth_headers, season, team)
         await client.post(
             f"/api/papers/{created['id']}/assignments",
@@ -434,9 +424,7 @@ class TestReviews:
             headers=auth_headers,
             json={"score_content": 8.0},
         )
-        resp = await client.get(
-            f"/api/papers/{created['id']}/reviews", headers=auth_headers
-        )
+        resp = await client.get(f"/api/papers/{created['id']}/reviews", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, list)
@@ -446,9 +434,7 @@ class TestReviews:
     @pytest.mark.asyncio
     async def test_list_reviews_empty(self, client, auth_headers, season, team):
         created = await _create_paper(client, auth_headers, season, team)
-        resp = await client.get(
-            f"/api/papers/{created['id']}/reviews", headers=auth_headers
-        )
+        resp = await client.get(f"/api/papers/{created['id']}/reviews", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json() == []
 
@@ -460,11 +446,10 @@ class TestReviews:
 
 # ── full lifecycle ───────────────────────────────────────────────────────────
 
+
 class TestFullLifecycle:
     @pytest.mark.asyncio
-    async def test_draft_to_accepted_flow(
-        self, client, auth_headers, season, team, admin_user
-    ):
+    async def test_draft_to_accepted_flow(self, client, auth_headers, season, team, admin_user):
         # draft
         created = await _create_paper(client, auth_headers, season, team)
         pid = created["id"]

@@ -1,6 +1,9 @@
 """Unit tests for scoring calculations."""
+
 import pytest
-from modules.scoring.service import compute_seed_score, compute_match_total
+
+from modules.scoring.competition_service import _avg_best_n
+from modules.scoring.service import compute_match_total, compute_seed_score
 
 
 class TestComputeSeedScore:
@@ -31,6 +34,31 @@ class TestComputeSeedScore:
     def test_decimal_precision(self):
         result = compute_seed_score([100.0, 99.0, 98.0])
         assert result == 99.5
+
+
+class TestCompetitionScores:
+    def test_single_aerial_run_keeps_full_value(self):
+        assert _avg_best_n([80.0], n=2) == 80.0
+
+    def test_aerial_uses_best_two_runs(self):
+        assert _avg_best_n([20.0, 100.0, 80.0], n=2) == 90.0
+
+    @pytest.mark.asyncio
+    async def test_documentation_score_includes_onsite(self, db, season, team):
+        from modules.scoring.competition_service import upsert_doc_score
+
+        score = await upsert_doc_score(
+            db,
+            season.id,
+            {
+                "team_id": team.id,
+                "part1": 100,
+                "part2": 100,
+                "part3": 100,
+                "onsite": 0,
+            },
+        )
+        assert score.doc_score == 0.75
 
 
 class TestComputeMatchTotal:
@@ -106,10 +134,10 @@ class TestRankingLogic:
         assert ranking[0].rank == 1
 
     @pytest.mark.asyncio
-    async def test_multiple_teams_ranked_by_seed_score(self, db, season):
+    async def test_multiple_teams_ranked_by_seed_score(self, db, season, event):
+        from modules.scoring.models import Match
+        from modules.scoring.service import _recompute_ranking, get_ranking
         from modules.teams.models import Team
-        from modules.scoring.models import Match, Ranking
-        from modules.scoring.service import _recompute_ranking, _refresh_ranks, get_ranking
 
         # Create two teams
         team_a = Team(name="Team A", country="DE")
@@ -120,19 +148,35 @@ class TestRankingLogic:
         # Team A: scores 90, 80, 70 → seed = avg(90,80) = 85
         # Team B: scores 100, 50, 30 → seed = avg(100,50) = 75
         for score in [90.0, 80.0, 70.0]:
-            m = Match(season_id=season.id, team_id=team_a.id, round_number=1,
-                      raw_scores={}, total_score=score, is_disqualified=False,
-                      yellow_card=False, red_card=False)
+            m = Match(
+                season_id=season.id,
+                event_id=event.id,
+                team_id=team_a.id,
+                round_number=1,
+                raw_scores={},
+                total_score=score,
+                is_disqualified=False,
+                yellow_card=False,
+                red_card=False,
+            )
             db.add(m)
         for score in [100.0, 50.0, 30.0]:
-            m = Match(season_id=season.id, team_id=team_b.id, round_number=1,
-                      raw_scores={}, total_score=score, is_disqualified=False,
-                      yellow_card=False, red_card=False)
+            m = Match(
+                season_id=season.id,
+                event_id=event.id,
+                team_id=team_b.id,
+                round_number=1,
+                raw_scores={},
+                total_score=score,
+                is_disqualified=False,
+                yellow_card=False,
+                red_card=False,
+            )
             db.add(m)
         await db.flush()
 
-        await _recompute_ranking(db, season.id, team_a.id, None)
-        await _recompute_ranking(db, season.id, team_b.id, None)
+        await _recompute_ranking(db, event.id, team_a.id, None)
+        await _recompute_ranking(db, event.id, team_b.id, None)
         await db.commit()
 
         ranking = await get_ranking(db, season.id)
@@ -140,3 +184,23 @@ class TestRankingLogic:
         assert ranking[1].team_id == team_b.id
         assert ranking[0].rank == 1
         assert ranking[1].rank == 2
+
+    @pytest.mark.asyncio
+    async def test_disqualification_removes_match_from_ranking(self, db, season, event, team):
+        from modules.scoring.models import Match
+        from modules.scoring.service import _recompute_ranking, get_ranking, update_match
+
+        match = Match(
+            season_id=season.id,
+            event_id=event.id,
+            team_id=team.id,
+            total_score=100,
+            raw_scores={},
+        )
+        db.add(match)
+        await db.flush()
+        await _recompute_ranking(db, event.id, team.id, None)
+        assert len(await get_ranking(db, season.id)) == 1
+
+        await update_match(db, match.id, is_disqualified=True)
+        assert await get_ranking(db, season.id) == []

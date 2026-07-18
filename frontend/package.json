@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "api:generate": "python3 ../backend/scripts/export_openapi.py --output openapi.json && openapi-typescript openapi.json -o src/api/generated.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.4.0",
@@ -34,6 +36,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.54.1",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^15.0.7",
     "@testing-library/user-event": "^14.5.2",
@@ -51,6 +54,7 @@
     "eslint-plugin-react-refresh": "^0.4.7",
     "jest-axe": "^10.0.0",
     "jsdom": "^24.1.0",
+    "openapi-typescript": "7.8.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",

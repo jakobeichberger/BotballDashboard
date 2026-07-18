@@ -31,7 +31,7 @@ Vollständige Dokumentation des BotballDashboard-Systems. Enthält Installations
 | [Systemarchitektur](technical/architecture.md) | Überblick, Komponenten, Plugin-System |
 | [API-Referenz](technical/api-reference.md) | Alle REST-Endpunkte |
 | [Datenbankschema](technical/database.md) | Modelle, Relationen, Migrationen |
-| [Plugin-Entwicklung](technical/plugins.md) | Eigene Module entwickeln |
+| [Statische Modul-Registry](technical/plugins.md) | Module konsistent erweitern |
 | [Deployment & Betrieb](technical/deployment.md) | Produktion, Monitoring, Backup |
 
 ---
@@ -49,7 +49,7 @@ Vollständige Dokumentation des BotballDashboard-Systems. Enthält Installations
 | Ein Paper reviewen | [Reviewer-Handbuch](user-manual/reviewer.md) |
 | Druckjobs verwalten | [Admin-Handbuch → 3D-Druck](user-manual/admin.md#3d-druck) |
 | Die API nutzen | [API-Referenz](technical/api-reference.md) |
-| Ein Plugin entwickeln | [Plugin-Entwicklung](technical/plugins.md) |
+| Ein Modul erweitern | [Statische Modul-Registry](technical/plugins.md) |
 
 ---
 

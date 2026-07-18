@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from modules.scoring.routes import router as scoring_router
 from modules.scoring.score_sheets.routes import router as score_sheets_router
 

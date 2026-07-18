@@ -4,30 +4,32 @@ Covers compute_match_total edge cases plus the full service layer:
 create/get/list/update/delete/confirm match and ranking computation.
 These complement (do not duplicate) tests/unit/test_scoring.py.
 """
+
 import pytest
 
-from modules.scoring.models import Match, Ranking, ScoringSchema
+from core.exceptions import NotFoundError
+from modules.scoring.models import Ranking, ScoringSchema
 from modules.scoring.service import (
-    compute_match_total,
-    compute_seed_score,
-    create_match,
-    get_match,
-    list_matches,
-    update_match,
-    delete_match,
-    confirm_match,
-    get_ranking,
-    get_active_schema,
     _recompute_ranking,
     _refresh_ranks,
+    compute_match_total,
+    compute_seed_score,
+    confirm_match,
+    create_match,
+    delete_match,
+    get_active_schema,
+    get_match,
+    get_ranking,
+    list_matches,
+    update_match,
 )
-from core.exceptions import NotFoundError
-
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
+
 async def _make_team(db, name="Team X", country="DE"):
     from modules.teams.models import Team
+
     t = Team(name=name, country=country)
     db.add(t)
     await db.flush()
@@ -48,6 +50,7 @@ async def _make_schema(db, season_id, fields, version=1, is_active=True, level_i
 
 
 # ── compute_match_total edge cases (not covered by test_scoring.py) ──────────
+
 
 class TestComputeMatchTotalEdge:
     def test_negative_value_with_multiplier(self):
@@ -92,6 +95,7 @@ class TestComputeSeedScoreEdge:
 
 # ── get_active_schema ────────────────────────────────────────────────────────
 
+
 class TestGetActiveSchema:
     @pytest.mark.asyncio
     async def test_returns_none_when_no_schema(self, db, season):
@@ -101,10 +105,12 @@ class TestGetActiveSchema:
     async def test_returns_active_over_inactive(self, db, season):
         # Only one schema may be active at a time (scalar_one_or_none); the
         # active one is returned regardless of the inactive older version.
-        await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}],
-                           version=1, is_active=False)
-        await _make_schema(db, season.id, [{"key": "a", "multiplier": 2}],
-                           version=2, is_active=True)
+        await _make_schema(
+            db, season.id, [{"key": "a", "multiplier": 1}], version=1, is_active=False
+        )
+        await _make_schema(
+            db, season.id, [{"key": "a", "multiplier": 2}], version=2, is_active=True
+        )
         schema = await get_active_schema(db, season.id)
         assert schema is not None
         assert schema.version == 2
@@ -112,20 +118,26 @@ class TestGetActiveSchema:
 
     @pytest.mark.asyncio
     async def test_ignores_inactive_schema(self, db, season):
-        await _make_schema(db, season.id, [{"key": "a", "multiplier": 9}],
-                           version=5, is_active=False)
+        await _make_schema(
+            db, season.id, [{"key": "a", "multiplier": 9}], version=5, is_active=False
+        )
         assert await get_active_schema(db, season.id) is None
 
 
 # ── create_match ─────────────────────────────────────────────────────────────
 
+
 class TestCreateMatch:
     @pytest.mark.asyncio
     async def test_total_computed_from_schema(self, db, season, team):
-        await _make_schema(db, season.id, [
-            {"key": "a", "multiplier": 2},
-            {"key": "b", "multiplier": 10},
-        ])
+        await _make_schema(
+            db,
+            season.id,
+            [
+                {"key": "a", "multiplier": 2},
+                {"key": "b", "multiplier": 10},
+            ],
+        )
         data = {
             "season_id": season.id,
             "team_id": team.id,
@@ -153,8 +165,10 @@ class TestCreateMatch:
     async def test_creation_inserts_ranking_row(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
         data = {
-            "season_id": season.id, "team_id": team.id,
-            "round_number": 1, "raw_scores": {"a": 50},
+            "season_id": season.id,
+            "team_id": team.id,
+            "round_number": 1,
+            "raw_scores": {"a": 50},
         }
         await create_match(db, data, entered_by="u")
         await db.commit()
@@ -172,10 +186,16 @@ class TestCreateMatch:
     async def test_multiple_matches_same_team_aggregate(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
         for v in (90, 80, 70):
-            await create_match(db, {
-                "season_id": season.id, "team_id": team.id,
-                "round_number": 1, "raw_scores": {"a": v},
-            }, entered_by="u")
+            await create_match(
+                db,
+                {
+                    "season_id": season.id,
+                    "team_id": team.id,
+                    "round_number": 1,
+                    "raw_scores": {"a": v},
+                },
+                entered_by="u",
+            )
         await db.commit()
 
         ranking = await get_ranking(db, season.id)
@@ -189,13 +209,20 @@ class TestCreateMatch:
 
 # ── get / list ───────────────────────────────────────────────────────────────
 
+
 class TestGetAndList:
     @pytest.mark.asyncio
     async def test_get_match_returns_match(self, db, season, team):
-        m = await create_match(db, {
-            "season_id": season.id, "team_id": team.id,
-            "round_number": 1, "raw_scores": {},
-        }, entered_by="u")
+        m = await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {},
+            },
+            entered_by="u",
+        )
         fetched = await get_match(db, m.id)
         assert fetched.id == m.id
 
@@ -208,40 +235,58 @@ class TestGetAndList:
     async def test_list_filters_by_team(self, db, season):
         t1 = await _make_team(db, "T1")
         t2 = await _make_team(db, "T2")
-        await create_match(db, {"season_id": season.id, "team_id": t1.id,
-                                "round_number": 1, "raw_scores": {}}, "u")
-        await create_match(db, {"season_id": season.id, "team_id": t2.id,
-                                "round_number": 1, "raw_scores": {}}, "u")
+        await create_match(
+            db, {"season_id": season.id, "team_id": t1.id, "round_number": 1, "raw_scores": {}}, "u"
+        )
+        await create_match(
+            db, {"season_id": season.id, "team_id": t2.id, "round_number": 1, "raw_scores": {}}, "u"
+        )
         only_t1 = await list_matches(db, season.id, team_id=t1.id)
         assert len(only_t1) == 1
         assert only_t1[0].team_id == t1.id
 
     @pytest.mark.asyncio
     async def test_list_ordered_by_round(self, db, season, team):
-        await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                "round_number": 3, "raw_scores": {}}, "u")
-        await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                "round_number": 1, "raw_scores": {}}, "u")
+        await create_match(
+            db,
+            {"season_id": season.id, "team_id": team.id, "round_number": 3, "raw_scores": {}},
+            "u",
+        )
+        await create_match(
+            db,
+            {"season_id": season.id, "team_id": team.id, "round_number": 1, "raw_scores": {}},
+            "u",
+        )
         matches = await list_matches(db, season.id)
         assert [m.round_number for m in matches] == [1, 3]
 
     @pytest.mark.asyncio
     async def test_list_empty_for_other_season(self, db, season, team):
-        await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                "round_number": 1, "raw_scores": {}}, "u")
+        await create_match(
+            db,
+            {"season_id": season.id, "team_id": team.id, "round_number": 1, "raw_scores": {}},
+            "u",
+        )
         assert await list_matches(db, "other-season") == []
 
 
 # ── update_match ─────────────────────────────────────────────────────────────
 
+
 class TestUpdateMatch:
     @pytest.mark.asyncio
     async def test_update_raw_scores_recomputes_total(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 3}])
-        m = await create_match(db, {
-            "season_id": season.id, "team_id": team.id,
-            "round_number": 1, "raw_scores": {"a": 1},  # total 3
-        }, "u")
+        m = await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"a": 1},  # total 3
+            },
+            "u",
+        )
         assert m.total_score == 3.0
 
         updated = await update_match(db, m.id, raw_scores={"a": 10})  # total 30
@@ -250,10 +295,16 @@ class TestUpdateMatch:
     @pytest.mark.asyncio
     async def test_update_total_propagates_to_ranking(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
-        m = await create_match(db, {
-            "season_id": season.id, "team_id": team.id,
-            "round_number": 1, "raw_scores": {"a": 10},
-        }, "u")
+        m = await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"a": 10},
+            },
+            "u",
+        )
         await update_match(db, m.id, raw_scores={"a": 99})
         await db.commit()
 
@@ -264,10 +315,16 @@ class TestUpdateMatch:
     @pytest.mark.asyncio
     async def test_update_notes_only_keeps_total(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 2}])
-        m = await create_match(db, {
-            "season_id": season.id, "team_id": team.id,
-            "round_number": 1, "raw_scores": {"a": 4},  # total 8
-        }, "u")
+        m = await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"a": 4},  # total 8
+            },
+            "u",
+        )
         updated = await update_match(db, m.id, notes="hello")
         assert updated.notes == "hello"
         assert updated.total_score == 8.0
@@ -275,10 +332,26 @@ class TestUpdateMatch:
     @pytest.mark.asyncio
     async def test_disqualify_drops_from_seed_aggregate(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
-        m1 = await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                     "round_number": 1, "raw_scores": {"a": 100}}, "u")
-        await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                "round_number": 2, "raw_scores": {"a": 40}}, "u")
+        m1 = await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"a": 100},
+            },
+            "u",
+        )
+        await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 2,
+                "raw_scores": {"a": 40},
+            },
+            "u",
+        )
         # Disqualify the high-scoring match and flush so the recompute SELECT
         # observes the change, then recompute the ranking aggregate.
         m1.is_disqualified = True
@@ -298,11 +371,15 @@ class TestUpdateMatch:
 
 # ── confirm_match ────────────────────────────────────────────────────────────
 
+
 class TestConfirmMatch:
     @pytest.mark.asyncio
     async def test_confirm_sets_confirmed_fields(self, db, season, team):
-        m = await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                    "round_number": 1, "raw_scores": {}}, "u")
+        m = await create_match(
+            db,
+            {"season_id": season.id, "team_id": team.id, "round_number": 1, "raw_scores": {}},
+            "u",
+        )
         assert m.confirmed_by is None
         assert m.confirmed_at is None
 
@@ -318,12 +395,21 @@ class TestConfirmMatch:
 
 # ── delete_match ─────────────────────────────────────────────────────────────
 
+
 class TestDeleteMatch:
     @pytest.mark.asyncio
     async def test_delete_only_match_removes_ranking(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
-        m = await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                    "round_number": 1, "raw_scores": {"a": 10}}, "u")
+        m = await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"a": 10},
+            },
+            "u",
+        )
         await db.commit()
         assert len(await get_ranking(db, season.id)) == 1
 
@@ -335,10 +421,26 @@ class TestDeleteMatch:
     @pytest.mark.asyncio
     async def test_delete_one_of_many_keeps_ranking(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
-        m1 = await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                     "round_number": 1, "raw_scores": {"a": 100}}, "u")
-        await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                "round_number": 2, "raw_scores": {"a": 50}}, "u")
+        m1 = await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"a": 100},
+            },
+            "u",
+        )
+        await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 2,
+                "raw_scores": {"a": 50},
+            },
+            "u",
+        )
         await db.commit()
 
         await delete_match(db, m1.id)
@@ -356,6 +458,7 @@ class TestDeleteMatch:
 
 # ── ranking ordering / refresh ───────────────────────────────────────────────
 
+
 class TestRankingOrdering:
     @pytest.mark.asyncio
     async def test_three_teams_ranked_by_seed(self, db, season):
@@ -363,16 +466,24 @@ class TestRankingOrdering:
         teams = {}
         # seed = avg(top 2)
         plan = {
-            "Low":  [10, 10],   # seed 10
+            "Low": [10, 10],  # seed 10
             "High": [100, 90],  # seed 95
-            "Mid":  [60, 50],   # seed 55
+            "Mid": [60, 50],  # seed 55
         }
         for name, scores in plan.items():
             t = await _make_team(db, name)
             teams[name] = t
             for i, s in enumerate(scores, start=1):
-                await create_match(db, {"season_id": season.id, "team_id": t.id,
-                                        "round_number": i, "raw_scores": {"a": s}}, "u")
+                await create_match(
+                    db,
+                    {
+                        "season_id": season.id,
+                        "team_id": t.id,
+                        "round_number": i,
+                        "raw_scores": {"a": s},
+                    },
+                    "u",
+                )
         await db.commit()
 
         ranking = await get_ranking(db, season.id)
@@ -385,10 +496,16 @@ class TestRankingOrdering:
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
         a = await _make_team(db, "A")
         b = await _make_team(db, "B")
-        await create_match(db, {"season_id": season.id, "team_id": a.id,
-                                "round_number": 1, "raw_scores": {"a": 50}}, "u")
-        b_match = await create_match(db, {"season_id": season.id, "team_id": b.id,
-                                          "round_number": 1, "raw_scores": {"a": 40}}, "u")
+        await create_match(
+            db,
+            {"season_id": season.id, "team_id": a.id, "round_number": 1, "raw_scores": {"a": 50}},
+            "u",
+        )
+        b_match = await create_match(
+            db,
+            {"season_id": season.id, "team_id": b.id, "round_number": 1, "raw_scores": {"a": 40}},
+            "u",
+        )
         await db.commit()
 
         ranking = await get_ranking(db, season.id)
@@ -403,12 +520,35 @@ class TestRankingOrdering:
 
     @pytest.mark.asyncio
     async def test_refresh_ranks_directly(self, db, season):
+        from modules.scoring.service import get_default_event
+
         a = await _make_team(db, "A")
         b = await _make_team(db, "B")
-        db.add(Ranking(season_id=season.id, team_id=a.id, rank=0,
-                       seed_score=10.0, best_score=10, average_score=10, rounds_played=1))
-        db.add(Ranking(season_id=season.id, team_id=b.id, rank=0,
-                       seed_score=99.0, best_score=99, average_score=99, rounds_played=1))
+        event = await get_default_event(db, season.id)
+        db.add(
+            Ranking(
+                season_id=season.id,
+                event_id=event.id,
+                team_id=a.id,
+                rank=0,
+                seed_score=10.0,
+                best_score=10,
+                average_score=10,
+                rounds_played=1,
+            )
+        )
+        db.add(
+            Ranking(
+                season_id=season.id,
+                event_id=event.id,
+                team_id=b.id,
+                rank=0,
+                seed_score=99.0,
+                best_score=99,
+                average_score=99,
+                rounds_played=1,
+            )
+        )
         await db.flush()
         await _refresh_ranks(db, season.id, None)
         await db.flush()  # persist the new rank values before re-reading
@@ -420,8 +560,16 @@ class TestRankingOrdering:
     @pytest.mark.asyncio
     async def test_all_matches_disqualified_removes_ranking(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
-        m = await create_match(db, {"season_id": season.id, "team_id": team.id,
-                                    "round_number": 1, "raw_scores": {"a": 10}}, "u")
+        m = await create_match(
+            db,
+            {
+                "season_id": season.id,
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"a": 10},
+            },
+            "u",
+        )
         await db.commit()
         assert len(await get_ranking(db, season.id)) == 1
 

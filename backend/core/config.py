@@ -1,6 +1,8 @@
+from functools import lru_cache
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
+from sqlalchemy.engine import URL
 
 
 class Settings(BaseSettings):
@@ -50,9 +52,31 @@ class Settings(BaseSettings):
     upload_dir: str = "/app/uploads"
     max_upload_size_mb: int = 20
 
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.app_env != "production":
+            return self
+
+        invalid: list[str] = []
+        secrets = {
+            "APP_SECRET_KEY": self.app_secret_key,
+            "JWT_SECRET_KEY": self.jwt_secret_key,
+            "POSTGRES_PASSWORD": self.postgres_password,
+            "PRINTER_CREDENTIAL_ENCRYPTION_KEY": self.printer_credential_encryption_key,
+        }
+        for name, value in secrets.items():
+            lowered = value.lower()
+            if len(value) < 24 or "change-me" in lowered or "placeholder" in lowered:
+                invalid.append(name)
+        if "example.com" in self.app_base_url or "example.com" in self.allowed_origins:
+            invalid.extend(["APP_BASE_URL", "ALLOWED_ORIGINS"])
+        if invalid:
+            names = ", ".join(sorted(set(invalid)))
+            raise ValueError(f"Unsafe production configuration: replace {names}")
+        return self
+
     @property
-    def database_url(self):
-        from sqlalchemy.engine import URL
+    def database_url(self) -> URL:
         return URL.create(
             drivername="postgresql+asyncpg",
             username=self.postgres_user,
@@ -69,26 +93,6 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.app_env == "development"
-
-    @model_validator(mode="after")
-    def _reject_default_secrets_in_prod(self) -> "Settings":
-        """Fail fast in production if security-critical secrets are left at
-        their insecure defaults — otherwise an attacker who knows the public
-        default JWT key could forge tokens for any user."""
-        if self.is_dev:
-            return self
-        weak: list[str] = []
-        if self.app_secret_key.startswith("change-me") or len(self.app_secret_key) < 16:
-            weak.append("APP_SECRET_KEY")
-        if self.jwt_secret_key.startswith("change-me") or len(self.jwt_secret_key) < 16:
-            weak.append("JWT_SECRET_KEY")
-        if weak:
-            raise ValueError(
-                "Insecure default secret(s) in production: "
-                + ", ".join(weak)
-                + ". Set strong values (>=16 chars) in the environment/.env."
-            )
-        return self
 
 
 @lru_cache

@@ -15,21 +15,21 @@ and average-score cases). This file adds coverage for:
   * revision lifecycle + re-review after revision
   * save_file helper writing bytes to disk
 """
+
 import io
 
 import pytest
 from fastapi import UploadFile
 from starlette.datastructures import Headers
 
-from core.exceptions import ConflictError, ForbiddenError, NotFoundError
-from modules.paper_review.models import Paper, PaperReview, ReviewerAssignment
+from core.exceptions import ConflictError, NotFoundError
+from modules.paper_review.models import PaperReview, ReviewerAssignment
 from modules.paper_review.service import (
     assign_reviewer,
     create_paper,
     get_or_create_review,
     get_paper,
     list_papers,
-    save_file,
     save_review,
     set_paper_status,
     submit_paper,
@@ -67,6 +67,7 @@ async def _make_second_user(db, email="reviewer2@test.com"):
 
 # ── create_paper / get_paper ─────────────────────────────────────────────────
 
+
 class TestCreateAndGet:
     @pytest.mark.asyncio
     async def test_create_paper_eager_loads_relationships(self, db, paper_data):
@@ -92,6 +93,7 @@ class TestCreateAndGet:
 
 
 # ── list_papers ──────────────────────────────────────────────────────────────
+
 
 class TestListPapers:
     @pytest.mark.asyncio
@@ -162,6 +164,7 @@ class TestListPapers:
 
 # ── update_paper ─────────────────────────────────────────────────────────────
 
+
 class TestUpdatePaper:
     @pytest.mark.asyncio
     async def test_update_changes_fields(self, db, paper_data):
@@ -205,6 +208,7 @@ class TestUpdatePaper:
 
 # ── submit_paper ─────────────────────────────────────────────────────────────
 
+
 class TestSubmitPaper:
     @pytest.mark.asyncio
     async def test_submit_not_found_raises(self, db, admin_user):
@@ -243,6 +247,7 @@ class TestSubmitPaper:
 
 # ── set_paper_status ─────────────────────────────────────────────────────────
 
+
 class TestSetStatus:
     @pytest.mark.asyncio
     async def test_set_status_not_found(self, db):
@@ -270,6 +275,7 @@ class TestSetStatus:
 
 # ── assign_reviewer ──────────────────────────────────────────────────────────
 
+
 class TestAssignReviewer:
     @pytest.mark.asyncio
     async def test_assign_not_found_paper(self, db, admin_user):
@@ -286,12 +292,14 @@ class TestAssignReviewer:
         # assign_reviewer flushes internally -> id assigned + visible in fresh query
         assert assignment.id is not None
         rows = (
-            await db.execute(
-                select(ReviewerAssignment).where(
-                    ReviewerAssignment.paper_id == paper.id
+            (
+                await db.execute(
+                    select(ReviewerAssignment).where(ReviewerAssignment.paper_id == paper.id)
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1
 
     @pytest.mark.asyncio
@@ -305,16 +313,19 @@ class TestAssignReviewer:
         await assign_reviewer(db, paper.id, other.id, admin_user.id)
         await db.commit()
         rows = (
-            await db.execute(
-                select(ReviewerAssignment).where(
-                    ReviewerAssignment.paper_id == paper.id
+            (
+                await db.execute(
+                    select(ReviewerAssignment).where(ReviewerAssignment.paper_id == paper.id)
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(rows) == 2
 
 
 # ── get_or_create_review ─────────────────────────────────────────────────────
+
 
 class TestGetOrCreateReview:
     @pytest.mark.asyncio
@@ -346,6 +357,7 @@ class TestGetOrCreateReview:
 
 
 # ── save_review scoring & persistence ────────────────────────────────────────
+
 
 class TestSaveReview:
     async def _assigned_paper(self, db, paper_data, admin_user):
@@ -409,9 +421,7 @@ class TestSaveReview:
         paper = await self._assigned_paper(db, paper_data, admin_user)
         first = await save_review(db, paper.id, admin_user.id, {"score_content": 5.0})
         await db.flush()
-        second = await save_review(
-            db, paper.id, admin_user.id, {"score_methodology": 7.0}
-        )
+        second = await save_review(db, paper.id, admin_user.id, {"score_methodology": 7.0})
         await db.commit()
         # same review row, not a new one
         assert first.id == second.id
@@ -434,24 +444,21 @@ class TestSaveReview:
 
 # ── submit marks the review submitted ────────────────────────────────────────
 
+
 class TestSubmitReview:
     @pytest.mark.asyncio
     async def test_submit_marks_review_submitted(self, db, paper_data, admin_user):
         paper = await create_paper(db, paper_data)
         await db.flush()
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
-        review = await save_review(
-            db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True
-        )
+        review = await save_review(db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True)
         await db.commit()
         assert review.is_submitted is True
         assert review.submitted_at is not None
         assert review.total_score == 8.0
 
     @pytest.mark.asyncio
-    async def test_multiple_reviewers_each_get_own_review(
-        self, db, paper_data, admin_user
-    ):
+    async def test_multiple_reviewers_each_get_own_review(self, db, paper_data, admin_user):
         from sqlalchemy import select
 
         paper = await create_paper(db, paper_data)
@@ -460,12 +467,8 @@ class TestSubmitReview:
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
         await assign_reviewer(db, paper.id, other.id, admin_user.id)
 
-        r1 = await save_review(
-            db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True
-        )
-        r2 = await save_review(
-            db, paper.id, other.id, {"score_content": 6.0}, submit=True
-        )
+        r1 = await save_review(db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True)
+        r2 = await save_review(db, paper.id, other.id, {"score_content": 6.0}, submit=True)
         await db.commit()
 
         assert r1.id != r2.id
@@ -473,10 +476,10 @@ class TestSubmitReview:
         assert r2.reviewer_id == other.id
 
         rows = (
-            await db.execute(
-                select(PaperReview).where(PaperReview.paper_id == paper.id)
-            )
-        ).scalars().all()
+            (await db.execute(select(PaperReview).where(PaperReview.paper_id == paper.id)))
+            .scalars()
+            .all()
+        )
         assert len(rows) == 2
         assert all(r.is_submitted for r in rows)
 
@@ -485,21 +488,18 @@ class TestSubmitReview:
         paper = await create_paper(db, paper_data)
         await db.flush()
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
-        await save_review(
-            db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True
-        )
+        await save_review(db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True)
         await db.flush()
         # editing again (without submit flag) updates the same row; is_submitted
         # stays True because it is never cleared.
-        again = await save_review(
-            db, paper.id, admin_user.id, {"score_methodology": 4.0}
-        )
+        again = await save_review(db, paper.id, admin_user.id, {"score_methodology": 4.0})
         await db.commit()
         assert again.is_submitted is True
         assert again.total_score == 6.0  # avg(8, 4)
 
 
 # ── full revision lifecycle ──────────────────────────────────────────────────
+
 
 class TestRevisionLifecycle:
     @pytest.mark.asyncio
@@ -511,9 +511,7 @@ class TestRevisionLifecycle:
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
         # Review revision 1
-        rev1_review = await save_review(
-            db, paper.id, admin_user.id, {"score_content": 4.0}
-        )
+        rev1_review = await save_review(db, paper.id, admin_user.id, {"score_content": 4.0})
         await db.flush()
         assert rev1_review.revision_number == 1
 
@@ -524,23 +522,22 @@ class TestRevisionLifecycle:
         assert paper2.revision_number == 2
 
         # New review for revision 2 is a *different* row
-        rev2_review = await save_review(
-            db, paper.id, admin_user.id, {"score_content": 9.0}
-        )
+        rev2_review = await save_review(db, paper.id, admin_user.id, {"score_content": 9.0})
         await db.commit()
         assert rev2_review.id != rev1_review.id
         assert rev2_review.revision_number == 2
         assert rev2_review.score_content == 9.0
 
         rows = (
-            await db.execute(
-                select(PaperReview).where(PaperReview.paper_id == paper.id)
-            )
-        ).scalars().all()
+            (await db.execute(select(PaperReview).where(PaperReview.paper_id == paper.id)))
+            .scalars()
+            .all()
+        )
         assert len(rows) == 2  # one per revision
 
 
 # ── save_file helper ─────────────────────────────────────────────────────────
+
 
 class TestSaveFile:
     @pytest.mark.asyncio

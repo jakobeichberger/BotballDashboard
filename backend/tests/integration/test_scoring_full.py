@@ -3,18 +3,20 @@
 These complement (do not duplicate) tests/integration/test_scoring_routes.py.
 Routes are mounted under the /api prefix.
 """
+
 import pytest
 import pytest_asyncio
 
 from core.auth import create_access_token
 
-
 # ── fixtures ─────────────────────────────────────────────────────────────────
+
 
 @pytest_asyncio.fixture
 async def scoring_schema(db, season):
     """An active scoring schema for the season so totals are deterministic."""
     from modules.scoring.models import ScoringSchema
+
     s = ScoringSchema(
         season_id=season.id,
         fields=[
@@ -32,6 +34,7 @@ async def scoring_schema(db, season):
 @pytest_asyncio.fixture
 async def second_team(db):
     from modules.teams.models import Team
+
     t = Team(name="Test Team Beta", team_number="TTB-02", country="AT")
     db.add(t)
     await db.commit()
@@ -42,8 +45,9 @@ async def second_team(db):
 @pytest_asyncio.fixture
 async def limited_user(db):
     """A regular (non-superuser) user with no roles/permissions."""
-    from modules.auth.service import hash_password
     from modules.auth.models import User
+    from modules.auth.service import hash_password
+
     u = User(
         email="limited@test.com",
         display_name="Limited",
@@ -64,15 +68,20 @@ async def limited_headers(limited_user):
 
 # ── creation + totals ────────────────────────────────────────────────────────
 
+
 class TestCreateMatchRoute:
     @pytest.mark.asyncio
-    async def test_total_computed_from_schema(self, client, auth_headers, season,
-                                              team, scoring_schema):
+    async def test_total_computed_from_schema(
+        self, client, auth_headers, season, team, scoring_schema
+    ):
         resp = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=auth_headers,
-            json={"team_id": team.id, "round_number": 1,
-                  "raw_scores": {"task_a": 10, "task_b": 4}},  # 10*2 + 4*5 = 40
+            json={
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"task_a": 10, "task_b": 4},
+            },  # 10*2 + 4*5 = 40
         )
         assert resp.status_code == 201
         data = resp.json()
@@ -82,21 +91,23 @@ class TestCreateMatchRoute:
         assert data["confirmed_by"] is None
 
     @pytest.mark.asyncio
-    async def test_body_season_id_overridden_by_path(self, client, auth_headers,
-                                                     season, team):
+    async def test_body_season_id_overridden_by_path(self, client, auth_headers, season, team):
         # season_id in body should be ignored in favour of the URL path.
         resp = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=auth_headers,
-            json={"season_id": "bogus-season", "team_id": team.id,
-                  "round_number": 1, "raw_scores": {}},
+            json={
+                "season_id": "bogus-season",
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {},
+            },
         )
         assert resp.status_code == 201
         assert resp.json()["season_id"] == season.id
 
     @pytest.mark.asyncio
-    async def test_create_forbidden_without_permission(self, client, limited_headers,
-                                                       season, team):
+    async def test_create_forbidden_without_permission(self, client, limited_headers, season, team):
         resp = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=limited_headers,
@@ -116,19 +127,29 @@ class TestCreateMatchRoute:
 
 # ── bulk creation ────────────────────────────────────────────────────────────
 
+
 class TestBulkCreate:
     @pytest.mark.asyncio
-    async def test_bulk_creates_multiple_matches(self, client, auth_headers, season,
-                                                 team, second_team, scoring_schema):
+    async def test_bulk_creates_multiple_matches(
+        self, client, auth_headers, season, team, second_team, scoring_schema
+    ):
         resp = await client.post(
             f"/api/scoring/seasons/{season.id}/matches/bulk",
             headers=auth_headers,
-            json={"entries": [
-                {"team_id": team.id, "round_number": 1,
-                 "raw_scores": {"task_a": 5, "task_b": 2}},   # 10+10=20
-                {"team_id": second_team.id, "round_number": 1,
-                 "raw_scores": {"task_a": 1, "task_b": 1}},   # 2+5=7
-            ]},
+            json={
+                "entries": [
+                    {
+                        "team_id": team.id,
+                        "round_number": 1,
+                        "raw_scores": {"task_a": 5, "task_b": 2},
+                    },  # 10+10=20
+                    {
+                        "team_id": second_team.id,
+                        "round_number": 1,
+                        "raw_scores": {"task_a": 1, "task_b": 1},
+                    },  # 2+5=7
+                ]
+            },
         )
         assert resp.status_code == 201
         rows = resp.json()
@@ -138,17 +159,26 @@ class TestBulkCreate:
         assert totals[second_team.id] == 7.0
 
     @pytest.mark.asyncio
-    async def test_bulk_updates_ranking(self, client, db, auth_headers, season,
-                                        team, second_team, scoring_schema):
+    async def test_bulk_updates_ranking(
+        self, client, db, auth_headers, season, team, second_team, scoring_schema
+    ):
         await client.post(
             f"/api/scoring/seasons/{season.id}/matches/bulk",
             headers=auth_headers,
-            json={"entries": [
-                {"team_id": team.id, "round_number": 1,
-                 "raw_scores": {"task_a": 50, "task_b": 0}},   # 100
-                {"team_id": second_team.id, "round_number": 1,
-                 "raw_scores": {"task_a": 10, "task_b": 0}},   # 20
-            ]},
+            json={
+                "entries": [
+                    {
+                        "team_id": team.id,
+                        "round_number": 1,
+                        "raw_scores": {"task_a": 50, "task_b": 0},
+                    },  # 100
+                    {
+                        "team_id": second_team.id,
+                        "round_number": 1,
+                        "raw_scores": {"task_a": 10, "task_b": 0},
+                    },  # 20
+                ]
+            },
         )
         # Flush pending rank updates to the DB (the test client shares this
         # session and does not commit per-request).
@@ -175,6 +205,7 @@ class TestBulkCreate:
 
 # ── get / list ───────────────────────────────────────────────────────────────
 
+
 class TestGetAndListRoutes:
     @pytest.mark.asyncio
     async def test_get_match_by_id(self, client, auth_headers, season, team):
@@ -194,17 +225,21 @@ class TestGetAndListRoutes:
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_list_filtered_by_team(self, client, auth_headers, season,
-                                         team, second_team):
-        await client.post(f"/api/scoring/seasons/{season.id}/matches",
-                          headers=auth_headers,
-                          json={"team_id": team.id, "round_number": 1, "raw_scores": {}})
-        await client.post(f"/api/scoring/seasons/{season.id}/matches",
-                          headers=auth_headers,
-                          json={"team_id": second_team.id, "round_number": 1, "raw_scores": {}})
+    async def test_list_filtered_by_team(self, client, auth_headers, season, team, second_team):
+        await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {}},
+        )
+        await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": second_team.id, "round_number": 1, "raw_scores": {}},
+        )
         resp = await client.get(
             f"/api/scoring/seasons/{season.id}/matches",
-            headers=auth_headers, params={"team_id": team.id},
+            headers=auth_headers,
+            params={"team_id": team.id},
         )
         assert resp.status_code == 200
         rows = resp.json()
@@ -214,15 +249,20 @@ class TestGetAndListRoutes:
 
 # ── update / patch ───────────────────────────────────────────────────────────
 
+
 class TestUpdateRoute:
     @pytest.mark.asyncio
-    async def test_patch_raw_scores_recomputes_total(self, client, auth_headers,
-                                                     season, team, scoring_schema):
+    async def test_patch_raw_scores_recomputes_total(
+        self, client, auth_headers, season, team, scoring_schema
+    ):
         created = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=auth_headers,
-            json={"team_id": team.id, "round_number": 1,
-                  "raw_scores": {"task_a": 1, "task_b": 0}},  # total 2
+            json={
+                "team_id": team.id,
+                "round_number": 1,
+                "raw_scores": {"task_a": 1, "task_b": 0},
+            },  # total 2
         )
         match_id = created.json()["id"]
         assert created.json()["total_score"] == 2.0
@@ -236,13 +276,13 @@ class TestUpdateRoute:
         assert resp.json()["total_score"] == 30.0
 
     @pytest.mark.asyncio
-    async def test_patch_recomputes_ranking(self, client, auth_headers, season,
-                                            team, scoring_schema):
+    async def test_patch_recomputes_ranking(
+        self, client, auth_headers, season, team, scoring_schema
+    ):
         created = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=auth_headers,
-            json={"team_id": team.id, "round_number": 1,
-                  "raw_scores": {"task_a": 1, "task_b": 0}},
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"task_a": 1, "task_b": 0}},
         )
         match_id = created.json()["id"]
         await client.patch(
@@ -257,55 +297,54 @@ class TestUpdateRoute:
 
     @pytest.mark.asyncio
     async def test_patch_missing_match_404(self, client, auth_headers):
-        resp = await client.patch("/api/scoring/matches/ghost",
-                                  headers=auth_headers, json={"notes": "x"})
+        resp = await client.patch(
+            "/api/scoring/matches/ghost", headers=auth_headers, json={"notes": "x"}
+        )
         assert resp.status_code == 404
 
 
 # ── confirm ──────────────────────────────────────────────────────────────────
 
+
 class TestConfirmRoute:
     @pytest.mark.asyncio
-    async def test_confirm_sets_confirmed_by(self, client, auth_headers, admin_user,
-                                             season, team):
+    async def test_confirm_sets_confirmed_by(self, client, auth_headers, admin_user, season, team):
         created = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=auth_headers,
             json={"team_id": team.id, "round_number": 1, "raw_scores": {}},
         )
         match_id = created.json()["id"]
-        resp = await client.put(f"/api/scoring/matches/{match_id}/confirm",
-                                headers=auth_headers)
+        resp = await client.put(f"/api/scoring/matches/{match_id}/confirm", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body["confirmed_by"] == admin_user.id
         assert body["confirmed_at"] is not None
 
     @pytest.mark.asyncio
-    async def test_confirm_requires_admin_permission(self, client, limited_headers,
-                                                     auth_headers, season, team):
+    async def test_confirm_requires_admin_permission(
+        self, client, limited_headers, auth_headers, season, team
+    ):
         created = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=auth_headers,
             json={"team_id": team.id, "round_number": 1, "raw_scores": {}},
         )
         match_id = created.json()["id"]
-        resp = await client.put(f"/api/scoring/matches/{match_id}/confirm",
-                                headers=limited_headers)
+        resp = await client.put(f"/api/scoring/matches/{match_id}/confirm", headers=limited_headers)
         assert resp.status_code == 403
 
 
 # ── delete ───────────────────────────────────────────────────────────────────
 
+
 class TestDeleteRoute:
     @pytest.mark.asyncio
-    async def test_delete_removes_match_and_ranking(self, client, auth_headers,
-                                                    season, team):
+    async def test_delete_removes_match_and_ranking(self, client, auth_headers, season, team):
         created = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=auth_headers,
-            json={"team_id": team.id, "round_number": 1,
-                  "raw_scores": {"x": 10}},
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"x": 10}},
         )
         match_id = created.json()["id"]
         # Ranking exists before delete.
@@ -322,20 +361,21 @@ class TestDeleteRoute:
         assert after.json() == []
 
     @pytest.mark.asyncio
-    async def test_delete_requires_admin_permission(self, client, limited_headers,
-                                                    auth_headers, season, team):
+    async def test_delete_requires_admin_permission(
+        self, client, limited_headers, auth_headers, season, team
+    ):
         created = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",
             headers=auth_headers,
             json={"team_id": team.id, "round_number": 1, "raw_scores": {}},
         )
         match_id = created.json()["id"]
-        resp = await client.delete(f"/api/scoring/matches/{match_id}",
-                                   headers=limited_headers)
+        resp = await client.delete(f"/api/scoring/matches/{match_id}", headers=limited_headers)
         assert resp.status_code == 403
 
 
 # ── ranking endpoints ────────────────────────────────────────────────────────
+
 
 class TestRankingRoutes:
     @pytest.mark.asyncio
@@ -345,17 +385,24 @@ class TestRankingRoutes:
         assert resp.json() == []
 
     @pytest.mark.asyncio
-    async def test_ranking_orders_teams(self, client, db, auth_headers, season,
-                                        team, second_team, scoring_schema):
+    async def test_ranking_orders_teams(
+        self, client, db, auth_headers, season, team, second_team, scoring_schema
+    ):
         # team total 100, second_team total 10
-        await client.post(f"/api/scoring/seasons/{season.id}/matches",
-                          headers=auth_headers,
-                          json={"team_id": team.id, "round_number": 1,
-                                "raw_scores": {"task_a": 50, "task_b": 0}})
-        await client.post(f"/api/scoring/seasons/{season.id}/matches",
-                          headers=auth_headers,
-                          json={"team_id": second_team.id, "round_number": 1,
-                                "raw_scores": {"task_a": 5, "task_b": 0}})
+        await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"task_a": 50, "task_b": 0}},
+        )
+        await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={
+                "team_id": second_team.id,
+                "round_number": 1,
+                "raw_scores": {"task_a": 5, "task_b": 0},
+            },
+        )
         await db.commit()
         resp = await client.get(f"/api/scoring/seasons/{season.id}/ranking")
         ranking = resp.json()
@@ -363,12 +410,14 @@ class TestRankingRoutes:
         assert [r["rank"] for r in ranking] == [1, 2]
 
     @pytest.mark.asyncio
-    async def test_ranking_extended_includes_team_name(self, client, db, auth_headers,
-                                                       season, team, scoring_schema):
-        await client.post(f"/api/scoring/seasons/{season.id}/matches",
-                          headers=auth_headers,
-                          json={"team_id": team.id, "round_number": 1,
-                                "raw_scores": {"task_a": 10, "task_b": 0}})
+    async def test_ranking_extended_includes_team_name(
+        self, client, db, auth_headers, season, team, scoring_schema
+    ):
+        await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"task_a": 10, "task_b": 0}},
+        )
         await db.commit()
         resp = await client.get(f"/api/scoring/seasons/{season.id}/ranking/extended")
         assert resp.status_code == 200
@@ -379,12 +428,14 @@ class TestRankingRoutes:
         assert rows[0]["rank"] == 1
 
     @pytest.mark.asyncio
-    async def test_ranking_extended_category_filter_excludes(self, client, db, auth_headers,
-                                                            season, team, scoring_schema):
-        await client.post(f"/api/scoring/seasons/{season.id}/matches",
-                          headers=auth_headers,
-                          json={"team_id": team.id, "round_number": 1,
-                                "raw_scores": {"task_a": 10, "task_b": 0}})
+    async def test_ranking_extended_category_filter_excludes(
+        self, client, db, auth_headers, season, team, scoring_schema
+    ):
+        await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"task_a": 10, "task_b": 0}},
+        )
         await db.commit()
         # team has default category "botball"; filtering by "open" yields nothing.
         resp = await client.get(
@@ -395,19 +446,27 @@ class TestRankingRoutes:
         assert resp.json() == []
 
     @pytest.mark.asyncio
-    async def test_ranking_overall_returns_entries(self, client, db, auth_headers,
-                                                   season, team, scoring_schema):
+    async def test_ranking_overall_returns_entries(
+        self, client, db, auth_headers, season, team, scoring_schema
+    ):
         # Overall ranking only includes teams registered for the season.
         from modules.teams.models import TeamSeasonRegistration
-        db.add(TeamSeasonRegistration(
-            team_id=team.id, season_id=season.id, category="botball", confirmed=True,
-        ))
+
+        db.add(
+            TeamSeasonRegistration(
+                team_id=team.id,
+                season_id=season.id,
+                category="botball",
+                confirmed=True,
+            )
+        )
         await db.commit()
 
-        await client.post(f"/api/scoring/seasons/{season.id}/matches",
-                          headers=auth_headers,
-                          json={"team_id": team.id, "round_number": 1,
-                                "raw_scores": {"task_a": 10, "task_b": 0}})
+        await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"task_a": 10, "task_b": 0}},
+        )
         await db.commit()
         resp = await client.get(f"/api/scoring/seasons/{season.id}/ranking/overall")
         assert resp.status_code == 200

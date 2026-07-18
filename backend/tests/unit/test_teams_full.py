@@ -5,13 +5,14 @@ list_teams, get_team, create_team, update_team, delete_team, add_member,
 remove_member, register_for_season (duplicate guard), confirm_registration,
 list_registrations.
 """
+
 import pytest
 from sqlalchemy import select
 
 from core.exceptions import ConflictError, NotFoundError
 from modules.seasons import service as seasons_service
 from modules.teams import service
-from modules.teams.models import Team, TeamMember, TeamSeasonRegistration
+from modules.teams.models import TeamMember
 
 
 async def _members_for(db, team_id):
@@ -21,13 +22,12 @@ async def _members_for(db, team_id):
     commits, so the returned team object exposes a stale (empty) `members`
     collection. The rows are persisted on flush, so query them directly.
     """
-    result = await db.execute(
-        select(TeamMember).where(TeamMember.team_id == team_id)
-    )
+    result = await db.execute(select(TeamMember).where(TeamMember.team_id == team_id))
     return list(result.scalars().all())
 
 
 # ── create_team ───────────────────────────────────────────────────────────────
+
 
 class TestCreateTeam:
     @pytest.mark.asyncio
@@ -53,8 +53,14 @@ class TestCreateTeam:
 
     @pytest.mark.asyncio
     async def test_create_with_optional_fields(self, db):
-        data = {"name": "Full", "team_number": "FT-1", "school": "HTL",
-                "city": "Graz", "country": "AT", "notes": "hi"}
+        data = {
+            "name": "Full",
+            "team_number": "FT-1",
+            "school": "HTL",
+            "city": "Graz",
+            "country": "AT",
+            "notes": "hi",
+        }
         t = await service.create_team(db, data, [])
         assert t.team_number == "FT-1"
         assert t.school == "HTL"
@@ -63,6 +69,7 @@ class TestCreateTeam:
 
 
 # ── list_teams ────────────────────────────────────────────────────────────────
+
 
 class TestListTeams:
     @pytest.mark.asyncio
@@ -92,6 +99,7 @@ class TestListTeams:
     @pytest.mark.asyncio
     async def test_filter_by_competition_level(self, db):
         from modules.seasons.models import CompetitionLevel
+
         level = CompetitionLevel(name="ECER", code="ecer")
         db.add(level)
         await db.flush()
@@ -106,6 +114,7 @@ class TestListTeams:
 
 # ── get_team ──────────────────────────────────────────────────────────────────
 
+
 class TestGetTeam:
     @pytest.mark.asyncio
     async def test_found(self, db, team):
@@ -119,6 +128,7 @@ class TestGetTeam:
 
 
 # ── update_team ───────────────────────────────────────────────────────────────
+
 
 class TestUpdateTeam:
     @pytest.mark.asyncio
@@ -147,6 +157,7 @@ class TestUpdateTeam:
 
 # ── delete_team ───────────────────────────────────────────────────────────────
 
+
 class TestDeleteTeam:
     @pytest.mark.asyncio
     async def test_delete(self, db):
@@ -165,8 +176,9 @@ class TestDeleteTeam:
 
     @pytest.mark.asyncio
     async def test_delete_cascades_members(self, db):
-        t = await service.create_team(db, {"name": "WithMembers"},
-                                      [{"name": "M1", "role": "member"}])
+        t = await service.create_team(
+            db, {"name": "WithMembers"}, [{"name": "M1", "role": "member"}]
+        )
         # Commit + expire so get_team (inside delete_team) loads the members
         # relationship fresh, letting the ORM "all, delete-orphan" cascade fire.
         await db.commit()
@@ -181,6 +193,7 @@ class TestDeleteTeam:
 
 
 # ── add_member ────────────────────────────────────────────────────────────────
+
 
 class TestAddMember:
     @pytest.mark.asyncio
@@ -200,17 +213,17 @@ class TestAddMember:
 
 # ── remove_member ─────────────────────────────────────────────────────────────
 
+
 class TestRemoveMember:
     @pytest.mark.asyncio
     async def test_remove(self, db, team):
-        member = await service.add_member(
-            db, team.id, {"name": "Temp", "role": "member"}
-        )
+        member = await service.add_member(db, team.id, {"name": "Temp", "role": "member"})
         await db.flush()
         mid = member.id
         await service.remove_member(db, team.id, mid)
         await db.flush()
         from sqlalchemy import select
+
         result = await db.execute(select(TeamMember).where(TeamMember.id == mid))
         assert result.scalar_one_or_none() is None
 
@@ -231,6 +244,7 @@ class TestRemoveMember:
 
 
 # ── register_for_season (duplicate guard) ─────────────────────────────────────
+
 
 class TestRegisterForSeason:
     @pytest.mark.asyncio
@@ -257,9 +271,7 @@ class TestRegisterForSeason:
 
     @pytest.mark.asyncio
     async def test_same_team_different_seasons_ok(self, db, team, season):
-        other_season = await seasons_service.create_season(
-            db, {"name": "Other", "year": 2099}, []
-        )
+        other_season = await seasons_service.create_season(db, {"name": "Other", "year": 2099}, [])
         await db.flush()
         await service.register_for_season(db, team.id, season.id)
         await db.flush()
@@ -269,6 +281,7 @@ class TestRegisterForSeason:
 
 
 # ── confirm_registration ──────────────────────────────────────────────────────
+
 
 class TestConfirmRegistration:
     @pytest.mark.asyncio
@@ -286,6 +299,7 @@ class TestConfirmRegistration:
 
 # ── list_registrations ────────────────────────────────────────────────────────
 
+
 class TestListRegistrations:
     @pytest.mark.asyncio
     async def test_empty(self, db):
@@ -300,9 +314,7 @@ class TestListRegistrations:
 
     @pytest.mark.asyncio
     async def test_filter_by_season(self, db, team, season):
-        other_season = await seasons_service.create_season(
-            db, {"name": "Other", "year": 2099}, []
-        )
+        other_season = await seasons_service.create_season(db, {"name": "Other", "year": 2099}, [])
         await db.flush()
         await service.register_for_season(db, team.id, season.id)
         await service.register_for_season(db, team.id, other_season.id)

@@ -1,17 +1,28 @@
 """Unit tests for 3D Printing module – quota enforcement and filament tracking."""
+
 import pytest
+import pytest_asyncio
+
+from core.exceptions import ConflictError, NotFoundError
+from modules.printing.crypto import decrypt_credential, encrypt_credential
 from modules.printing.service import (
-    create_print_job,
-    _get_or_create_quota,
+    approve_print_job,
     consume_filament,
+    create_print_job,
     create_spool,
+    get_quota,
     update_print_job,
 )
-from modules.printing.crypto import encrypt_credential, decrypt_credential
-from core.exceptions import ConflictError, NotFoundError
 
 
 class TestPrintQuota:
+    @pytest_asyncio.fixture(autouse=True)
+    async def register_team_for_event(self, db, event, team):
+        from modules.events.models import EventRegistration
+
+        db.add(EventRegistration(event_id=event.id, team_id=team.id))
+        await db.flush()
+
     @pytest.mark.asyncio
     async def test_first_job_creates_quota(self, db, season, team, admin_user):
         data = {
@@ -23,7 +34,7 @@ class TestPrintQuota:
         await create_print_job(db, data, admin_user.id)
         await db.flush()
 
-        quota = await _get_or_create_quota(db, team.id, season.id)
+        quota = await get_quota(db, team.id, season.id)
         assert quota is not None
         assert quota.max_parts == 4  # default
 
@@ -31,7 +42,7 @@ class TestPrintQuota:
     async def test_hard_limit_blocks_job(self, db, season, team, admin_user):
         """Creating more jobs than max_parts should raise ConflictError."""
         # Set quota to max_parts=2 manually
-        quota = await _get_or_create_quota(db, team.id, season.id)
+        quota = await get_quota(db, team.id, season.id)
         quota.max_parts = 2
         quota.used_parts = 2
         await db.flush()
@@ -56,21 +67,24 @@ class TestPrintQuota:
         job = await create_print_job(db, data, admin_user.id)
         await db.flush()
 
-        quota_before = await _get_or_create_quota(db, team.id, season.id)
+        quota_before = await get_quota(db, team.id, season.id)
         used_before = quota_before.used_parts
 
-        # Mark as completed with actual grams
+        # Follow the validated job state machine before completing.
+        await approve_print_job(db, job.id, admin_user.id)
+        await update_print_job(db, job.id, status="queued")
+        await update_print_job(db, job.id, status="printing")
         await update_print_job(db, job.id, status="completed", actual_grams=45.5)
         await db.flush()
 
-        quota_after = await _get_or_create_quota(db, team.id, season.id)
+        quota_after = await get_quota(db, team.id, season.id)
         assert quota_after.used_parts == used_before + 1
         assert quota_after.used_grams == 45.5
 
     @pytest.mark.asyncio
     async def test_soft_limit_does_not_block(self, db, season, team, admin_user):
         """Job at soft limit should succeed (only hard limit blocks)."""
-        quota = await _get_or_create_quota(db, team.id, season.id)
+        quota = await get_quota(db, team.id, season.id)
         quota.soft_limit_parts = 1
         quota.max_parts = 4
         quota.used_parts = 1  # at soft limit
@@ -86,16 +100,35 @@ class TestPrintQuota:
         job = await create_print_job(db, data, admin_user.id)
         assert job is not None
 
+    @pytest.mark.asyncio
+    async def test_invalid_job_transition_is_rejected(self, db, season, team, admin_user):
+        job = await create_print_job(
+            db,
+            {
+                "team_id": team.id,
+                "season_id": season.id,
+                "file_name": "unsafe-transition.3mf",
+                "material": "PLA",
+            },
+            admin_user.id,
+        )
+        await db.flush()
+        with pytest.raises(ConflictError, match="Invalid print job transition"):
+            await update_print_job(db, job.id, status="completed")
+
 
 class TestFilamentTracking:
     @pytest.mark.asyncio
     async def test_create_spool(self, db):
-        spool = await create_spool(db, {
-            "material": "PLA",
-            "color": "White",
-            "brand": "Bambu",
-            "initial_grams": 1000.0,
-        })
+        spool = await create_spool(
+            db,
+            {
+                "material": "PLA",
+                "color": "White",
+                "brand": "Bambu",
+                "initial_grams": 1000.0,
+            },
+        )
         await db.flush()
 
         assert spool.remaining_grams == 1000.0
@@ -103,10 +136,13 @@ class TestFilamentTracking:
 
     @pytest.mark.asyncio
     async def test_consume_filament_reduces_remaining(self, db):
-        spool = await create_spool(db, {
-            "material": "PETG",
-            "initial_grams": 500.0,
-        })
+        spool = await create_spool(
+            db,
+            {
+                "material": "PETG",
+                "initial_grams": 500.0,
+            },
+        )
         await db.flush()
 
         updated = await consume_filament(db, spool.id, 120.0)
@@ -137,8 +173,10 @@ class TestCredentialEncryption:
         from cryptography.fernet import Fernet
 
         key = Fernet.generate_key().decode()
-        monkeypatch.setattr("modules.printing.crypto.get_settings",
-                            lambda: type("S", (), {"printer_credential_encryption_key": key})())
+        monkeypatch.setattr(
+            "modules.printing.crypto.get_settings",
+            lambda: type("S", (), {"printer_credential_encryption_key": key})(),
+        )
 
         encrypted = encrypt_credential("secret-api-key")
         assert encrypted != "secret-api-key"

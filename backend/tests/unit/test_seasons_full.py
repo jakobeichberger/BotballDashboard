@@ -5,12 +5,13 @@ list_seasons, get_season, get_active_season, create_season, update_season,
 set_active_season, delete_season (active-season guard), activate_phase,
 list_competition_levels.
 """
+
 import pytest
 from sqlalchemy import select
 
 from core.exceptions import ConflictError, NotFoundError
 from modules.seasons import service
-from modules.seasons.models import CompetitionLevel, Season, SeasonPhase
+from modules.seasons.models import CompetitionLevel, SeasonPhase
 
 
 async def _phases_for(db, season_id):
@@ -22,13 +23,15 @@ async def _phases_for(db, season_id):
     on flush, so we query them directly to assert on what was persisted.
     """
     result = await db.execute(
-        select(SeasonPhase).where(SeasonPhase.season_id == season_id)
+        select(SeasonPhase)
+        .where(SeasonPhase.season_id == season_id)
         .order_by(SeasonPhase.sort_order)
     )
     return list(result.scalars().all())
 
 
 # ── create_season ─────────────────────────────────────────────────────────────
+
 
 class TestCreateSeason:
     @pytest.mark.asyncio
@@ -71,6 +74,7 @@ class TestCreateSeason:
 
 # ── list_seasons ──────────────────────────────────────────────────────────────
 
+
 class TestListSeasons:
     @pytest.mark.asyncio
     async def test_empty(self, db):
@@ -94,6 +98,7 @@ class TestListSeasons:
 
 # ── get_season ────────────────────────────────────────────────────────────────
 
+
 class TestGetSeason:
     @pytest.mark.asyncio
     async def test_found(self, db, season):
@@ -108,6 +113,7 @@ class TestGetSeason:
 
 
 # ── get_active_season ─────────────────────────────────────────────────────────
+
 
 class TestGetActiveSeason:
     @pytest.mark.asyncio
@@ -125,6 +131,7 @@ class TestGetActiveSeason:
 
 # ── update_season ─────────────────────────────────────────────────────────────
 
+
 class TestUpdateSeason:
     @pytest.mark.asyncio
     async def test_update_name(self, db, season):
@@ -141,8 +148,9 @@ class TestUpdateSeason:
 
     @pytest.mark.asyncio
     async def test_update_modules(self, db, season):
-        updated = await service.update_season(db, season.id, use_aerial=True,
-                                              active_categories=["aerial"])
+        updated = await service.update_season(
+            db, season.id, use_aerial=True, active_categories=["aerial"]
+        )
         assert updated.use_aerial is True
         assert updated.active_categories == ["aerial"]
 
@@ -153,6 +161,7 @@ class TestUpdateSeason:
 
 
 # ── set_active_season ─────────────────────────────────────────────────────────
+
 
 class TestSetActiveSeason:
     @pytest.mark.asyncio
@@ -184,6 +193,7 @@ class TestSetActiveSeason:
 
 # ── delete_season (active-season guard) ───────────────────────────────────────
 
+
 class TestDeleteSeason:
     @pytest.mark.asyncio
     async def test_delete_inactive(self, db):
@@ -208,6 +218,7 @@ class TestDeleteSeason:
 
 
 # ── activate_phase ────────────────────────────────────────────────────────────
+
 
 class TestActivatePhase:
     @pytest.mark.asyncio
@@ -256,7 +267,8 @@ class TestActivatePhase:
     @pytest.mark.asyncio
     async def test_phase_from_other_season_not_found(self, db):
         s1 = await service.create_season(
-            db, {"name": "One", "year": 2026},
+            db,
+            {"name": "One", "year": 2026},
             [{"name": "Ph", "phase_type": "seeding"}],
         )
         s2 = await service.create_season(db, {"name": "Two", "year": 2027}, [])
@@ -269,6 +281,7 @@ class TestActivatePhase:
 
 # ── list_competition_levels ───────────────────────────────────────────────────
 
+
 class TestListCompetitionLevels:
     @pytest.mark.asyncio
     async def test_empty(self, db):
@@ -276,11 +289,13 @@ class TestListCompetitionLevels:
 
     @pytest.mark.asyncio
     async def test_only_active_returned_and_ordered(self, db):
-        db.add_all([
-            CompetitionLevel(name="GCER", code="gcer", is_active=True),
-            CompetitionLevel(name="ECER", code="ecer", is_active=True),
-            CompetitionLevel(name="Hidden", code="hidden", is_active=False),
-        ])
+        db.add_all(
+            [
+                CompetitionLevel(name="GCER", code="gcer", is_active=True),
+                CompetitionLevel(name="ECER", code="ecer", is_active=True),
+                CompetitionLevel(name="Hidden", code="hidden", is_active=False),
+            ]
+        )
         await db.flush()
         levels = await service.list_competition_levels(db)
         names = [lvl.name for lvl in levels]

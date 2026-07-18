@@ -1,17 +1,18 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, require_permission
 from core.config import get_settings
 from core.database import get_db
+from core.rate_limit import rate_limit
 from modules.auth import service
 from modules.auth.schemas import (
+    CurrentUserResponse,
     LoginRequest,
     MeUpdate,
     PushSubscriptionCreate,
-    RefreshRequest,
     RoleCreate,
     RoleDetailResponse,
     TokenResponse,
@@ -30,7 +31,12 @@ REFRESH_COOKIE = "refresh_token"
 
 # ── Login / Logout ────────────────────────────────────────────────────────────
 
-@router.post("/login", response_model=TokenResponse)
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("login", 10, 60))],
+)
 async def login(
     body: LoginRequest, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -51,7 +57,11 @@ async def login(
     )
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("refresh", 30, 60))],
+)
 async def refresh(
     request: Request, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -65,6 +75,7 @@ async def refresh(
             refresh_token = None
     if not refresh_token:
         from core.exceptions import UnauthorizedError
+
         raise UnauthorizedError("Refresh token required")
     access_token, new_refresh = await service.refresh_tokens(db, refresh_token)
     response.set_cookie(
@@ -94,9 +105,18 @@ async def logout(
 
 # ── Current user ──────────────────────────────────────────────────────────────
 
-@router.get("/me", response_model=UserResponse)
-async def get_me(current_user=Depends(get_current_user)):
-    return current_user
+
+@router.get("/me", response_model=CurrentUserResponse)
+async def get_me(current_user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    permissions = await service.get_user_permissions(db, current_user.id)
+    return {
+        **{
+            column.name: getattr(current_user, column.name)
+            for column in current_user.__table__.columns
+        },
+        "roles": current_user.roles,
+        "permissions": sorted(permissions),
+    }
 
 
 @router.patch("/me", response_model=UserResponse)
@@ -122,6 +142,7 @@ async def change_password(
 
 # ── Push subscriptions ────────────────────────────────────────────────────────
 
+
 @router.post("/me/push-subscriptions", status_code=201)
 async def subscribe_push(
     body: PushSubscriptionCreate,
@@ -145,6 +166,7 @@ async def unsubscribe_push(
 
 # ── Admin: Users ──────────────────────────────────────────────────────────────
 
+
 @router.get("/users", response_model=list[UserListItem])
 async def list_users(
     _=Depends(require_permission("users:read")), db: AsyncSession = Depends(get_db)
@@ -155,10 +177,24 @@ async def list_users(
 @router.post("/users", response_model=UserResponse, status_code=201)
 async def create_user(
     body: UserCreate,
+    background_tasks: BackgroundTasks,
     _=Depends(require_permission("users:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.create_user(db, body.email, body.display_name, body.password, body.role_ids)
+    user = await service.create_user(
+        db, body.email, body.display_name, body.password, body.role_ids
+    )
+    if settings.smtp_host and not settings.is_dev:
+        from core.notifications import send_email
+
+        background_tasks.add_task(
+            send_email,
+            body.email,
+            "BotballDashboard account created",
+            f"<p>Hello {body.display_name},</p><p>Your BotballDashboard account was created.</p>",
+            f"Hello {body.display_name}, your BotballDashboard account was created.",
+        )
+    return user
 
 
 @router.get("/users/{user_id}", response_model=UserResponse)
@@ -181,6 +217,7 @@ async def update_user(
 
 
 # ── Admin: Roles ──────────────────────────────────────────────────────────────
+
 
 @router.get("/roles", response_model=list[RoleDetailResponse])
 async def list_roles(

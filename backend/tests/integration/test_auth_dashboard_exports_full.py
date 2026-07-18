@@ -4,8 +4,9 @@ All routes are mounted under /api. Superusers bypass permission checks;
 non-superusers need explicit Role+Permission rows seeded in the test DB.
 Complements (does not duplicate) tests/integration/test_auth_routes.py.
 """
+
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from jose import jwt
@@ -25,22 +26,25 @@ async def _seed_refresh_token(db, user_id: str, *, expire_days: int) -> str:
     shorter-lived token the refresh route mints on rotation, avoiding a
     same-second byte-identical UNIQUE collision on refresh_tokens.token_hash.
     """
-    expire = datetime.now(timezone.utc) + timedelta(days=expire_days)
+    expire = datetime.now(UTC) + timedelta(days=expire_days)
     token = jwt.encode(
         {"sub": user_id, "exp": expire, "type": "refresh"},
         _settings.jwt_secret_key,
         algorithm=ALGORITHM,
     )
-    db.add(RefreshToken(
-        user_id=user_id,
-        token_hash=hashlib.sha256(token.encode()).hexdigest(),
-        expires_at=expire,
-    ))
+    db.add(
+        RefreshToken(
+            user_id=user_id,
+            token_hash=hashlib.sha256(token.encode()).hexdigest(),
+            expires_at=expire,
+        )
+    )
     await db.commit()
     return token
 
 
 # ── Fixtures: non-superuser users with seeded permissions ─────────────────────
+
 
 async def _make_user(db, email, *, superuser=False, active=True) -> User:
     user = User(
@@ -76,6 +80,7 @@ def _headers(user: User) -> dict:
 
 
 # ── Auth: login / refresh / logout cookie flow ────────────────────────────────
+
 
 class TestAuthFlow:
     @pytest.mark.asyncio
@@ -126,12 +131,14 @@ class TestAuthFlow:
 
 # ── /me self-service ──────────────────────────────────────────────────────────
 
+
 class TestMeRoutes:
     @pytest.mark.asyncio
     async def test_patch_me_updates_profile(self, client, db):
         user = await _make_user(db, "me@example.com")
         resp = await client.patch(
-            "/api/auth/me", headers=_headers(user),
+            "/api/auth/me",
+            headers=_headers(user),
             json={"display_name": "Updated Name", "theme": "dark"},
         )
         assert resp.status_code == 200
@@ -142,7 +149,8 @@ class TestMeRoutes:
     async def test_change_password_success_then_old_password_fails(self, client, db):
         user = await _make_user(db, "mepw@example.com")
         resp = await client.post(
-            "/api/auth/me/password", headers=_headers(user),
+            "/api/auth/me/password",
+            headers=_headers(user),
             json={"current_password": "password123", "new_password": "brandnewpass"},
         )
         assert resp.status_code == 204
@@ -162,7 +170,8 @@ class TestMeRoutes:
     async def test_change_password_wrong_current_returns_400(self, client, db):
         user = await _make_user(db, "mepw2@example.com")
         resp = await client.post(
-            "/api/auth/me/password", headers=_headers(user),
+            "/api/auth/me/password",
+            headers=_headers(user),
             json={"current_password": "wrong", "new_password": "brandnewpass"},
         )
         assert resp.status_code == 400
@@ -171,7 +180,8 @@ class TestMeRoutes:
     async def test_change_password_too_short_returns_422(self, client, db):
         user = await _make_user(db, "mepw3@example.com")
         resp = await client.post(
-            "/api/auth/me/password", headers=_headers(user),
+            "/api/auth/me/password",
+            headers=_headers(user),
             json={"current_password": "password123", "new_password": "short"},
         )
         assert resp.status_code == 422
@@ -179,12 +189,14 @@ class TestMeRoutes:
 
 # ── Push subscriptions over HTTP ──────────────────────────────────────────────
 
+
 class TestPushSubscriptionRoutes:
     @pytest.mark.asyncio
     async def test_subscribe_returns_status_subscribed(self, client, db):
         user = await _make_user(db, "push@example.com")
         resp = await client.post(
-            "/api/auth/me/push-subscriptions", headers=_headers(user),
+            "/api/auth/me/push-subscriptions",
+            headers=_headers(user),
             json={"endpoint": "https://push/ep", "p256dh": "p", "auth": "a"},
         )
         assert resp.status_code == 201
@@ -194,17 +206,21 @@ class TestPushSubscriptionRoutes:
     async def test_unsubscribe_returns_204(self, client, db):
         user = await _make_user(db, "push2@example.com")
         await client.post(
-            "/api/auth/me/push-subscriptions", headers=_headers(user),
+            "/api/auth/me/push-subscriptions",
+            headers=_headers(user),
             json={"endpoint": "https://push/ep2", "p256dh": "p", "auth": "a"},
         )
         resp = await client.request(
-            "DELETE", "/api/auth/me/push-subscriptions", headers=_headers(user),
+            "DELETE",
+            "/api/auth/me/push-subscriptions",
+            headers=_headers(user),
             json={"endpoint": "https://push/ep2", "p256dh": "p", "auth": "a"},
         )
         assert resp.status_code == 204
 
 
 # ── Admin user/role management permissions ────────────────────────────────────
+
 
 class TestUserManagementPermissions:
     @pytest.mark.asyncio
@@ -226,7 +242,8 @@ class TestUserManagementPermissions:
         user = await _make_user(db, "readonly@example.com")
         await _grant(db, user, "users:read")
         resp = await client.post(
-            "/api/auth/users", headers=_headers(user),
+            "/api/auth/users",
+            headers=_headers(user),
             json={"email": "x@example.com", "display_name": "X", "password": "password123"},
         )
         assert resp.status_code == 403
@@ -236,7 +253,8 @@ class TestUserManagementPermissions:
         user = await _make_user(db, "writer@example.com")
         await _grant(db, user, "users:write")
         resp = await client.post(
-            "/api/auth/users", headers=_headers(user),
+            "/api/auth/users",
+            headers=_headers(user),
             json={
                 "email": "created@example.com",
                 "display_name": "Created",
@@ -249,7 +267,8 @@ class TestUserManagementPermissions:
     @pytest.mark.asyncio
     async def test_create_user_short_password_returns_422(self, client, auth_headers):
         resp = await client.post(
-            "/api/auth/users", headers=auth_headers,
+            "/api/auth/users",
+            headers=auth_headers,
             json={"email": "short@example.com", "display_name": "S", "password": "short"},
         )
         assert resp.status_code == 422
@@ -262,7 +281,8 @@ class TestUserManagementPermissions:
         assert get_resp.json()["email"] == "target@example.com"
 
         patch_resp = await client.patch(
-            f"/api/auth/users/{target.id}", headers=auth_headers,
+            f"/api/auth/users/{target.id}",
+            headers=auth_headers,
             json={"display_name": "Renamed", "is_active": False},
         )
         assert patch_resp.status_code == 200
@@ -304,7 +324,8 @@ class TestRoleManagementPermissions:
         # Permission gating runs before the request body, so this is a clean 403.
         user = await _make_user(db, "rolewriter@example.com")
         resp = await client.post(
-            "/api/auth/roles", headers=_headers(user),
+            "/api/auth/roles",
+            headers=_headers(user),
             json={"name": "blocked", "permission_names": []},
         )
         assert resp.status_code == 403
@@ -316,13 +337,15 @@ class TestRoleManagementPermissions:
         db.add(Role(name="dupe"))
         await db.commit()
         resp = await client.post(
-            "/api/auth/roles", headers=auth_headers,
+            "/api/auth/roles",
+            headers=auth_headers,
             json={"name": "dupe", "permission_names": []},
         )
         assert resp.status_code == 409
 
 
 # ── Deactivated user token rejection ──────────────────────────────────────────
+
 
 class TestInactiveUser:
     @pytest.mark.asyncio
@@ -334,12 +357,14 @@ class TestInactiveUser:
 
 # ── Dashboard: announcements + stats ──────────────────────────────────────────
 
+
 class TestDashboardAnnouncements:
     @pytest.mark.asyncio
     async def test_create_announcement_requires_dashboard_write(self, client, db):
         user = await _make_user(db, "dashnoperm@example.com")
         resp = await client.post(
-            "/api/dashboard/announcements", headers=_headers(user),
+            "/api/dashboard/announcements",
+            headers=_headers(user),
             json={"title": "Hi", "body": "Body"},
         )
         assert resp.status_code == 403
@@ -348,7 +373,8 @@ class TestDashboardAnnouncements:
     async def test_create_publish_then_list_flow(self, client, db, auth_headers):
         # Create (unpublished by default)
         create = await client.post(
-            "/api/dashboard/announcements", headers=auth_headers,
+            "/api/dashboard/announcements",
+            headers=auth_headers,
             json={"title": "Welcome", "body": "Season opening", "audience": "all"},
         )
         assert create.status_code == 201
@@ -377,23 +403,24 @@ class TestDashboardAnnouncements:
     @pytest.mark.asyncio
     async def test_list_announcements_filtered_by_season(self, client, db, auth_headers, season):
         create = await client.post(
-            "/api/dashboard/announcements", headers=auth_headers,
+            "/api/dashboard/announcements",
+            headers=auth_headers,
             json={"title": "S", "body": "B", "season_id": season.id},
         )
         ann_id = create.json()["id"]
-        await client.put(
-            f"/api/dashboard/announcements/{ann_id}/publish", headers=auth_headers
-        )
+        await client.put(f"/api/dashboard/announcements/{ann_id}/publish", headers=auth_headers)
         await db.commit()  # flush publish state before re-querying
         # Matching season returns it.
         match = await client.get(
-            "/api/dashboard/announcements", headers=auth_headers,
+            "/api/dashboard/announcements",
+            headers=auth_headers,
             params={"season_id": season.id},
         )
         assert any(a["id"] == ann_id for a in match.json())
         # Non-matching season filters it out.
         other = await client.get(
-            "/api/dashboard/announcements", headers=auth_headers,
+            "/api/dashboard/announcements",
+            headers=auth_headers,
             params={"season_id": "some-other-season"},
         )
         assert all(a["id"] != ann_id for a in other.json())
@@ -415,7 +442,8 @@ class TestDashboardAnnouncements:
         user = await _make_user(db, "dashwrite@example.com")
         await _grant(db, user, "dashboard:write")
         resp = await client.post(
-            "/api/dashboard/announcements", headers=_headers(user),
+            "/api/dashboard/announcements",
+            headers=_headers(user),
             json={"title": "From reviewer", "body": "Body"},
         )
         assert resp.status_code == 201
@@ -457,6 +485,7 @@ class TestDashboardStats:
 
 
 # ── Exports: CSV + PDF for a season ───────────────────────────────────────────
+
 
 class TestExports:
     @pytest.mark.asyncio
@@ -518,9 +547,7 @@ class TestExports:
 
     @pytest.mark.asyncio
     async def test_export_unknown_season_returns_404(self, client, auth_headers):
-        resp = await client.get(
-            "/api/exports/seasons/missing/teams.csv", headers=auth_headers
-        )
+        resp = await client.get("/api/exports/seasons/missing/teams.csv", headers=auth_headers)
         assert resp.status_code == 404
 
     @pytest.mark.asyncio

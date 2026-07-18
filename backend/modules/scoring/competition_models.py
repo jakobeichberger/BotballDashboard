@@ -4,11 +4,12 @@ Models for extended competition scoring:
   - AerialResult: Aerial drone competition runs
   - DocumentationScore: Documentation evaluation (P1/P2/P3 + Onsite)
 """
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
 
@@ -19,11 +20,16 @@ def _uuid() -> str:
 
 class DEResult(Base):
     """Double-Elimination bracket result for one team in one season."""
+
     __tablename__ = "de_results"
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_de_result_event_team"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
@@ -31,7 +37,7 @@ class DEResult(Base):
     bracket: Mapped[str] = mapped_column(String(1), nullable=False)  # "A" | "B"
     de_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bracket_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # 0-1 within bracket
-    de_score: Mapped[float | None] = mapped_column(Float, nullable=True)       # final 0-1
+    de_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # final 0-1
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -43,11 +49,16 @@ class DEResult(Base):
 
 class AerialResult(Base):
     """Aerial competition results for one team – up to 4 timed/scored runs."""
+
     __tablename__ = "aerial_results"
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_aerial_result_event_team"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
@@ -69,20 +80,27 @@ class AerialResult(Base):
 
 class DocumentationScore(Base):
     """Documentation evaluation (3 written parts + onsite) for one team."""
+
     __tablename__ = "documentation_scores"
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_doc_score_event_team"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    part1: Mapped[float | None] = mapped_column(Float, nullable=True)   # 0-100
+    part1: Mapped[float | None] = mapped_column(Float, nullable=True)  # 0-100
     part2: Mapped[float | None] = mapped_column(Float, nullable=True)
     part3: Mapped[float | None] = mapped_column(Float, nullable=True)
     onsite: Mapped[float | None] = mapped_column(Float, nullable=True)
-    doc_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # avg(p1,p2,p3)/100
+    doc_score: Mapped[float | None] = mapped_column(
+        Float, nullable=True
+    )  # average of available written and onsite scores / 100
     doc_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

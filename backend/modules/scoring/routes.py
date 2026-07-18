@@ -1,65 +1,46 @@
-import asyncio
-
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission, require_any_permission
+from core.auth import require_permission
 from core.database import get_db
-from modules.scoring import service
+from core.live import publish_live_event, stream_live_events
 from modules.scoring import competition_service as comp_svc
+from modules.scoring import service
+from modules.scoring.competition_schemas import (
+    AerialResultResponse,
+    AerialResultUpsert,
+    DEResultResponse,
+    DEResultUpsert,
+    DocScoreResponse,
+    DocScoreUpsert,
+    OverallRankingEntry,
+    TeamRankingEntry,
+)
 from modules.scoring.schemas import (
     MatchCreate,
     MatchResponse,
     MatchUpdate,
     RankingResponse,
     ScoreBulkEntry,
-)
-from modules.scoring.competition_schemas import (
-    DEResultUpsert,
-    DEResultResponse,
-    AerialResultUpsert,
-    AerialResultResponse,
-    DocScoreUpsert,
-    DocScoreResponse,
-    OverallRankingEntry,
-    TeamRankingEntry,
+    ScoreRevisionResponse,
 )
 from modules.seasons import service as season_svc
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
-# WebSocket connections for live scoreboard (set + lock for safe concurrent access)
-_scoreboard_connections: set[WebSocket] = set()
-_connection_lock = asyncio.Lock()
-
 
 @router.websocket("/scoreboard/ws")
 async def scoreboard_ws(websocket: WebSocket):
-    await websocket.accept()
-    async with _connection_lock:
-        _scoreboard_connections.add(websocket)
-    try:
-        while True:
-            await websocket.receive_text()  # keep-alive
-    except WebSocketDisconnect:
-        pass
-    finally:
-        async with _connection_lock:
-            _scoreboard_connections.discard(websocket)
+    """Legacy global stream. New screens use the event-specific public stream."""
+    await stream_live_events(websocket, None)
 
 
-async def _broadcast_ranking_update(season_id: str) -> None:
-    async with _connection_lock:
-        dead: set[WebSocket] = set()
-        for ws in list(_scoreboard_connections):
-            try:
-                await ws.send_json({"event": "ranking_updated", "season_id": season_id})
-            except Exception:
-                dead.add(ws)
-        _scoreboard_connections.difference_update(dead)
+async def _broadcast_ranking_update(event_id: str) -> None:
+    await publish_live_event(event_id, "ranking_updated")
 
 
 # ── Matches ───────────────────────────────────────────────────────────────────
+
 
 @router.get("/seasons/{season_id}/matches", response_model=list[MatchResponse])
 async def list_matches(
@@ -82,11 +63,13 @@ async def create_match(
     data = body.model_dump()
     data["season_id"] = season_id
     match = await service.create_match(db, data, current_user.id)
-    await _broadcast_ranking_update(season_id)
+    await _broadcast_ranking_update(match.event_id)
     return match
 
 
-@router.post("/seasons/{season_id}/matches/bulk", response_model=list[MatchResponse], status_code=201)
+@router.post(
+    "/seasons/{season_id}/matches/bulk", response_model=list[MatchResponse], status_code=201
+)
 async def bulk_create_matches(
     season_id: str,
     body: ScoreBulkEntry,
@@ -98,7 +81,8 @@ async def bulk_create_matches(
         data = entry.model_dump()
         data["season_id"] = season_id
         results.append(await service.create_match(db, data, current_user.id))
-    await _broadcast_ranking_update(season_id)
+    if results:
+        await _broadcast_ranking_update(results[0].event_id)
     return results
 
 
@@ -115,12 +99,26 @@ async def get_match(
 async def update_match(
     match_id: str,
     body: MatchUpdate,
-    _=Depends(require_permission("scoring:write")),
+    current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    match = await service.update_match(db, match_id, **body.model_dump(exclude_none=True))
-    await _broadcast_ranking_update(match.season_id)
+    match = await service.update_match(
+        db,
+        match_id,
+        changed_by=current_user.id,
+        **body.model_dump(exclude_none=True),
+    )
+    await _broadcast_ranking_update(match.event_id)
     return match
+
+
+@router.get("/matches/{match_id}/revisions", response_model=list[ScoreRevisionResponse])
+async def list_score_revisions(
+    match_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.list_revisions(db, match_id)
 
 
 @router.put("/matches/{match_id}/confirm", response_model=MatchResponse)
@@ -143,6 +141,7 @@ async def delete_match(
 
 # ── Ranking ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/seasons/{season_id}/ranking", response_model=list[RankingResponse])
 async def get_ranking(
     season_id: str,
@@ -155,6 +154,7 @@ async def get_ranking(
 
 # ── Enhanced Ranking (with team names + category) ─────────────────────────────
 
+
 @router.get("/seasons/{season_id}/ranking/extended", response_model=list[TeamRankingEntry])
 async def get_ranking_extended(
     season_id: str,
@@ -163,6 +163,7 @@ async def get_ranking_extended(
 ):
     """Seeding ranking enriched with team name and registration category."""
     from sqlalchemy import select
+
     from modules.scoring.models import Ranking
     from modules.teams.models import Team, TeamSeasonRegistration
 
@@ -189,7 +190,7 @@ async def get_ranking_extended(
     rows = result.all()
     if category:
         rows = [r for r in rows if (r.category or "botball") == category]
-    return [
+    entries = [
         TeamRankingEntry(
             rank=r.rank,
             team_id=r.team_id,
@@ -202,9 +203,14 @@ async def get_ranking_extended(
         )
         for r in rows
     ]
+    if category:
+        for rank, entry in enumerate(entries, 1):
+            entry.rank = rank
+    return entries
 
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
+
 
 @router.get("/seasons/{season_id}/ranking/overall", response_model=list[OverallRankingEntry])
 async def get_overall_ranking(
@@ -223,10 +229,13 @@ async def get_overall_ranking(
     )
     if category:
         entries = [e for e in entries if e["category"] == category]
+        for rank, entry in enumerate(entries, 1):
+            entry["rank"] = rank
     return entries
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────
+
 
 @router.get("/seasons/{season_id}/de-results", response_model=list[DEResultResponse])
 async def list_de_results(
@@ -264,6 +273,7 @@ async def upsert_de_result(
 
 
 # ── Aerial ────────────────────────────────────────────────────────────────────
+
 
 @router.get("/seasons/{season_id}/aerial-results", response_model=list[AerialResultResponse])
 async def list_aerial_results(
@@ -307,6 +317,7 @@ async def upsert_aerial_result(
 
 
 # ── Documentation Scoring ─────────────────────────────────────────────────────
+
 
 @router.get("/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse])
 async def list_doc_scores(

@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 export interface AuthUser {
   id: string;
@@ -9,40 +8,38 @@ export interface AuthUser {
   preferred_language: string;
   theme: string;
   roles: Array<{ id: string; name: string; description: string | null }>;
+  permissions?: string[];
 }
 
 interface AuthState {
   accessToken: string | null;
   user: AuthUser | null;
+  sessionChecked: boolean;
   setAccessToken: (token: string) => void;
   setUser: (user: AuthUser) => void;
+  setSessionChecked: (checked: boolean) => void;
   logout: () => void;
   hasRole: (role: string) => boolean;
+  hasPermission: (permission: string) => boolean;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      accessToken: null,
-      user: null,
+// Remove tokens persisted by older releases. Access tokens now live in memory only.
+localStorage.removeItem("botball-auth");
 
-      setAccessToken: (token) => set({ accessToken: token }),
-      setUser: (user) => set({ user }),
-
-      logout: () => {
-        set({ accessToken: null, user: null });
-      },
-
-      hasRole: (role) => {
-        const { user } = get();
-        if (!user) return false;
-        if (user.is_superuser) return true;
-        return user.roles.some((r) => r.name === role);
-      },
-    }),
-    {
-      name: "botball-auth",
-      partialize: (state) => ({ user: state.user, accessToken: state.accessToken }),
-    }
-  )
-);
+export const useAuthStore = create<AuthState>((set, get) => ({
+  accessToken: null,
+  user: null,
+  sessionChecked: false,
+  setAccessToken: (token) => set({ accessToken: token }),
+  setUser: (user) => set({ user }),
+  setSessionChecked: (sessionChecked) => set({ sessionChecked }),
+  logout: () => set({ accessToken: null, user: null, sessionChecked: true }),
+  hasRole: (role) => {
+    const { user } = get();
+    return !!user && (user.is_superuser || user.roles.some((item) => item.name === role));
+  },
+  hasPermission: (permission) => {
+    const { user } = get();
+    return !!user && (user.is_superuser || !!user.permissions?.includes(permission));
+  },
+}));

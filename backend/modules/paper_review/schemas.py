@@ -1,9 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 
 class PaperCreate(BaseModel):
     season_id: str
+    event_id: str | None = None
     team_id: str
     title: str
     abstract: str | None = None
@@ -15,20 +18,23 @@ class PaperUpdate(BaseModel):
     title: str | None = None
     abstract: str | None = None
     notes: str | None = None
+    final_score: float | None = Field(default=None, ge=0, le=1)
+    paper_rank: int | None = Field(default=None, ge=1)
 
 
 class ReviewerAssignmentCreate(BaseModel):
     reviewer_id: str
+    due_at: datetime | None = None
 
 
 class ReviewCreateUpdate(BaseModel):
-    score_content: float | None = None
-    score_methodology: float | None = None
-    score_presentation: float | None = None
-    score_originality: float | None = None
+    score_content: float | None = Field(default=None, ge=0, le=10)
+    score_methodology: float | None = Field(default=None, ge=0, le=10)
+    score_presentation: float | None = Field(default=None, ge=0, le=10)
+    score_originality: float | None = Field(default=None, ge=0, le=10)
     comments: str | None = None
     private_notes: str | None = None
-    recommendation: str | None = None
+    recommendation: Literal["accept", "reject", "revision_minor", "revision_major"] | None = None
 
 
 class ReviewResponse(BaseModel):
@@ -57,6 +63,10 @@ class ReviewerAssignmentResponse(BaseModel):
     paper_id: str
     reviewer_id: str
     assigned_at: datetime
+    due_at: datetime | None
+    status: str
+    reminder_sent_at: datetime | None
+    completed_at: datetime | None
 
 
 class PaperResponse(BaseModel):
@@ -64,6 +74,7 @@ class PaperResponse(BaseModel):
 
     id: str
     season_id: str
+    event_id: str | None
     team_id: str
     title: str
     abstract: str | None
@@ -74,6 +85,8 @@ class PaperResponse(BaseModel):
     file_size_bytes: int | None
     submitted_at: datetime | None
     revision_number: int
+    final_score: float | None
+    paper_rank: int | None
     notes: str | None
     created_at: datetime
     updated_at: datetime
@@ -86,9 +99,32 @@ class PaperListItem(BaseModel):
 
     id: str
     season_id: str
+    event_id: str | None
     team_id: str
     title: str
     status: str
     revision_number: int
+    final_score: float | None
+    paper_rank: int | None
     submitted_at: datetime | None
     created_at: datetime
+
+
+class PaperStatusHistoryResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    paper_id: str
+    from_status: str | None
+    to_status: str
+    reason: str | None
+    changed_by: str | None
+    changed_at: datetime
+
+
+class ReviewerWorkloadResponse(BaseModel):
+    reviewer_id: str
+    assigned: int
+    open: int
+    overdue: int
+    completed: int

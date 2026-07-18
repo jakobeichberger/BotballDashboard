@@ -1,10 +1,11 @@
 """Email + Web Push notification helpers."""
+
 import json
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Any
 
 import aiosmtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from core.config import get_settings
 from core.logging import get_logger
@@ -14,6 +15,7 @@ logger = get_logger(__name__)
 
 
 # ── Email ─────────────────────────────────────────────────────────────────────
+
 
 async def send_email(
     to: str | list[str],
@@ -87,6 +89,7 @@ async def _send_sendgrid(
 
 # ── Web Push ──────────────────────────────────────────────────────────────────
 
+
 async def send_push_notification(
     endpoint: str,
     p256dh: str,
@@ -98,7 +101,7 @@ async def send_push_notification(
     if not settings.vapid_private_key:
         return False
     try:
-        from pywebpush import webpush, WebPushException
+        from pywebpush import webpush
 
         subscription_info = {
             "endpoint": endpoint,

@@ -35,12 +35,13 @@ Pflichtfelder in `.env` anpassen:
 POSTGRES_PASSWORD=sicheres_passwort_hier
 
 # Sicherheit
-SECRET_KEY=zufaelliger_langer_schluessel_min_32_zeichen
-JWT_SECRET=weiterer_zufaelliger_schluessel
+APP_SECRET_KEY=zufaelliger_langer_schluessel_min_32_zeichen
+JWT_SECRET_KEY=weiterer_zufaelliger_schluessel
 
 # Domain
 DOMAIN=dashboard.meineschule.at
-PUBLIC_SCOREBOARD_DOMAIN=scoreboard.meineschule.at   # optional
+APP_BASE_URL=https://dashboard.meineschule.at
+ALLOWED_ORIGINS=https://dashboard.meineschule.at
 
 # E-Mail (SMTP)
 SMTP_HOST=mail.meineschule.at
@@ -57,7 +58,7 @@ SMTP_FROM=BotballDashboard <dashboard@meineschule.at>
 ## 3. System starten
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 Beim ersten Start werden automatisch:
@@ -76,9 +77,8 @@ docker compose logs backend --tail=50
 ## 4. Admin-Benutzer erstellen
 
 ```bash
-docker compose exec backend python manage.py create-admin \
-  --email admin@meineschule.at \
-  --password sicheres_passwort
+docker compose exec -e ADMIN_PASSWORD=sicheres_passwort backend \
+  python scripts/create_admin.py --email admin@meineschule.at --name Administrator
 ```
 
 ---
@@ -111,7 +111,7 @@ Detaillierte Anleitung: [Admin-Handbuch](../user-manual/admin.md)
 docker compose down
 ```
 
-> **Wichtig:** `docker compose down` löscht **nicht** die Datenbank. Das persistente Volume `db_data` bleibt erhalten. Nur `docker compose down -v` würde Volumes löschen — das sollte nur bei einer kompletten Neuinstallation gemacht werden.
+> **Wichtig:** `docker compose down` löscht **nicht** die Datenbank. Das persistente Volume `pgdata` bleibt erhalten. Nur `docker compose down -v` würde Volumes löschen — das sollte nur bei einer kompletten Neuinstallation gemacht werden.
 
 ---
 

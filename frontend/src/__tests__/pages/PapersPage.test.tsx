@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import PapersPage from "@/pages/PapersPage";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn() } }));
 
@@ -28,6 +29,9 @@ function renderPage() {
 describe("PapersPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useAuthStore.setState({
+      user: { id: "admin", display_name: "Admin", is_superuser: true, roles: [] } as any,
+    });
   });
 
   it("renders the heading and submit button", () => {

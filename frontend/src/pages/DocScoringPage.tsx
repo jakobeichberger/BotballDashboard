@@ -208,7 +208,7 @@ export default function DocScoringPage() {
               {teams?.map((team) => {
                 const e = effectiveDoc(team.id);
                 const dirty = !!docDraft[team.id];
-                const parts = [e.part1, e.part2, e.part3].filter((v): v is number => v != null);
+                const parts = [e.part1, e.part2, e.part3, e.onsite].filter((v): v is number => v != null);
                 const docScore = parts.length > 0 ? (parts.reduce((a, b) => a + b, 0) / parts.length / 100).toFixed(4) : "–";
                 return (
                   <tr key={team.id} className={dirty ? "bg-yellow-50 dark:bg-yellow-900/10" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}>

@@ -4,8 +4,12 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import { Settings, Users, Layers, Save } from "lucide-react";
 import { api } from "@/lib/api";
 import clsx from "clsx";
+import Modal from "@/components/Modal";
 
 function UsersSettings() {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ email: "", display_name: "", password: "", role_id: "" });
   const { data: users, isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
@@ -13,12 +17,29 @@ function UsersSettings() {
       return data;
     },
   });
+  const { data: roles } = useQuery<any[]>({
+    queryKey: ["roles"],
+    queryFn: async () => (await api.get("/auth/roles")).data,
+  });
+  const createUser = useMutation({
+    mutationFn: () => api.post("/auth/users", {
+      email: form.email,
+      display_name: form.display_name,
+      password: form.password,
+      role_ids: form.role_id ? [form.role_id] : [],
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setForm({ email: "", display_name: "", password: "", role_id: "" });
+      setOpen(false);
+    },
+  });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Benutzer</h2>
-        <button className="btn-primary text-sm">+ Benutzer anlegen</button>
+        <button onClick={() => setOpen(true)} className="btn-primary text-sm">+ Benutzer anlegen</button>
       </div>
       {isLoading && <p className="text-gray-500 text-sm">Laden...</p>}
       <div className="card overflow-hidden">
@@ -51,6 +72,30 @@ function UsersSettings() {
           </tbody>
         </table>
       </div>
+      <Modal open={open} title="Benutzer anlegen" onClose={() => setOpen(false)}>
+        <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); createUser.mutate(); }}>
+          <label className="block text-sm font-medium">Name *
+            <input className="input mt-1 w-full" required value={form.display_name} onChange={(event) => setForm((current) => ({ ...current, display_name: event.target.value }))} />
+          </label>
+          <label className="block text-sm font-medium">E-Mail *
+            <input className="input mt-1 w-full" type="email" required value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
+          </label>
+          <label className="block text-sm font-medium">Passwort *
+            <input className="input mt-1 w-full" type="password" minLength={8} required value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} />
+          </label>
+          <label className="block text-sm font-medium">Rolle
+            <select className="input mt-1 w-full" value={form.role_id} onChange={(event) => setForm((current) => ({ ...current, role_id: event.target.value }))}>
+              <option value="">Keine Rolle</option>
+              {roles?.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+            </select>
+          </label>
+          {createUser.isError && <p className="text-sm text-red-600">Benutzer konnte nicht angelegt werden.</p>}
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Abbrechen</button>
+            <button type="submit" className="btn-primary" disabled={form.password.length < 8 || createUser.isPending}>Anlegen</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

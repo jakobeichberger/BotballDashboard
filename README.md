@@ -12,9 +12,9 @@ Webbasierte Plattform zur vollständigen Verwaltung und Auswertung des Botball-W
 | 02 | [Auth & Rechtesystem](docs/modules/02-auth.md) | Kern | ✅ Implementiert |
 | 03 | [Saisonverwaltung](docs/modules/03-saisonverwaltung.md) | Kern | ✅ Implementiert |
 | 04 | [Teamverwaltung](docs/modules/04-teamverwaltung.md) | Kern | ✅ Implementiert |
-| 05 | [Scoring-Modul](docs/modules/05-scoring.md) | Plugin | ✅ Implementiert |
-| 06 | [Paper-Review-Modul](docs/modules/06-paper-review.md) | Plugin | ✅ Implementiert |
-| 07 | [3D-Druck-Modul](docs/modules/07-3d-druck.md) | Plugin | ✅ Implementiert |
+| 05 | [Scoring-Modul](docs/modules/05-scoring.md) | Modul | ✅ Implementiert |
+| 06 | [Paper-Review-Modul](docs/modules/06-paper-review.md) | Modul | ✅ Implementiert |
+| 07 | [3D-Druck-Modul](docs/modules/07-3d-druck.md) | Modul | ✅ Implementiert |
 | 08 | [Dashboard & Visualisierung](docs/modules/08-dashboard.md) | Kern | ✅ Implementiert |
 | 09 | [Mobile App / PWA](docs/modules/09-mobile-pwa.md) | Frontend | ✅ Implementiert |
 | 10 | [Testing](docs/modules/10-testing.md) | Querschnitt | ✅ Implementiert |
@@ -66,7 +66,7 @@ Das Script erledigt automatisch:
 
 #### Voraussetzungen
 - Docker & Docker Compose
-- (Optional) pnpm 9+ für lokale Frontend-Entwicklung
+- (Optional) pnpm 10 für lokale Frontend-Entwicklung
 
 #### Produktion
 
@@ -74,7 +74,7 @@ Das Script erledigt automatisch:
 cp .env.example .env
 # .env anpassen (Passwörter, DOMAIN, SMTP optional, VAPID-Keys)
 
-make up          # startet alle Container inkl. Traefik
+make up          # baut und startet alle Container inkl. Traefik
 make migrate     # ggf. Migrationen manuell anstoßen (läuft automatisch beim Start)
 ```
 
@@ -121,23 +121,24 @@ Danach erreichbar:
 
 ```
 KERN
-├── Auth               (User, Role, Permission, JWT, RefreshToken, PushSubscription)
-├── Saisonverwaltung   (Season, SeasonPhase, CompetitionLevel)
-└── Teamverwaltung     (Team, TeamMember, TeamSeasonRegistration)
+├── Auth               (User, Role, Permission, Refresh-Cookie)
+├── Saison             (jährliches Regelwerk und Scoring-Vorlagen)
+├── Event              (Teams, Phasen, Zeitplan, Freigaben, Zeitzone)
+└── Turnier            (Schedule, Bracket, Match, ScoreRevision, Ranking)
 
-PLUGINS
-├── Scoring            (ScoringSchema, Match, Ranking, WebSocket-Scoreboard)
-│   └── Score-Sheets   (PDF-Import, OCR-Pipeline, Feldbestätigung)
-├── Paper-Review       (Paper, ReviewerAssignment, PaperReview, Datei-Upload)
-└── 3D-Druck           (Printer, PrintJob, TeamSeasonPrintQuota, FilamentSpool)
+STATISCHE MODULE
+├── Scoring            (dynamische Schemas, mobile Eingabe, Audit)
+│   └── Score-Sheets   (lokale OpenCV/Tesseract-Pipeline, Pflicht-Review)
+├── Paper-Review       (Auslastung, Fristen, Erinnerungen, Statushistorie)
+└── 3D-Druck           (OctoPrint/Bambu, Zustandsautomat, Worker-Polling)
 
 ÜBERGREIFEND
-├── Dashboard          (Announcements, Stats-Widgets)
-├── Frontend Shell     (Layout, Sidebar, Auth-Context, Theme, i18n)
-└── PWA                (Service Worker, Web Push Subscriptions)
+├── Public Live        (Rangliste, Zeitplan, Ansagen, QR, Redis Pub/Sub)
+├── Dashboard          (rechtebezogene Widgets, Notification-Outbox)
+└── Betrieb            (Readiness, Prometheus, Backups, strukturierte Logs)
 ```
 
-**Plugin-Mechanismus:** Jedes Modul registriert sich über ein `manifest.json` (Backend) und eine `PluginDefinition` (Frontend). Neue Module können hinzugefügt werden ohne den Kern zu verändern.
+**Modul-Mechanismus:** Die Anwendung ist ein statischer modularer Monolith. Backend- und Frontend-Register werden beim Build kompiliert; installierbare Laufzeit-Plugins gibt es bewusst nicht.
 
 ---
 
@@ -155,6 +156,10 @@ Migrationen laufen automatisch beim Container-Start via `scripts/migrate-then-st
 | `0006` | Paper Review: Paper, ReviewerAssignment, PaperReview |
 | `0007` | 3D-Druck: Printer, PrintJob, TeamSeasonPrintQuota, FilamentSpool |
 | `0008` | Dashboard: Announcement, AuditLog |
+| `0009` | Wettbewerbsmodule und Kategorien |
+| `0010` | Events, Registrierungen, Phasen, Zeitplan, Revisionen und Datenmigration |
+| `0011` | Lokale Score-Sheet-Scans und OCR-Review |
+| `0012` | Paper-/Print-Workflows, Notification-Outbox und Constraints |
 
 ---
 
@@ -165,6 +170,8 @@ Alle Endpunkte unter `/api/`. Swagger UI unter `/api/docs` (nur im Dev-Modus).
 | Bereich | Präfix | Authentifizierung |
 |---|---|---|
 | Auth | `/api/auth/` | Teils öffentlich |
+| Events | `/api/v1/events/{eventId}/` | Eventbezogene Permissions |
+| Öffentliche Events | `/api/v1/public/events/{slug}/` | Nur Lesen, ohne Login |
 | Saisons | `/api/seasons/` | JWT erforderlich |
 | Teams | `/api/teams/` | `teams:read/write` |
 | Scoring | `/api/scoring/` | `scoring:read/write/admin` |
@@ -172,7 +179,7 @@ Alle Endpunkte unter `/api/`. Swagger UI unter `/api/docs` (nur im Dev-Modus).
 | Paper Review | `/api/papers/` | `papers:read/review/admin` |
 | 3D-Druck | `/api/printing/` | `printing:read/write/admin` |
 | Dashboard | `/api/dashboard/` | `dashboard:read` |
-| Scoreboard WS | `/api/scoring/scoreboard/ws` | Öffentlich |
+| Live-Kanal | `/api/v1/public/events/{slug}/ws` | Öffentlich, Redis Pub/Sub |
 
 ---
 
@@ -199,7 +206,8 @@ Alle Endpunkte unter `/api/`. Swagger UI unter `/api/docs` (nur im Dev-Modus).
 | [docs/documentation/technical/architecture.md](docs/documentation/technical/architecture.md) | Systemarchitektur |
 | [docs/documentation/technical/database.md](docs/documentation/technical/database.md) | Datenbankschema |
 | [docs/documentation/technical/api-reference.md](docs/documentation/technical/api-reference.md) | API-Referenz |
-| [docs/documentation/technical/plugins.md](docs/documentation/technical/plugins.md) | Plugin-Entwicklung |
+| [docs/documentation/technical/plugins.md](docs/documentation/technical/plugins.md) | Statische Modul-Registry |
+| [docs/operations.md](docs/operations.md) | Readiness, Monitoring, Backup und Event-Probelauf |
 | [docs/documentation/user-manual/admin.md](docs/documentation/user-manual/admin.md) | Handbuch: Admin |
 | [docs/documentation/user-manual/juror.md](docs/documentation/user-manual/juror.md) | Handbuch: Juror |
 | [docs/documentation/user-manual/reviewer.md](docs/documentation/user-manual/reviewer.md) | Handbuch: Reviewer |

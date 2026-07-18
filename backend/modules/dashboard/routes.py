@@ -1,19 +1,21 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, require_permission
 from core.database import get_db
+from core.domain_events import emit_event
 from modules.dashboard.models import Announcement
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 class AnnouncementCreate(BaseModel):
     season_id: str | None = None
+    event_id: str | None = None
     title: str
     body: str
     audience: str = "all"
@@ -25,6 +27,7 @@ class AnnouncementResponse(BaseModel):
 
     id: str
     season_id: str | None
+    event_id: str | None
     title: str
     body: str
     audience: str
@@ -37,14 +40,19 @@ class AnnouncementResponse(BaseModel):
 @router.get("/announcements", response_model=list[AnnouncementResponse])
 async def list_announcements(
     season_id: str | None = Query(None),
+    event_id: str | None = Query(None),
     _=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Announcement).where(Announcement.is_published == True).order_by(
-        Announcement.created_at.desc()
+    q = (
+        select(Announcement)
+        .where(Announcement.is_published == True)
+        .order_by(Announcement.created_at.desc())
     )
     if season_id:
         q = q.where(Announcement.season_id == season_id)
+    if event_id:
+        q = q.where(Announcement.event_id == event_id)
     result = await db.execute(q)
     return list(result.scalars().all())
 
@@ -71,33 +79,68 @@ async def publish_announcement(
     ann = result.scalar_one_or_none()
     if not ann:
         from core.exceptions import NotFoundError
+
         raise NotFoundError("Announcement not found")
     ann.is_published = True
-    ann.published_at = datetime.now(timezone.utc)
+    ann.published_at = datetime.now(UTC)
+    await emit_event(
+        db,
+        "announcement_published",
+        event_id=ann.event_id,
+        payload={
+            "title": ann.title,
+            "body": ann.body,
+            "announcementId": ann.id,
+            "publicLive": True,
+        },
+    )
     return ann
 
 
 @router.get("/stats")
 async def get_stats(
     season_id: str | None = Query(None),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("dashboard:read")),
     db: AsyncSession = Depends(get_db),
 ):
     """Returns aggregated stats for the dashboard overview widget."""
     from sqlalchemy import func as sqlfunc
-    from modules.teams.models import TeamSeasonRegistration
+
+    from modules.events.models import EventRegistration
     from modules.paper_review.models import Paper
     from modules.printing.models import PrintJob
     from modules.scoring.models import Match
+    from modules.teams.models import TeamSeasonRegistration
 
     team_count = 0
     paper_count = 0
     print_count = 0
     match_count = 0
 
-    if season_id:
+    if event_id:
         r = await db.execute(
-            select(sqlfunc.count()).select_from(TeamSeasonRegistration)
+            select(sqlfunc.count())
+            .select_from(EventRegistration)
+            .where(EventRegistration.event_id == event_id)
+        )
+        team_count = r.scalar() or 0
+        r = await db.execute(
+            select(sqlfunc.count()).select_from(Paper).where(Paper.event_id == event_id)
+        )
+        paper_count = r.scalar() or 0
+        r = await db.execute(
+            select(sqlfunc.count()).select_from(PrintJob).where(PrintJob.event_id == event_id)
+        )
+        print_count = r.scalar() or 0
+        r = await db.execute(
+            select(sqlfunc.count()).select_from(Match).where(Match.event_id == event_id)
+        )
+        match_count = r.scalar() or 0
+    elif season_id:
+        r = await db.execute(
+            select(sqlfunc.count())
+            .select_from(TeamSeasonRegistration)
             .where(TeamSeasonRegistration.season_id == season_id)
         )
         team_count = r.scalar() or 0

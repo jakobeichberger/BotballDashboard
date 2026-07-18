@@ -1,5 +1,7 @@
 """Integration tests for authentication API routes."""
+
 import pytest
+
 from modules.auth.service import create_user
 
 
@@ -9,10 +11,13 @@ class TestLoginLogout:
         await create_user(db, "user@test.com", "Test User", "password123", [])
         await db.commit()
 
-        resp = await client.post("/api/auth/login", json={
-            "email": "user@test.com",
-            "password": "password123",
-        })
+        resp = await client.post(
+            "/api/auth/login",
+            json={
+                "email": "user@test.com",
+                "password": "password123",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
@@ -24,10 +29,13 @@ class TestLoginLogout:
         await create_user(db, "user2@test.com", "Test User", "correct", [])
         await db.commit()
 
-        resp = await client.post("/api/auth/login", json={
-            "email": "user2@test.com",
-            "password": "wrong",
-        })
+        resp = await client.post(
+            "/api/auth/login",
+            json={
+                "email": "user2@test.com",
+                "password": "wrong",
+            },
+        )
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
@@ -68,23 +76,31 @@ class TestUserManagement:
 
     @pytest.mark.asyncio
     async def test_create_user_as_admin(self, client, auth_headers):
-        resp = await client.post("/api/auth/users", headers=auth_headers, json={
-            "email": "newuser@test.com",
-            "display_name": "New User",
-            "password": "newpassword",
-            "role_ids": [],
-        })
+        resp = await client.post(
+            "/api/auth/users",
+            headers=auth_headers,
+            json={
+                "email": "newuser@test.com",
+                "display_name": "New User",
+                "password": "newpassword",
+                "role_ids": [],
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["email"] == "newuser@test.com"
 
     @pytest.mark.asyncio
     async def test_create_user_duplicate_email_returns_409(self, client, auth_headers, admin_user):
-        resp = await client.post("/api/auth/users", headers=auth_headers, json={
-            "email": admin_user.email,
-            "display_name": "Dupe",
-            "password": "validpass123",
-        })
+        resp = await client.post(
+            "/api/auth/users",
+            headers=auth_headers,
+            json={
+                "email": admin_user.email,
+                "display_name": "Dupe",
+                "password": "validpass123",
+            },
+        )
         assert resp.status_code == 409
 
 

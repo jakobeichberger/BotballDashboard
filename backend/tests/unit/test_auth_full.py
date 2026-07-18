@@ -4,8 +4,9 @@ Exercises token creation/refresh/decode, permission resolution, user CRUD,
 password change, role creation, and push-subscription persistence at the
 service layer. Complements (does not duplicate) tests/unit/test_auth.py.
 """
+
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from jose import jwt
@@ -51,8 +52,8 @@ from modules.auth.service import (
     verify_password,
 )
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 async def _seed_permissions(db, names: list[str]) -> dict[str, Permission]:
     perms = {n: Permission(name=n) for n in names}
@@ -99,12 +100,13 @@ def _token_hash(token: str) -> str:
 
 def _make_refresh_token(subject: str, expire_days: int) -> str:
     """Mint a refresh token with an explicit expiry (mirrors core.auth encoding)."""
-    expire = datetime.now(timezone.utc) + timedelta(days=expire_days)
+    expire = datetime.now(UTC) + timedelta(days=expire_days)
     payload = {"sub": subject, "exp": expire, "type": "refresh"}
     return jwt.encode(payload, _settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
 # ── Token helpers (core.auth) ─────────────────────────────────────────────────
+
 
 class TestTokenHelpers:
     def test_access_and_refresh_tokens_differ(self):
@@ -131,6 +133,7 @@ class TestTokenHelpers:
 
 
 # ── Permission resolution ─────────────────────────────────────────────────────
+
 
 class TestGetUserPermissions:
     @pytest.mark.asyncio
@@ -166,6 +169,7 @@ class TestGetUserPermissions:
 
 # ── Authentication ────────────────────────────────────────────────────────────
 
+
 class TestAuthenticateUser:
     @pytest.mark.asyncio
     async def test_email_is_case_insensitive(self, db):
@@ -195,6 +199,7 @@ class TestAuthenticateUser:
 
 # ── Refresh token lifecycle ───────────────────────────────────────────────────
 
+
 class TestRefreshTokens:
     @pytest.mark.asyncio
     async def test_create_tokens_persists_refresh_token_hash(self, db):
@@ -215,11 +220,13 @@ class TestRefreshTokens:
         # which uses the default (shorter) expiry. This avoids a same-second
         # byte-identical-token UNIQUE collision on refresh_tokens.token_hash.
         seed = _make_refresh_token(user.id, expire_days=365)
-        db.add(RefreshToken(
-            user_id=user.id,
-            token_hash=_token_hash(seed),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=365),
-        ))
+        db.add(
+            RefreshToken(
+                user_id=user.id,
+                token_hash=_token_hash(seed),
+                expires_at=datetime.now(UTC) + timedelta(days=365),
+            )
+        )
         await db.commit()
 
         new_access, new_refresh = await refresh_tokens(db, seed)
@@ -227,9 +234,11 @@ class TestRefreshTokens:
         assert new_refresh != seed
 
         # The seeded token's row is now revoked; reusing it fails.
-        stored = (await db.execute(
-            select(RefreshToken).where(RefreshToken.token_hash == _token_hash(seed))
-        )).scalar_one()
+        stored = (
+            await db.execute(
+                select(RefreshToken).where(RefreshToken.token_hash == _token_hash(seed))
+            )
+        ).scalar_one()
         assert stored.revoked is True
 
         with pytest.raises(UnauthorizedError):
@@ -255,6 +264,7 @@ class TestRefreshTokens:
 
 
 # ── User CRUD ─────────────────────────────────────────────────────────────────
+
 
 class TestUserCrud:
     @pytest.mark.asyncio
@@ -312,13 +322,12 @@ class TestUserCrud:
         fetched = await get_user(db, user_id)
         assert {r.id for r in fetched.roles} == {role_b_id}
         # The old association row is gone.
-        ur = (await db.execute(
-            select(UserRole).where(UserRole.user_id == user_id)
-        )).scalars().all()
+        ur = (await db.execute(select(UserRole).where(UserRole.user_id == user_id))).scalars().all()
         assert {row.role_id for row in ur} == {role_b_id}
 
 
 # ── Password change ───────────────────────────────────────────────────────────
+
 
 class TestChangePassword:
     @pytest.mark.asyncio
@@ -338,6 +347,7 @@ class TestChangePassword:
 
 
 # ── Roles ─────────────────────────────────────────────────────────────────────
+
 
 class TestRoles:
     @pytest.mark.asyncio
@@ -380,6 +390,7 @@ class TestRoles:
 
 
 # ── Push subscriptions ────────────────────────────────────────────────────────
+
 
 class TestPushSubscriptions:
     @pytest.mark.asyncio

@@ -11,7 +11,7 @@ services:
   db:
     image: postgres:16-alpine
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -21,7 +21,7 @@ services:
   backend:
     build: ./backend
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
+      - POSTGRES_HOST=db
     depends_on:
       - db
       - redis
@@ -36,32 +36,28 @@ services:
       - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
     restart: unless-stopped
 
-  ocr:
-    build: ./ocr-service
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     restart: unless-stopped
 
   traefik:
-    image: traefik:v3
+    image: traefik:v2.11
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_certs:/certs
+      - letsencrypt:/letsencrypt
     restart: unless-stopped
 
 volumes:
-  db_data:
+  pgdata:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: /data/db
-  traefik_certs:
+  letsencrypt:
 ```
 
 ---
@@ -99,11 +95,11 @@ cp .env.example .env
 nano .env   # Pflichtfelder ausfüllen
 
 # 4. Starten
-docker compose up -d
+docker compose up -d --build
 
 # 5. Admin anlegen
-docker compose exec backend python manage.py create-admin \
-  --email admin@meineschule.at --password sicheres_passwort
+docker compose exec -e ADMIN_PASSWORD=sicheres_passwort backend \
+  python scripts/create_admin.py --email admin@meineschule.at --name Administrator
 
 # 6. Status prüfen
 docker compose ps
@@ -115,7 +111,7 @@ docker compose logs backend --tail=50
 ```bash
 cd /opt/botballdashboard
 git pull origin main
-docker compose pull
+docker compose build --pull
 docker compose up -d
 ```
 

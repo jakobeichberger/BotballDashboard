@@ -2,20 +2,21 @@ from logging.config import fileConfig
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
+
+import modules.auth.models  # noqa: F401
+import modules.dashboard.models  # noqa: F401
+import modules.paper_review.models  # noqa: F401
+import modules.printing.models  # noqa: F401
+import modules.scoring.competition_models  # noqa: F401
+import modules.scoring.models  # noqa: F401
+import modules.scoring.score_sheets.models  # noqa: F401
+import modules.seasons.models  # noqa: F401
+import modules.teams.models  # noqa: F401
 from alembic import context
+from core.audit import AuditLog  # noqa: F401
 
 # Import all models so Alembic can detect them
 from core.database import Base
-from core.audit import AuditLog  # noqa: F401
-import modules.auth.models  # noqa: F401
-import modules.seasons.models  # noqa: F401
-import modules.teams.models  # noqa: F401
-import modules.scoring.models  # noqa: F401
-import modules.scoring.score_sheets.models  # noqa: F401
-import modules.scoring.competition_models  # noqa: F401
-import modules.paper_review.models  # noqa: F401
-import modules.printing.models  # noqa: F401
-import modules.dashboard.models  # noqa: F401
 
 config = context.config
 
@@ -33,6 +34,7 @@ def get_url() -> URL:
     blocked by the seccomp/AppArmor profile in Proxmox LXC containers.
     """
     import os
+
     return URL.create(
         drivername="postgresql+psycopg2",
         username=os.environ.get("POSTGRES_USER", "botball"),

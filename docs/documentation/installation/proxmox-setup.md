@@ -59,7 +59,7 @@ In `docker-compose.yml` dann:
 
 ```yaml
 volumes:
-  db_data:
+  pgdata:
     driver: local
     driver_opts:
       type: none
@@ -133,7 +133,7 @@ Proxmox Firewall-Regeln über die WebUI oder `/etc/pve/firewall/`.
 ### Datenbank-Backup (täglich)
 ```bash
 # Cron: täglich 02:00 Uhr
-0 2 * * * docker exec botball-db pg_dump -U botball botball_db \
+0 2 * * * docker compose -f /opt/botballdashboard/docker-compose.yml exec -T db pg_dump -U botball botball \
   | gzip > /data/backups/db_$(date +\%Y\%m\%d).sql.gz
 
 # Alte Backups bereinigen (älter als 30 Tage)

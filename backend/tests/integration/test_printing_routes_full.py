@@ -5,10 +5,11 @@ create / list / consume over HTTP. The shared `admin_user` fixture is a
 superuser, so it bypasses all printing:* permission checks; auth-required
 behaviour is verified separately by hitting endpoints without a token.
 """
+
 import pytest
 
-
 # ── Printers ────────────────────────────────────────────────────────────────
+
 
 class TestPrinterRoutes:
     @pytest.mark.asyncio
@@ -42,12 +43,8 @@ class TestPrinterRoutes:
 
     @pytest.mark.asyncio
     async def test_list_printers(self, client, auth_headers):
-        await client.post(
-            "/api/printing/printers", headers=auth_headers, json={"name": "Zed"}
-        )
-        await client.post(
-            "/api/printing/printers", headers=auth_headers, json={"name": "Abe"}
-        )
+        await client.post("/api/printing/printers", headers=auth_headers, json={"name": "Zed"})
+        await client.post("/api/printing/printers", headers=auth_headers, json={"name": "Abe"})
         resp = await client.get("/api/printing/printers", headers=auth_headers)
         assert resp.status_code == 200
         names = [p["name"] for p in resp.json()]
@@ -84,12 +81,11 @@ class TestPrinterRoutes:
     @pytest.mark.asyncio
     async def test_printers_require_auth(self, client):
         assert (await client.get("/api/printing/printers")).status_code == 401
-        assert (
-            await client.post("/api/printing/printers", json={"name": "X"})
-        ).status_code == 401
+        assert (await client.post("/api/printing/printers", json={"name": "X"})).status_code == 401
 
 
 # ── Print jobs ──────────────────────────────────────────────────────────────
+
 
 class TestPrintJobRoutes:
     async def _create_job(self, client, auth_headers, team, season, **overrides):
@@ -100,9 +96,7 @@ class TestPrintJobRoutes:
             "material": "PLA",
             **overrides,
         }
-        return await client.post(
-            "/api/printing/jobs", headers=auth_headers, json=payload
-        )
+        return await client.post("/api/printing/jobs", headers=auth_headers, json=payload)
 
     @pytest.mark.asyncio
     async def test_create_job(self, client, auth_headers, team, season, admin_user):
@@ -124,30 +118,28 @@ class TestPrintJobRoutes:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_job_blocked_by_hard_limit(
-        self, client, auth_headers, team, season
-    ):
+    async def test_create_job_blocked_by_hard_limit(self, client, auth_headers, team, season):
         # Drive the quota up to the hard limit, then expect a 409.
         for i in range(4):  # default max_parts == 4
-            r = await self._create_job(
-                client, auth_headers, team, season, file_name=f"p{i}.3mf"
-            )
+            r = await self._create_job(client, auth_headers, team, season, file_name=f"p{i}.3mf")
             job_id = r.json()["id"]
+            await client.put(f"/api/printing/jobs/{job_id}/approve", headers=auth_headers)
+            await client.patch(
+                f"/api/printing/jobs/{job_id}",
+                headers=auth_headers,
+                json={"status": "queued"},
+            )
             await client.patch(
                 f"/api/printing/jobs/{job_id}",
                 headers=auth_headers,
                 json={"status": "completed", "actual_grams": 5.0},
             )
-        resp = await self._create_job(
-            client, auth_headers, team, season, file_name="over.3mf"
-        )
+        resp = await self._create_job(client, auth_headers, team, season, file_name="over.3mf")
         assert resp.status_code == 409
-        assert "Hard print limit reached" in resp.json()["detail"]
+        assert "Hard print limit reached" in resp.json()["message"]
 
     @pytest.mark.asyncio
-    async def test_list_jobs_and_filter(
-        self, client, auth_headers, team, season
-    ):
+    async def test_list_jobs_and_filter(self, client, auth_headers, team, season):
         await self._create_job(client, auth_headers, team, season, file_name="x.3mf")
         all_resp = await client.get("/api/printing/jobs", headers=auth_headers)
         assert all_resp.status_code == 200
@@ -167,11 +159,15 @@ class TestPrintJobRoutes:
         assert none.json() == []
 
     @pytest.mark.asyncio
-    async def test_update_job_status_to_printing(
-        self, client, auth_headers, team, season
-    ):
+    async def test_update_job_status_to_printing(self, client, auth_headers, team, season):
         create = await self._create_job(client, auth_headers, team, season)
         job_id = create.json()["id"]
+        await client.put(f"/api/printing/jobs/{job_id}/approve", headers=auth_headers)
+        await client.patch(
+            f"/api/printing/jobs/{job_id}",
+            headers=auth_headers,
+            json={"status": "queued"},
+        )
         resp = await client.patch(
             f"/api/printing/jobs/{job_id}",
             headers=auth_headers,
@@ -193,9 +189,7 @@ class TestPrintJobRoutes:
     async def test_approve_job(self, client, auth_headers, team, season, admin_user):
         create = await self._create_job(client, auth_headers, team, season)
         job_id = create.json()["id"]
-        resp = await client.put(
-            f"/api/printing/jobs/{job_id}/approve", headers=auth_headers
-        )
+        resp = await client.put(f"/api/printing/jobs/{job_id}/approve", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "approved"
@@ -204,9 +198,7 @@ class TestPrintJobRoutes:
 
     @pytest.mark.asyncio
     async def test_approve_job_not_found(self, client, auth_headers):
-        resp = await client.put(
-            "/api/printing/jobs/missing/approve", headers=auth_headers
-        )
+        resp = await client.put("/api/printing/jobs/missing/approve", headers=auth_headers)
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
@@ -216,11 +208,10 @@ class TestPrintJobRoutes:
 
 # ── Quotas ──────────────────────────────────────────────────────────────────
 
+
 class TestQuotaRoutes:
     @pytest.mark.asyncio
-    async def test_get_quota_creates_default(
-        self, client, auth_headers, team, season
-    ):
+    async def test_get_quota_creates_default(self, client, auth_headers, team, season):
         resp = await client.get(
             "/api/printing/quotas",
             headers=auth_headers,
@@ -243,9 +234,7 @@ class TestQuotaRoutes:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_quota_reflects_completed_usage(
-        self, client, auth_headers, team, season
-    ):
+    async def test_quota_reflects_completed_usage(self, client, auth_headers, team, season):
         create = await client.post(
             "/api/printing/jobs",
             headers=auth_headers,
@@ -257,6 +246,12 @@ class TestQuotaRoutes:
             },
         )
         job_id = create.json()["id"]
+        await client.put(f"/api/printing/jobs/{job_id}/approve", headers=auth_headers)
+        await client.patch(
+            f"/api/printing/jobs/{job_id}",
+            headers=auth_headers,
+            json={"status": "queued"},
+        )
         await client.patch(
             f"/api/printing/jobs/{job_id}",
             headers=auth_headers,
@@ -281,6 +276,7 @@ class TestQuotaRoutes:
 
 
 # ── Filament spools ─────────────────────────────────────────────────────────
+
 
 class TestSpoolRoutes:
     @pytest.mark.asyncio
@@ -311,9 +307,7 @@ class TestSpoolRoutes:
     @pytest.mark.asyncio
     async def test_list_spools_filter_by_printer(self, client, auth_headers):
         printer = (
-            await client.post(
-                "/api/printing/printers", headers=auth_headers, json={"name": "PF"}
-            )
+            await client.post("/api/printing/printers", headers=auth_headers, json={"name": "PF"})
         ).json()
         await client.post(
             "/api/printing/spools",

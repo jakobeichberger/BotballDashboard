@@ -10,18 +10,14 @@ Covers:
   - get_overall_ranking combining enabled modules + ordering
   - get_aerial_ranking ordering and team enrichment
 """
+
 import pytest
 
 from modules.scoring import competition_service as svc
-from modules.scoring.competition_models import (
-    DEResult,
-    AerialResult,
-    DocumentationScore,
-)
 from modules.teams.models import Team, TeamSeasonRegistration
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 async def _register_team(db, season_id, name, category="botball"):
     t = Team(name=name, country="DE")
@@ -35,6 +31,7 @@ async def _register_team(db, season_id, name, category="botball"):
 
 # ── Helper functions ──────────────────────────────────────────────────────────
 
+
 class TestAvgBestN:
     def test_empty_returns_zero(self):
         assert svc._avg_best_n([]) == 0.0
@@ -46,9 +43,8 @@ class TestAvgBestN:
         # best 2 of [10, 8, 6, 4] = (10 + 8) / 2 = 9
         assert svc._avg_best_n([4.0, 10.0, 6.0, 8.0]) == 9.0
 
-    def test_single_value_divided_by_n(self):
-        # only one value but n=2 → 10 / 2 = 5
-        assert svc._avg_best_n([10.0]) == 5.0
+    def test_single_value_keeps_full_value(self):
+        assert svc._avg_best_n([10.0]) == 10.0
 
     def test_ignores_none_values(self):
         assert svc._avg_best_n([10.0, None, 6.0]) == 8.0
@@ -76,6 +72,7 @@ class TestNormalize:
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────
+
 
 class TestDEUpsert:
     @pytest.mark.asyncio
@@ -155,11 +152,13 @@ class TestBulkDEResults:
 
 # ── Aerial ────────────────────────────────────────────────────────────────────
 
+
 class TestAerialUpsert:
     @pytest.mark.asyncio
     async def test_score_is_avg_best_two_runs(self, db, season, team):
         row = await svc.upsert_aerial_result(
-            db, season.id,
+            db,
+            season.id,
             {"team_id": team.id, "run1": 10.0, "run2": 4.0, "run3": 8.0, "run4": 2.0},
         )
         # best 2 of (10, 4, 8, 2) = (10 + 8) / 2 = 9.0
@@ -167,11 +166,9 @@ class TestAerialUpsert:
 
     @pytest.mark.asyncio
     async def test_partial_runs(self, db, season, team):
-        row = await svc.upsert_aerial_result(
-            db, season.id, {"team_id": team.id, "run1": 6.0}
-        )
-        # only one run; avg best 2 → 6 / 2 = 3.0
-        assert row.score == 3.0
+        row = await svc.upsert_aerial_result(db, season.id, {"team_id": team.id, "run1": 6.0})
+        # A single available run retains its full value.
+        assert row.score == 6.0
 
     @pytest.mark.asyncio
     async def test_no_runs_score_zero(self, db, season, team):
@@ -198,7 +195,7 @@ class TestBulkAerialResults:
         t1 = await _register_team(db, season.id, "Low")
         t2 = await _register_team(db, season.id, "High")
         entries = [
-            {"team_id": t1.id, "run1": 2.0, "run2": 2.0},   # score 2.0
+            {"team_id": t1.id, "run1": 2.0, "run2": 2.0},  # score 2.0
             {"team_id": t2.id, "run1": 10.0, "run2": 8.0},  # score 9.0
         ]
         rows = await svc.bulk_upsert_aerial_results(db, season.id, entries)
@@ -209,11 +206,13 @@ class TestBulkAerialResults:
 
 # ── Documentation ─────────────────────────────────────────────────────────────
 
+
 class TestDocUpsert:
     @pytest.mark.asyncio
     async def test_doc_score_is_avg_of_parts_over_100(self, db, season, team):
         row = await svc.upsert_doc_score(
-            db, season.id,
+            db,
+            season.id,
             {"team_id": team.id, "part1": 90.0, "part2": 60.0, "part3": 30.0},
         )
         # avg(90, 60, 30) = 60 → /100 = 0.6
@@ -221,26 +220,18 @@ class TestDocUpsert:
 
     @pytest.mark.asyncio
     async def test_partial_parts(self, db, season, team):
-        row = await svc.upsert_doc_score(
-            db, season.id, {"team_id": team.id, "part1": 80.0}
-        )
+        row = await svc.upsert_doc_score(db, season.id, {"team_id": team.id, "part1": 80.0})
         assert row.doc_score == pytest.approx(0.8)
 
     @pytest.mark.asyncio
-    async def test_no_parts_score_none(self, db, season, team):
-        row = await svc.upsert_doc_score(
-            db, season.id, {"team_id": team.id, "onsite": 50.0}
-        )
-        assert row.doc_score is None
+    async def test_onsite_only_score(self, db, season, team):
+        row = await svc.upsert_doc_score(db, season.id, {"team_id": team.id, "onsite": 50.0})
+        assert row.doc_score == pytest.approx(0.5)
 
     @pytest.mark.asyncio
     async def test_upsert_updates_existing(self, db, season, team):
-        first = await svc.upsert_doc_score(
-            db, season.id, {"team_id": team.id, "part1": 100.0}
-        )
-        second = await svc.upsert_doc_score(
-            db, season.id, {"team_id": team.id, "part1": 50.0}
-        )
+        first = await svc.upsert_doc_score(db, season.id, {"team_id": team.id, "part1": 100.0})
+        second = await svc.upsert_doc_score(db, season.id, {"team_id": team.id, "part1": 50.0})
         assert second.id == first.id
         assert second.doc_score == pytest.approx(0.5)
         assert len(await svc.get_doc_scores(db, season.id)) == 1
@@ -252,8 +243,8 @@ class TestBulkDocScores:
         t1 = await _register_team(db, season.id, "Worse")
         t2 = await _register_team(db, season.id, "Better")
         entries = [
-            {"team_id": t1.id, "part1": 40.0},   # 0.4
-            {"team_id": t2.id, "part1": 90.0},   # 0.9
+            {"team_id": t1.id, "part1": 40.0},  # 0.4
+            {"team_id": t2.id, "part1": 90.0},  # 0.9
         ]
         rows = await svc.bulk_upsert_doc_scores(db, season.id, entries)
         by_team = {r.team_id: r for r in rows}
@@ -263,12 +254,11 @@ class TestBulkDocScores:
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
 
+
 class TestOverallRanking:
     @pytest.mark.asyncio
     async def test_empty_when_no_teams(self, db, season):
-        result = await svc.get_overall_ranking(
-            db, season.id, False, False, False, False
-        )
+        result = await svc.get_overall_ranking(db, season.id, False, False, False, False)
         assert result == []
 
     @pytest.mark.asyncio
@@ -285,10 +275,11 @@ class TestOverallRanking:
         )
         # Doc scores
         await svc.upsert_doc_score(db, season.id, {"team_id": t1.id, "part1": 100.0})  # 1.0
-        await svc.upsert_doc_score(db, season.id, {"team_id": t2.id, "part1": 10.0})   # 0.1
+        await svc.upsert_doc_score(db, season.id, {"team_id": t2.id, "part1": 10.0})  # 0.1
 
         entries = await svc.get_overall_ranking(
-            db, season.id,
+            db,
+            season.id,
             use_seeding=False,
             use_double_elimination=True,
             use_paper_scoring=False,
@@ -307,10 +298,11 @@ class TestOverallRanking:
 
     @pytest.mark.asyncio
     async def test_missing_module_data_defaults_to_zero(self, db, season):
-        t1 = await _register_team(db, season.id, "T1")
+        await _register_team(db, season.id, "T1")
         # No DE result rows at all but module enabled → defaults 0.0
         entries = await svc.get_overall_ranking(
-            db, season.id,
+            db,
+            season.id,
             use_seeding=False,
             use_double_elimination=True,
             use_paper_scoring=False,
