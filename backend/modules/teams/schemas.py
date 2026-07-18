@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class TeamMemberCreate(BaseModel):
@@ -40,6 +40,13 @@ class TeamUpdate(BaseModel):
     competition_level_id: str | None = None
     is_active: bool | None = None
     notes: str | None = None
+
+    @field_validator("name", "country", "is_active")
+    @classmethod
+    def required_values_must_not_be_null(cls, value: str | bool | None) -> str | bool:
+        if value is None:
+            raise ValueError("Value must not be null")
+        return value
 
 
 class TeamResponse(BaseModel):

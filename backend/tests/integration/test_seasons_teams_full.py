@@ -390,6 +390,36 @@ class TestTeamRoutes:
         assert resp.json()["is_active"] is False
 
     @pytest.mark.asyncio
+    async def test_update_can_clear_optional_team_settings(self, client, auth_headers):
+        created = await client.post(
+            "/api/teams",
+            headers=auth_headers,
+            json={"name": "Clearable", "city": "Graz", "notes": "Internal"},
+        )
+        tid = created.json()["id"]
+        resp = await client.patch(
+            f"/api/teams/{tid}",
+            headers=auth_headers,
+            json={"city": None, "notes": None},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["city"] is None
+        assert resp.json()["notes"] is None
+
+    @pytest.mark.asyncio
+    async def test_update_rejects_null_for_required_team_settings(self, client, auth_headers):
+        created = await client.post(
+            "/api/teams", headers=auth_headers, json={"name": "Required settings"}
+        )
+        tid = created.json()["id"]
+
+        for field in ("name", "country", "is_active"):
+            resp = await client.patch(
+                f"/api/teams/{tid}", headers=auth_headers, json={field: None}
+            )
+            assert resp.status_code == 422
+
+    @pytest.mark.asyncio
     async def test_update_404(self, client, auth_headers):
         resp = await client.patch("/api/teams/missing", headers=auth_headers, json={"name": "x"})
         assert resp.status_code == 404

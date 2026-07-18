@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/authStore";
 
 const EventSetupPage = lazy(() => import("@/pages/EventSetupPage"));
 const PublicEventPage = lazy(() => import("@/pages/PublicEventPage"));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 
 function AppRoutes() {
   useRestoreSession();
@@ -23,6 +24,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route index element={<EventIndexRedirect />} />
         <Route path="setup" element={<ProtectedRoute requirePermission="events:write"><EventSetupPage /></ProtectedRoute>} />
+        <Route path="settings/*" element={<ProtectedRoute requirePermission="users:read"><SettingsPage /></ProtectedRoute>} />
         <Route path="events/:eventId" element={<Layout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           {eventRoutes.map(({ path, permission, component: Component }) => (

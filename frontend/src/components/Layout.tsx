@@ -109,10 +109,11 @@ export default function Layout() {
       >
         {visibleNav.map(({ path, icon, label }) => {
           const Icon = ICONS[icon];
+          const navigationPath = path.replace(/\/\*$/, "");
           return (
             <NavLink
               key={path}
-              to={eventId ? `/events/${eventId}/${path}` : `/${path}`}
+              to={eventId ? `/events/${eventId}/${navigationPath}` : `/${navigationPath}`}
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>
                 clsx(

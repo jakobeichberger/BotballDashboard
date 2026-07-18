@@ -73,6 +73,14 @@ export const modules: readonly ModuleDefinition[] = [
     translations: ["events"],
   },
   {
+    id: "admin",
+    routes: [
+      { path: "admin/*", component: lazy(() => import("@/pages/SettingsPage")), permission: "users:read", label: { de: "Admin-Einstellungen", en: "Admin settings" }, icon: "settings", navigation: true },
+    ],
+    dashboardWidgets: [],
+    translations: ["common"],
+  },
+  {
     id: "scoring",
     routes: [
       { path: "scoring", component: lazy(() => import("@/pages/EventScoringPage")), permission: "scoring:read", label: { de: "Wertung", en: "Scoring" }, icon: "scoring", navigation: true },

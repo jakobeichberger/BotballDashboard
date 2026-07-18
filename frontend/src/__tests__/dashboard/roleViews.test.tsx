@@ -30,7 +30,7 @@ describe("AdminDashboard", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
     // management shortcuts
     expect(screen.getByRole("link", { name: /teams verwalten/i })).toHaveAttribute("href", "/teams");
-    expect(screen.getByRole("link", { name: /einstellungen/i })).toHaveAttribute("href", "/settings");
+    expect(screen.getByRole("link", { name: /einstellungen/i })).toHaveAttribute("href", "/settings/users");
     // phases + announcements
     expect(screen.getByRole("region", { name: "Phasen" })).toBeInTheDocument();
     expect(screen.getByText("News")).toBeInTheDocument();

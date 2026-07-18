@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 
 /** A single KPI tile. */
@@ -180,6 +180,7 @@ export function RankingList({
 
 /** Reviewer queue: papers grouped by status. */
 export function ReviewQueue({ papers }: { papers: Array<any> }) {
+  const { eventId = "" } = useParams();
   if (!papers?.length) {
     return <p className="text-sm text-gray-500">Keine Paper zur Begutachtung.</p>;
   }
@@ -193,7 +194,7 @@ export function ReviewQueue({ papers }: { papers: Array<any> }) {
           <span className="text-sm font-medium flex-1 truncate">{p.title}</span>
           <span className="badge-gray text-xs">{p.status}</span>
           <Link
-            to="/papers"
+            to={eventId ? `/events/${eventId}/papers` : "/papers"}
             className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
           >
             Öffnen

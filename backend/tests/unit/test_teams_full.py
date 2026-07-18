@@ -137,11 +137,10 @@ class TestUpdateTeam:
         assert updated.name == "New Name"
 
     @pytest.mark.asyncio
-    async def test_none_values_ignored(self, db, team):
-        original = team.name
-        updated = await service.update_team(db, team.id, name=None, city="Vienna")
-        assert updated.name == original
-        assert updated.city == "Vienna"
+    async def test_nullable_values_can_be_cleared(self, db, team):
+        team.city = "Vienna"
+        updated = await service.update_team(db, team.id, city=None)
+        assert updated.city is None
 
     @pytest.mark.asyncio
     async def test_update_is_active_false(self, db, team):

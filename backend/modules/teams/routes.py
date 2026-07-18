@@ -107,7 +107,7 @@ async def update_team(
     _=Depends(require_permission("teams:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.update_team(db, team_id, **body.model_dump(exclude_none=True))
+    return await service.update_team(db, team_id, **body.model_dump(exclude_unset=True))
 
 
 @router.delete("/{team_id}", status_code=204)

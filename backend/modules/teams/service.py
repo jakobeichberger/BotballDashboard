@@ -45,8 +45,7 @@ async def create_team(db: AsyncSession, data: dict, members: list[dict]) -> Team
 async def update_team(db: AsyncSession, team_id: str, **kwargs) -> Team:
     team = await get_team(db, team_id)
     for key, value in kwargs.items():
-        if value is not None:
-            setattr(team, key, value)
+        setattr(team, key, value)
     return team
 
 

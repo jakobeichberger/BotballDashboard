@@ -4,12 +4,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import SettingsPage from "@/pages/SettingsPage";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
-vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), patch: vi.fn() } }));
+vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }));
 
 function mockApi(overrides: Record<string, any> = {}) {
   const data: Record<string, any> = {
     "/auth/users": [],
+    "/auth/roles": [],
     "/seasons": [],
     ...overrides,
   };
@@ -34,6 +36,10 @@ function renderPage(initialPath = "/settings/users") {
 describe("SettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useAuthStore.setState({
+      accessToken: "token",
+      user: { id: "admin", email: "admin@example.org", display_name: "Admin", is_superuser: true, preferred_language: "de", theme: "system", roles: [] },
+    });
     mockApi();
   });
 
@@ -42,6 +48,7 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("heading", { name: /einstellungen/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /benutzer/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /saison-module/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /benutzer anlegen/i })).toBeInTheDocument();
   });
 
   it("renders the users sub-page with its table heading", () => {
