@@ -24,10 +24,17 @@ async def get_season(db: AsyncSession, season_id: str) -> Season:
 
 
 async def get_active_season(db: AsyncSession) -> Season | None:
+    # .first() rather than .scalar_one_or_none(): if the data ever ends up with
+    # more than one active season this endpoint should still answer instead of
+    # failing permanently with MultipleResultsFound.
     result = await db.execute(
-        select(Season).where(Season.is_active.is_(True)).options(selectinload(Season.phases))
+        select(Season)
+        .where(Season.is_active.is_(True))
+        .options(selectinload(Season.phases))
+        .order_by(Season.year.desc())
+        .limit(1)
     )
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
 
 async def create_season(db: AsyncSession, data: dict, phases: list[dict]) -> Season:
@@ -38,12 +45,18 @@ async def create_season(db: AsyncSession, data: dict, phases: list[dict]) -> Sea
     for phase_data in phases:
         db.add(SeasonPhase(season_id=season.id, **phase_data))
 
+    await db.flush()
     await db.refresh(season, ["phases"])
     return season
 
 
 async def update_season(db: AsyncSession, season_id: str, **kwargs) -> Season:
     season = await get_season(db, season_id)
+    # At most one season may be active. A PATCH setting is_active=True has to go
+    # through the same deactivate-all step as set_active_season, otherwise it
+    # silently creates a second active season.
+    if kwargs.get("is_active") is True:
+        await db.execute(update(Season).values(is_active=False))
     for key, value in kwargs.items():
         if value is not None:
             setattr(season, key, value)

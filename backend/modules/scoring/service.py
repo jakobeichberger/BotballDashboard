@@ -42,8 +42,10 @@ async def get_active_schema(
     )
     if competition_level_id:
         q = q.where(ScoringSchema.competition_level_id == competition_level_id)
-    result = await db.execute(q.order_by(ScoringSchema.version.desc()))
-    return result.scalar_one_or_none()
+    # Several versions of a schema can be active at once; take the newest rather
+    # than raising MultipleResultsFound and breaking every match submission.
+    result = await db.execute(q.order_by(ScoringSchema.version.desc()).limit(1))
+    return result.scalars().first()
 
 
 # ── Matches ───────────────────────────────────────────────────────────────────

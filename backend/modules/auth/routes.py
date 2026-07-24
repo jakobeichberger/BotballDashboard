@@ -106,7 +106,10 @@ async def update_me(
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    update_data = body.model_dump(exclude_none=True, exclude={"role_ids"})
+    # is_active is excluded alongside role_ids: this is the self-service
+    # endpoint, and a user setting is_active=false here would lock themselves
+    # out permanently. Deactivation belongs to PATCH /auth/users/{id}.
+    update_data = body.model_dump(exclude_none=True, exclude={"role_ids", "is_active"})
     return await service.update_user(db, current_user.id, **update_data)
 
 

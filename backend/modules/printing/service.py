@@ -29,6 +29,7 @@ async def create_printer(db: AsyncSession, data: dict) -> Printer:
     if api_key:
         printer.api_key_encrypted = encrypt_credential(api_key)
     db.add(printer)
+    await db.flush()
     return printer
 
 
@@ -88,6 +89,7 @@ async def create_print_job(db: AsyncSession, data: dict, submitted_by: str) -> P
 
     job = PrintJob(**data, submitted_by=submitted_by)
     db.add(job)
+    await db.flush()
     return job
 
 
@@ -161,6 +163,7 @@ async def create_spool(db: AsyncSession, data: dict) -> FilamentSpool:
         data = {**data, "remaining_grams": data["initial_grams"]}
     spool = FilamentSpool(**data)
     db.add(spool)
+    await db.flush()
     return spool
 
 

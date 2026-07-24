@@ -64,7 +64,13 @@ async def get_paper(db: AsyncSession, paper_id: str) -> Paper:
 
 async def create_paper(db: AsyncSession, data: dict) -> Paper:
     paper = Paper(**data)
+    # PaperResponse serializes these collections. A brand new paper has none,
+    # so initialize them while `paper` is still transient — reading them after
+    # the flush would emit a lazy load from async code (MissingGreenlet).
+    paper.reviews = []
+    paper.assignments = []
     db.add(paper)
+    await db.flush()
     return paper
 
 
@@ -133,6 +139,7 @@ async def get_or_create_review(
             revision_number=revision_number,
         )
         db.add(review)
+        await db.flush()
     return review
 
 

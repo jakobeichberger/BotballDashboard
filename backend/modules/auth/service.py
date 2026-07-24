@@ -150,6 +150,9 @@ async def create_user(
     for role_id in role_ids:
         db.add(UserRole(user_id=user.id, role_id=role_id))
 
+    # autoflush is off, so the UserRole inserts must be flushed before the
+    # refresh re-SELECTs, otherwise the response reports no roles at all.
+    await db.flush()
     await db.refresh(user, ["roles"])
     return user
 
@@ -166,6 +169,7 @@ async def update_user(db: AsyncSession, user_id: str, **kwargs) -> User:
         await db.execute(delete(UserRole).where(UserRole.user_id == user_id))
         for role_id in role_ids:
             db.add(UserRole(user_id=user_id, role_id=role_id))
+        await db.flush()
 
     await db.refresh(user, ["roles"])
     return user
@@ -197,13 +201,18 @@ async def create_role(
     if existing.scalar_one_or_none():
         raise ConflictError("Role name already exists")
 
+    perms: list[Permission] = []
+    if permission_names:
+        result = await db.execute(select(Permission).where(Permission.name.in_(permission_names)))
+        perms = list(result.scalars().all())
+
     role = Role(name=name, description=description)
+    # Populate the collection while `role` is still transient. Assigning (or
+    # serializing) it after the flush would emit a lazy load from async code
+    # and raise MissingGreenlet.
+    role.permissions = perms
     db.add(role)
     await db.flush()
-
-    if permission_names:
-        perms = await db.execute(select(Permission).where(Permission.name.in_(permission_names)))
-        role.permissions = list(perms.scalars().all())
 
     return role
 

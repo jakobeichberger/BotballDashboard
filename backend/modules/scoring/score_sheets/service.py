@@ -12,7 +12,6 @@ Pipeline:
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import unicodedata
@@ -24,6 +23,7 @@ from fastapi import UploadFile
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import get_settings
 from core.logging import get_logger
 
 from .models import ScoreSheetTemplate
@@ -31,17 +31,26 @@ from .schemas import ExtractedFieldCandidate, ScoringField
 
 logger = get_logger("scoring.score_sheets")
 
-UPLOAD_DIR = Path(os.getenv("UPLOAD_PATH", "/app/uploads")) / "score_sheets"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+def _upload_dir() -> Path:
+    """Score sheet upload root.
+
+    Reads settings.upload_dir (UPLOAD_DIR) like the rest of the app — this used
+    to read an UPLOAD_PATH env var that nothing else sets, so a deployment
+    configuring UPLOAD_DIR silently wrote score sheets somewhere else. Resolved
+    lazily so an unwritable path fails the upload, not application startup.
+    """
+    return Path(get_settings().upload_dir) / "score_sheets"
+
 
 # ---------------------------------------------------------------------------
 # Upload
 # ---------------------------------------------------------------------------
 
 
-async def save_upload(file: UploadFile, season_id: uuid.UUID) -> tuple[Path, int]:
+async def save_upload(file: UploadFile, season_id: str) -> tuple[Path, int]:
     """Save the uploaded PDF to disk and return (path, size_bytes)."""
-    dest_dir = UPLOAD_DIR / str(season_id)
+    dest_dir = _upload_dir() / str(season_id)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     safe_name = f"{uuid.uuid4()}_{file.filename.replace(' ', '_')}"
@@ -208,14 +217,14 @@ def detect_fields(raw_text: str) -> list[ExtractedFieldCandidate]:
 
 async def create_template(
     db: AsyncSession,
-    season_id: uuid.UUID,
-    competition_level_id: uuid.UUID | None,
+    season_id: str,
+    competition_level_id: str | None,
     label: str,
     year: int,
     game_theme: str | None,
     file_path: Path,
     file_size: int,
-    uploaded_by: uuid.UUID,
+    uploaded_by: str,
 ) -> ScoreSheetTemplate:
     template = ScoreSheetTemplate(
         season_id=season_id,
@@ -236,7 +245,7 @@ async def create_template(
     return template
 
 
-async def run_ocr_pipeline(db: AsyncSession, template_id: uuid.UUID) -> None:
+async def run_ocr_pipeline(db: AsyncSession, template_id: str) -> None:
     """
     Called as a background task after upload.
     Extracts text and detects fields, then saves results to the DB.
@@ -285,9 +294,9 @@ async def run_ocr_pipeline(db: AsyncSession, template_id: uuid.UUID) -> None:
 
 async def confirm_fields(
     db: AsyncSession,
-    template_id: uuid.UUID,
+    template_id: str,
     fields: list[ScoringField],
-    confirmed_by: uuid.UUID,
+    confirmed_by: str,
     apply_to_schema: bool,
 ) -> ScoreSheetTemplate:
     """
@@ -335,7 +344,7 @@ async def _apply_to_scoring_schema(
     result = await db.execute(
         sa_select(ScoringSchema).where(
             ScoringSchema.season_id == template.season_id,
-            ScoringSchema.level_id == template.competition_level_id,
+            ScoringSchema.competition_level_id == template.competition_level_id,
         )
     )
     schema = result.scalar_one_or_none()
@@ -346,7 +355,7 @@ async def _apply_to_scoring_schema(
     else:
         schema = ScoringSchema(
             season_id=template.season_id,
-            level_id=template.competition_level_id,
+            competition_level_id=template.competition_level_id,
             fields=field_dicts,
         )
         db.add(schema)
@@ -356,7 +365,7 @@ async def _apply_to_scoring_schema(
         "scoring_schema_updated_from_sheet",
         extra={
             "season_id": str(template.season_id),
-            "level_id": str(template.competition_level_id),
+            "competition_level_id": str(template.competition_level_id),
             "field_count": len(fields),
         },
     )
@@ -364,9 +373,9 @@ async def _apply_to_scoring_schema(
 
 async def set_active_template(
     db: AsyncSession,
-    season_id: uuid.UUID,
-    competition_level_id: uuid.UUID | None,
-    template_id: uuid.UUID,
+    season_id: str,
+    competition_level_id: str | None,
+    template_id: str,
 ) -> None:
     """Deactivate all templates for this season/level, then activate the chosen one."""
     await db.execute(
@@ -387,8 +396,8 @@ async def set_active_template(
 
 async def list_templates(
     db: AsyncSession,
-    season_id: uuid.UUID,
-    competition_level_id: uuid.UUID | None = None,
+    season_id: str,
+    competition_level_id: str | None = None,
 ) -> list[ScoreSheetTemplate]:
     stmt = select(ScoreSheetTemplate).where(ScoreSheetTemplate.season_id == season_id)
     if competition_level_id:
@@ -398,14 +407,14 @@ async def list_templates(
     return list(result.scalars().all())
 
 
-async def get_template(db: AsyncSession, template_id: uuid.UUID) -> ScoreSheetTemplate | None:
+async def get_template(db: AsyncSession, template_id: str) -> ScoreSheetTemplate | None:
     result = await db.execute(
         select(ScoreSheetTemplate).where(ScoreSheetTemplate.id == template_id)
     )
     return result.scalar_one_or_none()
 
 
-async def delete_template(db: AsyncSession, template_id: uuid.UUID) -> None:
+async def delete_template(db: AsyncSession, template_id: str) -> None:
     result = await db.execute(
         select(ScoreSheetTemplate).where(ScoreSheetTemplate.id == template_id)
     )

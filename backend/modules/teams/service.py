@@ -59,6 +59,7 @@ async def add_member(db: AsyncSession, team_id: str, member_data: dict) -> TeamM
     await get_team(db, team_id)  # validate exists
     member = TeamMember(team_id=team_id, **member_data)
     db.add(member)
+    await db.flush()
     return member
 
 
