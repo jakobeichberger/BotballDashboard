@@ -1,9 +1,10 @@
 """
 Score Sheet Import – SQLAlchemy Models
 """
+
 import uuid
 
-from sqlalchemy import Column, JSON, String, Integer, Boolean, ForeignKey, Text, DateTime
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -19,6 +20,7 @@ class ScoreSheetTemplate(Base):
     A PDF score sheet uploaded for a specific season + competition level.
     Stores the original PDF and the extracted field definitions.
     """
+
     __tablename__ = "score_sheet_templates"
 
     id = Column(String(36), primary_key=True, default=_uuid)
@@ -33,7 +35,9 @@ class ScoreSheetTemplate(Base):
     label = Column(String(255), nullable=False)
     year = Column(Integer, nullable=False)
     game_theme = Column(String(255))
-    is_active = Column(Boolean, default=True, nullable=False)
+    # New templates start inactive and are activated explicitly (see service.activate);
+    # matches the DB server_default of false.
+    is_active = Column(Boolean, default=False, nullable=False)
 
     # Stored file
     file_url = Column(Text, nullable=False)
@@ -46,7 +50,9 @@ class ScoreSheetTemplate(Base):
     confirmed_fields = Column(JSON)
 
     # Status of the OCR pipeline
-    ocr_status = Column(String(30), default="pending")  # pending | processing | done | failed
+    ocr_status = Column(
+        String(30), default="pending", nullable=False
+    )  # pending | processing | done | failed
     ocr_error = Column(Text)
 
     # Audit

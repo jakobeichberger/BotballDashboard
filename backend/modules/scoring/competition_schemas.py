@@ -1,8 +1,9 @@
 from datetime import datetime
+
 from pydantic import BaseModel, field_validator
 
-
 # ── Double Elimination ────────────────────────────────────────────────────────
+
 
 class DEResultUpsert(BaseModel):
     team_id: str
@@ -36,6 +37,7 @@ class DEResultResponse(BaseModel):
 
 # ── Aerial ────────────────────────────────────────────────────────────────────
 
+
 class AerialResultUpsert(BaseModel):
     team_id: str
     run1: float | None = None
@@ -62,6 +64,7 @@ class AerialResultResponse(BaseModel):
 
 
 # ── Documentation ─────────────────────────────────────────────────────────────
+
 
 class DocScoreUpsert(BaseModel):
     team_id: str
@@ -90,6 +93,7 @@ class DocScoreResponse(BaseModel):
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
 
+
 class OverallRankingEntry(BaseModel):
     rank: int
     team_id: str
@@ -105,6 +109,7 @@ class OverallRankingEntry(BaseModel):
 
 class TeamRankingEntry(BaseModel):
     """Extended seeding ranking entry with team name and category."""
+
     rank: int
     team_id: str
     team_name: str | None

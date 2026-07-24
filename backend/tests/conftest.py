@@ -3,17 +3,16 @@ Pytest configuration and shared fixtures for BotballDashboard backend tests.
 Uses an in-memory SQLite database for fast, isolated unit tests.
 Integration tests use a dedicated PostgreSQL test database.
 """
-import asyncio
-from typing import AsyncGenerator
 
-import pytest
+from collections.abc import AsyncGenerator
+
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from core.database import Base, get_db
 from core.auth import create_access_token
+from core.database import Base, get_db
 from main import app
 
 # ── In-memory SQLite engine for unit/integration tests ───────────────────────
@@ -51,14 +50,13 @@ async def db() -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture(scope="function")
 async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """HTTP test client with overridden DB dependency."""
+
     async def override_get_db():
         yield db
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()
@@ -67,8 +65,8 @@ async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 @pytest_asyncio.fixture
 async def admin_user(db: AsyncSession):
     """Create a superuser for testing protected routes."""
-    from modules.auth.service import create_user, hash_password
     from modules.auth.models import User
+    from modules.auth.service import hash_password
 
     user = User(
         email="admin@test.com",

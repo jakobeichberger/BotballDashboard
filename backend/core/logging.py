@@ -1,5 +1,7 @@
 import logging
+
 import structlog
+
 from core.config import get_settings
 
 settings = get_settings()
@@ -36,9 +38,7 @@ def configure_logging() -> None:
 
     logging.basicConfig(level=log_level)
     for noisy in ["uvicorn.access", "sqlalchemy.engine"]:
-        logging.getLogger(noisy).setLevel(
-            logging.DEBUG if settings.is_dev else logging.WARNING
-        )
+        logging.getLogger(noisy).setLevel(logging.DEBUG if settings.is_dev else logging.WARNING)
 
 
 def get_logger(name: str = __name__) -> structlog.BoundLogger:

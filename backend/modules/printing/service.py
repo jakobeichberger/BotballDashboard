@@ -1,14 +1,14 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import ConflictError, NotFoundError
 from modules.printing.crypto import decrypt_credential, encrypt_credential
-from modules.printing.models import FilamentSpool, PrintJob, Printer, TeamSeasonPrintQuota
-
+from modules.printing.models import FilamentSpool, Printer, PrintJob, TeamSeasonPrintQuota
 
 # ── Printers ──────────────────────────────────────────────────────────────────
+
 
 async def list_printers(db: AsyncSession) -> list[Printer]:
     result = await db.execute(select(Printer).order_by(Printer.name))
@@ -51,6 +51,7 @@ async def get_printer_api_key(db: AsyncSession, printer_id: str) -> str:
 
 
 # ── Print Jobs ────────────────────────────────────────────────────────────────
+
 
 async def list_print_jobs(
     db: AsyncSession,
@@ -98,7 +99,7 @@ async def update_print_job(db: AsyncSession, job_id: str, **kwargs) -> PrintJob:
         if value is not None:
             setattr(job, key, value)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if kwargs.get("status") == "printing" and old_status != "printing":
         job.started_at = now
     if kwargs.get("status") == "completed" and old_status != "completed":
@@ -112,7 +113,7 @@ async def approve_print_job(db: AsyncSession, job_id: str, approved_by: str) -> 
     job = await get_print_job(db, job_id)
     job.status = "approved"
     job.approved_by = approved_by
-    job.approved_at = datetime.now(timezone.utc)
+    job.approved_at = datetime.now(UTC)
     return job
 
 
@@ -146,8 +147,9 @@ async def get_quota(db: AsyncSession, team_id: str, season_id: str) -> TeamSeaso
 
 # ── Filament spools ───────────────────────────────────────────────────────────
 
+
 async def list_spools(db: AsyncSession, printer_id: str | None = None) -> list[FilamentSpool]:
-    q = select(FilamentSpool).where(FilamentSpool.is_active == True)
+    q = select(FilamentSpool).where(FilamentSpool.is_active.is_(True))
     if printer_id:
         q = q.where(FilamentSpool.printer_id == printer_id)
     result = await db.execute(q)

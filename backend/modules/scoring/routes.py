@@ -3,26 +3,26 @@ import asyncio
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission, require_any_permission
+from core.auth import require_permission
 from core.database import get_db
-from modules.scoring import service
 from modules.scoring import competition_service as comp_svc
+from modules.scoring import service
+from modules.scoring.competition_schemas import (
+    AerialResultResponse,
+    AerialResultUpsert,
+    DEResultResponse,
+    DEResultUpsert,
+    DocScoreResponse,
+    DocScoreUpsert,
+    OverallRankingEntry,
+    TeamRankingEntry,
+)
 from modules.scoring.schemas import (
     MatchCreate,
     MatchResponse,
     MatchUpdate,
     RankingResponse,
     ScoreBulkEntry,
-)
-from modules.scoring.competition_schemas import (
-    DEResultUpsert,
-    DEResultResponse,
-    AerialResultUpsert,
-    AerialResultResponse,
-    DocScoreUpsert,
-    DocScoreResponse,
-    OverallRankingEntry,
-    TeamRankingEntry,
 )
 from modules.seasons import service as season_svc
 
@@ -61,6 +61,7 @@ async def _broadcast_ranking_update(season_id: str) -> None:
 
 # ── Matches ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/seasons/{season_id}/matches", response_model=list[MatchResponse])
 async def list_matches(
     season_id: str,
@@ -86,7 +87,9 @@ async def create_match(
     return match
 
 
-@router.post("/seasons/{season_id}/matches/bulk", response_model=list[MatchResponse], status_code=201)
+@router.post(
+    "/seasons/{season_id}/matches/bulk", response_model=list[MatchResponse], status_code=201
+)
 async def bulk_create_matches(
     season_id: str,
     body: ScoreBulkEntry,
@@ -143,6 +146,7 @@ async def delete_match(
 
 # ── Ranking ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/seasons/{season_id}/ranking", response_model=list[RankingResponse])
 async def get_ranking(
     season_id: str,
@@ -155,6 +159,7 @@ async def get_ranking(
 
 # ── Enhanced Ranking (with team names + category) ─────────────────────────────
 
+
 @router.get("/seasons/{season_id}/ranking/extended", response_model=list[TeamRankingEntry])
 async def get_ranking_extended(
     season_id: str,
@@ -163,6 +168,7 @@ async def get_ranking_extended(
 ):
     """Seeding ranking enriched with team name and registration category."""
     from sqlalchemy import select
+
     from modules.scoring.models import Ranking
     from modules.teams.models import Team, TeamSeasonRegistration
 
@@ -206,6 +212,7 @@ async def get_ranking_extended(
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
 
+
 @router.get("/seasons/{season_id}/ranking/overall", response_model=list[OverallRankingEntry])
 async def get_overall_ranking(
     season_id: str,
@@ -227,6 +234,7 @@ async def get_overall_ranking(
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────
+
 
 @router.get("/seasons/{season_id}/de-results", response_model=list[DEResultResponse])
 async def list_de_results(
@@ -264,6 +272,7 @@ async def upsert_de_result(
 
 
 # ── Aerial ────────────────────────────────────────────────────────────────────
+
 
 @router.get("/seasons/{season_id}/aerial-results", response_model=list[AerialResultResponse])
 async def list_aerial_results(
@@ -307,6 +316,7 @@ async def upsert_aerial_result(
 
 
 # ── Documentation Scoring ─────────────────────────────────────────────────────
+
 
 @router.get("/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse])
 async def list_doc_scores(

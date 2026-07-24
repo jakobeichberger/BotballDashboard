@@ -1,6 +1,8 @@
 """Unit tests for scoring calculations."""
+
 import pytest
-from modules.scoring.service import compute_seed_score, compute_match_total
+
+from modules.scoring.service import compute_match_total, compute_seed_score
 
 
 class TestComputeSeedScore:
@@ -108,9 +110,9 @@ class TestRankingLogic:
 
     @pytest.mark.asyncio
     async def test_multiple_teams_ranked_by_seed_score(self, db, season):
+        from modules.scoring.models import Match
+        from modules.scoring.service import _recompute_ranking, get_ranking
         from modules.teams.models import Team
-        from modules.scoring.models import Match, Ranking
-        from modules.scoring.service import _recompute_ranking, _refresh_ranks, get_ranking
 
         # Create two teams
         team_a = Team(name="Team A", country="DE")
@@ -121,14 +123,28 @@ class TestRankingLogic:
         # Team A: scores 90, 80, 70 → seed = avg(90,80) = 85
         # Team B: scores 100, 50, 30 → seed = avg(100,50) = 75
         for score in [90.0, 80.0, 70.0]:
-            m = Match(season_id=season.id, team_id=team_a.id, round_number=1,
-                      raw_scores={}, total_score=score, is_disqualified=False,
-                      yellow_card=False, red_card=False)
+            m = Match(
+                season_id=season.id,
+                team_id=team_a.id,
+                round_number=1,
+                raw_scores={},
+                total_score=score,
+                is_disqualified=False,
+                yellow_card=False,
+                red_card=False,
+            )
             db.add(m)
         for score in [100.0, 50.0, 30.0]:
-            m = Match(season_id=season.id, team_id=team_b.id, round_number=1,
-                      raw_scores={}, total_score=score, is_disqualified=False,
-                      yellow_card=False, red_card=False)
+            m = Match(
+                season_id=season.id,
+                team_id=team_b.id,
+                round_number=1,
+                raw_scores={},
+                total_score=score,
+                is_disqualified=False,
+                yellow_card=False,
+                red_card=False,
+            )
             db.add(m)
         await db.flush()
 

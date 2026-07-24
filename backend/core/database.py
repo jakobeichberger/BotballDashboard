@@ -1,12 +1,13 @@
+from collections.abc import AsyncGenerator
+from datetime import datetime
+
+from sqlalchemy import DateTime, func
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase, MappedColumn, mapped_column
-from sqlalchemy import DateTime, func
-from typing import AsyncGenerator
-from datetime import datetime
 
 from core.config import get_settings
 

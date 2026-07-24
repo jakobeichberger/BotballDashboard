@@ -1,13 +1,17 @@
 """add score_sheet_templates table
 
 Revision ID: 0001
-Revises: (initial)
+Revises: 0008
 Create Date: 2026-03-31
+
+NOTE: despite the file number, this migration runs *after* 0008 – it depends on
+the seasons/competition_levels/users tables created by 0002 and 0003.
 """
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
+
+from alembic import op
 
 revision = "0001"
 down_revision = "0008"
@@ -20,7 +24,12 @@ def upgrade() -> None:
         "score_sheet_templates",
         sa.Column("id", sa.String(36), primary_key=True),
         sa.Column("season_id", sa.String(36), sa.ForeignKey("seasons.id"), nullable=False),
-        sa.Column("competition_level_id", sa.String(36), sa.ForeignKey("competition_levels.id"), nullable=True),
+        sa.Column(
+            "competition_level_id",
+            sa.String(36),
+            sa.ForeignKey("competition_levels.id"),
+            nullable=True,
+        ),
         sa.Column("label", sa.String(255), nullable=False),
         sa.Column("year", sa.Integer, nullable=False),
         sa.Column("game_theme", sa.String(255)),

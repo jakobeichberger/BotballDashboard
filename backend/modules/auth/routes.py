@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, require_permission
@@ -10,7 +10,6 @@ from modules.auth import service
 from modules.auth.schemas import (
     LoginRequest,
     PushSubscriptionCreate,
-    RefreshRequest,
     RoleCreate,
     RoleDetailResponse,
     TokenResponse,
@@ -28,6 +27,7 @@ REFRESH_COOKIE = "refresh_token"
 
 
 # ── Login / Logout ────────────────────────────────────────────────────────────
+
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
@@ -64,6 +64,7 @@ async def refresh(
             refresh_token = None
     if not refresh_token:
         from core.exceptions import UnauthorizedError
+
         raise UnauthorizedError("Refresh token required")
     access_token, new_refresh = await service.refresh_tokens(db, refresh_token)
     response.set_cookie(
@@ -93,6 +94,7 @@ async def logout(
 
 # ── Current user ──────────────────────────────────────────────────────────────
 
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user=Depends(get_current_user)):
     return current_user
@@ -119,6 +121,7 @@ async def change_password(
 
 # ── Push subscriptions ────────────────────────────────────────────────────────
 
+
 @router.post("/me/push-subscriptions", status_code=201)
 async def subscribe_push(
     body: PushSubscriptionCreate,
@@ -142,6 +145,7 @@ async def unsubscribe_push(
 
 # ── Admin: Users ──────────────────────────────────────────────────────────────
 
+
 @router.get("/users", response_model=list[UserListItem])
 async def list_users(
     _=Depends(require_permission("users:read")), db: AsyncSession = Depends(get_db)
@@ -155,7 +159,9 @@ async def create_user(
     _=Depends(require_permission("users:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.create_user(db, body.email, body.display_name, body.password, body.role_ids)
+    return await service.create_user(
+        db, body.email, body.display_name, body.password, body.role_ids
+    )
 
 
 @router.get("/users/{user_id}", response_model=UserResponse)
@@ -178,6 +184,7 @@ async def update_user(
 
 
 # ── Admin: Roles ──────────────────────────────────────────────────────────────
+
 
 @router.get("/roles", response_model=list[RoleDetailResponse])
 async def list_roles(

@@ -16,13 +16,13 @@ from core.logging import configure_logging
 
 # Module routers
 from modules.auth.routes import router as auth_router
-from modules.seasons.routes import router as seasons_router
-from modules.teams.routes import router as teams_router
-from modules.scoring import router as scoring_router
-from modules.paper_review.routes import router as paper_router
-from modules.printing.routes import router as printing_router
 from modules.dashboard.routes import router as dashboard_router
 from modules.exports.routes import router as exports_router
+from modules.paper_review.routes import router as paper_router
+from modules.printing.routes import router as printing_router
+from modules.scoring import router as scoring_router
+from modules.seasons.routes import router as seasons_router
+from modules.teams.routes import router as teams_router
 
 settings = get_settings()
 configure_logging()
@@ -31,6 +31,7 @@ configure_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from core.logging import get_logger
+
     get_logger("startup").info("BotballDashboard API starting", env=settings.app_env)
     yield
     get_logger("shutdown").info("BotballDashboard API stopped")
@@ -51,7 +52,11 @@ app = FastAPI(
 # In production: restrict to the explicit whitelist from ALLOWED_ORIGINS env var.
 app.add_middleware(
     CORSMiddleware,
-    **({"allow_origin_regex": ".*"} if settings.is_dev else {"allow_origins": settings.allowed_origins_list}),
+    **(
+        {"allow_origin_regex": ".*"}
+        if settings.is_dev
+        else {"allow_origins": settings.allowed_origins_list}
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

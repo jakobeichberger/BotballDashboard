@@ -15,17 +15,17 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-import tempfile
 import unicodedata
 import uuid
+from datetime import UTC
 from pathlib import Path
-from typing import Optional
 
 from fastapi import UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
+
 from .models import ScoreSheetTemplate
 from .schemas import ExtractedFieldCandidate, ScoringField
 
@@ -37,6 +37,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 # ---------------------------------------------------------------------------
 # Upload
 # ---------------------------------------------------------------------------
+
 
 async def save_upload(file: UploadFile, season_id: uuid.UUID) -> tuple[Path, int]:
     """Save the uploaded PDF to disk and return (path, size_bytes)."""
@@ -59,6 +60,7 @@ async def save_upload(file: UploadFile, season_id: uuid.UUID) -> tuple[Path, int
 # ---------------------------------------------------------------------------
 # OCR / text extraction
 # ---------------------------------------------------------------------------
+
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
     """
@@ -94,10 +96,10 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
 # Patterns that typically appear next to scoring fields in Botball sheets:
 #   "Sorted Poms   ×5"   |   "Solar Panel Flipped   50 pts"   |   "Botguy   ×15"
 _MULTIPLIER_PATTERNS = [
-    re.compile(r"[×x\*]\s*(\d+(?:\.\d+)?)"),     # ×5, x10, *3
-    re.compile(r"(\d+(?:\.\d+)?)\s*pts?"),        # 50 pts
-    re.compile(r"(\d+(?:\.\d+)?)\s*points?"),     # 10 points
-    re.compile(r"(\d+(?:\.\d+)?)\s*pt\.?"),       # 5 pt
+    re.compile(r"[×x\*]\s*(\d+(?:\.\d+)?)"),  # ×5, x10, *3
+    re.compile(r"(\d+(?:\.\d+)?)\s*pts?"),  # 50 pts
+    re.compile(r"(\d+(?:\.\d+)?)\s*points?"),  # 10 points
+    re.compile(r"(\d+(?:\.\d+)?)\s*pt\.?"),  # 5 pt
 ]
 
 _SECTION_KEYWORDS = re.compile(
@@ -119,7 +121,7 @@ def _to_snake_case(text: str) -> str:
     return re.sub(r"\s+", "_", text)
 
 
-def _extract_multiplier(line: str) -> Optional[float]:
+def _extract_multiplier(line: str) -> float | None:
     for pat in _MULTIPLIER_PATTERNS:
         m = pat.search(line)
         if m:
@@ -136,7 +138,7 @@ def detect_fields(raw_text: str) -> list[ExtractedFieldCandidate]:
     This is best-effort: the admin will review and correct the results.
     """
     candidates: list[ExtractedFieldCandidate] = []
-    current_section: Optional[str] = None
+    current_section: str | None = None
     seen_keys: set[str] = set()
 
     for page_num, page_text in enumerate(raw_text.split("\x0c"), start=1):
@@ -203,13 +205,14 @@ def detect_fields(raw_text: str) -> list[ExtractedFieldCandidate]:
 # Database operations
 # ---------------------------------------------------------------------------
 
+
 async def create_template(
     db: AsyncSession,
     season_id: uuid.UUID,
-    competition_level_id: Optional[uuid.UUID],
+    competition_level_id: uuid.UUID | None,
     label: str,
     year: int,
-    game_theme: Optional[str],
+    game_theme: str | None,
     file_path: Path,
     file_size: int,
     uploaded_by: uuid.UUID,
@@ -290,7 +293,7 @@ async def confirm_fields(
     """
     Admin confirms the field list. Optionally writes it to ScoringSchema.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     await db.execute(
         update(ScoreSheetTemplate)
@@ -298,7 +301,7 @@ async def confirm_fields(
         .values(
             confirmed_fields=[f.model_dump() for f in fields],
             confirmed_by=confirmed_by,
-            confirmed_at=datetime.now(timezone.utc),
+            confirmed_at=datetime.now(UTC),
         )
     )
     await db.commit()
@@ -325,6 +328,7 @@ async def _apply_to_scoring_schema(
     Upsert the ScoringSchema for this season + level with the confirmed fields.
     """
     from sqlalchemy import select as sa_select
+
     # Import here to avoid circular imports at module level
     from modules.scoring.models import ScoringSchema  # type: ignore[import]
 
@@ -361,7 +365,7 @@ async def _apply_to_scoring_schema(
 async def set_active_template(
     db: AsyncSession,
     season_id: uuid.UUID,
-    competition_level_id: Optional[uuid.UUID],
+    competition_level_id: uuid.UUID | None,
     template_id: uuid.UUID,
 ) -> None:
     """Deactivate all templates for this season/level, then activate the chosen one."""
@@ -384,21 +388,17 @@ async def set_active_template(
 async def list_templates(
     db: AsyncSession,
     season_id: uuid.UUID,
-    competition_level_id: Optional[uuid.UUID] = None,
+    competition_level_id: uuid.UUID | None = None,
 ) -> list[ScoreSheetTemplate]:
     stmt = select(ScoreSheetTemplate).where(ScoreSheetTemplate.season_id == season_id)
     if competition_level_id:
-        stmt = stmt.where(
-            ScoreSheetTemplate.competition_level_id == competition_level_id
-        )
+        stmt = stmt.where(ScoreSheetTemplate.competition_level_id == competition_level_id)
     stmt = stmt.order_by(ScoreSheetTemplate.uploaded_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
 
-async def get_template(
-    db: AsyncSession, template_id: uuid.UUID
-) -> Optional[ScoreSheetTemplate]:
+async def get_template(db: AsyncSession, template_id: uuid.UUID) -> ScoreSheetTemplate | None:
     result = await db.execute(
         select(ScoreSheetTemplate).where(ScoreSheetTemplate.id == template_id)
     )

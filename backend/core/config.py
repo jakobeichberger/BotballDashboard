@@ -1,6 +1,7 @@
+from functools import lru_cache
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
 
 
 class Settings(BaseSettings):
@@ -58,6 +59,7 @@ class Settings(BaseSettings):
         if self.database_url:
             return self.database_url
         from sqlalchemy.engine import URL
+
         return URL.create(
             drivername="postgresql+asyncpg",
             username=self.postgres_user,

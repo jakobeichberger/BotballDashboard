@@ -1,16 +1,16 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import Depends, Cookie
+from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.config import get_settings
 from core.database import get_db
-from core.exceptions import UnauthorizedError, ForbiddenError
+from core.exceptions import ForbiddenError, UnauthorizedError
 
 settings = get_settings()
 
@@ -20,18 +20,15 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 # ── Token creation ────────────────────────────────────────────────────────────
 
+
 def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.jwt_access_token_expire_minutes
-    )
+    expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
     payload = {"sub": subject, "exp": expire, "type": "access", **(extra or {})}
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
 def create_refresh_token(subject: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(
-        days=settings.jwt_refresh_token_expire_days
-    )
+    expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
     payload = {"sub": subject, "exp": expire, "type": "refresh"}
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
@@ -47,6 +44,7 @@ def decode_token(token: str, expected_type: str = "access") -> dict[str, Any]:
 
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
+
 
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
@@ -65,7 +63,7 @@ async def get_current_user(
     result = await db.execute(
         select(User)
         .options(selectinload(User.roles))
-        .where(User.id == user_id, User.is_active == True)
+        .where(User.id == user_id, User.is_active.is_(True))
     )
     user = result.scalar_one_or_none()
     if not user:

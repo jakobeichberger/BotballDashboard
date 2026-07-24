@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -58,4 +59,5 @@ class RankingResponse(BaseModel):
 
 class ScoreBulkEntry(BaseModel):
     """Used for rapid multi-match entry (e.g., score table entry)."""
+
     entries: list[MatchCreate]

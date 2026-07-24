@@ -69,9 +69,7 @@ class User(Base):
     )
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    roles: Mapped[list[Role]] = relationship(
-        Role, secondary="user_roles", back_populates="users"
-    )
+    roles: Mapped[list[Role]] = relationship(Role, secondary="user_roles", back_populates="users")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )

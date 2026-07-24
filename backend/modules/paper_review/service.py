@@ -1,5 +1,4 @@
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import aiofiles
@@ -33,10 +32,14 @@ async def list_papers(
     team_id: str | None = None,
     status: str | None = None,
 ) -> list[Paper]:
-    q = select(Paper).options(
-        selectinload(Paper.assignments),
-        selectinload(Paper.reviews),
-    ).order_by(Paper.created_at.desc())
+    q = (
+        select(Paper)
+        .options(
+            selectinload(Paper.assignments),
+            selectinload(Paper.reviews),
+        )
+        .order_by(Paper.created_at.desc())
+    )
     if season_id:
         q = q.where(Paper.season_id == season_id)
     if team_id:
@@ -78,7 +81,7 @@ async def submit_paper(db: AsyncSession, paper_id: str, submitted_by: str) -> Pa
     if paper.status not in ("draft", "revision_requested"):
         raise ConflictError("Paper cannot be submitted in its current state")
     paper.status = "submitted"
-    paper.submitted_at = datetime.now(timezone.utc)
+    paper.submitted_at = datetime.now(UTC)
     paper.submitted_by = submitted_by
     return paper
 
@@ -171,7 +174,7 @@ async def save_review(
 
     if submit:
         review.is_submitted = True
-        review.submitted_at = datetime.now(timezone.utc)
+        review.submitted_at = datetime.now(UTC)
         # If all reviewers submitted → transition paper to under_review
         assignments = await db.execute(
             select(ReviewerAssignment).where(ReviewerAssignment.paper_id == paper_id)
@@ -180,7 +183,7 @@ async def save_review(
         submitted_reviews = await db.execute(
             select(PaperReview).where(
                 PaperReview.paper_id == paper_id,
-                PaperReview.is_submitted == True,
+                PaperReview.is_submitted.is_(True),
                 PaperReview.revision_number == paper.revision_number,
             )
         )

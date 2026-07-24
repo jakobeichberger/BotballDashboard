@@ -1,15 +1,15 @@
 """Unit tests for Paper Review module – status transitions and review logic."""
+
 import pytest
-from modules.paper_review.models import Paper, PaperReview, ReviewerAssignment
-from modules.paper_review.service import (
-    create_paper,
-    submit_paper,
-    set_paper_status,
-    assign_reviewer,
-    save_review,
-    get_paper,
-)
+
 from core.exceptions import ConflictError, ForbiddenError
+from modules.paper_review.service import (
+    assign_reviewer,
+    create_paper,
+    save_review,
+    set_paper_status,
+    submit_paper,
+)
 
 
 @pytest.fixture
@@ -134,12 +134,17 @@ class TestReviewScores:
         await db.flush()
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
-        review = await save_review(db, paper.id, admin_user.id, {
-            "score_content": 8.0,
-            "score_methodology": 6.0,
-            "score_presentation": 7.0,
-            "score_originality": 9.0,
-        })
+        review = await save_review(
+            db,
+            paper.id,
+            admin_user.id,
+            {
+                "score_content": 8.0,
+                "score_methodology": 6.0,
+                "score_presentation": 7.0,
+                "score_originality": 9.0,
+            },
+        )
         await db.commit()
 
         # avg(8, 6, 7, 9) = 7.5
@@ -151,10 +156,15 @@ class TestReviewScores:
         await db.flush()
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
-        review = await save_review(db, paper.id, admin_user.id, {
-            "score_content": 8.0,
-            "score_methodology": 6.0,
-        })
+        review = await save_review(
+            db,
+            paper.id,
+            admin_user.id,
+            {
+                "score_content": 8.0,
+                "score_methodology": 6.0,
+            },
+        )
         await db.commit()
 
         # avg(8, 6) = 7.0
@@ -167,7 +177,9 @@ class TestReviewScores:
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
         review = await save_review(
-            db, paper.id, admin_user.id,
+            db,
+            paper.id,
+            admin_user.id,
             {"score_content": 7.0, "recommendation": "accept"},
             submit=True,
         )

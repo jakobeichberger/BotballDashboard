@@ -1,14 +1,16 @@
 """Unit tests for 3D Printing module – quota enforcement and filament tracking."""
+
 import pytest
+
+from core.exceptions import ConflictError, NotFoundError
+from modules.printing.crypto import decrypt_credential, encrypt_credential
 from modules.printing.service import (
-    create_print_job,
     _get_or_create_quota,
     consume_filament,
+    create_print_job,
     create_spool,
     update_print_job,
 )
-from modules.printing.crypto import encrypt_credential, decrypt_credential
-from core.exceptions import ConflictError, NotFoundError
 
 
 class TestPrintQuota:
@@ -90,12 +92,15 @@ class TestPrintQuota:
 class TestFilamentTracking:
     @pytest.mark.asyncio
     async def test_create_spool(self, db):
-        spool = await create_spool(db, {
-            "material": "PLA",
-            "color": "White",
-            "brand": "Bambu",
-            "initial_grams": 1000.0,
-        })
+        spool = await create_spool(
+            db,
+            {
+                "material": "PLA",
+                "color": "White",
+                "brand": "Bambu",
+                "initial_grams": 1000.0,
+            },
+        )
         await db.flush()
 
         assert spool.remaining_grams == 1000.0
@@ -103,10 +108,13 @@ class TestFilamentTracking:
 
     @pytest.mark.asyncio
     async def test_consume_filament_reduces_remaining(self, db):
-        spool = await create_spool(db, {
-            "material": "PETG",
-            "initial_grams": 500.0,
-        })
+        spool = await create_spool(
+            db,
+            {
+                "material": "PETG",
+                "initial_grams": 500.0,
+            },
+        )
         await db.flush()
 
         updated = await consume_filament(db, spool.id, 120.0)
@@ -137,8 +145,10 @@ class TestCredentialEncryption:
         from cryptography.fernet import Fernet
 
         key = Fernet.generate_key().decode()
-        monkeypatch.setattr("modules.printing.crypto.get_settings",
-                            lambda: type("S", (), {"printer_credential_encryption_key": key})())
+        monkeypatch.setattr(
+            "modules.printing.crypto.get_settings",
+            lambda: type("S", (), {"printer_credential_encryption_key": key})(),
+        )
 
         encrypted = encrypt_credential("secret-api-key")
         assert encrypted != "secret-api-key"

@@ -1,4 +1,5 @@
-from datetime import datetime, date
+from datetime import date, datetime
+
 from pydantic import BaseModel
 
 
@@ -26,6 +27,7 @@ class SeasonPhaseResponse(BaseModel):
 
 class SeasonModules(BaseModel):
     """Which competition modules are active for a season."""
+
     use_seeding: bool = True
     use_double_elimination: bool = False
     use_paper_scoring: bool = False
