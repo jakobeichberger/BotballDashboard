@@ -1,9 +1,10 @@
 name: CI
 
+# Manual only: start it from the Actions tab ("Run workflow"). No automatic
+# trigger, so opening a PR does not consume Actions minutes. Add a
+# `pull_request:` trigger here when you want it to run per PR.
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main, develop]
 
 jobs:
   # ── Backend ────────────────────────────────────────────────────────────────
