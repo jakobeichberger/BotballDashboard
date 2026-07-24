@@ -51,7 +51,7 @@ jobs:
 
       - name: Run unit + integration tests
         env:
-          DATABASE_URL: sqlite+aiosqlite:///:memory:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
           JWT_SECRET_KEY: test-secret-key
           APP_SECRET_KEY: test-app-secret
           PRINTER_CREDENTIAL_ENCRYPTION_KEY: ""
