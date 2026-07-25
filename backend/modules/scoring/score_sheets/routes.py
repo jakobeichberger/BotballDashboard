@@ -12,7 +12,6 @@ Endpoints:
 """
 
 from pathlib import Path
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -45,12 +44,12 @@ MAX_PDF_SIZE = 20 * 1024 * 1024  # 20 MB
     ],
 )
 async def upload_score_sheet(
-    season_id: UUID,
+    season_id: str,
     file: UploadFile = File(..., description="PDF file of the official scoring sheet"),
     label: str = Form(..., description="Display name, e.g. 'ECER 2026 Official Sheet'"),
     year: int = Form(...),
     game_theme: str | None = Form(None),
-    competition_level_id: UUID | None = Form(None),
+    competition_level_id: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -110,8 +109,8 @@ async def upload_score_sheet(
     dependencies=[Depends(require_permission("scoring:read"))],
 )
 async def list_score_sheets(
-    season_id: UUID,
-    competition_level_id: UUID | None = None,
+    season_id: str,
+    competition_level_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     templates = await service.list_templates(
@@ -270,7 +269,7 @@ async def delete_score_sheet(
     dependencies=[Depends(require_permission("scoring:admin"))],
 )
 async def update_score_sheet_layout(
-    sheet_id: UUID,
+    sheet_id: str,
     body: schemas.ScoreSheetTemplateLayoutUpdate,
     db: AsyncSession = Depends(get_db),
 ):

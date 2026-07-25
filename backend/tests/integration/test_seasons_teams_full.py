@@ -414,9 +414,7 @@ class TestTeamRoutes:
         tid = created.json()["id"]
 
         for field in ("name", "country", "is_active"):
-            resp = await client.patch(
-                f"/api/teams/{tid}", headers=auth_headers, json={field: None}
-            )
+            resp = await client.patch(f"/api/teams/{tid}", headers=auth_headers, json={field: None})
             assert resp.status_code == 422
 
     @pytest.mark.asyncio

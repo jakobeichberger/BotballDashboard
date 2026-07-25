@@ -1,8 +1,11 @@
 """add score_sheet_templates table
 
 Revision ID: 0001
-Revises: (initial)
+Revises: 0008
 Create Date: 2026-03-31
+
+NOTE: despite the file number, this migration runs *after* 0008 – it depends on
+the seasons/competition_levels/users tables created by 0002 and 0003.
 """
 
 import sqlalchemy as sa

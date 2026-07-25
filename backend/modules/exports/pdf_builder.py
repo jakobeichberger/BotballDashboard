@@ -79,7 +79,8 @@ def build_ranking_pdf(
     teams_by_id: dict[str, str],
 ) -> bytes:
     """
-    ranking_rows: list of dicts with keys rank, team_id, seed_score, best_score, average_score, rounds_played
+    ranking_rows: list of dicts with keys rank, team_id, seed_score,
+        best_score, average_score, rounds_played
     teams_by_id: {team_id: team_name}
     """
     buf = BytesIO()

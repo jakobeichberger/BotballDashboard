@@ -85,6 +85,7 @@ export const modules: readonly ModuleDefinition[] = [
     routes: [
       { path: "scoring", component: lazy(() => import("@/pages/EventScoringPage")), permission: "scoring:read", label: { de: "Wertung", en: "Scoring" }, icon: "scoring", navigation: true },
       { path: "scans", component: lazy(() => import("@/pages/ScanReviewPage")), permission: "scoring:read", label: { de: "OCR-Prüfung", en: "OCR review" }, icon: "scans", navigation: true },
+      { path: "formulas", component: lazy(() => import("@/pages/FormulasPage")), permission: "scoring:formulas", label: { de: "Punkteformeln", en: "Scoring formulas" }, icon: "scoring", navigation: true },
     ],
     dashboardWidgets: [{ id: "matches", permission: "scoring:read", audience: "juror", label: { de: "Wertungen", en: "Scores" } }],
     translations: ["scoring", "events"],

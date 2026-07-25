@@ -1,7 +1,7 @@
 """Auth module: users, roles, permissions, tokens, push subscriptions
 
 Revision ID: 0002
-Revises: 0001
+Revises: (none – this is the root of the chain)
 Create Date: 2026-01-01 00:00:00
 """
 
@@ -157,7 +157,10 @@ def upgrade() -> None:
         INSERT INTO role_permissions (role_id, permission_id)
         SELECT r.id, p.id FROM roles r, permissions p
         WHERE r.name = 'juror'
-        AND p.name IN ('scoring:read','scoring:write','scoring:admin','teams:read','dashboard:read','seasons:read')
+        AND p.name IN (
+            'scoring:read','scoring:write','scoring:admin',
+            'teams:read','dashboard:read','seasons:read'
+        )
     """)
 
     # Reviewer: papers
@@ -173,7 +176,10 @@ def upgrade() -> None:
         INSERT INTO role_permissions (role_id, permission_id)
         SELECT r.id, p.id FROM roles r, permissions p
         WHERE r.name = 'mentor'
-        AND p.name IN ('teams:read','scoring:read','papers:read','printing:read','printing:write','dashboard:read','seasons:read')
+        AND p.name IN (
+            'teams:read','scoring:read','papers:read',
+            'printing:read','printing:write','dashboard:read','seasons:read'
+        )
     """)
 
     # Guest: read-only

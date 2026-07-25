@@ -150,6 +150,9 @@ async def create_user(
     for role_id in role_ids:
         db.add(UserRole(user_id=user.id, role_id=role_id))
 
+    # autoflush is off, so the UserRole inserts must reach the DB before the
+    # refresh re-SELECTs, otherwise the response reports no roles at all.
+    await db.flush()
     await db.refresh(user, ["roles"])
     return user
 
@@ -166,6 +169,10 @@ async def update_user(db: AsyncSession, user_id: str, **kwargs) -> User:
         await db.execute(delete(UserRole).where(UserRole.user_id == user_id))
         for role_id in role_ids:
             db.add(UserRole(user_id=user_id, role_id=role_id))
+        # autoflush is off, so the new UserRole rows must reach the DB before
+        # the refresh re-SELECTs — the DELETE above already ran, so without
+        # this the response shows the roles removed and not re-added.
+        await db.flush()
 
     await db.refresh(user, ["roles"])
     return user

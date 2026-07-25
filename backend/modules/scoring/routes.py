@@ -4,7 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import require_permission
 from core.database import get_db
 from core.live import publish_live_event, stream_live_events
+from modules.events import service as event_svc
 from modules.scoring import competition_service as comp_svc
+from modules.scoring import formula_service as formula_svc
 from modules.scoring import service
 from modules.scoring.competition_schemas import (
     AerialResultResponse,
@@ -216,22 +218,35 @@ async def get_ranking_extended(
 async def get_overall_ranking(
     season_id: str,
     category: str | None = Query(None),
+    event_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
+    """Overall ranking computed from the season's configured formula set.
+
+    Results are recorded per event, so this ranks one event: the one named by
+    `event_id`, otherwise the season's most recent one.
+    """
     season = await season_svc.get_season(db, season_id)
-    entries = await comp_svc.get_overall_ranking(
-        db,
-        season_id,
-        use_seeding=season.use_seeding,
-        use_double_elimination=season.use_double_elimination,
-        use_paper_scoring=season.use_paper_scoring,
-        use_documentation_scoring=season.use_documentation_scoring,
-    )
-    if category:
-        entries = [e for e in entries if e["category"] == category]
-        for rank, entry in enumerate(entries, 1):
-            entry["rank"] = rank
-    return entries
+    if not event_id:
+        events = await event_svc.list_events(db, season_id=season_id)
+        if not events:
+            return []
+        event_id = events[0].id
+    categories = [category] if category else list(season.active_categories or ["botball"])
+    return await formula_svc.compute_overall_ranking(db, event_id, categories)
+
+
+@router.get("/events/{event_id}/ranking/overall", response_model=list[OverallRankingEntry])
+async def get_event_overall_ranking(
+    event_id: str,
+    category: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Overall ranking for one event, using its season's formula set."""
+    event = await event_svc.get_event(db, event_id)
+    season = await season_svc.get_season(db, event.season_id)
+    categories = [category] if category else list(season.active_categories or ["botball"])
+    return await formula_svc.compute_overall_ranking(db, event_id, categories)
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────

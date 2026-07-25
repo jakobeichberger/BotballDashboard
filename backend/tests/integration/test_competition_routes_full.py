@@ -257,12 +257,12 @@ class TestOverallRankingRoute:
         await client.put(
             f"/api/scoring/seasons/{comp_season.id}/de-results/{t1.id}",
             headers=auth_headers,
-            json={"bracket": "A", "de_score": 0.3},
+            json={"bracket": "A", "de_rank": 2},
         )
         await client.put(
             f"/api/scoring/seasons/{comp_season.id}/de-results/{t2.id}",
             headers=auth_headers,
-            json={"bracket": "A", "de_score": 0.9},
+            json={"bracket": "A", "de_rank": 1},
         )
         await client.put(
             f"/api/scoring/seasons/{comp_season.id}/doc-scores/{t1.id}",
@@ -278,10 +278,16 @@ class TestOverallRankingRoute:
         assert resp.status_code == 200
         entries = resp.json()
         by_team = {e["team_id"]: e for e in entries}
-        # t1: 0.3 + 1.0 = 1.3; t2: 0.9 + 0.1 = 1.0
-        assert by_team[t1.id]["overall_score"] == pytest.approx(1.3)
-        assert by_team[t1.id]["rank"] == 1
-        assert by_team[t2.id]["rank"] == 2
+        # Ranking now follows the game document rather than summing whatever
+        # was stored: DE comes from the bracket rank, documentation from the
+        # period scores, and both teams tie on (empty) seeding.
+        #   seeding 0.75 (tie, no runs)
+        #   t1: DE (2-2+1)/2 = 0.5,  doc 100/300 -> adapted 0.5*1/3
+        #   t2: DE (2-1+1)/2 = 1.0,  doc  10/300 -> adapted 0.5*1/30
+        assert by_team[t1.id]["overall_score"] == pytest.approx(0.75 + 0.5 + (100 / 300) / 2)
+        assert by_team[t2.id]["overall_score"] == pytest.approx(0.75 + 1.0 + (10 / 300) / 2)
+        assert by_team[t2.id]["rank"] == 1
+        assert by_team[t1.id]["rank"] == 2
 
     @pytest.mark.asyncio
     async def test_overall_category_filter(self, client, auth_headers, comp_season, db):
