@@ -12,6 +12,7 @@ import {
   Moon,
   Monitor,
   Globe,
+  Calculator,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "@/store/authStore";
@@ -90,6 +91,20 @@ export default function Layout() {
                   Admin
                 </span>
               </div>
+              <NavLink
+                to="/scoring/formulas"
+                className={({ isActive }) =>
+                  clsx(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                  )
+                }
+              >
+                <Calculator className="w-4 h-4" />
+                Punkteformeln
+              </NavLink>
               <NavLink
                 to="/settings/users"
                 className={({ isActive }) =>

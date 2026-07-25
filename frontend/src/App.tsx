@@ -18,6 +18,7 @@ const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const DEPage = lazy(() => import("@/pages/DEPage"));
 const AerialPage = lazy(() => import("@/pages/AerialPage"));
 const DocScoringPage = lazy(() => import("@/pages/DocScoringPage"));
+const FormulasPage = lazy(() => import("@/pages/FormulasPage"));
 
 function AppRoutes() {
   // Eagerly fetch current user when token is present
@@ -44,6 +45,14 @@ function AppRoutes() {
             <Route path="scoring/de" element={<DEPage />} />
             <Route path="scoring/aerial" element={<AerialPage />} />
             <Route path="scoring/doc" element={<DocScoringPage />} />
+            <Route
+              path="scoring/formulas"
+              element={
+                <ProtectedRoute requireRole="admin">
+                  <FormulasPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="papers" element={<PapersPage />} />
             <Route path="printing" element={<PrintingPage />} />
             <Route
