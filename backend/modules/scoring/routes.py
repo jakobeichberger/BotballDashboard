@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import require_permission
 from core.database import get_db
 from modules.scoring import competition_service as comp_svc
+from modules.scoring import formula_service as formula_svc
 from modules.scoring import service
 from modules.scoring.competition_schemas import (
     AerialResultResponse,
@@ -219,18 +220,14 @@ async def get_overall_ranking(
     category: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
+    """Ranking computed from the season's configured formula set.
+
+    The formulas come from the season's stored set, falling back to the ones
+    published in the game document for that category.
+    """
     season = await season_svc.get_season(db, season_id)
-    entries = await comp_svc.get_overall_ranking(
-        db,
-        season_id,
-        use_seeding=season.use_seeding,
-        use_double_elimination=season.use_double_elimination,
-        use_paper_scoring=season.use_paper_scoring,
-        use_documentation_scoring=season.use_documentation_scoring,
-    )
-    if category:
-        entries = [e for e in entries if e["category"] == category]
-    return entries
+    categories = [category] if category else list(season.active_categories or ["botball"])
+    return await formula_svc.compute_overall_ranking(db, season_id, categories)
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────

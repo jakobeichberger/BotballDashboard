@@ -105,6 +105,9 @@ class OverallRankingEntry(BaseModel):
     paper_score: float | None
     doc_score: float | None
     aerial_score: float | None
+    # Every value the season's formula set produced, including any custom keys
+    # that have no dedicated field above.
+    values: dict[str, float] = {}
 
 
 class TeamRankingEntry(BaseModel):
