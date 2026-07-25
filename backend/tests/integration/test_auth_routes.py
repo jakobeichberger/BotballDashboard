@@ -98,7 +98,7 @@ class TestUserManagement:
             json={
                 "email": admin_user.email,
                 "display_name": "Dupe",
-                "password": "password123",
+                "password": "validpass123",
             },
         )
         assert resp.status_code == 409

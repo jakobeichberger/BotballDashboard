@@ -38,13 +38,36 @@ async def get_active_season(db: AsyncSession) -> Season | None:
 
 
 async def create_season(db: AsyncSession, data: dict, phases: list[dict]) -> Season:
+    from modules.events.models import Event, EventPhase
+
     season = Season(**data)
     db.add(season)
     await db.flush()
 
-    for phase_data in phases:
-        db.add(SeasonPhase(season_id=season.id, **phase_data))
+    event = Event(
+        season_id=season.id,
+        name=f"{season.name} – Main Event",
+        slug=f"season-{season.year}-{season.id[:8]}",
+        status="draft",
+        active_modules=["seeding"],
+    )
+    db.add(event)
+    await db.flush()
 
+    for sort_order, phase_data in enumerate(phases):
+        db.add(SeasonPhase(season_id=season.id, **phase_data))
+        db.add(
+            EventPhase(
+                event_id=event.id,
+                name=phase_data["name"],
+                phase_type="seeding",
+                sort_order=sort_order,
+                status="live" if phase_data.get("is_active") else "draft",
+            )
+        )
+
+    # The phases are still pending, and autoflush is off — without this the
+    # refresh re-SELECTs and the response reports no phases at all.
     await db.flush()
     await db.refresh(season, ["phases"])
     return season
@@ -54,7 +77,7 @@ async def update_season(db: AsyncSession, season_id: str, **kwargs) -> Season:
     season = await get_season(db, season_id)
     # At most one season may be active. A PATCH setting is_active=True has to go
     # through the same deactivate-all step as set_active_season, otherwise it
-    # silently creates a second active season.
+    # silently creates a second active season and breaks GET /seasons/active.
     if kwargs.get("is_active") is True:
         await db.execute(update(Season).values(is_active=False))
     for key, value in kwargs.items():
@@ -81,23 +104,23 @@ async def delete_season(db: AsyncSession, season_id: str) -> None:
 async def activate_phase(db: AsyncSession, season_id: str, phase_id: str) -> SeasonPhase:
     # Deactivate all phases in this season
     result = await db.execute(select(SeasonPhase).where(SeasonPhase.season_id == season_id))
-    for phase in result.scalars().all():
-        phase.is_active = False
+    for existing_phase in result.scalars().all():
+        existing_phase.is_active = False
 
     result = await db.execute(
         select(SeasonPhase).where(SeasonPhase.id == phase_id, SeasonPhase.season_id == season_id)
     )
-    phase = result.scalar_one_or_none()
-    if not phase:
+    selected_phase = result.scalar_one_or_none()
+    if not selected_phase:
         raise NotFoundError("Phase not found")
-    phase.is_active = True
-    return phase
+    selected_phase.is_active = True
+    return selected_phase
 
 
 async def list_competition_levels(db: AsyncSession) -> list[CompetitionLevel]:
     result = await db.execute(
         select(CompetitionLevel)
-        .where(CompetitionLevel.is_active.is_(True))
+        .where(CompetitionLevel.is_active == True)
         .order_by(CompetitionLevel.name)
     )
     return list(result.scalars().all())

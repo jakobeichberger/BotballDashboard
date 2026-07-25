@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import FormulasPage from "@/pages/FormulasPage";
 
 const get = vi.fn();
@@ -48,7 +48,8 @@ const PREVIEW = {
 
 function mockRoutes() {
   get.mockImplementation((url: string) => {
-    if (url === "/seasons/active") return Promise.resolve({ data: { id: "s1", name: "2026" } });
+    if (url === "/v1/events/e1")
+      return Promise.resolve({ data: { id: "e1", season_id: "s1", name: "ECER 2026" } });
     if (url === "/scoring/formulas/reference") return Promise.resolve({ data: REFERENCE });
     if (url.endsWith("/effective")) return Promise.resolve({ data: EFFECTIVE });
     if (url.endsWith("/bracket-weights")) return Promise.resolve({ data: { A: 1 } });
@@ -62,8 +63,10 @@ function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <FormulasPage />
+      <MemoryRouter initialEntries={["/events/e1/formulas"]}>
+        <Routes>
+          <Route path="/events/:eventId/formulas" element={<FormulasPage />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );

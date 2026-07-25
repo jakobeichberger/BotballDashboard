@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import {
   Calculator,
@@ -68,21 +68,21 @@ function formatValue(v: number): string {
 }
 
 export default function FormulasPage() {
-  const [searchParams] = useSearchParams();
+  const { eventId = "" } = useParams();
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<Category>("botball");
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const { data: activeSeason } = useQuery({
-    queryKey: ["seasons", "active"],
-    queryFn: async () => {
-      const { data } = await api.get("/seasons/active");
-      return data;
-    },
+  // Formulas are stored per season (that is how the game document is
+  // published); results are per event, so the preview needs the event.
+  const { data: event } = useQuery<{ id: string; season_id: string; name: string }>({
+    queryKey: ["event", eventId],
+    queryFn: async () => (await api.get(`/v1/events/${eventId}`)).data,
+    enabled: !!eventId,
   });
-  const seasonId = searchParams.get("season_id") ?? activeSeason?.id ?? "";
+  const seasonId = event?.season_id ?? "";
 
   const { data: reference } = useQuery<Reference>({
     queryKey: ["formula-reference"],
@@ -130,7 +130,7 @@ export default function FormulasPage() {
   const payload = useMemo(() => JSON.stringify(formulas), [formulas]);
 
   useEffect(() => {
-    if (!seasonId || formulas.length === 0) {
+    if (!eventId || formulas.length === 0) {
       setPreview(null);
       return;
     }
@@ -139,7 +139,7 @@ export default function FormulasPage() {
     const timer = setTimeout(async () => {
       try {
         const { data } = await api.post<PreviewResponse>(
-          `/scoring/formulas/seasons/${seasonId}/${category}/preview`,
+          `/scoring/formulas/events/${eventId}/${category}/preview`,
           { formulas },
         );
         if (!cancelled) setPreview(data);
@@ -154,7 +154,7 @@ export default function FormulasPage() {
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, seasonId, category]);
+  }, [payload, eventId, category]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -232,9 +232,7 @@ export default function FormulasPage() {
   if (!seasonId) {
     return (
       <div className="card p-6">
-        <p className="text-gray-600 dark:text-gray-300">
-          Keine aktive Saison. Lege zuerst eine Saison an oder aktiviere eine.
-        </p>
+        <p className="text-gray-600 dark:text-gray-300">Event wird geladen…</p>
       </div>
     );
   }

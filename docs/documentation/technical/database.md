@@ -370,15 +370,6 @@ new_value   JSONB NOT NULL
 ip_address  INET
 ```
 
-### `schema_versions`
-```sql
-version     INTEGER PRIMARY KEY
-applied_at  TIMESTAMPTZ DEFAULT now()
-description TEXT
-```
-
----
-
 ## Indizes (wichtigste)
 
 ```sql

@@ -35,9 +35,9 @@ Das System ist so aufgebaut, dass bei jedem Upgrade **nur die Programmkomponente
 - **Beim Deployment:** Migrations werden automatisch vor dem Start der neuen Version ausgeführt (`migrate → then start`)
 - **Keine destruktiven Migrationen:** Spalten/Tabellen werden nie gelöscht ohne vorherige Deprecation-Phase (erst umbenennen, dann in nächster Version löschen)
 - **Rollback-fähig:** Jede Migration hat eine `upgrade()`- und `downgrade()`-Funktion
-- **Daten-Backups:** Vor jedem Deployment wird automatisch ein Datenbank-Dump erstellt
-- **Docker-Strategie:** Datenbank läuft in einem separaten Container mit persistentem Volume – ein `docker-compose pull && docker-compose up` aktualisiert nur Backend/Frontend, das DB-Volume bleibt unangetastet
-- **Versionierung:** Backend-Version und DB-Schema-Version werden in der DB gespeichert (`schema_version`-Tabelle) → Inkompatibilitäten werden beim Start erkannt und verhindert
+- **Daten-Backups:** Vor einem Produktions-Update wird ein manueller Dump bzw. Proxmox-Snapshot empfohlen
+- **Docker-Strategie:** Datenbank läuft in einem separaten Container mit persistentem Volume; Anwendungsimages werden mit `docker compose build --pull` aktualisiert
+- **Versionierung:** Alembic speichert die ausgeführte Revision in seiner Standardtabelle `alembic_version`
 
 ```yaml
 # docker-compose.yml Prinzip
@@ -45,16 +45,16 @@ services:
   db:
     image: postgres:16
     volumes:
-      - db_data:/var/lib/postgresql/data   # persistentes Volume
+      - pgdata:/var/lib/postgresql/data   # persistentes Volume
   backend:
-    image: botballdashboard-backend:latest
-    command: ["migrate-then-start"]        # Migrationen vor Start
+    build: ./backend
+    command: ["./scripts/migrate-then-start.sh"]
 volumes:
-  db_data:  # bleibt bei docker-compose up/pull erhalten
+  pgdata:
 ```
 
 ### Docker & lokale Entwicklung
-- `docker-compose.yml` startet: Backend, Frontend, PostgreSQL, (optional) OCR-Service
+- `docker-compose.yml` startet: Traefik, Backend, Frontend, PostgreSQL und Redis
 - Separate Container pro Modul möglich
 - `.env`-Datei für lokale Konfiguration
 - Datenbank-Volume wird nie automatisch gelöscht
@@ -62,7 +62,7 @@ volumes:
 ### CI/CD (GitHub Actions)
 - Linting & Formatting bei jedem Push
 - Automatische Tests bei Pull Requests
-- Build & Deploy bei Merge in `main`
+- Build-Prüfung bei Pull Requests; Deployment bleibt bewusst manuell
 
 ### Mehrsprachigkeit (i18n)
 

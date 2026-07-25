@@ -4,7 +4,12 @@ Uses an in-memory SQLite database for fast, isolated unit tests.
 Integration tests use a dedicated PostgreSQL test database.
 """
 
+import logging
+import os
 from collections.abc import AsyncGenerator
+
+os.environ.setdefault("APP_ENV", "development")
+os.environ.setdefault("UPLOAD_DIR", "/tmp/botball-dashboard-tests/uploads")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -14,6 +19,8 @@ from sqlalchemy.pool import StaticPool
 from core.auth import create_access_token
 from core.database import Base, get_db
 from main import app
+
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 # ── In-memory SQLite engine for unit/integration tests ───────────────────────
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -55,11 +62,13 @@ async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield db
 
     app.dependency_overrides[get_db] = override_get_db
+    app.state.testing = True
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()
+    app.state.testing = False
 
 
 @pytest_asyncio.fixture
@@ -96,13 +105,35 @@ async def auth_headers(admin_token: str) -> dict:
 @pytest_asyncio.fixture
 async def season(db: AsyncSession):
     """Create a test season."""
+    from modules.events.models import Event
     from modules.seasons.models import Season
 
     s = Season(name="Test Season 2026", year=2026, is_active=True)
     db.add(s)
+    await db.flush()
+    db.add(
+        Event(
+            season_id=s.id,
+            name="Test Event",
+            slug=f"test-event-{s.id}",
+            status="published",
+            public_scoreboard=True,
+            public_schedule=True,
+        )
+    )
     await db.commit()
     await db.refresh(s)
     return s
+
+
+@pytest_asyncio.fixture
+async def event(db: AsyncSession, season):
+    """Return the default event belonging to the test season."""
+    from sqlalchemy import select
+
+    from modules.events.models import Event
+
+    return (await db.execute(select(Event).where(Event.season_id == season.id))).scalar_one()
 
 
 @pytest_asyncio.fixture

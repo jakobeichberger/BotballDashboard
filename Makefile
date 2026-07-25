@@ -2,7 +2,7 @@
 
 # ── Production ────────────────────────────────────────────────
 up:
-	docker compose up -d
+	docker compose up -d --build
 
 down:
 	docker compose down
@@ -56,14 +56,14 @@ test-frontend:
 
 # ── Linting ───────────────────────────────────────────────────
 lint-backend:
-	docker compose exec backend ruff check . && mypy .
+	docker compose exec backend sh -c "ruff check . && mypy ."
 
 lint-frontend:
 	cd frontend && pnpm lint
 
 # ── Utilities ─────────────────────────────────────────────────
 vapid-keys:
-	docker compose exec backend python -c "from pywebpush import Vapid; v = Vapid(); v.generate_keys(); print('Private:', v.private_key_as_pem().decode()); print('Public:', v.public_key_as_pem().decode())"
+	docker compose exec backend sh -c "mkdir -p /app/vapid && cd /app/vapid && vapid --gen >/dev/null && printf 'VAPID_PRIVATE_KEY=/app/vapid/private_key.pem\nVAPID_PUBLIC_KEY=' && vapid --applicationServerKey"
 
 fernet-key:
 	docker compose exec backend python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"

@@ -220,6 +220,7 @@ KNOWN_INPUTS: dict[str, str] = {
     "seed_runs": "List of this team's seeding run scores",
     "seed_rank": "Seeding rank, if entered manually instead of computed",
     "de_rank": "Rank within the double-elimination bracket (0 = did not take part)",
+    "de_score_recorded": "DE score as manually recorded, if one was entered",
     "n_bracket": "Number of teams in this team's bracket",
     "bracket_weight": "Weight of this team's bracket (announced per tournament)",
     "paper": "Paper score, 0-100",

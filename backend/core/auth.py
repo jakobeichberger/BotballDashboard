@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -29,7 +30,9 @@ def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> st
 
 def create_refresh_token(subject: str) -> str:
     expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
-    payload = {"sub": subject, "exp": expire, "type": "refresh"}
+    # jti makes each refresh token unique, even if more than one token for the
+    # same user is issued within the same second.
+    payload = {"sub": subject, "exp": expire, "type": "refresh", "jti": str(uuid4())}
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
@@ -52,7 +55,7 @@ async def get_current_user(
 ):
     """Dependency that returns the current authenticated User ORM object."""
     # Import here to avoid circular imports at module load time
-    from modules.auth.models import User
+    from modules.auth.models import Role, User
 
     if not credentials:
         raise UnauthorizedError()
@@ -62,8 +65,8 @@ async def get_current_user(
 
     result = await db.execute(
         select(User)
-        .options(selectinload(User.roles))
-        .where(User.id == user_id, User.is_active.is_(True))
+        .options(selectinload(User.roles).selectinload(Role.permissions))
+        .where(User.id == user_id, User.is_active == True)
     )
     user = result.scalar_one_or_none()
     if not user:
@@ -78,8 +81,11 @@ def require_permission(*permissions: str):
         current_user=Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ):
+        # Superusers bypass all permission checks – independent of whether the
+        # permission table is populated.
         if current_user.is_superuser:
             return current_user
+
         from modules.auth.service import get_user_permissions
 
         user_perms = await get_user_permissions(db, current_user.id)
@@ -100,6 +106,7 @@ def require_any_permission(*permissions: str):
     ):
         if current_user.is_superuser:
             return current_user
+
         from modules.auth.service import get_user_permissions
 
         user_perms = await get_user_permissions(db, current_user.id)

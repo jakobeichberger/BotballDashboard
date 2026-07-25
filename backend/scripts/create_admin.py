@@ -45,8 +45,7 @@ async def main(email: str, password: str, display_name: str, reset: bool) -> Non
         if existing:
             if not reset:
                 print(
-                    f"[INFO] User '{email.lower()}' already exists – skipping. "
-                    "Use --reset to force password update."
+                    f"[INFO] User '{email.lower()}' already exists – skipping. Use --reset to force password update."
                 )
                 return
             # Reset: update password, ensure active + superuser

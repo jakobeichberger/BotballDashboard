@@ -1,14 +1,17 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, require_permission
 from core.config import get_settings
 from core.database import get_db
+from core.rate_limit import rate_limit
 from modules.auth import service
 from modules.auth.schemas import (
+    CurrentUserResponse,
     LoginRequest,
+    MeUpdate,
     PushSubscriptionCreate,
     RoleCreate,
     RoleDetailResponse,
@@ -29,7 +32,11 @@ REFRESH_COOKIE = "refresh_token"
 # ── Login / Logout ────────────────────────────────────────────────────────────
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("login", 10, 60))],
+)
 async def login(
     body: LoginRequest, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -50,7 +57,11 @@ async def login(
     )
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("refresh", 30, 60))],
+)
 async def refresh(
     request: Request, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -95,21 +106,28 @@ async def logout(
 # ── Current user ──────────────────────────────────────────────────────────────
 
 
-@router.get("/me", response_model=UserResponse)
-async def get_me(current_user=Depends(get_current_user)):
-    return current_user
+@router.get("/me", response_model=CurrentUserResponse)
+async def get_me(current_user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    permissions = await service.get_user_permissions(db, current_user.id)
+    return {
+        **{
+            column.name: getattr(current_user, column.name)
+            for column in current_user.__table__.columns
+        },
+        "roles": current_user.roles,
+        "permissions": sorted(permissions),
+    }
 
 
 @router.patch("/me", response_model=UserResponse)
 async def update_me(
-    body: UserUpdate,
+    body: MeUpdate,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # is_active is excluded alongside role_ids: this is the self-service
-    # endpoint, and a user setting is_active=false here would lock themselves
-    # out permanently. Deactivation belongs to PATCH /auth/users/{id}.
-    update_data = body.model_dump(exclude_none=True, exclude={"role_ids", "is_active"})
+    # MeUpdate cannot carry role_ids / is_active, so self-escalation is
+    # structurally impossible.
+    update_data = body.model_dump(exclude_none=True)
     return await service.update_user(db, current_user.id, **update_data)
 
 
@@ -159,12 +177,24 @@ async def list_users(
 @router.post("/users", response_model=UserResponse, status_code=201)
 async def create_user(
     body: UserCreate,
+    background_tasks: BackgroundTasks,
     _=Depends(require_permission("users:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.create_user(
+    user = await service.create_user(
         db, body.email, body.display_name, body.password, body.role_ids
     )
+    if settings.smtp_host and not settings.is_dev:
+        from core.notifications import send_email
+
+        background_tasks.add_task(
+            send_email,
+            body.email,
+            "BotballDashboard account created",
+            f"<p>Hello {body.display_name},</p><p>Your BotballDashboard account was created.</p>",
+            f"Hello {body.display_name}, your BotballDashboard account was created.",
+        )
+    return user
 
 
 @router.get("/users/{user_id}", response_model=UserResponse)

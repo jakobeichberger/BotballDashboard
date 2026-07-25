@@ -26,6 +26,18 @@
   "email": "Email",
   "date": "Date",
   "notes": "Notes",
+  "push": {
+    "enable": "Enable push",
+    "enabled": "Push enabled"
+  },
+  "event": "Event",
+  "closeMenu": "Close menu",
+  "openMenu": "Open menu",
+  "mainNavigation": "Main navigation",
+  "logout": "Sign out",
+  "changeLanguage": "Change language",
+  "changeTheme": "Change theme",
+  "offlineReadOnly": "Connection lost – changes are locked until reconnection.",
   "nav": {
     "dashboard": "Dashboard",
     "teams": "Teams",

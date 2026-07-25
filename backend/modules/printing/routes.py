@@ -56,10 +56,11 @@ async def list_print_jobs(
     season_id: str | None = Query(None),
     team_id: str | None = Query(None),
     status: str | None = Query(None),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("printing:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_print_jobs(db, season_id, team_id, status)
+    return await service.list_print_jobs(db, season_id, team_id, status, event_id)
 
 
 @router.post("/jobs", response_model=PrintJobResponse, status_code=201)
@@ -97,10 +98,11 @@ async def approve_print_job(
 async def get_quota(
     team_id: str = Query(...),
     season_id: str = Query(...),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("printing:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_quota(db, team_id, season_id)
+    return await service.get_quota(db, team_id, season_id, event_id)
 
 
 # ── Filament spools ───────────────────────────────────────────────────────────

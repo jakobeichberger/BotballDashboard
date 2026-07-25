@@ -314,9 +314,10 @@ configure_env() {
   info "JWT_SECRET_KEY              generated"
   info "PRINTER_ENCRYPTION_KEY      generated"
 
-  # VAPID keys are generated later (step 9) via the running backend container.
-  VAPID_PRIVATE_KEY="__VAPID_PLACEHOLDER__"
-  VAPID_PUBLIC_KEY="__VAPID_PLACEHOLDER__"
+  # The private key is stored in a Docker volume; only the browser public key
+  # is kept in .env and embedded into the frontend build.
+  VAPID_PRIVATE_KEY="/app/vapid/private_key.pem"
+  VAPID_PUBLIC_KEY=""
   VAPID_ADMIN_EMAIL="${TRAEFIK_EMAIL}"
 
   echo -e "\n${BOLD}--- Admin Account (first login) ---${NC}"
@@ -460,9 +461,8 @@ build_frontend() {
   local vapid_pub=""
   if [[ -f "${INSTALL_DIR}/.env" ]]; then
     vapid_pub=$(grep -m1 '^VAPID_PUBLIC_KEY=' "${INSTALL_DIR}/.env" | cut -d= -f2-)
-    if [[ "${vapid_pub}" == "__VAPID_PLACEHOLDER__" ]]; then
-      vapid_pub=""
-    fi
+    vapid_pub="${vapid_pub%\"}"
+    vapid_pub="${vapid_pub#\"}"
   fi
 
   info "Building frontend (VITE_API_URL=/api)..."
@@ -480,10 +480,11 @@ build_images() {
   info "Pulling base images..."
   docker compose pull --quiet traefik db redis 2>/dev/null || true
 
-  # Frontend image just copies the pre-built dist/ into nginx (no build step).
-  # Backend image is the only one that compiles code inside Docker.
-  info "Building backend and frontend images..."
-  docker compose build --no-cache
+  info "Building backend image..."
+  docker compose build --no-cache backend
+  info "Building frontend image from the host-built dist/..."
+  docker build --no-cache -f frontend/Dockerfile.prebuilt \
+    -t botballdashboard-frontend:local frontend
 
   success "All images built"
 }
@@ -628,16 +629,8 @@ generate_vapid_keys() {
 
   local vapid_out
   vapid_out=$(docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend \
-    python -c "
-from pywebpush import Vapid
-v = Vapid()
-v.generate_keys()
-priv = v.private_key_as_pem()
-pub  = v.public_key_as_pem()
-print(priv.decode().strip())
-print('---')
-print(pub.decode().strip())
-" 2>/dev/null) || true
+    sh -c "mkdir -p /app/vapid && cd /app/vapid && vapid --gen >/dev/null && vapid --applicationServerKey" \
+    2>/dev/null) || true
 
   if [[ -z "${vapid_out}" ]]; then
     warn "VAPID key generation failed – push notifications disabled."
@@ -647,14 +640,24 @@ print(pub.decode().strip())
     return
   fi
 
-  VAPID_PRIVATE_KEY=$(echo "${vapid_out}" | awk '/^-----BEGIN/{p=1} p{print} /^-----END PRIVATE/{p=0}')
-  VAPID_PUBLIC_KEY=$(echo "${vapid_out}"  | awk '/^-----BEGIN/{p=1} p{print} /^-----END PUBLIC/{p=0}')
+  VAPID_PUBLIC_KEY="${vapid_out}"
 
-  # Replace placeholder values in .env
-  sed -i "s|VAPID_PRIVATE_KEY=__VAPID_PLACEHOLDER__|VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}|" \
-    "${INSTALL_DIR}/.env"
-  sed -i "s|VAPID_PUBLIC_KEY=__VAPID_PLACEHOLDER__|VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}|" \
-    "${INSTALL_DIR}/.env"
+  python3 - "${INSTALL_DIR}/.env" "${VAPID_PUBLIC_KEY}" <<'PYEOF'
+from pathlib import Path
+import json
+import sys
+
+path = Path(sys.argv[1])
+value = json.dumps(sys.argv[2])
+lines = path.read_text().splitlines()
+for index, line in enumerate(lines):
+    if line.startswith("VAPID_PUBLIC_KEY="):
+        lines[index] = f"VAPID_PUBLIC_KEY={value}"
+        break
+else:
+    lines.append(f"VAPID_PUBLIC_KEY={value}")
+path.write_text("\n".join(lines) + "\n")
+PYEOF
 
   # Restart backend to pick up the new VAPID keys
   docker compose -f "${INSTALL_DIR}/docker-compose.yml" restart backend > /dev/null 2>&1
@@ -663,8 +666,8 @@ print(pub.decode().strip())
   info "Rebuilding frontend with VAPID public key..."
   cd "${INSTALL_DIR}/frontend"
   VITE_API_URL=/api VITE_VAPID_PUBLIC_KEY="${VAPID_PUBLIC_KEY}" pnpm build
-  docker compose -f "${INSTALL_DIR}/docker-compose.yml" build --no-cache frontend > /dev/null 2>&1
-  docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d frontend > /dev/null 2>&1
+  docker build --no-cache -f Dockerfile.prebuilt -t botballdashboard-frontend:local . > /dev/null 2>&1
+  docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d --force-recreate frontend > /dev/null 2>&1
 
   success "VAPID keys generated and frontend rebuilt with push notifications enabled"
 }
@@ -736,14 +739,13 @@ print_summary() {
   echo -e "${GREEN}${BOLD}BotballDashboard is up and running!${NC}"
   echo ""
   echo -e "  ${BOLD}Domain (HTTPS):${NC}  https://${DOMAIN}"
-  echo -e "  ${BOLD}API / Swagger:${NC}   https://${DOMAIN}/api/docs"
+  echo -e "  ${BOLD}API health:${NC}      https://${DOMAIN}/api/system/health"
   echo ""
 
   if [[ ${#host_ips[@]} -gt 0 ]]; then
     echo -e "  ${BOLD}Host IP(s):${NC}"
     for ip in "${host_ips[@]}"; do
       echo -e "    http://${ip}        ${YELLOW}← Traefik (redirects to HTTPS)${NC}"
-      echo -e "    http://${ip}:8080   ${GREEN}← Direct nginx access (no DNS/SSL needed)${NC}"
     done
     echo ""
   fi
@@ -777,7 +779,7 @@ print_summary() {
   fi
 
   echo -e "${BOLD}First login:${NC}"
-  echo -e "  URL:      http://$(echo "${host_ips[0]:-<server-ip>}"):8080"
+  echo -e "  URL:      https://${DOMAIN}"
   if [[ -n "${_admin_email}" ]]; then
     echo -e "  Name:     ${_admin_name}"
     echo -e "  Email:    ${_admin_email}"

@@ -31,32 +31,24 @@ from .schemas import ExtractedFieldCandidate, ScoringField
 
 logger = get_logger("scoring.score_sheets")
 
-
-def _upload_dir() -> Path:
-    """Score sheet upload root.
-
-    Reads settings.upload_dir (UPLOAD_DIR) like the rest of the app — this used
-    to read an UPLOAD_PATH env var that nothing else sets, so a deployment
-    configuring UPLOAD_DIR silently wrote score sheets somewhere else. Resolved
-    lazily so an unwritable path fails the upload, not application startup.
-    """
-    return Path(get_settings().upload_dir) / "score_sheets"
-
-
 # ---------------------------------------------------------------------------
 # Upload
 # ---------------------------------------------------------------------------
 
 
-async def save_upload(file: UploadFile, season_id: str) -> tuple[Path, int]:
+async def save_upload(file: UploadFile, season_id: uuid.UUID) -> tuple[Path, int]:
     """Save the uploaded PDF to disk and return (path, size_bytes)."""
-    dest_dir = _upload_dir() / str(season_id)
+    from core.files import ensure_within, safe_filename, validate_pdf
+
+    dest_dir = Path(get_settings().upload_dir) / "score_sheets" / str(season_id)
     dest_dir.mkdir(parents=True, exist_ok=True)
-
-    safe_name = f"{uuid.uuid4()}_{file.filename.replace(' ', '_')}"
-    dest = dest_dir / safe_name
-
     content = await file.read()
+    validate_pdf(content)  # size + magic-byte check
+
+    # Sanitise the client filename (path traversal) and assert containment.
+    safe_name = f"{uuid.uuid4()}_{safe_filename(file.filename, 'sheet.pdf')}"
+    dest = ensure_within(dest_dir, dest_dir / safe_name)
+
     dest.write_bytes(content)
 
     logger.info(
@@ -365,7 +357,7 @@ async def _apply_to_scoring_schema(
         "scoring_schema_updated_from_sheet",
         extra={
             "season_id": str(template.season_id),
-            "competition_level_id": str(template.competition_level_id),
+            "level_id": str(template.competition_level_id),
             "field_count": len(fields),
         },
     )
@@ -425,3 +417,30 @@ async def delete_template(db: AsyncSession, template_id: str) -> None:
             pdf_path.unlink()
         await db.delete(template)
         await db.commit()
+
+
+async def update_template_layout(
+    db: AsyncSession, template_id: str, data: dict
+) -> ScoreSheetTemplate:
+    template = await get_template(db, template_id)
+    if not template:
+        raise ValueError("Score sheet not found")
+    keys = {field.get("key") for field in (template.confirmed_fields or [])}
+    region_keys = [region.get("key") for region in data["field_regions"]]
+    if any(not key or key not in keys for key in region_keys):
+        raise ValueError("Every OCR region must reference a confirmed scoring field")
+    if len(set(region_keys)) != len(region_keys):
+        raise ValueError("OCR field regions must use unique keys")
+    for region in data["field_regions"]:
+        values = (region["x"], region["y"], region["width"], region["height"])
+        if max(values) <= 1:
+            continue
+        if (
+            region["x"] + region["width"] > data["page_width"]
+            or region["y"] + region["height"] > data["page_height"]
+        ):
+            raise ValueError("Pixel OCR regions must fit within the configured page")
+    for key, value in data.items():
+        setattr(template, key, value)
+    await db.flush()
+    return template

@@ -45,6 +45,9 @@ class TestJWTTokens:
         assert payload["sub"] == "user-456"
         assert payload["type"] == "refresh"
 
+    def test_refresh_tokens_are_unique(self):
+        assert create_refresh_token("same-user") != create_refresh_token("same-user")
+
     def test_wrong_token_type_raises(self):
         access_token = create_access_token("user-789")
         with pytest.raises(UnauthorizedError):

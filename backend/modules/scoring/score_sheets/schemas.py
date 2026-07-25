@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Sub-schemas
@@ -24,6 +24,11 @@ class ScoringField(BaseModel):
     type: str = Field(default="count", description="'count' or 'boolean'")
     section: str | None = Field(None, description="Grouping header, e.g. 'Warehouse Floor'")
     notes: str | None = None
+    region: dict | None = Field(
+        default=None, description="Pixel or normalized x/y/width/height crop coordinates"
+    )
+    min_value: float | None = None
+    required: bool = False
 
 
 class ExtractedFieldCandidate(BaseModel):
@@ -67,6 +72,11 @@ class ScoreSheetTemplateResponse(BaseModel):
     ocr_status: str  # pending | processing | done | failed
     extracted_fields: list[ExtractedFieldCandidate] | None
     confirmed_fields: list[ScoringField] | None
+    page_width: int | None
+    page_height: int | None
+    anchors: list[dict] | None
+    field_regions: list[dict] | None
+    validation_rules: dict | None
     uploaded_by: UUID
     uploaded_at: datetime
     confirmed_by: UUID | None
@@ -103,3 +113,61 @@ class ConfirmFieldsRequest(BaseModel):
 
 class SetActiveRequest(BaseModel):
     sheet_id: UUID
+
+
+class OcrAnchor(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    x: float = Field(ge=0)
+    y: float = Field(ge=0)
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+
+
+class OcrFieldRegion(BaseModel):
+    key: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=100)
+    x: float = Field(ge=0)
+    y: float = Field(ge=0)
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_normalized_coordinates(self) -> OcrFieldRegion:
+        values = (self.x, self.y, self.width, self.height)
+        if max(values) <= 1 and (self.x + self.width > 1 or self.y + self.height > 1):
+            raise ValueError("Normalized OCR regions must fit within the page")
+        return self
+
+
+class ScoreSheetTemplateLayoutUpdate(BaseModel):
+    page_width: int = Field(ge=100, le=20000)
+    page_height: int = Field(ge=100, le=20000)
+    anchors: list[OcrAnchor] = Field(default_factory=list)
+    field_regions: list[OcrFieldRegion] = Field(min_length=1)
+    validation_rules: dict = Field(default_factory=dict)
+
+
+class ScoreSheetScanResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: UUID
+    event_id: UUID
+    template_id: UUID
+    scheduled_match_id: UUID | None
+    team_id: UUID
+    file_name: str
+    status: str
+    provider: str
+    extracted_values: list[dict] | None
+    reviewed_values: dict | None
+    error: str | None
+    accepted_match_id: UUID | None
+    created_by: UUID
+    reviewed_by: UUID | None
+    created_at: datetime
+    processed_at: datetime | None
+    reviewed_at: datetime | None
+
+
+class ScoreSheetScanAccept(BaseModel):
+    values: dict[str, float | int | bool]
+    correction_reason: str | None = Field(default=None, max_length=1000)

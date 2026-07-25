@@ -13,14 +13,12 @@ from core.config import get_settings
 
 settings = get_settings()
 
-_db_url = settings.resolved_database_url
-_is_sqlite = str(_db_url).startswith("sqlite")
-
 engine = create_async_engine(
-    _db_url,
+    settings.database_url,
     echo=settings.is_dev,
-    connect_args={"check_same_thread": False} if _is_sqlite else {},
-    **({"pool_pre_ping": False, "pool_size": 5, "max_overflow": 10} if not _is_sqlite else {}),
+    pool_pre_ping=False,
+    pool_size=5,
+    max_overflow=10,
 )
 
 AsyncSessionLocal = async_sessionmaker(

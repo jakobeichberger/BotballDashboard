@@ -1,7 +1,7 @@
 """Configurable scoring formulas and bracket weights
 
-Revision ID: 0011
-Revises: 0010
+Revision ID: 0013
+Revises: 0012
 Create Date: 2026-07-25
 
 Scoring stops being hard-coded: each season/category carries the formulas from
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0011"
-down_revision = "0010"
+revision = "0013"
+down_revision = "0012"
 branch_labels = None
 depends_on = None
 

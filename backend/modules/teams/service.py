@@ -45,8 +45,7 @@ async def create_team(db: AsyncSession, data: dict, members: list[dict]) -> Team
 async def update_team(db: AsyncSession, team_id: str, **kwargs) -> Team:
     team = await get_team(db, team_id)
     for key, value in kwargs.items():
-        if value is not None:
-            setattr(team, key, value)
+        setattr(team, key, value)
     return team
 
 
@@ -60,6 +59,7 @@ async def add_member(db: AsyncSession, team_id: str, member_data: dict) -> TeamM
     member = TeamMember(team_id=team_id, **member_data)
     db.add(member)
     await db.flush()
+    await db.refresh(member)
     return member
 
 
@@ -113,3 +113,40 @@ async def list_registrations(
         q = q.where(TeamSeasonRegistration.team_id == team_id)
     result = await db.execute(q)
     return list(result.scalars().all())
+
+
+async def get_team_history(db: AsyncSession, team_id: str) -> list[dict]:
+    """Return cross-season event outcomes without exposing team-member data."""
+    from modules.events.models import Event, EventRegistration
+    from modules.scoring.models import Ranking
+    from modules.seasons.models import Season
+
+    await get_team(db, team_id)
+    result = await db.execute(
+        select(EventRegistration, Event, Season, Ranking)
+        .join(Event, Event.id == EventRegistration.event_id)
+        .join(Season, Season.id == Event.season_id)
+        .outerjoin(
+            Ranking,
+            (Ranking.event_id == Event.id)
+            & (Ranking.team_id == EventRegistration.team_id)
+            & Ranking.event_phase_id.is_(None),
+        )
+        .where(EventRegistration.team_id == team_id)
+        .order_by(Season.year.desc(), Event.starts_at.desc().nullslast())
+    )
+    return [
+        {
+            "event_id": event.id,
+            "event_name": event.name,
+            "season_id": season.id,
+            "season_name": season.name,
+            "season_year": season.year,
+            "category": registration.category,
+            "rank": ranking.rank if ranking else None,
+            "seed_score": ranking.seed_score if ranking else None,
+            "best_score": ranking.best_score if ranking else None,
+            "rounds_played": ranking.rounds_played if ranking else 0,
+        }
+        for registration, event, season, ranking in result.all()
+    ]

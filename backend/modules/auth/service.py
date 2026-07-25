@@ -55,7 +55,7 @@ async def get_user_permissions(db: AsyncSession, user_id: str) -> set[str]:
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
     result = await db.execute(
         select(User)
-        .where(User.email == email.lower(), User.is_active.is_(True))
+        .where(User.email == email.lower(), User.is_active == True)
         .options(selectinload(User.roles).selectinload(Role.permissions))
     )
     user = result.scalar_one_or_none()
@@ -84,21 +84,21 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> tuple[str, str
     user_id: str = payload["sub"]
 
     token_hash = _hash_token(refresh_token)
-    result = await db.execute(
+    token_result = await db.execute(
         select(RefreshToken).where(
             RefreshToken.token_hash == token_hash,
-            RefreshToken.revoked.is_(False),
+            RefreshToken.revoked == False,
             RefreshToken.expires_at > datetime.now(UTC),
         )
     )
-    stored = result.scalar_one_or_none()
+    stored = token_result.scalar_one_or_none()
     if not stored:
         raise UnauthorizedError("Invalid or expired refresh token")
 
     # Rotate: revoke old, issue new
     stored.revoked = True
-    result = await db.execute(select(User).where(User.id == user_id, User.is_active.is_(True)))
-    user = result.scalar_one_or_none()
+    user_result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+    user = user_result.scalar_one_or_none()
     if not user:
         raise UnauthorizedError("User not found")
 
@@ -150,7 +150,7 @@ async def create_user(
     for role_id in role_ids:
         db.add(UserRole(user_id=user.id, role_id=role_id))
 
-    # autoflush is off, so the UserRole inserts must be flushed before the
+    # autoflush is off, so the UserRole inserts must reach the DB before the
     # refresh re-SELECTs, otherwise the response reports no roles at all.
     await db.flush()
     await db.refresh(user, ["roles"])
@@ -169,6 +169,9 @@ async def update_user(db: AsyncSession, user_id: str, **kwargs) -> User:
         await db.execute(delete(UserRole).where(UserRole.user_id == user_id))
         for role_id in role_ids:
             db.add(UserRole(user_id=user_id, role_id=role_id))
+        # autoflush is off, so the new UserRole rows must reach the DB before
+        # the refresh re-SELECTs — the DELETE above already ran, so without
+        # this the response shows the roles removed and not re-added.
         await db.flush()
 
     await db.refresh(user, ["roles"])
@@ -201,20 +204,22 @@ async def create_role(
     if existing.scalar_one_or_none():
         raise ConflictError("Role name already exists")
 
-    perms: list[Permission] = []
-    if permission_names:
-        result = await db.execute(select(Permission).where(Permission.name.in_(permission_names)))
-        perms = list(result.scalars().all())
-
     role = Role(name=name, description=description)
-    # Populate the collection while `role` is still transient. Assigning (or
-    # serializing) it after the flush would emit a lazy load from async code
-    # and raise MissingGreenlet.
-    role.permissions = perms
+    # Assign permissions on the transient object so no lazy-load of the
+    # (empty) collection is triggered in the async context.
+    if permission_names:
+        perms = await db.execute(select(Permission).where(Permission.name.in_(permission_names)))
+        role.permissions = list(perms.scalars().all())
+
     db.add(role)
     await db.flush()
 
-    return role
+    # Reload with permissions eagerly loaded so response serialization
+    # doesn't trigger a lazy load (MissingGreenlet).
+    result = await db.execute(
+        select(Role).options(selectinload(Role.permissions)).where(Role.id == role.id)
+    )
+    return result.scalar_one()
 
 
 # ── Push subscriptions ────────────────────────────────────────────────────────
@@ -229,6 +234,8 @@ async def save_push_subscription(
     )
     sub = existing.scalar_one_or_none()
     if sub:
+        # The same browser endpoint may be reused by another signed-in user.
+        sub.user_id = user_id
         sub.p256dh = p256dh
         sub.auth = auth
         sub.user_agent = user_agent

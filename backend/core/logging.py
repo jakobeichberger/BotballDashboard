@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import structlog
 
@@ -10,7 +11,7 @@ settings = get_settings()
 def configure_logging() -> None:
     log_level = logging.DEBUG if settings.is_dev else logging.INFO
 
-    shared_processors = [
+    shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
@@ -18,7 +19,7 @@ def configure_logging() -> None:
     ]
 
     if settings.is_dev:
-        processors = [
+        processors: list[Any] = [
             *shared_processors,
             structlog.dev.ConsoleRenderer(),
         ]

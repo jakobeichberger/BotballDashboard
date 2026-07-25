@@ -1,10 +1,10 @@
-import asyncio
-
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import require_permission
 from core.database import get_db
+from core.live import publish_live_event, stream_live_events
+from modules.events import service as event_svc
 from modules.scoring import competition_service as comp_svc
 from modules.scoring import formula_service as formula_svc
 from modules.scoring import service
@@ -24,40 +24,21 @@ from modules.scoring.schemas import (
     MatchUpdate,
     RankingResponse,
     ScoreBulkEntry,
+    ScoreRevisionResponse,
 )
 from modules.seasons import service as season_svc
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
-# WebSocket connections for live scoreboard (set + lock for safe concurrent access)
-_scoreboard_connections: set[WebSocket] = set()
-_connection_lock = asyncio.Lock()
-
 
 @router.websocket("/scoreboard/ws")
 async def scoreboard_ws(websocket: WebSocket):
-    await websocket.accept()
-    async with _connection_lock:
-        _scoreboard_connections.add(websocket)
-    try:
-        while True:
-            await websocket.receive_text()  # keep-alive
-    except WebSocketDisconnect:
-        pass
-    finally:
-        async with _connection_lock:
-            _scoreboard_connections.discard(websocket)
+    """Legacy global stream. New screens use the event-specific public stream."""
+    await stream_live_events(websocket, None)
 
 
-async def _broadcast_ranking_update(season_id: str) -> None:
-    async with _connection_lock:
-        dead: set[WebSocket] = set()
-        for ws in list(_scoreboard_connections):
-            try:
-                await ws.send_json({"event": "ranking_updated", "season_id": season_id})
-            except Exception:
-                dead.add(ws)
-        _scoreboard_connections.difference_update(dead)
+async def _broadcast_ranking_update(event_id: str) -> None:
+    await publish_live_event(event_id, "ranking_updated")
 
 
 # ── Matches ───────────────────────────────────────────────────────────────────
@@ -84,7 +65,7 @@ async def create_match(
     data = body.model_dump()
     data["season_id"] = season_id
     match = await service.create_match(db, data, current_user.id)
-    await _broadcast_ranking_update(season_id)
+    await _broadcast_ranking_update(match.event_id)
     return match
 
 
@@ -102,7 +83,8 @@ async def bulk_create_matches(
         data = entry.model_dump()
         data["season_id"] = season_id
         results.append(await service.create_match(db, data, current_user.id))
-    await _broadcast_ranking_update(season_id)
+    if results:
+        await _broadcast_ranking_update(results[0].event_id)
     return results
 
 
@@ -119,12 +101,26 @@ async def get_match(
 async def update_match(
     match_id: str,
     body: MatchUpdate,
-    _=Depends(require_permission("scoring:write")),
+    current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    match = await service.update_match(db, match_id, **body.model_dump(exclude_none=True))
-    await _broadcast_ranking_update(match.season_id)
+    match = await service.update_match(
+        db,
+        match_id,
+        changed_by=current_user.id,
+        **body.model_dump(exclude_none=True),
+    )
+    await _broadcast_ranking_update(match.event_id)
     return match
+
+
+@router.get("/matches/{match_id}/revisions", response_model=list[ScoreRevisionResponse])
+async def list_score_revisions(
+    match_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.list_revisions(db, match_id)
 
 
 @router.put("/matches/{match_id}/confirm", response_model=MatchResponse)
@@ -196,7 +192,7 @@ async def get_ranking_extended(
     rows = result.all()
     if category:
         rows = [r for r in rows if (r.category or "botball") == category]
-    return [
+    entries = [
         TeamRankingEntry(
             rank=r.rank,
             team_id=r.team_id,
@@ -209,6 +205,10 @@ async def get_ranking_extended(
         )
         for r in rows
     ]
+    if category:
+        for rank, entry in enumerate(entries, 1):
+            entry.rank = rank
+    return entries
 
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
@@ -218,16 +218,35 @@ async def get_ranking_extended(
 async def get_overall_ranking(
     season_id: str,
     category: str | None = Query(None),
+    event_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Ranking computed from the season's configured formula set.
+    """Overall ranking computed from the season's configured formula set.
 
-    The formulas come from the season's stored set, falling back to the ones
-    published in the game document for that category.
+    Results are recorded per event, so this ranks one event: the one named by
+    `event_id`, otherwise the season's most recent one.
     """
     season = await season_svc.get_season(db, season_id)
+    if not event_id:
+        events = await event_svc.list_events(db, season_id=season_id)
+        if not events:
+            return []
+        event_id = events[0].id
     categories = [category] if category else list(season.active_categories or ["botball"])
-    return await formula_svc.compute_overall_ranking(db, season_id, categories)
+    return await formula_svc.compute_overall_ranking(db, event_id, categories)
+
+
+@router.get("/events/{event_id}/ranking/overall", response_model=list[OverallRankingEntry])
+async def get_event_overall_ranking(
+    event_id: str,
+    category: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Overall ranking for one event, using its season's formula set."""
+    event = await event_svc.get_event(db, event_id)
+    season = await season_svc.get_season(db, event.season_id)
+    categories = [category] if category else list(season.active_categories or ["botball"])
+    return await formula_svc.compute_overall_ranking(db, event_id, categories)
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────

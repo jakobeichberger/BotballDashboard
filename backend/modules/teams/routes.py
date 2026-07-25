@@ -6,6 +6,7 @@ from core.database import get_db
 from modules.teams import service
 from modules.teams.schemas import (
     TeamCreate,
+    TeamEventHistoryResponse,
     TeamListItem,
     TeamMemberCreate,
     TeamMemberResponse,
@@ -81,6 +82,15 @@ async def confirm_registration(
 # ── Individual team routes ────────────────────────────────────────────────────
 
 
+@router.get("/{team_id}/history", response_model=list[TeamEventHistoryResponse])
+async def get_team_history(
+    team_id: str,
+    _=Depends(require_permission("teams:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.get_team_history(db, team_id)
+
+
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(
     team_id: str,
@@ -97,7 +107,7 @@ async def update_team(
     _=Depends(require_permission("teams:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.update_team(db, team_id, **body.model_dump(exclude_none=True))
+    return await service.update_team(db, team_id, **body.model_dump(exclude_unset=True))
 
 
 @router.delete("/{team_id}", status_code=204)

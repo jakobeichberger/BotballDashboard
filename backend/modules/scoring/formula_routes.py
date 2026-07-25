@@ -111,17 +111,17 @@ async def reset_formula_set(
     return await svc.reset_to_defaults(db, season_id, category)
 
 
-@router.post("/seasons/{season_id}/{category}/preview", response_model=FormulaPreviewResponse)
+@router.post("/events/{event_id}/{category}/preview", response_model=FormulaPreviewResponse)
 async def preview_formula_set(
-    season_id: str,
+    event_id: str,
     category: str,
     body: FormulaValidateRequest,
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Run a candidate formula set against this season's real results, without saving."""
+    """Run a candidate formula set against this event's real results, without saving."""
     run = await svc.preview_formula_set(
-        db, season_id, category, [(f.key, f.expression) for f in body.formulas]
+        db, event_id, category, [(f.key, f.expression) for f in body.formulas]
     )
     return FormulaPreviewResponse(
         ok=run.ok,

@@ -1,7 +1,17 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -17,6 +27,9 @@ class Paper(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=True, index=True
     )
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
@@ -58,6 +71,9 @@ class Paper(Base):
 
 class ReviewerAssignment(Base):
     __tablename__ = "reviewer_assignments"
+    __table_args__ = (
+        UniqueConstraint("paper_id", "reviewer_id", name="uq_reviewer_assignment_paper_reviewer"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     paper_id: Mapped[str] = mapped_column(
@@ -72,12 +88,24 @@ class ReviewerAssignment(Base):
     assigned_by: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=True
     )
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="assigned")
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     paper: Mapped[Paper] = relationship(Paper, back_populates="assignments")
 
 
 class PaperReview(Base):
     __tablename__ = "paper_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "paper_id",
+            "reviewer_id",
+            "revision_number",
+            name="uq_paper_review_revision",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     paper_id: Mapped[str] = mapped_column(
@@ -106,3 +134,19 @@ class PaperReview(Base):
     )
 
     paper: Mapped[Paper] = relationship(Paper, back_populates="reviews")
+
+
+class PaperStatusHistory(Base):
+    __tablename__ = "paper_status_history"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    paper_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("papers.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    from_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(50), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    changed_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"))
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

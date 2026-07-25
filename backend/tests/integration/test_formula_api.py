@@ -4,8 +4,8 @@ import pytest
 
 
 @pytest.fixture
-async def scored_season(db, season, admin_user):
-    """A season with two Botball teams, seeding runs, DE results and documentation."""
+async def scored_season(db, season, event, admin_user):
+    """An event with two Botball teams, seeding runs, DE results and documentation."""
     from modules.paper_review.models import Paper
     from modules.scoring.competition_models import DEResult, DocumentationScore
     from modules.scoring.models import Match
@@ -25,6 +25,7 @@ async def scored_season(db, season, admin_user):
             db.add(
                 Match(
                     season_id=season.id,
+                    event_id=event.id,
                     team_id=team_id,
                     round_number=i,
                     raw_scores={},
@@ -34,19 +35,47 @@ async def scored_season(db, season, admin_user):
 
     db.add_all(
         [
-            DEResult(season_id=season.id, team_id=teams[0].id, bracket="A", de_rank=1),
-            DEResult(season_id=season.id, team_id=teams[1].id, bracket="A", de_rank=2),
-            DocumentationScore(
-                season_id=season.id, team_id=teams[0].id, part1=100.0, part2=100.0, part3=100.0
+            DEResult(
+                season_id=season.id,
+                event_id=event.id,
+                team_id=teams[0].id,
+                bracket="A",
+                de_rank=1,
+            ),
+            DEResult(
+                season_id=season.id,
+                event_id=event.id,
+                team_id=teams[1].id,
+                bracket="A",
+                de_rank=2,
             ),
             DocumentationScore(
-                season_id=season.id, team_id=teams[1].id, part1=50.0, part2=50.0, part3=50.0
+                season_id=season.id,
+                event_id=event.id,
+                team_id=teams[0].id,
+                part1=100.0,
+                part2=100.0,
+                part3=100.0,
             ),
-            Paper(season_id=season.id, team_id=teams[0].id, title="Alpha paper", final_score=80.0),
+            DocumentationScore(
+                season_id=season.id,
+                event_id=event.id,
+                team_id=teams[1].id,
+                part1=50.0,
+                part2=50.0,
+                part3=50.0,
+            ),
+            Paper(
+                season_id=season.id,
+                event_id=event.id,
+                team_id=teams[0].id,
+                title="Alpha paper",
+                final_score=80.0,
+            ),
         ]
     )
     await db.flush()
-    return {"season": season, "teams": teams}
+    return {"season": season, "event": event, "teams": teams}
 
 
 class TestFormulaDrivenRanking:
@@ -54,7 +83,7 @@ class TestFormulaDrivenRanking:
     async def test_ranking_uses_the_documented_formulas(self, db, scored_season):
         from modules.scoring.formula_service import compute_category_ranking
 
-        ranked, run = await compute_category_ranking(db, scored_season["season"].id, "botball")
+        ranked, run = await compute_category_ranking(db, scored_season["event"].id, "botball")
         assert run.ok, run.issues
         assert [r["team_name"] for r in ranked] == ["Alpha", "Beta"]
         assert [r["rank"] for r in ranked] == [1, 2]
@@ -75,7 +104,7 @@ class TestFormulaDrivenRanking:
         """The old ranking added the raw seeding total, which swamped the 0..1 parts."""
         from modules.scoring.formula_service import compute_category_ranking
 
-        ranked, _ = await compute_category_ranking(db, scored_season["season"].id, "botball")
+        ranked, _ = await compute_category_ranking(db, scored_season["event"].id, "botball")
         assert all(0.0 <= r["seed_score"] <= 1.0 for r in ranked)
         assert all(0.0 <= r["overall"] <= 3.0 for r in ranked)
 
@@ -88,7 +117,7 @@ class TestFormulaDrivenRanking:
 
         season_id = scored_season["season"].id
         await set_bracket_weights(db, season_id, "botball", {"A": 0.5})
-        ranked, _ = await compute_category_ranking(db, season_id, "botball")
+        ranked, _ = await compute_category_ranking(db, scored_season["event"].id, "botball")
         assert ranked[0]["de_score"] == pytest.approx(0.5)
 
     @pytest.mark.asyncio
@@ -140,7 +169,7 @@ class TestFormulaEditing:
         )
         assert resp.status_code == 200, resp.text
 
-        ranked, run = await compute_category_ranking(db, season_id, "botball")
+        ranked, run = await compute_category_ranking(db, scored_season["event"].id, "botball")
         assert run.ok, run.issues
         assert ranked[0]["overall"] == pytest.approx(0.25)
 
@@ -154,7 +183,7 @@ class TestFormulaEditing:
             json={"formulas": [{"key": "overall", "expression": "__import__('os')"}]},
         )
         assert resp.status_code == 400
-        assert "__import__" in resp.json()["detail"]
+        assert "__import__" in resp.json()["message"]
 
         # nothing was written
         listed = await client.get(
@@ -175,15 +204,15 @@ class TestFormulaEditing:
             },
         )
         assert resp.status_code == 400
-        assert "cycle" in resp.json()["detail"]
+        assert "cycle" in resp.json()["message"]
 
     @pytest.mark.asyncio
     async def test_preview_runs_against_real_data_without_saving(
         self, client, auth_headers, scored_season
     ):
-        season_id = scored_season["season"].id
+        event_id = scored_season["event"].id
         resp = await client.post(
-            f"/api/scoring/formulas/seasons/{season_id}/botball/preview",
+            f"/api/scoring/formulas/events/{event_id}/botball/preview",
             headers=auth_headers,
             json={
                 "formulas": [
@@ -200,7 +229,7 @@ class TestFormulaEditing:
 
         # preview must not persist anything
         listed = await client.get(
-            f"/api/scoring/formulas/seasons/{season_id}", headers=auth_headers
+            f"/api/scoring/formulas/seasons/{scored_season['season'].id}", headers=auth_headers
         )
         assert listed.json() == []
 
@@ -209,7 +238,7 @@ class TestFormulaEditing:
         self, client, auth_headers, scored_season
     ):
         resp = await client.post(
-            f"/api/scoring/formulas/seasons/{scored_season['season'].id}/botball/preview",
+            f"/api/scoring/formulas/events/{scored_season['event'].id}/botball/preview",
             headers=auth_headers,
             json={"formulas": [{"key": "overall", "expression": "1 +"}]},
         )
