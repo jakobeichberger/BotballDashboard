@@ -19,8 +19,11 @@ class MatchCreate(BaseModel):
 
 
 class MatchUpdate(BaseModel):
+    # total_score is deliberately not settable: create_match already strips a
+    # client-supplied total and recomputes it from the versioned schema, but
+    # update_match used to assign it straight through, so a PATCH bypassed
+    # validate_raw_scores entirely and could write any score it liked.
     raw_scores: dict | None = None
-    total_score: float | None = None
     is_disqualified: bool | None = None
     yellow_card: bool | None = None
     red_card: bool | None = None
@@ -69,9 +72,13 @@ class RankingResponse(BaseModel):
 
 
 class ScoreBulkEntry(BaseModel):
-    """Used for rapid multi-match entry (e.g., score table entry)."""
+    """Used for rapid multi-match entry (e.g., score table entry).
 
-    entries: list[MatchCreate]
+    Bounded because each entry triggers a ranking recompute; an unbounded list
+    would hold a DB connection for minutes.
+    """
+
+    entries: list[MatchCreate] = Field(..., max_length=200)
 
 
 class ScoreRevisionResponse(BaseModel):

@@ -150,7 +150,11 @@ async def get_ranking(
     competition_level_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Public endpoint – no auth required for scoreboard display."""
+    """Public endpoint – no auth required for scoreboard display.
+
+    NOTE: unlike GET /v1/public/events/{slug}/ranking this does not honour the
+    event's public_scoreboard / public_results flags.
+    """
     return await service.get_ranking(db, season_id, competition_level_id)
 
 
@@ -228,7 +232,7 @@ async def get_overall_ranking(
     """
     season = await season_svc.get_season(db, season_id)
     if not event_id:
-        events = await event_svc.list_events(db, season_id=season_id)
+        events = await event_svc.list_events(db, season_id=season_id, limit=1)
         if not events:
             return []
         event_id = events[0].id

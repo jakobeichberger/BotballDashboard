@@ -74,6 +74,16 @@ async def get_current_user(
     return user
 
 
+def _permissions_of(user) -> set[str]:
+    """Permission names of an already-loaded user.
+
+    get_current_user selectinloads roles and their permissions, so this needs no
+    query — re-fetching them here doubled the round trips of every
+    authenticated request.
+    """
+    return {perm.name for role in user.roles for perm in role.permissions}
+
+
 def require_permission(*permissions: str):
     """Dependency factory – raises 403 if user lacks ALL listed permissions."""
 
@@ -86,9 +96,7 @@ def require_permission(*permissions: str):
         if current_user.is_superuser:
             return current_user
 
-        from modules.auth.service import get_user_permissions
-
-        user_perms = await get_user_permissions(db, current_user.id)
+        user_perms = _permissions_of(current_user)
         missing = [p for p in permissions if p not in user_perms]
         if missing:
             raise ForbiddenError(f"Missing permissions: {', '.join(missing)}")
@@ -107,9 +115,7 @@ def require_any_permission(*permissions: str):
         if current_user.is_superuser:
             return current_user
 
-        from modules.auth.service import get_user_permissions
-
-        user_perms = await get_user_permissions(db, current_user.id)
+        user_perms = _permissions_of(current_user)
         if not any(p in user_perms for p in permissions):
             raise ForbiddenError("Insufficient permissions")
         return current_user
