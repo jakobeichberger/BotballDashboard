@@ -116,7 +116,10 @@ async def preview_formula_set(
     event_id: str,
     category: str,
     body: FormulaValidateRequest,
-    _=Depends(require_permission("scoring:read")),
+    # Requires the write permission, not scoring:read: this executes
+    # caller-supplied expressions over the whole field, so it is a compute
+    # endpoint rather than a read one.
+    _=Depends(require_permission("scoring:formulas")),
     db: AsyncSession = Depends(get_db),
 ):
     """Run a candidate formula set against this event's real results, without saving."""

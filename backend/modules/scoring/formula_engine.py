@@ -18,10 +18,14 @@ from typing import Any
 from modules.scoring.formula import (
     FormulaError,
     ParsedFormula,
+    ScopeContext,
     evaluate,
     parse_formula,
     resolve_order,
 )
+
+#: A saved set has to stay reviewable and cheap to evaluate for every team.
+MAX_FORMULAS_PER_SET = 60
 
 
 @dataclass
@@ -76,6 +80,17 @@ def run_formula_set(
     caller, because only it knows how teams are grouped.
     """
     result = FormulaRunResult()
+    if len(formulas) > MAX_FORMULAS_PER_SET:
+        result.issues.append(
+            FormulaIssue(
+                key="",
+                team_id=None,
+                message=(f"Too many formulas ({len(formulas)}, limit is {MAX_FORMULAS_PER_SET})"),
+            )
+        )
+        result.rows = [dict(r) for r in rows]
+        return result
+
     working = [dict(r) for r in rows]
     for r in working:
         r.setdefault("n", float(len(working)))
@@ -105,11 +120,15 @@ def run_formula_set(
         result.rows = working
         return result
 
+    # One context for the whole run: its aggregates and sort orders are built
+    # once per column and reused for every team.
+    scope = ScopeContext(columns)
+
     for p in ordered:
         computed: list[float] = []
         for row in working:
             try:
-                value = evaluate(p, row, columns)
+                value = evaluate(p, row, scope)
             except FormulaError as exc:
                 result.issues.append(
                     FormulaIssue(key=p.key, team_id=row.get(team_id_key), message=str(exc))

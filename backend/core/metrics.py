@@ -13,7 +13,10 @@ async def observe_request(request: Request, call_next):
     started = perf_counter()
     response = await call_next(request)
     route = request.scope.get("route")
-    path = getattr(route, "path", request.url.path)
+    # Fall back to a constant, never the raw URL: FastAPI only sets `route` on
+    # a match, so using request.url.path would let anyone add an unbounded
+    # number of keys (and Prometheus series) just by requesting /api/&lt;random&gt;.
+    path = getattr(route, "path", "<unmatched>")
     key = (request.method, path)
     REQUESTS[(request.method, path, response.status_code)] += 1
     DURATION[key][0] += 1

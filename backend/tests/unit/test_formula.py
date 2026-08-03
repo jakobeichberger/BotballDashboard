@@ -184,3 +184,74 @@ class TestRunFormulaSet:
         res = run_formula_set([("a", "10 / v")], rows)
         assert [i.team_id for i in res.issues] == ["bad"]
         assert res.rows[0]["a"] == 5.0
+
+
+class TestResourceLimits:
+    """Bounds that keep a pathological formula from becoming a 500 or a CPU sink."""
+
+    def test_overlong_expression_is_rejected(self):
+        with pytest.raises(FormulaError, match="too long"):
+            parse_formula("x", "1+" * 600 + "1")
+
+    def test_deeply_nested_expression_is_rejected(self):
+        """A long chain would otherwise blow the evaluator's stack (RecursionError)."""
+        with pytest.raises(FormulaError, match="nests too deeply"):
+            parse_formula("x", "+".join(["1"] * 400))
+
+    def test_deeply_nested_calls_are_rejected(self):
+        with pytest.raises(FormulaError, match="nests too deeply"):
+            parse_formula("x", "abs(" * 60 + "1" + ")" * 60)
+
+    def test_formulas_at_realistic_depth_still_parse(self):
+        parse_formula(
+            "seed_score",
+            "3/4 * ((n - rank(seed_total) + 1) / n)"
+            " + 1/4 * safe_div(seed_total, max_all(seed_runs))",
+        )
+
+    def test_growing_base_overflow_is_reported_not_raised(self):
+        """The exponent is capped, but the base can still explode."""
+        with pytest.raises(FormulaError, match="too large"):
+            calc("((((2**64)**64)**64)**64)**64")
+
+    def test_too_many_formulas_is_reported(self):
+        from modules.scoring.formula_engine import MAX_FORMULAS_PER_SET
+
+        formulas = [(f"k{i}", "1") for i in range(MAX_FORMULAS_PER_SET + 1)]
+        res = run_formula_set(formulas, [{"team_id": "t"}])
+        assert not res.ok
+        assert "Too many formulas" in res.issues[0].message
+
+
+class TestScopeCaching:
+    """Scope aggregates are shared across teams; they must stay correct."""
+
+    def test_ranks_and_aggregates_match_a_naive_computation(self):
+        values = [10.0, 5.0, 5.0, 1.0, 99.0]
+        rows = [{"team_id": f"t{i}", "v": v} for i, v in enumerate(values)]
+        res = run_formula_set(
+            [
+                ("r", "rank(v)"),
+                ("ra", "rank_asc(v)"),
+                ("mx", "max_all(v)"),
+                ("av", "avg_all(v)"),
+            ],
+            rows,
+        )
+        assert res.ok, res.issues
+        for row, v in zip(res.rows, values, strict=True):
+            assert row["r"] == 1 + sum(1 for o in values if o > v)
+            assert row["ra"] == 1 + sum(1 for o in values if o < v)
+            assert row["mx"] == max(values)
+            assert row["av"] == pytest.approx(sum(values) / len(values))
+
+    def test_a_column_computed_later_is_visible_to_later_formulas(self):
+        """The cache must not hide a column that a previous formula produced."""
+        rows = [{"team_id": "a", "v": 1.0}, {"team_id": "b", "v": 3.0}]
+        res = run_formula_set(
+            [("doubled", "v * 2"), ("top", "max_all(doubled)"), ("pos", "rank(doubled)")],
+            rows,
+        )
+        assert res.ok, res.issues
+        assert [r["top"] for r in res.rows] == [6.0, 6.0]
+        assert [r["pos"] for r in res.rows] == [2.0, 1.0]
