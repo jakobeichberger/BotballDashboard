@@ -8,6 +8,7 @@ import { useDashboardRole } from "./dashboard/useDashboardRole";
 import AdminDashboard from "./dashboard/AdminDashboard";
 import ReviewerDashboard from "./dashboard/ReviewerDashboard";
 import UserDashboard from "./dashboard/UserDashboard";
+import { useDashboardSummary } from "@/api/analytics";
 
 const ROLE_LABELS = {
   admin: "Administrator",
@@ -21,6 +22,8 @@ export default function DashboardPage() {
   const role = useDashboardRole();
   const user = useAuthStore((state) => state.user);
   const { data: event } = useEvent(eventId);
+  // Role-aware sections (juror queue, own team, organizer status, deadlines).
+  const { data: summary } = useDashboardSummary(eventId || undefined);
 
   // The legacy fallback keeps direct dashboard renders and old installations
   // functional while all regular app routes use an explicit event context.
@@ -123,6 +126,7 @@ export default function DashboardPage() {
           stats={stats}
           season={contextWithPhases}
           announcements={announcements}
+          summary={summary}
         />
       )}
       {role === "reviewer" && (
@@ -130,6 +134,7 @@ export default function DashboardPage() {
           papers={papers}
           season={contextWithPhases}
           announcements={announcements}
+          summary={summary}
         />
       )}
       {role === "user" && (
@@ -138,6 +143,7 @@ export default function DashboardPage() {
           ranking={ranking}
           teams={teams}
           announcements={announcements}
+          summary={summary}
         />
       )}
     </div>

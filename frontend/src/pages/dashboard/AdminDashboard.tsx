@@ -1,14 +1,17 @@
-import { Users, Trophy, FileText, Printer, Settings, BarChart3 } from "lucide-react";
+import { Users, Trophy, FileText, Printer, Settings, BarChart3, CalendarClock } from "lucide-react";
 import { useParams } from "react-router-dom";
+import type { DashboardSummary } from "@/api/analytics";
+import { AdminStatusPanel, JurorPanel, MentorPanel, UpcomingDeadlines } from "./roleSections";
 import { StatGrid, SectionCard, PhaseTimeline, AnnouncementsList, ShortcutGrid } from "./widgets";
 
 interface Props {
   stats?: { teams?: number; matches?: number; papers?: number; print_jobs?: number };
   season?: any;
   announcements?: Array<any>;
+  summary?: DashboardSummary;
 }
 
-export default function AdminDashboard({ stats, season, announcements }: Props) {
+export default function AdminDashboard({ stats, season, announcements, summary }: Props) {
   const { eventId = "" } = useParams();
   const eventBase = eventId ? `/events/${eventId}` : "";
   const shortcuts = [
@@ -17,6 +20,8 @@ export default function AdminDashboard({ stats, season, announcements }: Props) 
     { to: `${eventBase}/papers`, label: "Paper-Review", icon: FileText },
     { to: `${eventBase}/printing`, label: "3D-Druck", icon: Printer },
     { to: `${eventBase}/scans`, label: "Score-Sheets", icon: BarChart3 },
+    { to: `${eventBase}/statistics`, label: "Statistik & Anomalien", icon: BarChart3 },
+    { to: `${eventBase}/calendar`, label: "Deadlines", icon: CalendarClock },
     { to: eventId ? `${eventBase}/admin/users` : "/settings/users", label: "Einstellungen", icon: Settings },
   ];
   const statItems = [
@@ -30,6 +35,8 @@ export default function AdminDashboard({ stats, season, announcements }: Props) 
     <div data-testid="admin-dashboard">
       <StatGrid items={statItems} ariaLabel="System-Kennzahlen" />
 
+      {summary?.admin && <AdminStatusPanel status={summary.admin} />}
+
       <SectionCard title="Schnellzugriff" id="admin-shortcuts">
         <ShortcutGrid items={shortcuts} />
       </SectionCard>
@@ -39,6 +46,10 @@ export default function AdminDashboard({ stats, season, announcements }: Props) 
           <PhaseTimeline phases={season.phases} />
         </SectionCard>
       )}
+
+      {summary?.juror && <JurorPanel juror={summary.juror} />}
+      {summary?.mentor && <MentorPanel teams={summary.mentor.teams} />}
+      {summary && <UpcomingDeadlines deadlines={summary.deadlines} />}
 
       <SectionCard title="Ankündigungen" id="admin-announcements">
         <AnnouncementsList announcements={announcements ?? []} />

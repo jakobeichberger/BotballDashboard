@@ -1,4 +1,6 @@
 import { FileText, Clock, CheckCircle2 } from "lucide-react";
+import type { DashboardSummary } from "@/api/analytics";
+import { UpcomingDeadlines } from "./roleSections";
 import { StatGrid, SectionCard, ReviewQueue, AnnouncementsList } from "./widgets";
 import { OPEN_REVIEW_STATUSES } from "@/modules/papers/paperMeta";
 
@@ -6,12 +8,13 @@ interface Props {
   papers?: Array<any>;
   season?: any;
   announcements?: Array<any>;
+  summary?: DashboardSummary;
 }
 
 /** Final verdicts: nothing left for reviewers to do. */
 const DONE_STATUSES = new Set(["accepted", "rejected", "disqualified_ai"]);
 
-export default function ReviewerDashboard({ papers, season, announcements }: Props) {
+export default function ReviewerDashboard({ papers, season, announcements, summary }: Props) {
   const all = papers ?? [];
   // A paper sent back for revision waits for the team, not the reviewer; it
   // re-enters the queue as "resubmitted".
@@ -42,6 +45,8 @@ export default function ReviewerDashboard({ papers, season, announcements }: Pro
       <SectionCard title="Review-Warteschlange" id="reviewer-queue">
         <ReviewQueue papers={queue} />
       </SectionCard>
+
+      {summary && <UpcomingDeadlines deadlines={summary.deadlines} />}
 
       <SectionCard title="Ankündigungen" id="reviewer-announcements">
         <AnnouncementsList announcements={announcements ?? []} />

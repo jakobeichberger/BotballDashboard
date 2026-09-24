@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
+import { PrintingExportButtons } from "@/components/ExportButtons";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration } from "@/api/types";
@@ -129,7 +130,10 @@ export default function PrintingPage() {
           <Printer className="w-6 h-6" />
           3D-Druck
         </h1>
-        {canWrite && <button onClick={() => setOpen(true)} className="btn-primary">+ Druckauftrag</button>}
+        <div className="flex flex-wrap items-center gap-2">
+          {canAdmin && event?.season_id && <PrintingExportButtons seasonId={event.season_id} seasonYear={event.slug} />}
+          {canWrite && <button onClick={() => setOpen(true)} className="btn-primary">+ Druckauftrag</button>}
+        </div>
       </div>
 
       {notice && (

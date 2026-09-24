@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { Users, ArrowLeft, FileText, Printer, Trophy, MapPin, Pencil, Trash2, UserPlus, Save, X } from "lucide-react";
+import { Users, ArrowLeft, FileText, Printer, Trophy, MapPin, Pencil, Trash2, UserPlus, Save, X, Activity } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
+import { TeamReportExportButtons } from "@/components/ExportButtons";
+import TeamHistoryPanel from "@/components/analytics/TeamHistoryPanel";
+import { useTeamHistory } from "@/api/analytics";
 import { useEventNavigate } from "@/hooks/useEventPath";
 import { useAuthStore } from "@/store/authStore";
 import { PAPER_STATUS_BADGE, PAPER_STATUS_LABEL, apiErrorMessage } from "@/modules/papers/paperMeta";
@@ -125,8 +128,14 @@ export default function TeamDetailPage() {
     retry: false,
   });
 
+  const { data: history, isLoading: historyLoading } = useTeamHistory(id);
+
   const isMyTeam = !!myTeams?.some((t: any) => t.id === id);
   const canManage = isAdmin || (isMentor && isMyTeam);
+  // Reports and the performance view include internal practice runs: the
+  // team itself and organizers only (the backend enforces the same rule).
+  const isOrganizer = useAuthStore((s) => s.hasPermission("scoring:admin") || s.hasPermission("teams:admin"));
+  const canSeeInternals = isAdmin || isOrganizer || isMyTeam;
 
   const levelName = (levelId?: string | null) => levels?.find((l: any) => l.id === levelId)?.name ?? "—";
   const seasonName = (seasonId?: string | null) => seasons?.find((s: any) => s.id === seasonId)?.name ?? seasonId ?? "—";
@@ -257,6 +266,17 @@ export default function TeamDetailPage() {
           </>
         )}
       </div>
+
+      {canSeeInternals && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <EventLink to={`/performance?team=${id}`} className="btn-secondary text-sm">
+            <Activity className="w-4 h-4" /> Performance-Dashboard
+          </EventLink>
+          <TeamReportExportButtons teamId={id ?? ""} teamName={team.name} />
+        </div>
+      )}
+
+      <TeamHistoryPanel rows={history} isLoading={historyLoading} />
 
       {/* Members */}
       <section className="card overflow-hidden">

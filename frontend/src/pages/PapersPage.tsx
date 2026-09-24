@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import Modal from "@/components/Modal";
 import { EventLink } from "@/components/EventLink";
-import { ExportButton } from "@/components/ExportButtons";
+import { ExportButton, PaperExportButtons } from "@/components/ExportButtons";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration } from "@/api/types";
@@ -133,7 +133,7 @@ export default function PapersPage() {
           {canAdmin && seasonId && (
             <>
               <ExportButton url={`/exports/seasons/${seasonId}/reviews.csv`} filename="paper-reviews.csv" label="Reviews CSV" variant="csv" />
-              <ExportButton url={`/exports/seasons/${seasonId}/papers.pdf`} filename="paper-review.pdf" label="Übersicht PDF" />
+              <PaperExportButtons seasonId={seasonId} seasonYear={event?.slug} />
             </>
           )}
           {canWrite && (

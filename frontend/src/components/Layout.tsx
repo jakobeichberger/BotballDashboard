@@ -2,7 +2,10 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  Activity,
+  BarChart3,
   Bell,
+  CalendarClock,
   BellOff,
   Bot,
   CalendarDays,
@@ -42,6 +45,9 @@ const ICONS = {
   printing: Printer,
   bots: Bot,
   settings: Settings,
+  stats: BarChart3,
+  performance: Activity,
+  calendar: CalendarClock,
 };
 
 export default function Layout() {

@@ -8,22 +8,30 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_any_permission
+from core.auth import assert_team_access, require_any_permission, require_permission
 from core.database import get_db
+from modules.dashboard.analytics import all_teams_history, team_history
 from modules.events.models import EventRegistration
 from modules.events.service import get_event
 from modules.exports.pdf_builder import (
+    build_overall_ranking_pdf,
     build_paper_review_pdf,
     build_print_report_pdf,
     build_ranking_pdf,
     build_team_list_pdf,
+    build_team_report_pdf,
 )
 from modules.paper_review.service import list_papers
 from modules.printing.service import list_print_jobs, list_printers
+from modules.scoring.formula_service import compute_overall_ranking
 from modules.scoring.service import get_ranking, list_matches
 from modules.seasons.service import get_season
 from modules.teams.models import Team
-from modules.teams.service import list_teams
+from modules.teams.service import get_team, list_teams
+
+#: Team reports include practice runs, which are internal to a team: the team
+#: itself and organizers only.
+TEAM_REPORT_ELEVATED = ("scoring:admin", "teams:admin")
 
 router = APIRouter(prefix="/exports", tags=["exports"])
 
@@ -109,6 +117,63 @@ async def export_event_ranking_pdf(
         content=content,
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="ranking-{event.slug}.pdf"'},
+    )
+
+
+async def _overall_entries(db: AsyncSession, event) -> list[dict]:
+    """Formula-engine overall ranking of every active category of the event."""
+    season = await get_season(db, event.season_id)
+    categories = list(season.active_categories or ["botball"])
+    return await compute_overall_ranking(db, event.id, categories)
+
+
+@router.get("/events/{event_id}/overall-ranking.csv")
+async def export_event_overall_ranking_csv(
+    event_id: str,
+    _=Depends(require_any_permission("scoring:read", "dashboard:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Overall ranking with every value the season's formula set computed."""
+    event = await get_event(db, event_id)
+    entries = await _overall_entries(db, event)
+    value_keys: list[str] = []
+    for entry in entries:
+        for key in entry.get("values", {}):
+            if key not in value_keys:
+                value_keys.append(key)
+    buf = io.StringIO()
+    writer = _SafeWriter(buf)
+    writer.writerow(["Rank", "Team", "Category", *value_keys])
+    for entry in entries:
+        values = entry.get("values", {})
+        writer.writerow(
+            [
+                entry["rank"],
+                entry.get("team_name") or entry["team_id"],
+                entry.get("category", ""),
+                *(f"{values[k]:.4f}" if k in values else "" for k in value_keys),
+            ]
+        )
+    return Response(
+        content=buf.getvalue().encode("utf-8-sig"),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="overall-ranking-{event.slug}.csv"'},
+    )
+
+
+@router.get("/events/{event_id}/overall-ranking.pdf")
+async def export_event_overall_ranking_pdf(
+    event_id: str,
+    _=Depends(require_any_permission("scoring:read", "dashboard:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await get_event(db, event_id)
+    season = await get_season(db, event.season_id)
+    content = build_overall_ranking_pdf(event.name, season.name, await _overall_entries(db, event))
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="overall-ranking-{event.slug}.pdf"'},
     )
 
 
@@ -580,4 +645,125 @@ async def export_teams_csv(
         content=buf.getvalue().encode("utf-8-sig"),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="teams-{season.year}.csv"'},
+    )
+
+
+# ── Team report & multi-year history ──────────────────────────────────────────
+
+_HISTORY_HEADER = [
+    "Saison-Jahr",
+    "Saison",
+    "Event",
+    "Event-Typ",
+    "Beginn",
+    "Team",
+    "Team-Nr.",
+    "Kategorie",
+    "Seeding-Rang",
+    "Seeding-Teams",
+    "Seed-Score",
+    "Bester Lauf",
+    "Ø Lauf",
+    "Läufe",
+    "Gesamtrang",
+    "Gesamt-Teams",
+    "Gesamt-Score",
+    "DE-Score",
+    "Doku-Score",
+    "Paper-Score",
+]
+
+
+def _num(value, digits: int = 3) -> str:
+    return f"{value:.{digits}f}" if isinstance(value, int | float) else ""
+
+
+def _history_csv(rows: list[dict], with_practice: bool) -> bytes:
+    buf = io.StringIO()
+    writer = _SafeWriter(buf)
+    writer.writerow(_HISTORY_HEADER + (["Übungsläufe", "Ø Übung"] if with_practice else []))
+    for r in rows:
+        line = [
+            r["season_year"],
+            r["season_name"],
+            r["event_name"],
+            r["event_type"],
+            r["starts_at"].date().isoformat() if r.get("starts_at") else "",
+            r["team_name"],
+            r.get("team_number") or "",
+            r["category"],
+            r.get("seeding_rank") or "",
+            r.get("seeding_teams") or "",
+            _num(r.get("seeding_score"), 2),
+            _num(r.get("best_score"), 2),
+            _num(r.get("official_avg"), 2),
+            r.get("official_runs", 0),
+            r.get("overall_rank") or "",
+            r.get("overall_teams") or "",
+            _num(r.get("overall_score")),
+            _num(r.get("de_score")),
+            _num(r.get("doc_score")),
+            _num(r.get("paper_score")),
+        ]
+        if with_practice:
+            line += [r.get("practice_runs", 0), _num(r.get("practice_avg"), 2)]
+        writer.writerow(line)
+    return buf.getvalue().encode("utf-8-sig")
+
+
+@router.get("/teams/{team_id}/report.pdf")
+async def export_team_report_pdf(
+    team_id: str,
+    current_user=Depends(require_permission("teams:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Results of one team across every event and season."""
+    await assert_team_access(db, current_user, team_id, TEAM_REPORT_ELEVATED)
+    team = await get_team(db, team_id)
+    history = await team_history(db, team_id, include_practice=True)
+    content = build_team_report_pdf(
+        {
+            "name": team.name,
+            "team_number": team.team_number,
+            "school": team.school,
+            "city": team.city,
+            "country": team.country,
+        },
+        history,
+    )
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="teambericht-{team.id[:8]}.pdf"'},
+    )
+
+
+@router.get("/teams/{team_id}/history.csv")
+async def export_team_history_csv(
+    team_id: str,
+    current_user=Depends(require_permission("teams:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Multi-year results of one team as CSV."""
+    await assert_team_access(db, current_user, team_id, TEAM_REPORT_ELEVATED)
+    team = await get_team(db, team_id)
+    rows = await team_history(db, team_id, include_practice=True)
+    return Response(
+        content=_history_csv(rows, with_practice=True),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="historie-{team.id[:8]}.csv"'},
+    )
+
+
+@router.get("/history.csv")
+async def export_all_history_csv(
+    _=Depends(require_any_permission(*TEAM_REPORT_ELEVATED)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Official results of every team at every event over all seasons."""
+    rows = await all_teams_history(db)
+    return Response(
+        content=_history_csv(rows, with_practice=False),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="mehrjahresvergleich.csv"'},
     )
