@@ -126,6 +126,7 @@ async def update_print_job(
     _=Depends(require_permission("printing:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    await service.ensure_job_writable(db, await service.get_print_job(db, job_id))
     return await service.update_print_job(db, job_id, **body.model_dump(exclude_none=True))
 
 
@@ -172,6 +173,7 @@ async def upload_print_file(
 ):
     # Check the record and the caller's access before anything touches the disk.
     job = await _get_visible_job(db, current_user, job_id)
+    await service.ensure_job_writable(db, job)
     as_admin = await has_elevated_access(db, current_user, "printing:admin")
     service.assert_file_replaceable(job, as_admin=as_admin)
     relative_path, file_name, size = await files.save_print_file(file, job.id)

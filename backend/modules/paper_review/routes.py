@@ -108,6 +108,7 @@ async def upload_paper_file(
     # Validate the record and the caller's access before writing anything to disk.
     paper = await service.get_paper(db, paper_id)
     await assert_team_access(db, current_user, paper.team_id, "papers:admin")
+    await service.ensure_paper_writable(db, paper)
     _file_path, file_name, file_size = await service.save_file(file, paper_id)
     return await service.update_paper(
         db,

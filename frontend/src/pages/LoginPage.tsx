@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -113,6 +113,14 @@ export default function LoginPage() {
             <button type="submit" className="btn-primary w-full justify-center" disabled={isSubmitting}>
               {isSubmitting ? "Anmelden..." : "Anmelden"}
             </button>
+            <p className="text-center text-sm">
+              <Link
+                to="/forgot-password"
+                className="text-primary-600 hover:underline dark:text-primary-400"
+              >
+                Passwort vergessen?
+              </Link>
+            </p>
           </form>
         </div>
       </div>

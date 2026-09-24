@@ -3,22 +3,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.exceptions import ConflictError, NotFoundError
+from modules.seasons.lifecycle import (
+    ARCHIVED,
+    ARCHIVED_SEASON_MESSAGE,
+    DRAFT,
+    ensure_writable,
+    season_has_data,
+)
 from modules.seasons.models import CompetitionLevel, Season, SeasonEvent, SeasonPhase
 
 
-async def list_seasons(db: AsyncSession) -> list[Season]:
-    result = await db.execute(
-        select(Season).options(selectinload(Season.phases)).order_by(Season.year.desc())
-    )
+async def list_seasons(db: AsyncSession, include_drafts: bool = True) -> list[Season]:
+    query = select(Season).options(selectinload(Season.phases)).order_by(Season.year.desc())
+    if not include_drafts:
+        query = query.where(Season.status != DRAFT)
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 
-async def get_season(db: AsyncSession, season_id: str) -> Season:
+async def get_season(db: AsyncSession, season_id: str, include_drafts: bool = True) -> Season:
     result = await db.execute(
         select(Season).where(Season.id == season_id).options(selectinload(Season.phases))
     )
     season = result.scalar_one_or_none()
-    if not season:
+    # A draft is invisible to users who may not edit seasons: same 404 as a
+    # season that does not exist, so its existence is not disclosed either.
+    if not season or (season.status == DRAFT and not include_drafts):
         raise NotFoundError("Season not found")
     return season
 
@@ -37,34 +47,72 @@ async def get_active_season(db: AsyncSession) -> Season | None:
     return result.scalars().first()
 
 
-async def create_season(db: AsyncSession, data: dict, phases: list[dict]) -> Season:
+async def _deactivate_other_seasons(db: AsyncSession, season_id: str | None) -> None:
+    """At most one season is active; the one being replaced counts as finished."""
+    others = update(Season).where(Season.is_active.is_(True))
+    if season_id:
+        others = others.where(Season.id != season_id)
+    await db.execute(others.values(is_active=False))
+    finished = update(Season).where(Season.status == "active")
+    if season_id:
+        finished = finished.where(Season.id != season_id)
+    await db.execute(finished.values(status="finished"))
+
+
+async def _apply_status(db: AsyncSession, season: Season, status: str) -> None:
+    if status == "active":
+        await _deactivate_other_seasons(db, season.id)
+        season.is_active = True
+    else:
+        season.is_active = False
+    season.status = status
+
+
+async def create_season(
+    db: AsyncSession,
+    data: dict,
+    phases: list[dict],
+    create_default_event: bool = True,
+) -> Season:
     from modules.events.models import Event, EventPhase
 
-    season = Season(**data)
+    is_active = bool(data.pop("is_active", False))
+    status = data.pop("status", None) or ("active" if is_active else DRAFT)
+    if is_active or status == "active":
+        # Same deactivate-all step as set_active_season. Without it the setup
+        # wizard's "is_active: true" was silently dropped and /seasons/active
+        # kept pointing at the old season.
+        await _deactivate_other_seasons(db, None)
+        is_active, status = True, "active"
+
+    season = Season(**data, is_active=is_active, status=status)
     db.add(season)
     await db.flush()
 
-    event = Event(
-        season_id=season.id,
-        name=f"{season.name} – Main Event",
-        slug=f"season-{season.year}-{season.id[:8]}",
-        status="draft",
-        active_modules=["seeding"],
-    )
-    db.add(event)
-    await db.flush()
+    event = None
+    if create_default_event:
+        event = Event(
+            season_id=season.id,
+            name=f"{season.name} – Main Event",
+            slug=f"season-{season.year}-{season.id[:8]}",
+            status="draft",
+            active_modules=["seeding"],
+        )
+        db.add(event)
+        await db.flush()
 
     for sort_order, phase_data in enumerate(phases):
         db.add(SeasonPhase(season_id=season.id, **phase_data))
-        db.add(
-            EventPhase(
-                event_id=event.id,
-                name=phase_data["name"],
-                phase_type="seeding",
-                sort_order=sort_order,
-                status="live" if phase_data.get("is_active") else "draft",
+        if event is not None:
+            db.add(
+                EventPhase(
+                    event_id=event.id,
+                    name=phase_data["name"],
+                    phase_type="seeding",
+                    sort_order=sort_order,
+                    status="live" if phase_data.get("is_active") else "draft",
+                )
             )
-        )
 
     # The phases are still pending, and autoflush is off — without this the
     # refresh re-SELECTs and the response reports no phases at all.
@@ -75,22 +123,33 @@ async def create_season(db: AsyncSession, data: dict, phases: list[dict]) -> Sea
 
 async def update_season(db: AsyncSession, season_id: str, **kwargs) -> Season:
     season = await get_season(db, season_id)
+    status = kwargs.pop("status", None)
+    is_active = kwargs.pop("is_active", None)
+    changes = {key: value for key, value in kwargs.items() if value is not None}
+
+    if season.status == ARCHIVED and changes:
+        # Only the lifecycle itself may change: un-archive first, then edit.
+        raise ConflictError(ARCHIVED_SEASON_MESSAGE)
+
     # At most one season may be active. A PATCH setting is_active=True has to go
     # through the same deactivate-all step as set_active_season, otherwise it
     # silently creates a second active season and breaks GET /seasons/active.
-    if kwargs.get("is_active") is True:
-        await db.execute(update(Season).values(is_active=False))
-    for key, value in kwargs.items():
-        if value is not None:
-            setattr(season, key, value)
+    if status is None and is_active is not None:
+        if is_active:
+            status = "active"
+        elif season.status == "active":
+            status = "finished"
+    if status is not None:
+        await _apply_status(db, season, status)
+
+    for key, value in changes.items():
+        setattr(season, key, value)
     return season
 
 
 async def set_active_season(db: AsyncSession, season_id: str) -> Season:
-    # Deactivate all
-    await db.execute(update(Season).values(is_active=False))
     season = await get_season(db, season_id)
-    season.is_active = True
+    await _apply_status(db, season, "active")
     return season
 
 
@@ -98,10 +157,19 @@ async def delete_season(db: AsyncSession, season_id: str) -> None:
     season = await get_season(db, season_id)
     if season.is_active:
         raise ConflictError("Cannot delete active season")
+    # Deleting cascades through every table that references the season, score
+    # revisions included. Tournament history must be archived, not deleted.
+    if await season_has_data(db, season_id):
+        raise ConflictError(
+            "Season has registrations, matches, results, papers or print jobs; "
+            "archive it instead of deleting it"
+        )
     await db.delete(season)
+    await db.flush()
 
 
 async def activate_phase(db: AsyncSession, season_id: str, phase_id: str) -> SeasonPhase:
+    await ensure_writable(db, season_id=season_id)
     # Deactivate all phases in this season
     result = await db.execute(select(SeasonPhase).where(SeasonPhase.season_id == season_id))
     for existing_phase in result.scalars().all():
@@ -172,6 +240,7 @@ async def list_events(db: AsyncSession, season_id: str) -> list[SeasonEvent]:
 
 async def create_event(db: AsyncSession, season_id: str, data: dict) -> SeasonEvent:
     await get_season(db, season_id)  # validate season exists
+    await ensure_writable(db, season_id=season_id)
     event = SeasonEvent(season_id=season_id, **data)
     db.add(event)
     await db.flush()
@@ -179,6 +248,7 @@ async def create_event(db: AsyncSession, season_id: str, data: dict) -> SeasonEv
 
 
 async def delete_event(db: AsyncSession, season_id: str, event_id: str) -> None:
+    await ensure_writable(db, season_id=season_id)
     result = await db.execute(
         select(SeasonEvent).where(
             SeasonEvent.id == event_id,

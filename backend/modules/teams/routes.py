@@ -80,6 +80,9 @@ async def register_for_season(
         db,
         body.team_id,
         body.season_id,
+        # Organizers may register late (or early); mentors only within the
+        # season's registration window.
+        enforce_window=not await has_elevated_access(db, current_user, "teams:admin"),
         competition_level_id=body.competition_level_id,
         notes=body.notes,
     )

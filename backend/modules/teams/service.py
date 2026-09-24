@@ -1,8 +1,11 @@
+from datetime import date
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.exceptions import ConflictError, NotFoundError
+from modules.seasons.lifecycle import DRAFT, ensure_writable
 from modules.teams.models import Team, TeamMember, TeamSeasonRegistration
 
 
@@ -84,9 +87,38 @@ async def remove_member(db: AsyncSession, team_id: str, member_id: str) -> None:
     await db.delete(member)
 
 
+def registration_window_open(season, today: date | None = None) -> bool:
+    """Whether ``today`` lies within the season's registration window.
+
+    Unset bounds are open-ended; a season without any window accepts
+    registrations at any time (the previous behaviour).
+    """
+    today = today or date.today()
+    if season.registration_open and today < season.registration_open:
+        return False
+    if season.registration_close and today > season.registration_close:
+        return False
+    return True
+
+
 async def register_for_season(
-    db: AsyncSession, team_id: str, season_id: str, **kwargs
+    db: AsyncSession,
+    team_id: str,
+    season_id: str,
+    *,
+    enforce_window: bool = False,
+    **kwargs,
 ) -> TeamSeasonRegistration:
+    from modules.seasons.models import Season
+
+    season = await db.get(Season, season_id)
+    # Mentors cannot see draft seasons, so they cannot register for one either.
+    if not season or (enforce_window and season.status == DRAFT):
+        raise NotFoundError("Season not found")
+    await ensure_writable(db, season_id=season_id)
+    if enforce_window and not registration_window_open(season):
+        raise ConflictError("Registration for this season is closed")
+
     existing = await db.execute(
         select(TeamSeasonRegistration).where(
             TeamSeasonRegistration.team_id == team_id,
@@ -110,6 +142,7 @@ async def confirm_registration(db: AsyncSession, registration_id: str) -> TeamSe
     reg = result.scalar_one_or_none()
     if not reg:
         raise NotFoundError("Registration not found")
+    await ensure_writable(db, season_id=reg.season_id)
     reg.confirmed = True
     return reg
 
@@ -121,6 +154,7 @@ async def delete_registration(db: AsyncSession, registration_id: str) -> None:
     reg = result.scalar_one_or_none()
     if not reg:
         raise NotFoundError("Registration not found")
+    await ensure_writable(db, season_id=reg.season_id)
     await db.delete(reg)
 
 

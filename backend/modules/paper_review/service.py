@@ -18,8 +18,14 @@ from modules.paper_review.models import (
     ReviewerAssignment,
 )
 from modules.scoring.service import resolve_event
+from modules.seasons.lifecycle import ensure_writable
 
 settings = get_settings()
+
+
+async def ensure_paper_writable(db: AsyncSession, paper: Paper) -> None:
+    """Papers of an archived season/event are read-only history."""
+    await ensure_writable(db, season_id=paper.season_id, event_id=paper.event_id)
 
 
 async def save_file(file: UploadFile, paper_id: str) -> tuple[str, str, int]:
@@ -102,7 +108,9 @@ async def get_paper(db: AsyncSession, paper_id: str) -> Paper:
 async def create_paper(db: AsyncSession, data: dict) -> Paper:
     data = data.copy()
     requested_event_id = data.get("event_id")
+    await ensure_writable(db, season_id=data["season_id"])
     event = await resolve_event(db, data["season_id"], data.get("event_id"))
+    await ensure_writable(db, event_id=event.id)
     data["event_id"] = event.id
     from modules.events.models import EventRegistration
 
@@ -130,6 +138,7 @@ async def create_paper(db: AsyncSession, data: dict) -> Paper:
 
 async def update_paper(db: AsyncSession, paper_id: str, **kwargs) -> Paper:
     paper = await get_paper(db, paper_id)
+    await ensure_paper_writable(db, paper)
     for key, value in kwargs.items():
         if value is not None:
             setattr(paper, key, value)
@@ -138,6 +147,7 @@ async def update_paper(db: AsyncSession, paper_id: str, **kwargs) -> Paper:
 
 async def submit_paper(db: AsyncSession, paper_id: str, submitted_by: str) -> Paper:
     paper = await get_paper(db, paper_id)
+    await ensure_paper_writable(db, paper)
     if paper.status not in ("draft", "revision_requested"):
         raise ConflictError("Paper cannot be submitted in its current state")
     paper.status = "submitted"
@@ -186,6 +196,7 @@ async def set_paper_status(
     reason: str | None = None,
 ) -> Paper:
     paper = await get_paper(db, paper_id)
+    await ensure_paper_writable(db, paper)
     old_status = paper.status
     if old_status == status and status != "revision_requested":
         return paper
@@ -223,7 +234,7 @@ async def assign_reviewer(
     assigned_by: str,
     due_at: datetime | None = None,
 ) -> ReviewerAssignment:
-    await get_paper(db, paper_id)
+    await ensure_paper_writable(db, await get_paper(db, paper_id))
     existing = await db.execute(
         select(ReviewerAssignment).where(
             ReviewerAssignment.paper_id == paper_id,
@@ -298,6 +309,7 @@ async def finalize_paper(db: AsyncSession, paper_id: str) -> Paper:
     """Aggregate the submitted reviews of the current revision into a final
     score (0-1 = average reviewer score / 10) and recompute the season ranking."""
     paper = await get_paper(db, paper_id)
+    await ensure_paper_writable(db, paper)
     submitted = [
         r
         for r in paper.reviews
@@ -323,6 +335,7 @@ async def save_review(
     submit: bool = False,
 ) -> PaperReview:
     paper = await get_paper(db, paper_id)
+    await ensure_paper_writable(db, paper)
 
     # Verify assignment
     assignment = await db.execute(

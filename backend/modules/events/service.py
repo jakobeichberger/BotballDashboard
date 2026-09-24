@@ -14,6 +14,7 @@ from modules.events.models import (
     MatchParticipant,
     ScheduledMatch,
 )
+from modules.seasons.lifecycle import ARCHIVED, DRAFT, ensure_writable
 from modules.seasons.models import CompetitionLevel, Season
 from modules.teams.models import Team, TeamSeasonRegistration
 
@@ -23,8 +24,15 @@ async def list_events(
     season_id: str | None = None,
     status: str | None = None,
     limit: int | None = None,
+    include_drafts: bool = True,
 ) -> list[Event]:
     query = select(Event).order_by(Event.starts_at.desc().nullslast(), Event.name)
+    if not include_drafts:
+        # Draft events, and every event of a draft season, are not visible to
+        # users without events:write (guests, mentors).
+        query = query.join(Season, Season.id == Event.season_id).where(
+            Event.status != DRAFT, Season.status != DRAFT
+        )
     if season_id:
         query = query.where(Event.season_id == season_id)
     if status:
@@ -35,11 +43,17 @@ async def list_events(
     return list(result.scalars().all())
 
 
-async def get_event(db: AsyncSession, event_id: str) -> Event:
+async def get_event(db: AsyncSession, event_id: str, include_drafts: bool = True) -> Event:
     result = await db.execute(select(Event).where(Event.id == event_id))
     event = result.scalar_one_or_none()
     if not event:
         raise NotFoundError("Event not found")
+    if not include_drafts:
+        season_status = (
+            await db.execute(select(Season.status).where(Season.id == event.season_id))
+        ).scalar_one_or_none()
+        if event.status == DRAFT or season_status == DRAFT:
+            raise NotFoundError("Event not found")
     return event
 
 
@@ -59,6 +73,7 @@ async def get_public_event(db: AsyncSession, slug: str) -> Event:
 async def create_event(db: AsyncSession, data: dict) -> Event:
     if not await db.get(Season, data["season_id"]):
         raise NotFoundError("Season not found")
+    await ensure_writable(db, season_id=data["season_id"])
     event = Event(**data)
     db.add(event)
     try:
@@ -72,6 +87,8 @@ async def create_event(db: AsyncSession, data: dict) -> Event:
 
 async def update_event(db: AsyncSession, event_id: str, data: dict) -> Event:
     event = await get_event(db, event_id)
+    # An archived event may only be taken out of the archive (status change).
+    await ensure_writable(db, event_id=event_id, allow_archived_event=set(data) <= {"status"})
     for key, value in data.items():
         setattr(event, key, value)
     if event.starts_at and event.ends_at and event.ends_at <= event.starts_at:
@@ -89,6 +106,9 @@ async def delete_event(db: AsyncSession, event_id: str) -> None:
     event = await get_event(db, event_id)
     if event.status in ("live", "completed"):
         raise ConflictError("Live or completed events cannot be deleted")
+    if event.status == ARCHIVED:
+        raise ConflictError("Archived events cannot be deleted")
+    await ensure_writable(db, event_id=event_id)
     await db.delete(event)
 
 
@@ -105,6 +125,7 @@ async def list_registrations(db: AsyncSession, event_id: str) -> list[EventRegis
 
 async def add_registration(db: AsyncSession, event_id: str, data: dict) -> EventRegistration:
     event = await get_event(db, event_id)
+    await ensure_writable(db, event_id=event_id)
     team = await db.get(Team, data["team_id"])
     if not team:
         raise NotFoundError("Team not found")
@@ -175,6 +196,7 @@ async def ensure_legacy_default_registration(
 async def update_registration(
     db: AsyncSession, event_id: str, registration_id: str, data: dict
 ) -> EventRegistration:
+    await ensure_writable(db, event_id=event_id)
     result = await db.execute(
         select(EventRegistration)
         .options(selectinload(EventRegistration.team))
@@ -209,6 +231,7 @@ async def list_phases(db: AsyncSession, event_id: str) -> list[EventPhase]:
 
 async def create_phase(db: AsyncSession, event_id: str, data: dict) -> EventPhase:
     await get_event(db, event_id)
+    await ensure_writable(db, event_id=event_id)
     phase = EventPhase(event_id=event_id, **data)
     db.add(phase)
     try:
@@ -220,6 +243,7 @@ async def create_phase(db: AsyncSession, event_id: str, data: dict) -> EventPhas
 
 
 async def update_phase(db: AsyncSession, event_id: str, phase_id: str, data: dict) -> EventPhase:
+    await ensure_writable(db, event_id=event_id)
     result = await db.execute(
         select(EventPhase).where(EventPhase.id == phase_id, EventPhase.event_id == event_id)
     )
@@ -349,6 +373,7 @@ def _elimination_blueprint(team_ids: list[str], double_elimination: bool) -> lis
 
 async def generate_schedule(db: AsyncSession, event_id: str, data: dict) -> list[ScheduledMatch]:
     event = await get_event(db, event_id)
+    await ensure_writable(db, event_id=event_id)
     phase = await db.get(EventPhase, data["phase_id"])
     if not phase or phase.event_id != event_id:
         raise NotFoundError("Event phase not found")
@@ -437,6 +462,7 @@ async def generate_schedule(db: AsyncSession, event_id: str, data: dict) -> list
 async def update_scheduled_match(
     db: AsyncSession, event_id: str, match_id: str, data: dict
 ) -> ScheduledMatch:
+    await ensure_writable(db, event_id=event_id)
     result = await db.execute(
         select(ScheduledMatch)
         .options(selectinload(ScheduledMatch.participants).selectinload(MatchParticipant.team))

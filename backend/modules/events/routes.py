@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Response, WebSocket
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import assert_team_access, require_permission
+from core.auth import assert_team_access, has_elevated_access, require_permission
 from core.database import get_db
 from core.domain_events import emit_event
 from core.live import publish_live_event, stream_live_events
@@ -40,10 +40,15 @@ public_router = APIRouter(prefix="/v1/public/events", tags=["public-events"])
 async def list_events(
     season_id: str | None = Query(None),
     status: str | None = Query(None),
-    _=Depends(require_permission("events:read")),
+    current_user=Depends(require_permission("events:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_events(db, season_id, status)
+    return await service.list_events(
+        db,
+        season_id,
+        status,
+        include_drafts=await has_elevated_access(db, current_user, "events:write"),
+    )
 
 
 @router.post("", response_model=EventResponse, status_code=201)
@@ -58,10 +63,14 @@ async def create_event(
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(
     event_id: str,
-    _=Depends(require_permission("events:read")),
+    current_user=Depends(require_permission("events:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_event(db, event_id)
+    return await service.get_event(
+        db,
+        event_id,
+        include_drafts=await has_elevated_access(db, current_user, "events:write"),
+    )
 
 
 @router.patch("/{event_id}", response_model=EventResponse)

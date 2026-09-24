@@ -21,6 +21,7 @@ from modules.scoring.formula_engine import (
 )
 from modules.scoring.formula_models import ScoringBracketWeight, ScoringFormula
 from modules.scoring.models import Match
+from modules.seasons.lifecycle import ensure_writable
 from modules.teams.models import Team, TeamSeasonRegistration
 
 CATEGORIES = ("botball", "open", "aerial", "jbc")
@@ -79,6 +80,7 @@ async def replace_formula_set(
     """
     if category not in CATEGORIES:
         raise BadRequestError(f"Unknown category '{category}'")
+    await ensure_writable(db, season_id=season_id)
 
     pairs = [(f["key"], f["expression"]) for f in formulas]
     keys = [k for k, _ in pairs]
@@ -141,6 +143,7 @@ async def get_bracket_weights(db: AsyncSession, season_id: str, category: str) -
 async def set_bracket_weights(
     db: AsyncSession, season_id: str, category: str, weights: dict[str, float]
 ) -> dict[str, float]:
+    await ensure_writable(db, season_id=season_id)
     await db.execute(
         delete(ScoringBracketWeight).where(
             ScoringBracketWeight.season_id == season_id,

@@ -72,6 +72,15 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if not user:
         raise UnauthorizedError("User not found or inactive")
+    # Access tokens carry the user's token_version ("tv"). A password change or
+    # reset, deactivation or account deletion bumps it, so tokens issued before
+    # that stop working immediately instead of at their expiry.
+    try:
+        token_version = int(payload.get("tv", 0))
+    except (TypeError, ValueError):
+        raise UnauthorizedError("Invalid or expired token")
+    if token_version != (user.token_version or 0):
+        raise UnauthorizedError("Token has been revoked")
     return user
 
 
