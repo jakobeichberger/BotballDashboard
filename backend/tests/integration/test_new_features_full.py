@@ -8,6 +8,7 @@ The admin fixture is a superuser and bypasses every permission check.
 import pytest
 
 from core.auth import create_access_token
+from tests.paper_helpers import api_upload_and_submit
 
 
 class TestSeasonEvents:
@@ -206,6 +207,7 @@ class TestPaperFinalize:
         )
         assert p.status_code == 201
         pid = p.json()["id"]
+        await api_upload_and_submit(client, auth_headers, pid)
         await db.commit()
 
         a = await client.post(
@@ -222,9 +224,10 @@ class TestPaperFinalize:
             headers=rev_headers,
             json={
                 "score_content": 8,
-                "score_methodology": 8,
-                "score_presentation": 8,
-                "score_originality": 8,
+                "score_implementation": 8,
+                "score_results": 8,
+                "score_language": 8,
+                "score_format": 8,
                 "recommendation": "accept",
             },
         )

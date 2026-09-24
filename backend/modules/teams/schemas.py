@@ -10,6 +10,15 @@ class TeamMemberCreate(BaseModel):
     user_id: str | None = None
 
 
+class TeamMemberUpdate(BaseModel):
+    """Partial update; an explicit ``user_id: null`` unlinks the account."""
+
+    name: str | None = None
+    email: str | None = None
+    role: str | None = None
+    user_id: str | None = None
+
+
 class TeamMemberResponse(BaseModel):
     model_config = {"from_attributes": True}
 

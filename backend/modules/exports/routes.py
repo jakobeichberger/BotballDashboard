@@ -391,6 +391,92 @@ async def export_papers_csv(
     )
 
 
+# ── Paper Reviews CSV (one row per review) ────────────────────────────────────
+
+
+@router.get("/seasons/{season_id}/reviews.csv")
+async def export_reviews_csv(
+    season_id: str,
+    _=Depends(require_any_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every review of the season with all criterion scores and comments.
+
+    Organizer-only: unlike the team's feedback view it names the reviewer and
+    includes drafts and private notes.
+    """
+    from modules.auth.models import User
+    from modules.paper_review.models import REVIEW_CRITERIA
+
+    season = await get_season(db, season_id)
+    papers = await list_papers(db, season_id=season_id)
+    teams = await _teams_map(db, season_id)
+    reviewer_ids = {r.reviewer_id for p in papers for r in p.reviews}
+    reviewers = (
+        {
+            u.id: u
+            for u in (await db.execute(select(User).where(User.id.in_(reviewer_ids)))).scalars()
+        }
+        if reviewer_ids
+        else {}
+    )
+
+    buf = io.StringIO()
+    writer = _SafeWriter(buf)
+    writer.writerow(
+        [
+            "Team",
+            "Titel",
+            "Paper-Status",
+            "Runde",
+            "Version",
+            "Reviewer",
+            "Reviewer E-Mail",
+            "Abgegeben",
+            *[f"Score {name}" for name in REVIEW_CRITERIA],
+            "Gesamt",
+            "Empfehlung",
+            *[f"Kommentar {name}" for name in REVIEW_CRITERIA],
+            "Kommentar",
+            "Revisionshinweise",
+            "Private Notizen",
+            "Abgegeben am",
+        ]
+    )
+    for p in papers:
+        for r in sorted(p.reviews, key=lambda r: (r.revision_number, r.created_at)):
+            reviewer = reviewers.get(r.reviewer_id)
+            writer.writerow(
+                [
+                    teams.get(p.team_id, p.team_id),
+                    p.title,
+                    p.status,
+                    r.revision_number,
+                    r.version_number if r.version_number is not None else "",
+                    reviewer.display_name if reviewer else r.reviewer_id,
+                    reviewer.email if reviewer else "",
+                    "ja" if r.is_submitted else "nein",
+                    *[
+                        "" if getattr(r, f"score_{n}") is None else getattr(r, f"score_{n}")
+                        for n in REVIEW_CRITERIA
+                    ],
+                    "" if r.total_score is None else r.total_score,
+                    r.recommendation or "",
+                    *[getattr(r, f"comment_{n}") or "" for n in REVIEW_CRITERIA],
+                    r.comments or "",
+                    r.revision_notes or "",
+                    r.private_notes or "",
+                    r.submitted_at.isoformat() if r.submitted_at else "",
+                ]
+            )
+
+    return Response(
+        content=buf.getvalue().encode("utf-8-sig"),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="paper-reviews-{season.year}.csv"'},
+    )
+
+
 # ── Print Report PDF ──────────────────────────────────────────────────────────
 
 

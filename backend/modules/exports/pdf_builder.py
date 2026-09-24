@@ -154,10 +154,13 @@ def build_paper_review_pdf(
         "accepted": "Angenommen",
         "rejected": "Abgelehnt",
         "revision_requested": "Überarbeitung",
+        "resubmitted": "Neu eingereicht",
+        "disqualified_ai": "Disqualifiziert (KI)",
     }
     status_colors = {
         "accepted": GREEN,
         "rejected": RED,
+        "disqualified_ai": RED,
         "revision_requested": YELLOW,
     }
 

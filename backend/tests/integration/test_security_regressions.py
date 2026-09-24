@@ -16,6 +16,7 @@ from modules.auth.models import Permission, Role, RolePermission, User, UserRole
 from modules.auth.service import hash_password
 from modules.scoring.models import ScoringSchema
 from modules.teams.models import Team, TeamMember
+from tests.paper_helpers import FULL_SCORES, api_upload_and_submit
 
 
 async def _mentor(db, team):
@@ -190,6 +191,7 @@ class TestReviewScoreBounds:
             json={"season_id": season.id, "team_id": team.id, "title": "P"},
         )
         pid = paper.json()["id"]
+        await api_upload_and_submit(client, auth_headers, pid)
         reviewer = User(
             email="rev-bounds@test.com",
             display_name="Rev",
@@ -221,12 +223,7 @@ class TestReviewScoreBounds:
         ok = await client.put(
             f"/api/papers/{pid}/reviews?submit=true",
             headers=headers,
-            json={
-                "score_content": 8,
-                "score_methodology": 8,
-                "score_presentation": 8,
-                "score_originality": 8,
-            },
+            json={**FULL_SCORES, "recommendation": "accept"},
         )
         assert ok.status_code == 200
         await db.commit()

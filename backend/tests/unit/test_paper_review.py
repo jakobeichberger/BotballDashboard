@@ -14,6 +14,7 @@ from modules.paper_review.service import (
     set_paper_status,
     submit_paper,
 )
+from tests.paper_helpers import FULL_SCORES, add_version, submitted_paper
 
 
 @pytest_asyncio.fixture
@@ -43,10 +44,7 @@ class TestPaperStatusTransitions:
 
     @pytest.mark.asyncio
     async def test_submit_paper_changes_status(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await db.flush()
-
-        submitted = await submit_paper(db, paper.id, admin_user.id)
+        submitted = await submitted_paper(db, paper_data, admin_user.id)
         await db.commit()
 
         assert submitted.status == "submitted"
@@ -54,10 +52,14 @@ class TestPaperStatusTransitions:
         assert submitted.submitted_by == admin_user.id
 
     @pytest.mark.asyncio
-    async def test_cannot_submit_already_submitted_paper(self, db, paper_data, admin_user):
+    async def test_submit_requires_a_pdf(self, db, paper_data, admin_user):
         paper = await create_paper(db, paper_data)
-        await db.flush()
-        await submit_paper(db, paper.id, admin_user.id)
+        with pytest.raises(ConflictError):
+            await submit_paper(db, paper.id, admin_user.id)
+
+    @pytest.mark.asyncio
+    async def test_cannot_submit_already_submitted_paper(self, db, paper_data, admin_user):
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await db.commit()
 
         with pytest.raises(ConflictError):
@@ -75,17 +77,16 @@ class TestPaperStatusTransitions:
         assert paper.revision_number == 2
 
     @pytest.mark.asyncio
-    async def test_resubmit_after_revision_allowed(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await db.flush()
-        await submit_paper(db, paper.id, admin_user.id)
+    async def test_resubmit_after_revision_is_resubmitted(self, db, paper_data, admin_user):
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await set_paper_status(db, paper.id, "revision_requested")
         await db.commit()
 
         assert paper.status == "revision_requested"
-        # Should now be re-submittable
+        await add_version(db, paper.id)
         resubmitted = await submit_paper(db, paper.id, admin_user.id)
-        assert resubmitted.status == "submitted"
+        assert resubmitted.status == "resubmitted"
+        assert resubmitted.current_version == 2
 
     @pytest.mark.asyncio
     async def test_set_status_accepted(self, db, paper_data):
@@ -105,8 +106,7 @@ class TestPaperStatusTransitions:
 
     @pytest.mark.asyncio
     async def test_status_changes_are_append_only_history(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await submit_paper(db, paper.id, admin_user.id)
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await set_paper_status(db, paper.id, "accepted", admin_user.id)
         history = await list_status_history(db, paper.id)
         assert [item.to_status for item in history] == ["draft", "submitted", "accepted"]
@@ -123,6 +123,7 @@ class TestReviewerAssignment:
 
         assert assignment.paper_id == paper.id
         assert assignment.reviewer_id == admin_user.id
+        assert assignment.status == "pending"
 
     @pytest.mark.asyncio
     async def test_duplicate_assignment_raises_conflict(self, db, paper_data, admin_user):
@@ -164,40 +165,25 @@ class TestReviewerAssignment:
 class TestReviewScores:
     @pytest.mark.asyncio
     async def test_review_total_score_is_average(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await db.flush()
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
-        review = await save_review(
-            db,
-            paper.id,
-            admin_user.id,
-            {
-                "score_content": 8.0,
-                "score_methodology": 6.0,
-                "score_presentation": 7.0,
-                "score_originality": 9.0,
-            },
-        )
+        review = await save_review(db, paper.id, admin_user.id, dict(FULL_SCORES))
         await db.commit()
 
-        # avg(8, 6, 7, 9) = 7.5
-        assert review.total_score == 7.5
+        # avg(8, 6, 7, 9, 10) = 8.0
+        assert review.total_score == 8.0
 
     @pytest.mark.asyncio
     async def test_partial_scores_compute_average_of_filled(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await db.flush()
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
         review = await save_review(
             db,
             paper.id,
             admin_user.id,
-            {
-                "score_content": 8.0,
-                "score_methodology": 6.0,
-            },
+            {"score_content": 8.0, "score_implementation": 6.0},
         )
         await db.commit()
 
@@ -206,19 +192,19 @@ class TestReviewScores:
 
     @pytest.mark.asyncio
     async def test_submit_review_marks_is_submitted(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await db.flush()
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
         review = await save_review(
             db,
             paper.id,
             admin_user.id,
-            {"score_content": 7.0, "recommendation": "accept"},
+            {**FULL_SCORES, "recommendation": "accept"},
             submit=True,
         )
         await db.commit()
 
         assert review.is_submitted is True
         assert review.submitted_at is not None
+        assert review.version_number == 1
         assert paper.status == "under_review"

@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core.exceptions import ConflictError, NotFoundError
+from core.exceptions import ConflictError, NotFoundError, ValidationError
 from modules.teams.models import Team, TeamMember, TeamSeasonRegistration
 
 
@@ -69,6 +69,46 @@ async def add_member(db: AsyncSession, team_id: str, member_data: dict) -> TeamM
     await get_team(db, team_id)  # validate exists
     member = TeamMember(team_id=team_id, **member_data)
     db.add(member)
+    await db.flush()
+    await db.refresh(member)
+    return member
+
+
+async def update_member(
+    db: AsyncSession, team_id: str, member_id: str, changes: dict
+) -> TeamMember:
+    """Apply `changes` to a member. Linking a user account (user_id) is what
+    gives a mentor access to the team, so the account must exist, be active
+    and not already be linked to another member of the same team."""
+    result = await db.execute(
+        select(TeamMember).where(TeamMember.id == member_id, TeamMember.team_id == team_id)
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise NotFoundError("Team member not found")
+
+    for key in ("name", "role"):
+        if key in changes and changes[key] is None:
+            raise ValidationError(f"{key} must not be empty")
+    user_id = changes.get("user_id")
+    if user_id:
+        from modules.auth.models import User
+
+        user = await db.get(User, user_id)
+        if not user or not user.is_active:
+            raise ValidationError("User account not found or inactive")
+        duplicate = await db.execute(
+            select(TeamMember.id).where(
+                TeamMember.team_id == team_id,
+                TeamMember.user_id == user_id,
+                TeamMember.id != member_id,
+            )
+        )
+        if duplicate.scalar_one_or_none():
+            raise ConflictError("This account is already linked to another member of the team")
+
+    for key, value in changes.items():
+        setattr(member, key, value)
     await db.flush()
     await db.refresh(member)
     return member
