@@ -2,8 +2,11 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy, Pencil, X } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, isQueuedResponse } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
+import PendingScores from "@/components/PendingScores";
+import ScoreConfirmDialog from "@/components/ScoreConfirmDialog";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useAuthStore } from "@/store/authStore";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import clsx from "clsx";
@@ -28,6 +31,9 @@ export default function ScoreEntryPage() {
 
   const [mode, setMode] = useState<Mode>("contest");
   const isPractice = mode === "practice";
+  const online = useOnlineStatus();
+  const [confirming, setConfirming] = useState(false);
+  const [notice, setNotice] = useState("");
 
   // Scores are entered for the event of the current route; without one the
   // backend falls back to the season's default event.
@@ -72,23 +78,40 @@ export default function ScoreEntryPage() {
   const resetForm = () => { setScores({}); setEditingId(null); };
 
   const saveM = useMutation({
-    // Both branches resolve to the saved match; the response body is unused.
-    mutationFn: async (): Promise<void> => {
+    // Resolves to whether the entry went to the offline queue instead of the server.
+    mutationFn: async (): Promise<boolean> => {
       if (editingId) {
         await api.patch(`/scoring/matches/${editingId}`, { raw_scores: rawFromScores() });
-      } else {
-        await api.post(`/scoring/seasons/${sid}/matches`, {
+        return false;
+      }
+      const { data } = await api.post(
+        `/scoring/seasons/${sid}/matches`,
+        {
           ...(eventId ? { event_id: eventId } : {}),
           team_id: teamId,
           round_number: round,
           is_practice: isPractice,
           raw_scores: rawFromScores(),
-        });
-      }
+          idempotency_key: crypto.randomUUID(),
+        },
+        { offlineLabel: `${teamName(teamId)} · ${isPractice ? "Lauf" : "Runde"} ${round} · ${preview} P.${isPractice ? " (Übung)" : ""}` },
+      );
+      return isQueuedResponse(data);
     },
-    onSuccess: () => { resetForm(); invalidate(); },
-    onError,
+    onSuccess: (queued) => {
+      setConfirming(false);
+      setNotice(queued ? "Offline gespeichert – wird synchronisiert, sobald eine Verbindung besteht." : "");
+      resetForm();
+      invalidate();
+    },
+    onError: (e) => { setConfirming(false); onError(e); },
   });
+  // Official (non-practice) entries get a summary to confirm before they are sent.
+  const submit = () => {
+    setNotice("");
+    if (!editingId && !isPractice) setConfirming(true);
+    else saveM.mutate();
+  };
 
   const startEdit = (m: any) => {
     setEditingId(m.id);
@@ -163,6 +186,14 @@ export default function ScoreEntryPage() {
         </p>
       )}
 
+      {!online && (
+        <p role="alert" className="rounded-lg bg-amber-100 p-3 text-sm text-amber-900">
+          Offline: Neue Wertungen werden auf diesem Gerät gespeichert und automatisch synchronisiert. Bearbeiten, Bestätigen und Löschen brauchen eine Verbindung.
+        </p>
+      )}
+      {sid && <PendingScores filter={(entry) => entry.url === `/scoring/seasons/${sid}/matches` && (entry.eventId ?? undefined) === eventId && !!entry.body.is_practice === isPractice} />}
+      {notice && <p role="status" className="rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">{notice}</p>}
+
       {!season && <p className="text-red-600 text-sm">Keine aktive Saison.</p>}
       {season && !schema && (
         <p className="text-yellow-600 text-sm">Kein aktives Wertungsschema für diese Saison hinterlegt.</p>
@@ -216,8 +247,8 @@ export default function ScoreEntryPage() {
               <button className="btn-secondary" onClick={resetForm}><X className="w-4 h-4" /> Abbrechen</button>
             )}
             <button className="btn-primary disabled:opacity-40" disabled={!teamId || saveM.isPending}
-                    onClick={() => saveM.mutate()}>
-              <Save className="w-4 h-4" /> {editingId ? "Änderungen speichern" : (isPractice ? "Übungslauf speichern" : "Wertung speichern")}
+                    onClick={submit}>
+              <Save className="w-4 h-4" /> {editingId ? "Änderungen speichern" : (isPractice ? "Übungslauf speichern" : "Wertung prüfen & speichern")}
             </button>
           </div>
           {editingId && <p className="text-xs text-gray-400">Bearbeitung: nur die Punkte werden geändert (Team/Runde bleiben).</p>}
@@ -226,6 +257,18 @@ export default function ScoreEntryPage() {
           )}
         </div>
       )}
+
+      <ScoreConfirmDialog
+        open={confirming}
+        context={[["Team", teamName(teamId)], ["Runde", String(round)]]}
+        fields={fields}
+        values={scores}
+        total={preview}
+        offline={!online}
+        pending={saveM.isPending}
+        onConfirm={() => saveM.mutate()}
+        onCancel={() => setConfirming(false)}
+      />
 
       {/* Practice progress summary */}
       {isPractice && practiceScores.length > 0 && (
@@ -267,7 +310,7 @@ export default function ScoreEntryPage() {
                 {canManageAll && (
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
-                      <button onClick={() => startEdit(m)}
+                      <button onClick={() => startEdit(m)} disabled={!online}
                               className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
                               title="Bearbeiten"><Pencil className="w-4 h-4" /></button>
                       {!isPractice && !m.confirmed_by && (

@@ -58,8 +58,22 @@ async def _match(db, event, team, score, *, phase=None, dq=False, red=False, rou
     return match
 
 
+async def _enable_competition_modules(db, season, *events):
+    """DE, documentation and aerial results need their module switched on for
+    the season and the event (modules.events.module_access)."""
+    from modules.events.module_access import MODULE_KEYS
+
+    season.use_double_elimination = True
+    season.use_documentation_scoring = True
+    season.use_aerial = True
+    for event in events:
+        event.active_modules = list(MODULE_KEYS)
+    await db.flush()
+
+
 async def _second_event(db, season):
     from modules.events.models import Event
+    from modules.events.module_access import MODULE_KEYS
 
     event = Event(
         season_id=season.id,
@@ -67,6 +81,7 @@ async def _second_event(db, season):
         slug=f"gcer-{season.id}",
         status="published",
         starts_at=datetime(2099, 7, 1, tzinfo=UTC),
+        active_modules=list(MODULE_KEYS),
     )
     db.add(event)
     await db.flush()
@@ -324,6 +339,7 @@ class TestEventScoping:
         self, client, db, season, event, auth_headers
     ):
         gcer = await _second_event(db, season)
+        await _enable_competition_modules(db, season, event)
         alpha, beta = await _teams(db, "Alpha", "Beta")
         await db.commit()
 
@@ -388,6 +404,7 @@ class TestEventScoping:
         self, client, db, season, event, auth_headers
     ):
         a, b, c = await _teams(db, "A", "B", "C")
+        await _enable_competition_modules(db, season, event)
         await db.commit()
         resp = await client.put(
             f"/api/scoring/events/{event.id}/de-results",
@@ -539,6 +556,7 @@ class TestAuditTrail:
     @pytest.mark.asyncio
     async def test_result_upserts_are_audited(self, client, db, season, event, auth_headers):
         (alpha,) = await _teams(db, "Alpha")
+        await _enable_competition_modules(db, season, event)
         await db.commit()
         url = f"/api/scoring/events/{event.id}/doc-scores/{alpha.id}"
         await client.put(url, json={"part1": 50}, headers=auth_headers)

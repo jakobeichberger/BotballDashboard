@@ -135,6 +135,8 @@ export interface AdminSection {
 
 export interface DashboardSummary {
   event_id: string;
+  /** Effective feature modules of the event (see useEventModules). */
+  modules?: string[];
   juror: JurorSection | null;
   mentor: { teams: MentorTeam[] } | null;
   admin: AdminSection | null;

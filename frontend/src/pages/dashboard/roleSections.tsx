@@ -98,7 +98,10 @@ export function JurorPanel({ juror }: { juror: JurorSection }) {
   );
 }
 
-function MentorTeamCard({ team }: { team: MentorTeam }) {
+/** Whether a module-bound figure is shown; unknown module state shows everything. */
+const uses = (modules: string[] | undefined, module: string) => !modules || modules.includes(module);
+
+function MentorTeamCard({ team, modules }: { team: MentorTeam; modules?: string[] }) {
   const paper = team.paper ? PAPER_STATUS[team.paper.status] ?? [team.paper.status, "badge-gray"] : null;
   return (
     <SectionCard
@@ -115,14 +118,18 @@ function MentorTeamCard({ team }: { team: MentorTeam }) {
           <dt className="text-gray-500">Seed-Score</dt>
           <dd className="font-semibold tabular-nums">{fmtNum(team.seed_score)}</dd>
         </div>
-        <div>
-          <dt className="flex items-center gap-1 text-gray-500"><FileText className="h-3.5 w-3.5" aria-hidden="true" /> Paper</dt>
-          <dd>{paper ? <span className={clsx(paper[1], "text-xs")}>{paper[0]}</span> : <span className="badge-red text-xs">nicht eingereicht</span>}</dd>
-        </div>
-        <div>
-          <dt className="flex items-center gap-1 text-gray-500"><Printer className="h-3.5 w-3.5" aria-hidden="true" /> Druckjobs</dt>
-          <dd className="tabular-nums">{team.print_jobs.open} offen · {team.print_jobs.completed} fertig</dd>
-        </div>
+        {uses(modules, "paper") && (
+          <div>
+            <dt className="flex items-center gap-1 text-gray-500"><FileText className="h-3.5 w-3.5" aria-hidden="true" /> Paper</dt>
+            <dd>{paper ? <span className={clsx(paper[1], "text-xs")}>{paper[0]}</span> : <span className="badge-red text-xs">nicht eingereicht</span>}</dd>
+          </div>
+        )}
+        {uses(modules, "printing") && (
+          <div>
+            <dt className="flex items-center gap-1 text-gray-500"><Printer className="h-3.5 w-3.5" aria-hidden="true" /> Druckjobs</dt>
+            <dd className="tabular-nums">{team.print_jobs.open} offen · {team.print_jobs.completed} fertig</dd>
+          </div>
+        )}
       </dl>
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
@@ -153,10 +160,10 @@ function MentorTeamCard({ team }: { team: MentorTeam }) {
 }
 
 /** Mentor view: one card per own team. */
-export function MentorPanel({ teams }: { teams: MentorTeam[] }) {
+export function MentorPanel({ teams, modules }: { teams: MentorTeam[]; modules?: string[] }) {
   return (
     <div data-testid="mentor-panel">
-      {teams.map((team) => <MentorTeamCard key={team.team_id} team={team} />)}
+      {teams.map((team) => <MentorTeamCard key={team.team_id} team={team} modules={modules} />)}
     </div>
   );
 }
@@ -177,29 +184,31 @@ function Progress({ label, value, total }: { label: string; value: number; total
 }
 
 /** Organizer overview: X of N teams registered / scored / paper submitted … */
-export function AdminStatusPanel({ status }: { status: AdminSection }) {
+export function AdminStatusPanel({ status, modules }: { status: AdminSection; modules?: string[] }) {
   const n = status.teams_registered;
   return (
     <SectionCard title="Status-Übersicht" id="admin-status">
       <ul className="grid gap-4 sm:grid-cols-2" data-testid="admin-status">
         <Progress label="Teams eingecheckt" value={status.teams_checked_in} total={n} />
         <Progress label="Teams mit Wertung" value={status.teams_scored} total={n} />
-        <Progress label="Teams mit eingereichtem Paper" value={status.teams_with_paper} total={n} />
+        {uses(modules, "paper") && <Progress label="Teams mit eingereichtem Paper" value={status.teams_with_paper} total={n} />}
         <Progress label="Wertungen bestätigt" value={status.official_runs - status.unconfirmed_runs} total={status.official_runs} />
       </ul>
       <dl className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <div><dt className="text-gray-500">Offene Reviews</dt><dd className="font-semibold tabular-nums">{status.reviews_pending}</dd></div>
+        {uses(modules, "paper") && <div><dt className="text-gray-500">Offene Reviews</dt><dd className="font-semibold tabular-nums">{status.reviews_pending}</dd></div>}
         <div><dt className="text-gray-500">Testläufe dokumentiert</dt><dd className="font-semibold tabular-nums">{status.practice_runs}</dd></div>
         <div><dt className="text-gray-500">DE / Doku erfasst</dt><dd className="font-semibold tabular-nums">{status.de_results} / {status.doc_scores}</dd></div>
-        <div>
-          <dt className="text-gray-500">Druck-Queue</dt>
-          <dd className="font-semibold tabular-nums">
-            {status.print_queue.pending} wartend · {status.print_queue.active} aktiv
-            {status.print_queue.failed > 0 && (
-              <span className="ml-1 text-red-600"><AlertTriangle className="inline h-3.5 w-3.5" aria-hidden="true" /> {status.print_queue.failed} Fehler</span>
-            )}
-          </dd>
-        </div>
+        {uses(modules, "printing") && (
+          <div>
+            <dt className="text-gray-500">Druck-Queue</dt>
+            <dd className="font-semibold tabular-nums">
+              {status.print_queue.pending} wartend · {status.print_queue.active} aktiv
+              {status.print_queue.failed > 0 && (
+                <span className="ml-1 text-red-600"><AlertTriangle className="inline h-3.5 w-3.5" aria-hidden="true" /> {status.print_queue.failed} Fehler</span>
+              )}
+            </dd>
+          </div>
+        )}
       </dl>
     </SectionCard>
   );

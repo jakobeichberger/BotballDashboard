@@ -27,6 +27,7 @@ from modules.auth.models import User
 from modules.dashboard import calendar
 from modules.dashboard.analytics import _get_event, _team_names, seeding_table
 from modules.events.models import EventPhase, EventRegistration, MatchParticipant, ScheduledMatch
+from modules.events.module_access import event_modules
 from modules.paper_review.models import Paper, ReviewerAssignment
 from modules.printing.models import PrintJob
 from modules.scoring.competition_models import DEResult, DocumentationScore
@@ -50,6 +51,9 @@ async def build_summary(db: AsyncSession, user, event_id: str) -> dict[str, Any]
 
     return {
         "event_id": event.id,
+        # Effective feature modules, so the views can leave out paper/printing
+        # figures of events that do not use them.
+        "modules": await event_modules(db, event),
         "juror": await _juror_section(db, event.id)
         if await has_elevated_access(db, user, "scoring:admin")
         else None,

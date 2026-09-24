@@ -42,5 +42,12 @@
   "scoreSaved": "Wertung wurde offiziell gespeichert.",
   "saveFailed": "Speichern fehlgeschlagen.",
   "noSchema": "Für dieses Event ist noch kein aktives Scoring-Schema konfiguriert.",
-  "currentRanking": "Aktuelle Rangliste"
+  "currentRanking": "Aktuelle Rangliste",
+  "offlineScoring": "Offline: Wertungen werden auf diesem Gerät gespeichert und automatisch synchronisiert, sobald wieder eine Verbindung besteht.",
+  "scoreQueued": "Offline gespeichert – wird synchronisiert, sobald eine Verbindung besteht.",
+  "reviewScore": "Prüfen & absenden",
+  "previousMatch": "Vorheriges Match",
+  "nextMatch": "Nächstes Match",
+  "matchPosition": "Match {{current}} von {{total}}",
+  "swipeHint": "Wischen, um zwischen Matches zu wechseln"
 }

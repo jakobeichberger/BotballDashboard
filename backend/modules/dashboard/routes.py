@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from core.database import get_db
 from core.domain_events import emit_event
 from core.exceptions import ForbiddenError, NotFoundError
 from core.live import publish_after_commit
+from modules.dashboard import notifications as notification_center
 from modules.dashboard.insights_routes import router as insights_router
 from modules.dashboard.models import Announcement
 
@@ -207,6 +208,61 @@ async def get_stats(
         "print_jobs": print_count,
         "matches": match_count,
     }
+
+
+# ── Notification center ───────────────────────────────────────────────────────
+
+
+class NotificationItem(BaseModel):
+    id: str
+    event_id: str | None
+    event_type: str
+    category: str | None
+    title: str
+    body: str
+    url: str | None
+    created_at: datetime
+    read: bool
+
+
+class NotificationList(BaseModel):
+    items: list[NotificationItem]
+    unread: int
+
+
+class NotificationReadRequest(BaseModel):
+    ids: list[str] = Field(default_factory=list, max_length=500)
+
+
+@router.get("/notifications", response_model=NotificationList)
+async def list_notifications(
+    limit: int = Query(30, ge=1, le=100),
+    unread_only: bool = Query(False),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """The caller's recent notifications (in-app fallback for push)."""
+    items, unread = await notification_center.list_for_user(
+        db, current_user.id, limit=limit, unread_only=unread_only
+    )
+    return {"items": items, "unread": unread}
+
+
+@router.post("/notifications/read")
+async def mark_notifications_read(
+    body: NotificationReadRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return {"marked": await notification_center.mark_read(db, current_user.id, body.ids)}
+
+
+@router.post("/notifications/read-all")
+async def mark_all_notifications_read(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return {"marked": await notification_center.mark_all_read(db, current_user.id)}
 
 
 # Analytics, role summary and deadline calendar live in their own module but

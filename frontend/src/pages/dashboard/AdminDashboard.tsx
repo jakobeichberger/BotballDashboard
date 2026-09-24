@@ -35,7 +35,7 @@ export default function AdminDashboard({ stats, season, announcements, summary }
     <div data-testid="admin-dashboard">
       <StatGrid items={statItems} ariaLabel="System-Kennzahlen" />
 
-      {summary?.admin && <AdminStatusPanel status={summary.admin} />}
+      {summary?.admin && <AdminStatusPanel status={summary.admin} modules={summary.modules} />}
 
       <SectionCard title="Schnellzugriff" id="admin-shortcuts">
         <ShortcutGrid items={shortcuts} />
@@ -48,7 +48,7 @@ export default function AdminDashboard({ stats, season, announcements, summary }
       )}
 
       {summary?.juror && <JurorPanel juror={summary.juror} />}
-      {summary?.mentor && <MentorPanel teams={summary.mentor.teams} />}
+      {summary?.mentor && <MentorPanel teams={summary.mentor.teams} modules={summary.modules} />}
       {summary && <UpcomingDeadlines deadlines={summary.deadlines} />}
 
       <SectionCard title="Ankündigungen" id="admin-announcements">

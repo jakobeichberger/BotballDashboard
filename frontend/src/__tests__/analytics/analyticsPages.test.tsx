@@ -91,6 +91,20 @@ describe("role sections", () => {
     expect(screen.getByText("6 von 10")).toBeInTheDocument(); // confirmed runs
     expect(screen.getByText(/1 Fehler/)).toBeInTheDocument();
   });
+
+  it("leaves out paper and print figures of modules the event does not use", () => {
+    renderAt("/", "/", <AdminStatusPanel status={ADMIN} modules={["seeding", "bots"]} />);
+    expect(screen.queryByRole("progressbar", { name: "Teams mit eingereichtem Paper" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Offene Reviews")).not.toBeInTheDocument();
+    expect(screen.queryByText("Druck-Queue")).not.toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Teams mit Wertung" })).toBeInTheDocument();
+  });
+
+  it("mentor panel hides paper and print jobs when those modules are off", () => {
+    renderAt("/", "/", <MentorPanel teams={[MENTOR_TEAM]} modules={["seeding", "paper"]} />);
+    expect(screen.getByText("nicht eingereicht")).toBeInTheDocument();
+    expect(screen.queryByText("1 offen · 2 fertig")).not.toBeInTheDocument();
+  });
 });
 
 describe("DashboardPage with summary", () => {

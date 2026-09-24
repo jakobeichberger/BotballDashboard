@@ -37,7 +37,7 @@
   "logout": "Sign out",
   "changeLanguage": "Change language",
   "changeTheme": "Change theme",
-  "offlineReadOnly": "Connection lost – changes are locked until reconnection.",
+  "offlineReadOnly": "Connection lost – scores are stored locally, all other changes are locked until reconnection.",
   "nav": {
     "dashboard": "Dashboard",
     "teams": "Teams",
@@ -48,5 +48,14 @@
     "users": "Users",
     "seasons": "Seasons",
     "bots": "Bot Gallery"
-  }
+  },
+  "pendingSync": "{{count}} score(s) waiting to sync",
+  "syncFailed": "{{count}} score(s) could not be synced",
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "markAllRead": "Mark all as read",
+    "open": "Open notifications ({{count}} unread)"
+  },
+  "moduleDisabled": "This module is not active for this event."
 }
