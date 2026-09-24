@@ -13,6 +13,7 @@ from core.auth import (
 from core.database import get_db
 from core.exceptions import ForbiddenError, NotFoundError
 from core.rate_limit import rate_limit
+from modules.events.module_access import require_module
 from modules.teams import compliance, documents, service
 from modules.teams.schemas import (
     MENTOR_SEASON_FIELDS,
@@ -44,6 +45,9 @@ router = APIRouter(prefix="/teams", tags=["teams"])
 
 # Organizers of the print module work with the checklist as well.
 _COMPLIANCE_ADMIN = ("teams:admin", "printing:admin")
+# The 3D-print checklist belongs to the printing module: seasons whose events
+# all have printing switched off answer 404 (modules.events.module_access).
+_PRINTING = [Depends(require_module("printing"))]
 
 
 async def _can_see_team_internals(db: AsyncSession, user, team_id: str) -> bool:
@@ -187,7 +191,9 @@ async def delete_registration(
 # ── 3D-print checklist configuration ──────────────────────────────────────────
 
 
-@router.get("/print-compliance/items", response_model=list[ComplianceItemResponse])
+@router.get(
+    "/print-compliance/items", response_model=list[ComplianceItemResponse], dependencies=_PRINTING
+)
 async def list_compliance_items(
     season_id: str = Query(...),
     include_inactive: bool = Query(False),
@@ -200,7 +206,12 @@ async def list_compliance_items(
     return await compliance.list_items(db, season_id, include_inactive)
 
 
-@router.post("/print-compliance/items", response_model=ComplianceItemResponse, status_code=201)
+@router.post(
+    "/print-compliance/items",
+    response_model=ComplianceItemResponse,
+    status_code=201,
+    dependencies=_PRINTING,
+)
 async def create_compliance_item(
     body: ComplianceItemCreate,
     _=Depends(require_any_permission(*_COMPLIANCE_ADMIN)),
@@ -213,6 +224,7 @@ async def create_compliance_item(
     "/print-compliance/items/defaults",
     response_model=list[ComplianceItemResponse],
     status_code=201,
+    dependencies=_PRINTING,
 )
 async def seed_compliance_items(
     season_id: str = Query(...),
@@ -223,7 +235,11 @@ async def seed_compliance_items(
     return await compliance.seed_default_items(db, season_id)
 
 
-@router.patch("/print-compliance/items/{item_id}", response_model=ComplianceItemResponse)
+@router.patch(
+    "/print-compliance/items/{item_id}",
+    response_model=ComplianceItemResponse,
+    dependencies=_PRINTING,
+)
 async def update_compliance_item(
     item_id: str,
     body: ComplianceItemUpdate,
@@ -233,7 +249,7 @@ async def update_compliance_item(
     return await compliance.update_item(db, item_id, body.model_dump(exclude_unset=True))
 
 
-@router.delete("/print-compliance/items/{item_id}", status_code=204)
+@router.delete("/print-compliance/items/{item_id}", status_code=204, dependencies=_PRINTING)
 async def delete_compliance_item(
     item_id: str,
     _=Depends(require_any_permission(*_COMPLIANCE_ADMIN)),
@@ -420,7 +436,9 @@ async def set_season_roster(
 
 
 @router.get(
-    "/{team_id}/seasons/{season_id}/print-compliance", response_model=ComplianceStatusResponse
+    "/{team_id}/seasons/{season_id}/print-compliance",
+    response_model=ComplianceStatusResponse,
+    dependencies=_PRINTING,
 )
 async def get_print_compliance(
     team_id: str,
@@ -435,6 +453,7 @@ async def get_print_compliance(
 @router.put(
     "/{team_id}/seasons/{season_id}/print-compliance/verify",
     response_model=ComplianceStatusResponse,
+    dependencies=_PRINTING,
 )
 async def verify_print_compliance(
     team_id: str,
@@ -453,6 +472,7 @@ async def verify_print_compliance(
 @router.put(
     "/{team_id}/seasons/{season_id}/print-compliance/{item_id}",
     response_model=ComplianceStatusResponse,
+    dependencies=_PRINTING,
 )
 async def set_print_compliance_check(
     team_id: str,

@@ -196,6 +196,7 @@ class AdminSection(BaseModel):
 
 class DashboardSummary(BaseModel):
     event_id: str
+    modules: list[str] = []
     juror: JurorSection | None
     mentor: MentorSection | None
     admin: AdminSection | None

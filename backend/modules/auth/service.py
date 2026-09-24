@@ -402,6 +402,7 @@ def _columns(obj: Any, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
 async def export_user_data(db: AsyncSession, user_id: str) -> dict[str, Any]:
     """Everything stored about the user (Art. 15/20 DSGVO), as plain data."""
     from modules.bots.models import Bot
+    from modules.dashboard.models import NotificationRead
     from modules.paper_review.models import Paper, PaperReview
     from modules.printing.models import PrintJob
     from modules.scoring.models import Match
@@ -432,6 +433,9 @@ async def export_user_data(db: AsyncSession, user_id: str) -> dict[str, Any]:
         "push_subscriptions": await rows(
             select(PushSubscription).where(PushSubscription.user_id == user_id),
             exclude=("p256dh", "auth"),
+        ),
+        "notification_reads": await rows(
+            select(NotificationRead).where(NotificationRead.user_id == user_id)
         ),
         "matches_entered": await rows(select(Match).where(Match.entered_by == user_id)),
         "papers_submitted": await rows(
