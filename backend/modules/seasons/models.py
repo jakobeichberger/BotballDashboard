@@ -88,6 +88,13 @@ class CompetitionLevel(Base):
     code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # 1 = ECER, 2 = GCER, …; "order" is reserved in SQL, hence the column name.
+    order: Mapped[int] = mapped_column("level_order", Integer, default=0, nullable=False)
+    # GCER qualifies from ECER: teams need a TeamQualification for this level
+    # (in the event's season) before they can be registered for it.
+    qualifies_from_level_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("competition_levels.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class SeasonEvent(Base):

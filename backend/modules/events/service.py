@@ -111,6 +111,7 @@ async def add_registration(db: AsyncSession, event_id: str, data: dict) -> Event
     level_id = data.get("competition_level_id")
     if level_id and not await db.get(CompetitionLevel, level_id):
         raise NotFoundError("Competition level not found")
+    await _assert_qualified(db, event, team.id, level_id)
 
     registration = EventRegistration(event_id=event.id, **data)
     db.add(registration)
@@ -121,6 +122,20 @@ async def add_registration(db: AsyncSession, event_id: str, data: dict) -> Event
         raise ConflictError("Team is already registered for this event") from exc
     await db.refresh(registration, ["team"])
     return registration
+
+
+async def _assert_qualified(
+    db: AsyncSession, event: Event, team_id: str, level_id: str | None
+) -> None:
+    """A level that qualifies from another (GCER <- ECER) admits qualified teams only."""
+    if not level_id:
+        return
+    from modules.scoring.extras_service import is_qualified
+
+    level = await db.get(CompetitionLevel, level_id)
+    if level and level.qualifies_from_level_id:
+        if not await is_qualified(db, event.season_id, team_id, level_id):
+            raise ValidationError(f"Team has not qualified for {level.name} in this season")
 
 
 async def ensure_legacy_default_registration(
@@ -187,6 +202,11 @@ async def update_registration(
     if not registration:
         raise NotFoundError("Event registration not found")
     checked_in = data.pop("checked_in", None)
+    level_id = data.get("competition_level_id")
+    if level_id and level_id != registration.competition_level_id:
+        if not await db.get(CompetitionLevel, level_id):
+            raise NotFoundError("Competition level not found")
+        await _assert_qualified(db, await get_event(db, event_id), registration.team_id, level_id)
     for key, value in data.items():
         setattr(registration, key, value)
     if checked_in is not None:

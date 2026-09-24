@@ -112,9 +112,10 @@ async def update_competition_level(
     _=Depends(require_permission("seasons:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.update_competition_level(
-        db, level_id, **body.model_dump(exclude_none=True)
-    )
+    data = body.model_dump(exclude_none=True)
+    if "qualifies_from_level_id" in body.model_fields_set:
+        data["qualifies_from_level_id"] = body.qualifies_from_level_id
+    return await service.update_competition_level(db, level_id, **data)
 
 
 @router.delete("/competition-levels/{level_id}", status_code=204)

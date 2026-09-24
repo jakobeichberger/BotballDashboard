@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from modules.events.models import Event, ScheduledMatch
+from modules.scoring import rules_service, sheet, tiebreak
 from modules.scoring.models import Match, Ranking, ScoreRevision, ScoringSchema
 
 
@@ -19,8 +20,10 @@ def compute_seed_score(scores: list[float]) -> float:
     return sum(top) / len(top)
 
 
-def compute_match_total(raw_scores: dict, schema_fields: list[dict]) -> float:
-    """Sum each scored field's value times its multiplier.
+def compute_match_total(
+    raw_scores: dict, schema_fields: list[dict], definition: dict | None = None
+) -> float:
+    """Score-sheet total of one run (see modules.scoring.sheet).
 
     When a schema is defined it is authoritative: keys it doesn't define score
     nothing, and a field's ``max_value`` is enforced. Both matter because the
@@ -28,57 +31,18 @@ def compute_match_total(raw_scores: dict, schema_fields: list[dict]) -> float:
     implicit multiplier of 1, and any value was accepted, so a mentor could
     score themselves arbitrarily high on their own match.
 
-    With no schema configured the legacy fallback still applies: values are
-    summed as-is (multiplier 1), which is what a season without a schema means.
+    Flat schemas add up Σ value × multiplier; a structured ``definition`` adds
+    area multipliers, either-or groups and sides A/B. With no schema configured
+    the legacy fallback still applies: values are summed as-is.
     """
-    total = 0.0
-    field_map = {field["key"]: field for field in schema_fields}
-    for key, value in raw_scores.items():
-        field = field_map.get(key)
-        if field is None:
-            if field_map:
-                continue  # schema is authoritative → unknown keys score nothing
-            field = {}  # no schema at all → sum as-is
-
-        try:
-            numeric = float(value)
-        except (TypeError, ValueError):
-            raise ValidationError(f"Score for '{key}' must be a number")
-
-        max_value = field.get("max_value")
-        if max_value is not None and numeric > float(max_value):
-            raise ValidationError(f"Score for '{key}' exceeds the maximum of {max_value}")
-
-        total += numeric * float(field.get("multiplier", 1))
-    return round(total, 2)
+    return sheet.compute_total(raw_scores, schema_fields, definition)
 
 
-def validate_raw_scores(raw_scores: dict, schema_fields: list[dict]) -> None:
+def validate_raw_scores(
+    raw_scores: dict, schema_fields: list[dict], definition: dict | None = None
+) -> None:
     """Apply the validation bounds embedded in a versioned scoring schema."""
-    field_map = {field["key"]: field for field in schema_fields}
-    errors: list[str] = []
-    for key, field in field_map.items():
-        if field.get("required") and key not in raw_scores:
-            errors.append(f"{key} is required")
-    for key, value in raw_scores.items():
-        submitted_field = field_map.get(key)
-        if submitted_field is None and schema_fields:
-            errors.append(f"{key} is not part of the active scoring schema")
-            continue
-        try:
-            number = float(value)
-        except (TypeError, ValueError):
-            errors.append(f"{key} must be numeric")
-            continue
-        if submitted_field:
-            minimum = submitted_field.get("min_value", submitted_field.get("min"))
-            maximum = submitted_field.get("max_value", submitted_field.get("max"))
-            if minimum is not None and number < float(minimum):
-                errors.append(f"{key} must be at least {minimum}")
-            if maximum is not None and number > float(maximum):
-                errors.append(f"{key} must be at most {maximum}")
-    if errors:
-        raise ValidationError("; ".join(errors))
+    sheet.validate(raw_scores, schema_fields, definition)
 
 
 async def get_default_event(db: AsyncSession, season_id: str) -> Event:
@@ -147,7 +111,12 @@ async def create_schema_version(
     competition_level_id: str | None,
     fields: list[dict],
     activate: bool = True,
+    definition: dict | None = None,
 ) -> ScoringSchema:
+    if definition is not None:
+        # The structured sheet is authoritative; `fields` lists its inputs so
+        # flat consumers (entry forms, OCR mapping, exports) keep working.
+        fields = sheet.flat_fields(definition)
     scope = [
         ScoringSchema.season_id == event.season_id,
         ScoringSchema.event_id == event.id,
@@ -166,6 +135,7 @@ async def create_schema_version(
         event_id=event.id,
         competition_level_id=competition_level_id,
         fields=fields,
+        definition=definition,
         version=version,
         is_active=activate,
     )
@@ -208,7 +178,13 @@ def _score_state(match: Match) -> dict:
     return {
         "raw_scores": deepcopy(match.raw_scores),
         "total_score": match.total_score,
+        "sheet_score": match.sheet_score,
+        "bonus_score": match.bonus_score,
         "is_disqualified": match.is_disqualified,
+        "round_lost": match.round_lost,
+        "round_lost_reason": match.round_lost_reason,
+        "end_contact": match.end_contact,
+        "tiebreak_values": deepcopy(match.tiebreak_values or {}),
         "yellow_card": match.yellow_card,
         "red_card": match.red_card,
         "notes": match.notes,
@@ -267,27 +243,38 @@ async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
         event.id,
     )
     schema_fields = schema.fields if schema else []
+    definition = schema.definition if schema else None
     raw_scores = match_data.get("raw_scores", {})
-    validate_raw_scores(raw_scores, schema_fields)
+    validate_raw_scores(raw_scores, schema_fields, definition)
+    _validate_round_lost(match_data)
     total = (
-        compute_match_total(raw_scores, schema_fields)
+        compute_match_total(raw_scores, schema_fields, definition)
         if raw_scores or schema
         else float(provided_total or 0.0)
     )
     snapshot = None
     if schema:
-        snapshot = {"id": schema.id, "version": schema.version, "fields": deepcopy(schema.fields)}
+        snapshot = {
+            "id": schema.id,
+            "version": schema.version,
+            "fields": deepcopy(schema.fields),
+            "definition": deepcopy(schema.definition),
+        }
+    match_data["tiebreak_values"] = match_data.get("tiebreak_values") or {}
 
     match = Match(
         **match_data,
         season_id=event.season_id,
         event_id=event.id,
         schema_snapshot=snapshot,
-        total_score=total,
+        sheet_score=total,
+        bonus_score=0.0,
         entered_by=entered_by,
     )
+    rules_service.apply_round_rules(match)
     db.add(match)
     await db.flush()
+    opponents = await _apply_head_to_head(db, match)
     db.add(_revision(match, entered_by, None))
     await _recompute_ranking(
         db,
@@ -296,7 +283,37 @@ async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
         match.competition_level_id,
         match.event_phase_id,
     )
+    await _recompute_opponents(db, opponents)
     return match
+
+
+def _validate_round_lost(data: dict) -> None:
+    reason = data.get("round_lost_reason")
+    if reason is not None and reason not in tiebreak.LOSE_ROUND_REASONS:
+        raise ValidationError(
+            f"round_lost_reason must be one of {', '.join(tiebreak.LOSE_ROUND_REASONS)}"
+        )
+    if data.get("round_lost") is False:
+        data["round_lost_reason"] = None
+
+
+async def _apply_head_to_head(db: AsyncSession, match: Match) -> list[Match]:
+    """Re-apply contact bonus and outcome of the head-to-head match `match` belongs to.
+
+    Returns the opponent rows, whose total may have changed with it.
+    """
+    if not match.scheduled_match_id or match.is_practice:
+        return []
+    await rules_service.apply_head_to_head(db, match.scheduled_match_id, match.season_id)
+    others = await rules_service.head_to_head_matches(db, match.scheduled_match_id)
+    return [m for m in others if m.id != match.id]
+
+
+async def _recompute_opponents(db: AsyncSession, opponents: list[Match]) -> None:
+    for other in opponents:
+        await _recompute_ranking(
+            db, other.event_id, other.team_id, other.competition_level_id, other.event_phase_id
+        )
 
 
 async def update_match(
@@ -312,12 +329,19 @@ async def update_match(
     if expected_version is not None and expected_version != match.version:
         raise ConflictError(f"Score was changed by another user (current version: {match.version})")
     previous = _score_state(match)
+    kwargs.pop("total_score", None)  # always derived, never set directly
     if "raw_scores" in kwargs:
-        schema_fields = (match.schema_snapshot or {}).get("fields", [])
-        validate_raw_scores(kwargs["raw_scores"], schema_fields)
-        kwargs["total_score"] = compute_match_total(kwargs["raw_scores"], schema_fields)
+        snapshot = match.schema_snapshot or {}
+        schema_fields = snapshot.get("fields", [])
+        definition = snapshot.get("definition")
+        validate_raw_scores(kwargs["raw_scores"], schema_fields, definition)
+        kwargs["sheet_score"] = compute_match_total(kwargs["raw_scores"], schema_fields, definition)
+    _validate_round_lost(kwargs)
     for key, value in kwargs.items():
         setattr(match, key, value)
+    rules_service.apply_round_rules(match)
+    await db.flush()
+    opponents = await _apply_head_to_head(db, match)
     if _score_state(match) == previous:
         return match
     match.version += 1
@@ -330,6 +354,7 @@ async def update_match(
         match.competition_level_id,
         match.event_phase_id,
     )
+    await _recompute_opponents(db, opponents)
     return match
 
 
@@ -343,8 +368,32 @@ async def list_revisions(db: AsyncSession, match_id: str) -> list[ScoreRevision]
     return list(result.scalars().all())
 
 
-async def confirm_match(db: AsyncSession, match_id: str, confirmed_by: str) -> Match:
+async def confirm_match(
+    db: AsyncSession, match_id: str, confirmed_by: str, checklist: dict | None = None
+) -> Match:
+    """Confirm an official score after the season's referee checklist.
+
+    Every required checklist item must be ticked — in this request or on a
+    checklist saved with the match earlier. The ticked items are stored with
+    the match as the record of what the juror checked.
+    """
     match = await get_match(db, match_id)
+    rules = await rules_service.get_rules(db, match.season_id)
+    items = {item["key"]: item for item in rules.referee_checklist}
+    state = dict(match.checklist or {})
+    for key, value in (checklist or {}).items():
+        if key not in items:
+            raise ValidationError(f"'{key}' is not an item of the referee checklist")
+        state[key] = bool(value)
+    missing = [
+        str(item.get("label") or key)
+        for key, item in items.items()
+        if item.get("required", True) and not state.get(key)
+    ]
+    if missing:
+        raise ValidationError("Referee checklist incomplete: " + ", ".join(missing))
+    if items:
+        match.checklist = state
     match.confirmed_by = confirmed_by
     match.confirmed_at = datetime.now(UTC)
     return match
@@ -356,9 +405,17 @@ async def delete_match(db: AsyncSession, match_id: str) -> None:
     team_id = match.team_id
     level_id = match.competition_level_id
     phase_id = match.event_phase_id
+    scheduled_match_id = match.scheduled_match_id if not match.is_practice else None
+    season_id = match.season_id
     await db.delete(match)
     await db.flush()
     await _recompute_ranking(db, event_id, team_id, level_id, phase_id)
+    if scheduled_match_id:
+        # The opponent loses any contact bonus this row gave it.
+        await rules_service.apply_head_to_head(db, scheduled_match_id, season_id)
+        await _recompute_opponents(
+            db, await rules_service.head_to_head_matches(db, scheduled_match_id)
+        )
 
 
 async def _recompute_ranking(
@@ -435,9 +492,11 @@ async def _refresh_ranks(
     competition_level_id: str | None,
     event_phase_id: str | None = None,
 ) -> None:
-    if not await db.get(Event, event_id):
+    event = await db.get(Event, event_id)
+    if not event:
         # Backwards compatibility for callers of the former season-scoped API.
-        event_id = (await get_default_event(db, event_id)).id
+        event = await get_default_event(db, event_id)
+        event_id = event.id
     query = select(Ranking).where(Ranking.event_id == event_id)
     query = (
         query.where(Ranking.event_phase_id == event_phase_id)
@@ -450,8 +509,76 @@ async def _refresh_ranks(
         else query.where(Ranking.competition_level_id.is_(None))
     )
     result = await db.execute(query.order_by(Ranking.seed_score.desc(), Ranking.team_id))
-    for rank, ranking in enumerate(result.scalars().all(), start=1):
-        ranking.rank = rank
+    rankings = list(result.scalars().all())
+
+    # Equal seed scores are ordered by the season's tie-breakers, applied to the
+    # runs that make up the seed score (the best two). Teams nothing separates
+    # keep the former order (team id) so ranks stay unique.
+    by_team = {r.team_id: r for r in rankings}
+    items = [
+        tiebreak.RankedItem(id=r.team_id, score=r.seed_score, fallback=float(position))
+        for position, r in enumerate(rankings)
+    ]
+    criteria = (await rules_service.get_rules(db, event.season_id)).tiebreakers
+    counts: dict[float, int] = {}
+    for r in rankings:
+        counts[r.seed_score] = counts.get(r.seed_score, 0) + 1
+    tied = {r.team_id for r in rankings if counts[r.seed_score] > 1}
+    if criteria and tied:
+        values = await _seed_tiebreak_values(
+            db, event_id, tied, criteria, competition_level_id, event_phase_id
+        )
+        for item in items:
+            item.values = values.get(item.id, {})
+    for item in tiebreak.rank_with_tiebreakers(items, criteria):
+        ranking = by_team[item.id]
+        ranking.rank = item.rank
+        ranking.tiebreaker = item.decided_by
+    await db.flush()
+
+
+async def _seed_tiebreak_values(
+    db: AsyncSession,
+    event_id: str,
+    team_ids: set[str],
+    criteria: list[dict],
+    competition_level_id: str | None,
+    event_phase_id: str | None,
+) -> dict[str, dict[str, float | None]]:
+    query = select(Match).where(
+        Match.event_id == event_id,
+        Match.team_id.in_(team_ids),
+        Match.is_disqualified.is_(False),
+        Match.is_practice.is_(False),
+    )
+    query = (
+        query.where(Match.event_phase_id == event_phase_id)
+        if event_phase_id
+        else query.where(Match.event_phase_id.is_(None))
+    )
+    query = (
+        query.where(Match.competition_level_id == competition_level_id)
+        if competition_level_id
+        else query.where(Match.competition_level_id.is_(None))
+    )
+    runs: dict[str, list[Match]] = {}
+    for match in (await db.execute(query)).scalars():
+        runs.setdefault(match.team_id, []).append(match)
+    out: dict[str, dict[str, float | None]] = {}
+    for team_id, matches in runs.items():
+        counted = sorted(matches, key=lambda m: m.total_score, reverse=True)[:2]
+        out[team_id] = tiebreak.sum_values(
+            [
+                tiebreak.match_values(
+                    criteria,
+                    m.raw_scores,
+                    m.tiebreak_values,
+                    rules_service.snapshot_definition(m),
+                )
+                for m in counted
+            ]
+        )
+    return out
 
 
 async def get_ranking(

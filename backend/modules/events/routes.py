@@ -313,6 +313,7 @@ async def create_event_scoring_schema(
         body.competition_level_id,
         [field.model_dump() for field in body.fields],
         body.activate,
+        body.definition.to_dict() if body.definition else None,
     )
 
 

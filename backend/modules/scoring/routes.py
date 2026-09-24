@@ -22,6 +22,7 @@ from modules.scoring.competition_schemas import (
     TeamRankingEntry,
 )
 from modules.scoring.schemas import (
+    MatchConfirm,
     MatchCreate,
     MatchResponse,
     MatchUpdate,
@@ -152,10 +153,14 @@ async def list_score_revisions(
 @router.put("/matches/{match_id}/confirm", response_model=MatchResponse)
 async def confirm_match(
     match_id: str,
+    body: MatchConfirm | None = None,
     current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.confirm_match(db, match_id, current_user.id)
+    """Confirm a score; the season's required referee checklist items must be ticked."""
+    return await service.confirm_match(
+        db, match_id, current_user.id, body.checklist if body else None
+    )
 
 
 @router.delete("/matches/{match_id}", status_code=204)

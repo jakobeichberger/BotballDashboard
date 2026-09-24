@@ -2,7 +2,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core.exceptions import ConflictError, NotFoundError
+from core.exceptions import ConflictError, NotFoundError, ValidationError
 from modules.seasons.models import CompetitionLevel, Season, SeasonEvent, SeasonPhase
 
 
@@ -120,7 +120,7 @@ async def activate_phase(db: AsyncSession, season_id: str, phase_id: str) -> Sea
 async def list_competition_levels(
     db: AsyncSession, include_inactive: bool = False
 ) -> list[CompetitionLevel]:
-    q = select(CompetitionLevel).order_by(CompetitionLevel.name)
+    q = select(CompetitionLevel).order_by(CompetitionLevel.order, CompetitionLevel.name)
     if not include_inactive:
         q = q.where(CompetitionLevel.is_active == True)
     result = await db.execute(q)
@@ -134,9 +134,26 @@ async def create_competition_level(db: AsyncSession, data: dict) -> CompetitionL
     if existing.scalar_one_or_none():
         raise ConflictError("Competition level code already exists")
     level = CompetitionLevel(**data)
+    await _check_qualification_source(db, level, data.get("qualifies_from_level_id"))
     db.add(level)
     await db.flush()
     return level
+
+
+async def _check_qualification_source(
+    db: AsyncSession, level: CompetitionLevel, source_id: str | None
+) -> None:
+    """The level teams qualify from must exist and must not lead back to `level`."""
+    seen = {level.id} if level.id else set()
+    current = source_id
+    while current:
+        if current in seen:
+            raise ValidationError("A level cannot (indirectly) qualify from itself")
+        seen.add(current)
+        source = await db.get(CompetitionLevel, current)
+        if not source:
+            raise NotFoundError("Qualification source level not found")
+        current = source.qualifies_from_level_id
 
 
 async def update_competition_level(db: AsyncSession, level_id: str, **kwargs) -> CompetitionLevel:
@@ -144,6 +161,9 @@ async def update_competition_level(db: AsyncSession, level_id: str, **kwargs) ->
     level = result.scalar_one_or_none()
     if not level:
         raise NotFoundError("Competition level not found")
+    if "qualifies_from_level_id" in kwargs:
+        await _check_qualification_source(db, level, kwargs["qualifies_from_level_id"])
+        level.qualifies_from_level_id = kwargs.pop("qualifies_from_level_id")
     for key, value in kwargs.items():
         if value is not None:
             setattr(level, key, value)
