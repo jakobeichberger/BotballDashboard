@@ -1,0 +1,188 @@
+// Shared types and helpers for the 3D printing pages. Local interfaces until
+// the generated API client is regenerated with the new printing fields.
+import { api } from "@/lib/api";
+
+export type PrintJobStatus =
+  | "pending"
+  | "approved"
+  | "queued"
+  | "printing"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "rejected";
+
+export interface PrintJob {
+  id: string;
+  printer_id: string | null;
+  team_id: string;
+  season_id: string;
+  event_id: string | null;
+  submitted_by: string | null;
+  file_name: string;
+  file_url: string | null;
+  file_size_bytes: number | null;
+  material: string;
+  color: string | null;
+  estimated_grams: number | null;
+  actual_grams: number | null;
+  estimated_minutes: number | null;
+  actual_minutes: number | null;
+  status: PrintJobStatus;
+  priority: number;
+  progress: number | null;
+  status_message: string | null;
+  remaining_seconds: number | null;
+  error_message: string | null;
+  rejection_reason: string | null;
+  quota_override: boolean;
+  spool_id: string | null;
+  notes: string | null;
+  approved_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface PrintJobCreated extends PrintJob {
+  quota_warning: string | null;
+}
+
+export interface PrinterInfo {
+  id: string;
+  name: string;
+  model: string | null;
+  printer_type: "bambu" | "octoprint" | "generic" | string;
+  is_active: boolean;
+  is_online: boolean;
+  last_seen: string | null;
+  current_state: string | null;
+  status_message: string | null;
+  // Only returned to printing:admin.
+  api_url?: string | null;
+  device_id?: string | null;
+  notes?: string | null;
+}
+
+export interface FilamentSpool {
+  id: string;
+  printer_id: string | null;
+  material: string;
+  color: string | null;
+  brand: string | null;
+  initial_grams: number;
+  remaining_grams: number;
+  is_active: boolean;
+}
+
+export interface PrintQuota {
+  id: string;
+  team_id: string;
+  team_name?: string | null;
+  season_id: string;
+  event_id: string | null;
+  max_parts: number;
+  soft_limit_parts: number;
+  max_grams: number | null;
+  used_parts: number;
+  used_grams: number;
+  open_parts: number;
+  open_grams: number;
+  notes: string | null;
+}
+
+export const PRINT_FILE_ACCEPT = ".stl,.3mf,.obj,.gcode,.bgcode";
+
+export const STATUS_BADGE: Record<PrintJobStatus, string> = {
+  pending: "badge-gray",
+  approved: "badge-blue",
+  queued: "badge-blue",
+  printing: "badge-yellow",
+  completed: "badge-green",
+  failed: "badge-red",
+  cancelled: "badge-gray",
+  rejected: "badge-red",
+};
+
+export const STATUS_LABEL: Record<PrintJobStatus, string> = {
+  pending: "Ausstehend",
+  approved: "Genehmigt",
+  queued: "In Warteschlange",
+  printing: "Druckt",
+  completed: "Fertig",
+  failed: "Fehlgeschlagen",
+  cancelled: "Abgebrochen",
+  rejected: "Abgelehnt",
+};
+
+export const PRINTER_TYPE_LABEL: Record<string, string> = {
+  bambu: "Bambu LAN",
+  octoprint: "OctoPrint",
+  generic: "Manuell (ohne Adapter)",
+};
+
+export const PRINTER_STATE_LABEL: Record<string, string> = {
+  idle: "Bereit",
+  printing: "Druckt",
+  paused: "Pausiert",
+  completed: "Fertig",
+  failed: "Fehler",
+  offline: "Offline",
+};
+
+// Mirrors JOB_TRANSITIONS in backend/modules/printing/service.py. Rejecting
+// needs a reason and has its own endpoint, so it is not a plain transition.
+export const NEXT_STATUSES: Record<PrintJobStatus, PrintJobStatus[]> = {
+  pending: ["approved", "cancelled"],
+  approved: ["queued", "cancelled"],
+  queued: ["printing", "completed", "failed", "cancelled"],
+  printing: ["completed", "failed", "cancelled"],
+  failed: ["queued", "cancelled"],
+  completed: [],
+  cancelled: [],
+  rejected: [],
+};
+
+export const OPEN_STATUSES: PrintJobStatus[] = ["pending", "approved", "queued", "printing"];
+
+/** Refresh interval for job lists and details while prints are running. */
+export const PRINT_REFRESH_MS = 10_000;
+
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds == null) return "—";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+}
+
+export function formatBytes(bytes: number | null | undefined): string {
+  if (bytes == null) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+export function apiError(error: unknown, fallback = "Aktion fehlgeschlagen."): string {
+  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  return typeof detail === "string" ? detail : fallback;
+}
+
+export async function uploadPrintFile(jobId: string, file: File): Promise<PrintJob> {
+  const body = new FormData();
+  body.append("file", file);
+  return (await api.post(`/printing/jobs/${jobId}/file`, body)).data;
+}
+
+/** The file endpoint needs the bearer token, so fetch it and save the blob. */
+export async function downloadPrintFile(job: Pick<PrintJob, "id" | "file_name">): Promise<void> {
+  const response = await api.get(`/printing/jobs/${job.id}/file`, { responseType: "blob" });
+  const href = URL.createObjectURL(new Blob([response.data]));
+  try {
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = job.file_name;
+    link.click();
+  } finally {
+    URL.revokeObjectURL(href);
+  }
+}

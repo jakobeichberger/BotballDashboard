@@ -4,6 +4,8 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import { Settings, Users, Layers, Save, Calendar, CalendarClock, Printer, Megaphone, Award, Trash2, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import clsx from "clsx";
+import { useEvents } from "@/hooks/useEvents";
+import { PRINTER_TYPE_LABEL, apiError, type PrintQuota } from "@/lib/printing";
 
 function useInvalidate(keys: string[]) {
   const qc = useQueryClient();
@@ -254,6 +256,89 @@ function SpoolsPanel() {
   );
 }
 
+
+type QuotaDraft = { max_parts: string; soft_limit_parts: string; max_grams: string };
+
+function QuotaRow({ quota, seasonId }: { quota: PrintQuota; seasonId: string }) {
+  const invalidate = useInvalidate(["print-quotas"]);
+  const [draft, setDraft] = useState<QuotaDraft>({
+    max_parts: String(quota.max_parts),
+    soft_limit_parts: String(quota.soft_limit_parts),
+    max_grams: quota.max_grams?.toString() ?? "",
+  });
+  const [error, setError] = useState<string | null>(null);
+  const saveM = useMutation({
+    mutationFn: () => api.put("/printing/quotas", {
+      team_id: quota.team_id,
+      season_id: seasonId,
+      event_id: quota.event_id,
+      max_parts: Number(draft.max_parts),
+      soft_limit_parts: Number(draft.soft_limit_parts),
+      max_grams: draft.max_grams === "" ? null : Number(draft.max_grams),
+      clear_max_grams: draft.max_grams === "",
+    }),
+    onSuccess: () => { setError(null); invalidate(); },
+    onError: (e) => setError(apiError(e)),
+  });
+  const committed = quota.used_parts + quota.open_parts;
+  const field = (key: keyof QuotaDraft, label: string, step = 1) => (
+    <input aria-label={`${label} ${quota.team_name ?? ""}`} className="input w-24" type="number" min={0} step={step} value={draft[key]} onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} />
+  );
+  return (
+    <tr>
+      <td className="px-4 py-3 font-medium">{quota.team_name ?? quota.team_id}</td>
+      <td className="px-4 py-3 text-gray-500">
+        <span className={committed > quota.soft_limit_parts ? "text-yellow-600" : undefined}>{quota.used_parts} + {quota.open_parts} offen</span>
+        <span className="block text-xs">{Math.round(quota.used_grams)} g{quota.open_grams ? ` + ${Math.round(quota.open_grams)} g offen` : ""}</span>
+      </td>
+      <td className="px-4 py-3">{field("soft_limit_parts", "Soft-Limit")}</td>
+      <td className="px-4 py-3">{field("max_parts", "Hard-Limit")}</td>
+      <td className="px-4 py-3">{field("max_grams", "Max. Gramm", 10)}</td>
+      <td className="px-4 py-3 text-right">
+        <button className="btn-secondary text-xs" disabled={saveM.isPending || draft.max_parts === "" || draft.soft_limit_parts === ""} onClick={() => saveM.mutate()}>Speichern</button>
+        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      </td>
+    </tr>
+  );
+}
+
+function QuotasPanel() {
+  const { data: events } = useEvents();
+  const [eventId, setEventId] = useState("");
+  const selected = events?.find((e) => e.id === eventId) ?? events?.[0];
+  const { data: quotas, isLoading } = useQuery<PrintQuota[]>({
+    queryKey: ["print-quotas", selected?.id],
+    queryFn: async () => (await api.get(`/printing/events/${selected!.id}/quotas`)).data,
+    enabled: !!selected,
+  });
+  return (
+    <div className="mt-8">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Druck-Kontingente</h3>
+        <select className="input" aria-label="Event für Kontingente" value={selected?.id ?? ""} onChange={(e) => setEventId(e.target.value)}>
+          {events?.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </select>
+      </div>
+      <p className="mb-3 text-xs text-gray-500">Offene Aufträge zählen zum Hard-Limit. Über dem Soft-Limit wird gewarnt, Admins können das Hard-Limit beim Einreichen überschreiben. Leeres Gramm-Feld = kein Gramm-Limit.</p>
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+            <th className="px-4 py-3 text-left font-medium">Team</th><th className="px-4 py-3 text-left font-medium">Genutzt</th>
+            <th className="px-4 py-3 text-left font-medium">Soft-Limit (Teile)</th><th className="px-4 py-3 text-left font-medium">Hard-Limit (Teile)</th>
+            <th className="px-4 py-3 text-left font-medium">Max. Gramm</th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
+          </tr></thead>
+          <tbody className="divide-y dark:divide-gray-800">
+            {selected && quotas?.map((q) => <QuotaRow key={`${q.id}-${q.max_parts}-${q.soft_limit_parts}-${q.max_grams}`} quota={q} seasonId={selected.season_id} />)}
+            {isLoading && <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">Laden...</td></tr>}
+            {quotas?.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">Keine Teams für dieses Event angemeldet</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function PrintersSettings() {
   const invalidate = useInvalidate(["printers"]);
   const { data: printers, isLoading } = useQuery({ queryKey: ["printers"], queryFn: async () => (await api.get("/printing/printers")).data });
@@ -262,10 +347,21 @@ function PrintersSettings() {
   const [model, setModel] = useState("");
   const [type, setType] = useState("bambu");
   const [apiUrl, setApiUrl] = useState("");
+  const [deviceId, setDeviceId] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const isGeneric = type === "generic";
 
   const createM = useMutation({
-    mutationFn: () => api.post("/printing/printers", { name, model: model || null, printer_type: type, api_url: apiUrl || null }),
-    onSuccess: () => { setShow(false); setName(""); setModel(""); setApiUrl(""); invalidate(); },
+    mutationFn: () => api.post("/printing/printers", {
+      name,
+      model: model || null,
+      printer_type: type,
+      // A generic printer is operated by hand: no adapter, nothing to connect to.
+      api_url: isGeneric ? null : apiUrl || null,
+      device_id: type === "bambu" ? deviceId || null : null,
+      api_key: isGeneric ? null : apiKey || null,
+    }),
+    onSuccess: () => { setShow(false); setName(""); setModel(""); setApiUrl(""); setDeviceId(""); setApiKey(""); invalidate(); },
     onError: onErr,
   });
   const toggleM = useMutation({ mutationFn: (p: any) => api.patch(`/printing/printers/${p.id}`, { is_active: !p.is_active }), onSuccess: invalidate, onError: onErr });
@@ -283,10 +379,12 @@ function PrintersSettings() {
             <div><label className="label">Modell</label><input className="input" value={model} onChange={(e) => setModel(e.target.value)} /></div>
             <div><label className="label">Typ</label>
               <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
-                <option value="bambu">Bambu</option><option value="octoprint">OctoPrint</option><option value="generic">Generisch</option>
+                {Object.entries(PRINTER_TYPE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </div>
-            <div><label className="label">API-URL</label><input className="input" value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="http://..." /></div>
+            <div><label className="label">API-URL / Host</label><input className="input" disabled={isGeneric} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="http://..." /></div>
+            {type === "bambu" && <div><label className="label">Seriennummer</label><input className="input" value={deviceId} onChange={(e) => setDeviceId(e.target.value)} /></div>}
+            {!isGeneric && <div><label className="label">API-Key / Access Code</label><input className="input" type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} /></div>}
           </div>
           <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>Hinzufügen</button></div>
         </div>
@@ -304,7 +402,7 @@ function PrintersSettings() {
               <tr key={p.id}>
                 <td className="px-4 py-3 font-medium">{p.name}</td>
                 <td className="px-4 py-3 text-gray-500">{p.model ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500">{p.printer_type}</td>
+                <td className="px-4 py-3 text-gray-500">{PRINTER_TYPE_LABEL[p.printer_type] ?? p.printer_type}</td>
                 <td className="px-4 py-3"><span className={p.is_active ? "badge-green" : "badge-gray"}>{p.is_active ? "Aktiv" : "Inaktiv"}</span></td>
                 <td className="px-4 py-3 text-right"><button className="btn-secondary text-xs" disabled={toggleM.isPending} onClick={() => toggleM.mutate(p)}>{p.is_active ? "Deaktivieren" : "Aktivieren"}</button></td>
               </tr>
@@ -313,6 +411,7 @@ function PrintersSettings() {
         </table>
       </div>
       <SpoolsPanel />
+      <QuotasPanel />
     </div>
   );
 }
