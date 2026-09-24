@@ -6,7 +6,7 @@ from core.auth import (
     require_permission,
 )
 from core.database import get_db
-from core.live import publish_live_event
+from core.live import publish_after_commit
 from modules.events import service as event_svc
 from modules.scoring import competition_service as comp_svc
 from modules.scoring import formula_service as formula_svc
@@ -41,8 +41,9 @@ router = APIRouter(prefix="/scoring", tags=["scoring"])
 # stream (/api/v1/public/events/{slug}/ws), which honours the public_* flags.
 
 
-async def _broadcast_ranking_update(event_id: str) -> None:
-    await publish_live_event(event_id, "ranking_updated")
+async def _broadcast_ranking_update(db: AsyncSession, event_id: str) -> None:
+    # Sent after the commit, so clients re-fetching the ranking see the new score.
+    publish_after_commit(db, event_id, "ranking_updated")
 
 
 # ── Matches ───────────────────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ async def create_match(
     data = body.model_dump()
     data["season_id"] = season_id
     match = await service.create_match(db, data, current_user.id)
-    await _broadcast_ranking_update(match.event_id)
+    await _broadcast_ranking_update(db, match.event_id)
     return match
 
 
@@ -107,7 +108,7 @@ async def bulk_create_matches(
         data["season_id"] = season_id
         results.append(await service.create_match(db, data, current_user.id))
     if results:
-        await _broadcast_ranking_update(results[0].event_id)
+        await _broadcast_ranking_update(db, results[0].event_id)
     return results
 
 
@@ -130,13 +131,21 @@ async def update_match(
     # Organizers may edit any match; mentors only their own team's.
     existing = await service.get_match(db, match_id)
     await assert_team_access(db, current_user, existing.team_id, "scoring:admin")
+    version_before = existing.version
     match = await service.update_match(
         db,
         match_id,
         changed_by=current_user.id,
         **body.model_dump(exclude_none=True),
     )
-    await _broadcast_ranking_update(match.event_id)
+    await _broadcast_ranking_update(db, match.event_id)
+    if match.version != version_before:
+        # The score actually changed: let the team know (push to its members).
+        from modules.events.notifications import notify_score_corrected
+
+        await notify_score_corrected(
+            db, match.event_id, match.team_id, match.id, match.round_number
+        )
     return match
 
 
@@ -300,7 +309,7 @@ async def bulk_upsert_de_results(
 ):
     entries = [e.model_dump() for e in body]
     rows = await comp_svc.bulk_upsert_de_results(db, season_id, entries)
-    await _broadcast_ranking_update(season_id)
+    await _broadcast_ranking_update(db, season_id)
     return rows
 
 

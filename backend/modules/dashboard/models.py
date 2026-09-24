@@ -50,6 +50,13 @@ class NotificationEvent(Base):
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending", index=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(Text)
+    # Optional idempotency key: reminders ("match starts soon", deadlines) are
+    # queued by periodic tasks and must reach each recipient only once.
+    dedupe_key: Mapped[str | None] = mapped_column(
+        String(200), nullable=True, unique=True, index=True
+    )
+    # Earliest time of the next delivery attempt after a failed one (backoff).
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

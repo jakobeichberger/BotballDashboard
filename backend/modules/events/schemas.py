@@ -189,6 +189,8 @@ class ScheduleGenerateRequest(BaseModel):
     slot_minutes: int = Field(default=10, ge=3, le=240)
     table_count: int | None = Field(default=None, ge=1, le=100)
     team_ids: list[str] | None = None
+    # Restrict the phase to the teams of one category (default: phase settings).
+    category: Literal["botball", "open", "aerial", "jbc"] | None = None
     replace_existing: bool = False
 
 
@@ -221,9 +223,75 @@ class ScheduledMatchResponse(BaseModel):
     bracket: str | None
     next_winner_match_id: str | None
     next_loser_match_id: str | None
+    next_winner_slot: int | None = None
+    next_loser_slot: int | None = None
+    round_kind: str | None = None
     version: int
     notes: str | None
     participants: list[MatchParticipantResponse]
+
+
+class MatchResultRequest(BaseModel):
+    """Result of a scheduled match.
+
+    Elimination phases need ``winner_team_id``; seeding-like and alliance
+    phases record per-team ``scores`` (team id → score).
+    """
+
+    winner_team_id: str | None = None
+    scores: dict[str, float] = Field(default_factory=dict)
+    expected_version: int | None = Field(default=None, ge=1)
+
+
+class SeedAssignmentRequest(BaseModel):
+    category: Literal["botball", "open", "aerial", "jbc"] | None = None
+    phase_id: str | None = None
+
+
+class BracketPlacement(BaseModel):
+    team_id: str
+    team_name: str
+    team_number: str | None
+    rank: int
+
+
+class BracketPhaseResponse(BaseModel):
+    phase_id: str
+    phase_name: str
+    phase_type: str
+    status: str
+    bracket_label: str
+    matches: list[ScheduledMatchResponse]
+    placements: list[BracketPlacement]
+
+
+class AllianceRun(BaseModel):
+    match_id: str
+    round_number: int
+    score: float
+
+
+class AllianceStanding(BaseModel):
+    rank: int
+    team_ids: list[str]
+    team_names: list[str]
+    runs: list[AllianceRun]
+    best_score: float
+    total_score: float
+
+
+class BracketWeightsUpdate(BaseModel):
+    weights: dict[str, float]
+
+    @field_validator("weights")
+    @classmethod
+    def validate_weights(cls, value: dict[str, float]) -> dict[str, float]:
+        for bracket, weight in value.items():
+            if not 1 <= len(bracket) <= 20:
+                raise ValueError("Bracket labels have 1 to 20 characters")
+            if weight < 0:
+                raise ValueError("Bracket weights cannot be negative")
+        return value
 
 
 class ScheduledMatchUpdate(BaseModel):

@@ -7,6 +7,9 @@ from datetime import UTC, datetime
 
 from fastapi import WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis
+from sqlalchemy import event as sa_event
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from core.config import get_settings
 from core.logging import get_logger
@@ -38,6 +41,66 @@ async def publish_live_event(event_id: str, event: str, payload: dict | None = N
         return False
     finally:
         await redis.aclose()
+
+
+_PENDING_KEY = "live_events_pending"
+_HOOKED_KEY = "live_events_hooked"
+# Strong references to in-flight publish tasks (the event loop keeps only weak
+# ones), so a publish scheduled from the commit hook is never garbage-collected.
+_inflight: set[asyncio.Task] = set()
+
+
+def publish_after_commit(
+    db: AsyncSession | Session, event_id: str | None, event: str, payload: dict | None = None
+) -> None:
+    """Queue a live event that is published once the session's transaction commits.
+
+    Clients react to ``ranking_updated`` / ``schedule_updated`` by re-fetching;
+    publishing before the commit let them read the old state (or, after a
+    rollback, announced a change that never happened). The events are dropped
+    on rollback. Identical events queued in one transaction are sent once.
+    """
+    if not event_id:
+        return
+    session = db.sync_session if isinstance(db, AsyncSession) else db
+    pending: list[tuple[str, str, dict]] = session.info.setdefault(_PENDING_KEY, [])
+    item = (event_id, event, payload or {})
+    if item not in pending:
+        pending.append(item)
+    if not session.info.get(_HOOKED_KEY):
+        sa_event.listen(session, "after_commit", _after_commit)
+        sa_event.listen(session, "after_rollback", _after_rollback)
+        session.info[_HOOKED_KEY] = True
+
+
+def _after_rollback(session: Session) -> None:
+    session.info.pop(_PENDING_KEY, None)
+
+
+def _after_commit(session: Session) -> None:
+    pending = session.info.pop(_PENDING_KEY, None)
+    if not pending:
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # A synchronous session outside an event loop (scripts): publish inline.
+        asyncio.run(_publish_all(pending))
+        return
+    task = loop.create_task(_publish_all(pending))
+    _inflight.add(task)
+    task.add_done_callback(_inflight.discard)
+
+
+async def _publish_all(pending: list[tuple[str, str, dict]]) -> None:
+    for event_id, event, payload in pending:
+        await publish_live_event(event_id, event, payload)
+
+
+async def drain_pending_publishes() -> None:
+    """Wait for publishes scheduled by commit hooks (tests, graceful shutdown)."""
+    while _inflight:
+        await asyncio.gather(*list(_inflight), return_exceptions=True)
 
 
 async def stream_live_events(websocket: WebSocket, event_id: str | None) -> None:
