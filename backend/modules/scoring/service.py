@@ -347,7 +347,10 @@ async def _recompute_ranking(
         # service API. New code always passes an event id.
         event = await get_default_event(db, event_id)
         event_id = event.id
-    match_query = select(Match).where(
+    # Only the score is needed. Selecting whole Match rows here pulled the
+    # raw_scores and schema_snapshot JSON (a full copy of the scoring schema)
+    # for every match, on every score write.
+    match_query = select(Match.total_score).where(
         Match.event_id == event_id,
         Match.team_id == team_id,
         Match.is_disqualified.is_(False),
@@ -361,8 +364,7 @@ async def _recompute_ranking(
         match_query = match_query.where(Match.competition_level_id == competition_level_id)
     else:
         match_query = match_query.where(Match.competition_level_id.is_(None))
-    matches = (await db.execute(match_query)).scalars().all()
-    scores = [match.total_score for match in matches]
+    scores = list((await db.execute(match_query)).scalars().all())
 
     ranking_filter = [
         Ranking.event_id == event_id,

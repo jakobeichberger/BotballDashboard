@@ -15,9 +15,22 @@ class PaperCreate(BaseModel):
 
 
 class PaperUpdate(BaseModel):
+    """What the submitting team may change about its own paper.
+
+    final_score and paper_rank are deliberately absent: they are the review
+    outcome, they feed the overall ranking, and papers:write is granted to
+    mentors — so leaving them here let any mentor score every team's paper.
+    They live on PaperScoreUpdate behind papers:admin instead.
+    """
+
     title: str | None = None
     abstract: str | None = None
     notes: str | None = None
+
+
+class PaperScoreUpdate(BaseModel):
+    """The review outcome, settable only by papers:admin."""
+
     final_score: float | None = Field(default=None, ge=0, le=1)
     paper_rank: int | None = Field(default=None, ge=1)
 

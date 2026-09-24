@@ -13,6 +13,7 @@ from modules.paper_review.schemas import (
     PaperCreate,
     PaperListItem,
     PaperResponse,
+    PaperScoreUpdate,
     PaperStatusHistoryResponse,
     PaperUpdate,
     ReviewCreateUpdate,
@@ -160,6 +161,18 @@ async def remind_reviewer(
     db: AsyncSession = Depends(get_db),
 ):
     return await service.mark_reminder_sent(db, paper_id, assignment_id)
+
+
+@router.put("/{paper_id}/score", response_model=PaperResponse)
+async def set_paper_score(
+    paper_id: str,
+    body: PaperScoreUpdate,
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Record the review outcome. Separate from PATCH /{paper_id} because
+    final_score feeds the overall ranking and papers:write reaches mentors."""
+    return await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
 
 
 @router.get("/reviewers/workload", response_model=list[ReviewerWorkloadResponse])

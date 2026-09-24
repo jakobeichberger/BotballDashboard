@@ -289,11 +289,20 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
 
 
 def _rank_rows(rows: list[dict[str, Any]], key: str = "overall") -> list[dict[str, Any]]:
-    """Sort by `key` descending and assign competition ranks (ties share)."""
+    """Sort by `key` descending and assign competition ranks (ties share).
+
+    Single pass over the sorted list rather than counting better rows for each
+    row, so this stays O(n log n) on a large field.
+    """
     ordered = sorted(rows, key=lambda r: r.get(key) or 0.0, reverse=True)
-    for row in ordered:
+    previous: float | None = None
+    rank = 0
+    for position, row in enumerate(ordered, start=1):
         value = row.get(key) or 0.0
-        row["rank"] = 1 + sum(1 for o in ordered if (o.get(key) or 0.0) > value)
+        if previous is None or value < previous:
+            rank = position  # a new value takes its own position; ties keep the first
+            previous = value
+        row["rank"] = rank
     return ordered
 
 

@@ -19,13 +19,18 @@ from modules.teams.models import Team, TeamSeasonRegistration
 
 
 async def list_events(
-    db: AsyncSession, season_id: str | None = None, status: str | None = None
+    db: AsyncSession,
+    season_id: str | None = None,
+    status: str | None = None,
+    limit: int | None = None,
 ) -> list[Event]:
     query = select(Event).order_by(Event.starts_at.desc().nullslast(), Event.name)
     if season_id:
         query = query.where(Event.season_id == season_id)
     if status:
         query = query.where(Event.status == status)
+    if limit is not None:
+        query = query.limit(limit)
     result = await db.execute(query)
     return list(result.scalars().all())
 

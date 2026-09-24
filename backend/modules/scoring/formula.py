@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import ast
 import math
+from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -181,6 +182,27 @@ class ParsedFormula:
         return self.names | self.scope_names
 
 
+#: Bounds on what an admin may save. The formulas the game documents publish
+#: are ~110 characters and nest 9 levels deep, so these leave ample room while
+#: keeping the evaluator's recursion well inside Python's stack limit — a
+#: chain like "1+1+1+…" a few thousand terms long would otherwise raise
+#: RecursionError and surface as a 500.
+MAX_EXPRESSION_LENGTH = 1000
+MAX_EXPRESSION_DEPTH = 40
+
+
+def _max_depth(tree: ast.AST) -> int:
+    """Depth of the AST, computed iteratively so it cannot itself overflow."""
+    deepest = 0
+    stack: list[tuple[ast.AST, int]] = [(tree, 1)]
+    while stack:
+        node, depth = stack.pop()
+        if depth > deepest:
+            deepest = depth
+        stack.extend((child, depth + 1) for child in ast.iter_child_nodes(node))
+    return deepest
+
+
 def parse_formula(key: str, expression: str) -> ParsedFormula:
     """Parse and validate a formula, returning its dependencies.
 
@@ -189,10 +211,26 @@ def parse_formula(key: str, expression: str) -> ParsedFormula:
     if not expression or not expression.strip():
         raise FormulaError("Formula is empty")
 
+    if len(expression) > MAX_EXPRESSION_LENGTH:
+        raise FormulaError(
+            f"Formula is too long ({len(expression)} characters, "
+            f"limit is {MAX_EXPRESSION_LENGTH})"
+        )
+
     try:
         tree = ast.parse(expression, mode="eval")
     except SyntaxError as exc:
         raise FormulaError(f"Syntax error: {exc.msg}") from exc
+    except (ValueError, MemoryError, RecursionError) as exc:
+        # ast.parse itself rejects pathological input (over-nested brackets,
+        # oversized int literals) with these rather than SyntaxError.
+        raise FormulaError(f"Formula is too complex to parse: {type(exc).__name__}") from exc
+
+    depth = _max_depth(tree)
+    if depth > MAX_EXPRESSION_DEPTH:
+        raise FormulaError(
+            f"Formula nests too deeply ({depth} levels, limit is {MAX_EXPRESSION_DEPTH})"
+        )
 
     names: set[str] = set()
     scope_names: set[str] = set()
@@ -264,6 +302,63 @@ def parse_formula(key: str, expression: str) -> ParsedFormula:
 # ── Evaluation ────────────────────────────────────────────────────────────────
 
 
+class ScopeContext:
+    """Per-column view of the whole category, shared across every team.
+
+    Aggregates and sort orders are computed once and reused, so a formula
+    calling rank()/max_all() stays O(log n) per team instead of rescanning the
+    column for each one — the difference between O(n log n) and O(n^2) over a
+    tournament field.
+    """
+
+    __slots__ = ("columns", "_aggregates", "_sorted")
+
+    def __init__(self, columns: dict[str, list[float]]):
+        self.columns = columns
+        self._aggregates: dict[tuple[str, str], float] = {}
+        self._sorted: dict[str, list[float]] = {}
+
+    def column(self, name: str) -> list[float]:
+        if name not in self.columns:
+            raise FormulaError(f"Column '{name}' is not available yet")
+        return self.columns[name]
+
+    def aggregate(self, func: str, name: str) -> float:
+        cached = self._aggregates.get((func, name))
+        if cached is not None:
+            return cached
+        column = self.column(name)
+        if not column:
+            value = 0.0
+        elif func == "max_all":
+            value = max(column)
+        elif func == "min_all":
+            value = min(column)
+        elif func == "avg_all":
+            value = sum(column) / len(column)
+        else:  # sum_all
+            value = sum(column)
+        self._aggregates[(func, name)] = value
+        return value
+
+    def rank(self, name: str, value: float, *, descending: bool) -> float:
+        ordered = self._sorted.get(name)
+        if ordered is None:
+            ordered = sorted(self.column(name))
+            self._sorted[name] = ordered
+        # Competition ranking: ties share a rank and the next rank skips.
+        if descending:
+            better = len(ordered) - bisect_right(ordered, value)
+        else:
+            better = bisect_left(ordered, value)
+        return float(better + 1)
+
+    def team_count(self) -> float:
+        for column in self.columns.values():
+            return float(len(column))
+        return 0.0
+
+
 def _competition_rank(value: float, population: Sequence[float], *, descending: bool) -> float:
     """1224-style ranking: ties share a rank and the next rank skips.
 
@@ -277,15 +372,9 @@ def _competition_rank(value: float, population: Sequence[float], *, descending: 
 
 
 class _Evaluator(ast.NodeVisitor):
-    def __init__(self, row: dict[str, Any], columns: dict[str, list[float]]):
+    def __init__(self, row: dict[str, Any], scope: ScopeContext):
         self.row = row
-        self.columns = columns
-
-    # -- scope helpers
-    def _column(self, name: str) -> list[float]:
-        if name not in self.columns:
-            raise FormulaError(f"Column '{name}' is not available yet")
-        return self.columns[name]
+        self.scope = scope
 
     def visit_Expression(self, node: ast.Expression) -> Any:
         return self.visit(node.body)
@@ -337,7 +426,15 @@ class _Evaluator(ast.NodeVisitor):
         if isinstance(op, ast.Pow):
             if abs(right) > 64:
                 raise FormulaError("Exponent is too large")
-            return left**right
+            try:
+                result = left**right
+            except OverflowError as exc:
+                # A bounded exponent still lets the base grow, e.g.
+                # ((2**64)**64)**64 — Python raises rather than returning inf.
+                raise FormulaError("Result is too large") from exc
+            if not math.isfinite(result):
+                raise FormulaError("Result is too large")
+            return result
         raise FormulaError(f"Operator {type(op).__name__} is not allowed")
 
     def visit_BoolOp(self, node: ast.BoolOp) -> Any:
@@ -374,24 +471,16 @@ class _Evaluator(ast.NodeVisitor):
         fname = node.func.id  # validated by parse_formula
         if fname in SCOPE_FUNCTIONS:
             if fname == "count_all":
-                any_col = next(iter(self.columns.values()), [])
-                return float(len(any_col))
+                return self.scope.team_count()
             col_name = node.args[0].id
-            column = self._column(col_name)
-            if fname == "max_all":
-                return max(column) if column else 0.0
-            if fname == "min_all":
-                return min(column) if column else 0.0
-            if fname == "avg_all":
-                return sum(column) / len(column) if column else 0.0
-            if fname == "sum_all":
-                return sum(column)
+            if fname != "rank" and fname != "rank_asc":
+                return self.scope.aggregate(fname, col_name)
             # rank / rank_asc need this team's own value for that column
             if col_name not in self.row:
                 raise FormulaError(f"Column '{col_name}' is not available for this team")
             own = _flatten([self.row[col_name]])
             own_value = own[0] if own else 0.0
-            return _competition_rank(own_value, column, descending=(fname == "rank"))
+            return self.scope.rank(col_name, own_value, descending=(fname == "rank"))
 
         func = ROW_FUNCTIONS[fname]
         args = [self.visit(a) for a in node.args]
@@ -406,14 +495,28 @@ class _Evaluator(ast.NodeVisitor):
         raise FormulaError(f"{type(node).__name__} is not allowed in a formula")
 
 
-def evaluate(parsed: ParsedFormula, row: dict[str, Any], columns: dict[str, list[float]]) -> float:
+def evaluate(
+    parsed: ParsedFormula,
+    row: dict[str, Any],
+    scope: ScopeContext | dict[str, list[float]],
+) -> float:
     """Evaluate one formula for one team.
 
     `row` holds this team's inputs plus every previously computed formula value.
-    `columns` holds each already-computed column across all teams in scope,
-    which is what the scope functions (rank, max_all, …) read.
+    `scope` carries the already-computed columns across all teams; pass a
+    ScopeContext to share its cached aggregates and sort orders across the whole
+    field, or a plain dict of columns for a one-off evaluation.
     """
-    result = _Evaluator(row, columns).visit(parsed.tree)
+    if not isinstance(scope, ScopeContext):
+        scope = ScopeContext(scope)
+    try:
+        result = _Evaluator(row, scope).visit(parsed.tree)
+    except RecursionError as exc:
+        # Depth is bounded at parse time; this is the belt-and-braces guard so a
+        # pathological formula can never surface as a 500.
+        raise FormulaError("Formula is too deeply nested to evaluate") from exc
+    except OverflowError as exc:
+        raise FormulaError("Result is too large") from exc
     if isinstance(result, bool):
         return float(result)
     if isinstance(result, int | float):
