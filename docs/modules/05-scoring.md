@@ -259,14 +259,14 @@ Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore
 | Kitchen Floor | Botguy | ×15 | |
 | Condiment Stations | Unsorted Poms | ×1 | # of Sorted Stations |
 | Condiment Stations | Sorted Poms | ×5 | |
-| Serving Station | Red/Orange/Yellow Pom in Tray | ×5 | # Full Pom Sets in Trays |
-| Serving Station | One Side in Tray | ×15 | # Full Trays ×2 |
+| Serving Station | Red/Orange/Yellow Pom in Tray | ×5 | # Full Pom Sets in Trays **oder** # Full Trays ×2 |
+| Serving Station | One Side in Tray | ×15 | |
 | Serving Station | One Entree in Tray | ×15 | |
-| Beverage Station | Cups | ×5 | Full Cup ×2 |
-| Beverage Station | Water Bottles | ×10 | 2+ Cups ×2 |
-| Beverage Station | Ice | ×10 | 5 Water Bottles ×3 |
-| Beverage Station | Matching Drink Color | ×30 | 6 Water Bottles ×6 |
-| Beverage Station | Wrong Drink Color | ×10 | |
+| Cups | Ice | ×10 | Full Cup ×2 |
+| Cups | Wrong Drink Color | ×10 | 2+ Cups in Beverage Station ×2 |
+| Cups | Matching Drink Color | ×30 | |
+| Beverage Station | Cups | ×5 | 5 Water Bottles ×3 **oder** 6 Water Bottles ×6 |
+| Beverage Station | Water Bottles | ×10 | |
 | Fry Station | Potato | ×50 | No Fries on Game Surface ×2 |
 
 #### 2026 – Logistics/Warehouse Theme
@@ -296,6 +296,26 @@ Game-Elemente aus Regeltext extrahiert. Exakte Multiplikatoren liegen nur im gra
 - Stacks: unterster Piece muss Pallet oder Cube sein; nur Cubes können gestapelt werden
 
 > Alle Felder werden als konfigurierbares YAML/JSON-Schema pro Saison im System hinterlegt. Für 2026 müssen die exakten Multiplikator-Werte aus dem offiziellen Score-Sheet (PDF) manuell eingetragen werden.
+
+#### Umsetzung: strukturiertes Score-Sheet
+
+Ein Schema ist entweder eine flache Feldliste (Σ Wert × Multiplikator) oder eine strukturierte `definition` (`backend/modules/scoring/sheet.py`, gespiegelt in `frontend/src/modules/scoring/sheet/calculator.ts`, beide gegen dieselben Fixtures getestet):
+
+- **Bereiche** mit Feldern (Anzahl/Boolean, Punkte, Maximalwert) → Zwischensumme.
+- **Bereichs-Multiplikatoren** auf die Zwischensumme: Häkchen (× Faktor), Anzahl (× (n · Faktor + Offset), z. B. „Robots back ×n+1“), **Entweder-oder** (die bessere Alternative zählt). Werte unter 1 lassen die Zwischensumme unverändert. Mehrere Multiplikatoren eines Bereichs werden multipliziert.
+- **Seiten A/B**: jeder Bereich pro Seite, Total = A + B. Rohwerte heißen dann `A.<feld>` / `B.<feld>`.
+- Vorlagen 2024 und 2025 (vollständig, aus den Score-Sheets) und 2026 (nur Struktur, Punkte = 1) sind im Editor wählbar; „Klonen von“ kopiert das aktive Schema eines anderen Events/einer anderen Stufe als neue Version.
+
+### Tie-Breaker & Sonderregeln (Game Review)
+
+Pro Saison konfigurierbar (`/scoring/seasons/:id/rules`, Vorlagen 2024/2025/2026 aus den Game Reviews):
+
+- **Tie-Breaker-Liste** in Reihenfolge. Jeder Tie-Breaker liest seinen Wert aus dem Score-Sheet (Summe beider Seiten) oder wird vom Juror pro Match eingetragen. Verwendet für Seeding-Gleichstände (Werte der gewerteten besten zwei Läufe), DE-Duelle und gleiche DE-Ränge; die UI zeigt, welcher Tie-Breaker entschieden hat.
+- **Finale wiederholen** (`finals_replay`, 2026): Im Finale entscheidet kein Tie-Breaker, das Match wird wiederholt. Der Tie-Breaker „closest to Botguy“ (2026) gilt erst nach einem Replay (`replay_only`, Match-Kennzeichen „Replay“).
+- **Kontakt am Spielende**: Berührt ein Roboter absichtlich die gegnerische Seite, erhält der Gegner 25 % des Scores des verursachenden Teams (Prozentsatz konfigurierbar).
+- **Runde verloren** (Startbox nie verlassen / Motoren laufen am Ende): Die Runde zählt 0 Punkte, ist aber keine DQ. Im Duell verliert das Team; haben beide Teams die Runde verloren, verliert das Team, das die Startbox nie verlassen hat.
+- **Schiedsrichter-Checkliste**: Prüfpunkte, die der Juror vor dem Bestätigen eines Scores abhakt; das Ergebnis wird mit dem Match gespeichert.
+- **Parts Challenge**: Die Einsprache wird mit dem Match erfasst. Entscheidet der Head Judge für den Challenger, wird das angefochtene Team für die Runde disqualifiziert, sonst der Challenger. Eine eigene Rangliste gibt es dafür nicht, weil die Challenge keine Wertung ist.
 
 ### Yellow/Red Card System – Team Misconduct
 
