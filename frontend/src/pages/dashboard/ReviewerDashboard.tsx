@@ -1,16 +1,19 @@
 import { FileText, Clock, CheckCircle2 } from "lucide-react";
+import type { DashboardSummary } from "@/api/analytics";
+import { UpcomingDeadlines } from "./roleSections";
 import { StatGrid, SectionCard, ReviewQueue, AnnouncementsList } from "./widgets";
 
 interface Props {
   papers?: Array<any>;
   season?: any;
   announcements?: Array<any>;
+  summary?: DashboardSummary;
 }
 
 /** Statuses that still need reviewer attention. */
 const OPEN_STATUSES = new Set(["submitted", "under_review", "revision_requested"]);
 
-export default function ReviewerDashboard({ papers, season, announcements }: Props) {
+export default function ReviewerDashboard({ papers, season, announcements, summary }: Props) {
   const all = papers ?? [];
   const queue = all.filter((p) => OPEN_STATUSES.has(p.status));
   const done = all.filter((p) => p.status === "accepted" || p.status === "rejected");
@@ -39,6 +42,8 @@ export default function ReviewerDashboard({ papers, season, announcements }: Pro
       <SectionCard title="Review-Warteschlange" id="reviewer-queue">
         <ReviewQueue papers={queue} />
       </SectionCard>
+
+      {summary && <UpcomingDeadlines deadlines={summary.deadlines} />}
 
       <SectionCard title="Ankündigungen" id="reviewer-announcements">
         <AnnouncementsList announcements={announcements ?? []} />

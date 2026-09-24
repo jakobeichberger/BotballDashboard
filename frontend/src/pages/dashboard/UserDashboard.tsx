@@ -1,4 +1,6 @@
 import { Trophy, Users, Calendar } from "lucide-react";
+import type { DashboardSummary } from "@/api/analytics";
+import { JurorPanel, MentorPanel, UpcomingDeadlines } from "./roleSections";
 import { StatGrid, SectionCard, RankingList, AnnouncementsList, PhaseTimeline } from "./widgets";
 
 interface Props {
@@ -6,9 +8,10 @@ interface Props {
   ranking?: Array<any>;
   teams?: Array<any>;
   announcements?: Array<any>;
+  summary?: DashboardSummary;
 }
 
-export default function UserDashboard({ season, ranking, teams, announcements }: Props) {
+export default function UserDashboard({ season, ranking, teams, announcements, summary }: Props) {
   const teamMap: Record<string, string> = {};
   (teams ?? []).forEach((t) => {
     teamMap[t.id] = t.name;
@@ -30,6 +33,10 @@ export default function UserDashboard({ season, ranking, teams, announcements }:
   return (
     <div data-testid="user-dashboard">
       <StatGrid items={statItems} ariaLabel="Saison-Kennzahlen" />
+
+      {summary?.juror && <JurorPanel juror={summary.juror} />}
+      {summary?.mentor && <MentorPanel teams={summary.mentor.teams} />}
+      {summary && <UpcomingDeadlines deadlines={summary.deadlines} />}
 
       <SectionCard title="Top-Ranking" id="user-ranking">
         <RankingList entries={top} teams={teamMap} />

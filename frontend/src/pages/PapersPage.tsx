@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import Modal from "@/components/Modal";
 import { EventLink } from "@/components/EventLink";
+import { PaperExportButtons } from "@/components/ExportButtons";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration } from "@/api/types";
@@ -94,7 +95,10 @@ export default function PapersPage() {
           <FileText className="w-6 h-6" />
           Paper Review
         </h1>
-        {canWrite && <button onClick={() => setOpen(true)} className="btn-primary">+ Paper einreichen</button>}
+        <div className="flex flex-wrap items-center gap-2">
+          {canAdmin && event?.season_id && <PaperExportButtons seasonId={event.season_id} seasonYear={event.slug} />}
+          {canWrite && <button onClick={() => setOpen(true)} className="btn-primary">+ Paper einreichen</button>}
+        </div>
       </div>
 
       {isLoading && <p className="text-gray-500">Laden...</p>}

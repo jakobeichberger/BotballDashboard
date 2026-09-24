@@ -4,6 +4,9 @@ import { Pencil, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
+import { MultiYearExportButton, TeamExportButtons } from "@/components/ExportButtons";
+import { useParams } from "react-router-dom";
+import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 
 interface TeamForm {
@@ -56,6 +59,11 @@ function teamPayload(form: TeamForm) {
 export default function TeamsPage() {
   const queryClient = useQueryClient();
   const canWrite = useAuthStore((state) => state.hasPermission("teams:write"));
+  const canExportHistory = useAuthStore(
+    (state) => state.hasPermission("scoring:admin") || state.hasPermission("teams:admin"),
+  );
+  const { eventId = "" } = useParams();
+  const { data: event } = useEvent(eventId);
   const [open, setOpen] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [form, setForm] = useState<TeamForm>(EMPTY_FORM);
@@ -163,7 +171,9 @@ export default function TeamsPage() {
           <Users className="h-6 w-6" />
           Teams
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {event?.season_id && <TeamExportButtons seasonId={event.season_id} seasonYear={event.slug} />}
+          {canExportHistory && <MultiYearExportButton />}
           <EventLink to="/teams/matrix" className="btn-secondary">Team-Saison-Matrix</EventLink>
           {canWrite && <button onClick={openCreate} className="btn-primary">+ Team hinzufügen</button>}
         </div>

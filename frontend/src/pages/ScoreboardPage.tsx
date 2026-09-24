@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
-import { RankingExportButtons } from "@/components/ExportButtons";
+import { EventRankingExportButtons, RankingExportButtons } from "@/components/ExportButtons";
 import { useCurrentUser } from "@/hooks/useAuth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -125,6 +125,7 @@ function CategoryFilter({
 
 function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) {
   const [category, setCategory] = useState<string | null>(null);
+  const { eventId } = useParams();
 
   const { data, isLoading } = useQuery<SeedingEntry[]>({
     queryKey: ["ranking-extended", sid, category],
@@ -142,7 +143,12 @@ function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) 
     <div>
       <div className="flex items-center justify-between mb-3">
         <CategoryFilter categories={categories} active={category} onChange={setCategory} />
-        <RankingExportButtons seasonId={sid} seasonYear={new Date().getFullYear()} />
+        {/* On an event page export that event, not the season's default event. */}
+        {eventId ? (
+          <EventRankingExportButtons eventId={eventId} includeMatches />
+        ) : (
+          <RankingExportButtons seasonId={sid} seasonYear={new Date().getFullYear()} />
+        )}
       </div>
       {isLoading && <p className="text-gray-500 text-sm">Laden…</p>}
       <div className="card overflow-hidden">

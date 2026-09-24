@@ -72,10 +72,11 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
 
 interface SeasonExportProps {
   seasonId: string;
-  seasonYear: number;
+  /** Only used for the download file name. */
+  seasonYear?: number | string;
 }
 
-export function RankingExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
+export function RankingExportButtons({ seasonId, seasonYear = "saison" }: SeasonExportProps) {
   return (
     <div className="flex gap-2">
       <ExportButton
@@ -100,7 +101,7 @@ export function RankingExportButtons({ seasonId, seasonYear }: SeasonExportProps
   );
 }
 
-export function PaperExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
+export function PaperExportButtons({ seasonId, seasonYear = "saison" }: SeasonExportProps) {
   return (
     <div className="flex gap-2">
       <ExportButton
@@ -119,7 +120,7 @@ export function PaperExportButtons({ seasonId, seasonYear }: SeasonExportProps) 
   );
 }
 
-export function PrintingExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
+export function PrintingExportButtons({ seasonId, seasonYear = "saison" }: SeasonExportProps) {
   return (
     <div className="flex gap-2">
       <ExportButton
@@ -132,7 +133,7 @@ export function PrintingExportButtons({ seasonId, seasonYear }: SeasonExportProp
   );
 }
 
-export function TeamExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
+export function TeamExportButtons({ seasonId, seasonYear = "saison" }: SeasonExportProps) {
   return (
     <div className="flex gap-2">
       <ExportButton
@@ -149,4 +150,43 @@ export function TeamExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
       />
     </div>
   );
+}
+
+/** Event-scoped exports: seeding ranking, formula-engine overall ranking, runs. */
+export function EventRankingExportButtons({
+  eventId,
+  slug = "event",
+  includeMatches = false,
+}: {
+  eventId: string;
+  slug?: string;
+  includeMatches?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <ExportButton url={`/exports/events/${eventId}/ranking.pdf`} filename={`ranking-${slug}.pdf`} label="Seeding PDF" variant="pdf" />
+      <ExportButton url={`/exports/events/${eventId}/ranking.csv`} filename={`ranking-${slug}.csv`} label="Seeding CSV" variant="csv" />
+      <ExportButton url={`/exports/events/${eventId}/overall-ranking.pdf`} filename={`gesamtwertung-${slug}.pdf`} label="Gesamt PDF" variant="pdf" />
+      <ExportButton url={`/exports/events/${eventId}/overall-ranking.csv`} filename={`gesamtwertung-${slug}.csv`} label="Gesamt CSV" variant="csv" />
+      {includeMatches && (
+        <ExportButton url={`/exports/events/${eventId}/matches.csv`} filename={`laeufe-${slug}.csv`} label="Läufe CSV" variant="csv" />
+      )}
+    </div>
+  );
+}
+
+/** A team's report across all events (own team or organizers only). */
+export function TeamReportExportButtons({ teamId, teamName = "team" }: { teamId: string; teamName?: string }) {
+  const safe = teamName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "team";
+  return (
+    <div className="flex flex-wrap gap-2">
+      <ExportButton url={`/exports/teams/${teamId}/report.pdf`} filename={`teambericht-${safe}.pdf`} label="Teambericht PDF" variant="pdf" />
+      <ExportButton url={`/exports/teams/${teamId}/history.csv`} filename={`historie-${safe}.csv`} label="Historie CSV" variant="csv" />
+    </div>
+  );
+}
+
+/** Multi-year comparison of every team (organizers). */
+export function MultiYearExportButton() {
+  return <ExportButton url="/exports/history.csv" filename="mehrjahresvergleich.csv" label="Mehrjahresvergleich CSV" variant="csv" />;
 }

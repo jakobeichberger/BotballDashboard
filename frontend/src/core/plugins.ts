@@ -12,7 +12,7 @@ export interface RouteDefinition {
   component: LazyExoticComponent<ComponentType>;
   permission: string;
   label: { de: string; en: string };
-  icon: "dashboard" | "teams" | "schedule" | "scoring" | "scans" | "papers" | "printing" | "bots" | "settings";
+  icon: "dashboard" | "teams" | "schedule" | "scoring" | "scans" | "papers" | "printing" | "bots" | "settings" | "stats" | "performance" | "calendar";
   navigation?: boolean;
 }
 
@@ -57,6 +57,7 @@ export const modules: readonly ModuleDefinition[] = [
       { path: "dashboard", component: lazy(() => import("@/pages/DashboardPage")), permission: "dashboard:read", label: { de: "Dashboard", en: "Dashboard" }, icon: "dashboard", navigation: true },
       // Empty permission: every signed-in user may manage their own profile.
       { path: "profile", component: lazy(() => import("@/pages/ProfilePage")), permission: "", label: { de: "Profil", en: "Profile" }, icon: "settings", navigation: false },
+      { path: "calendar", component: lazy(() => import("@/pages/CalendarPage")), permission: "seasons:read", label: { de: "Deadlines", en: "Deadlines" }, icon: "calendar", navigation: true },
     ],
     dashboardWidgets: [],
     translations: ["common", "dashboard"],
@@ -101,6 +102,9 @@ export const modules: readonly ModuleDefinition[] = [
       { path: "scoring/aerial", component: lazy(() => import("@/pages/AerialPage")), permission: "scoring:admin", label: { de: "Aerial", en: "Aerial" }, icon: "scoring", navigation: false },
       { path: "scoring/doc", component: lazy(() => import("@/pages/DocScoringPage")), permission: "scoring:admin", label: { de: "Dokumentation", en: "Documentation" }, icon: "scoring", navigation: false },
       { path: "scoring/score-sheets", component: lazy(() => import("@/modules/scoring/score-sheets/pages/ScoreSheetsPage")), permission: "scoring:admin", label: { de: "Score-Sheets", en: "Score sheets" }, icon: "scans", navigation: false },
+      // Mentors see their own team only; the backend scopes the data.
+      { path: "performance", component: lazy(() => import("@/pages/PerformancePage")), permission: "scoring:write", label: { de: "Performance", en: "Performance" }, icon: "performance", navigation: true },
+      { path: "statistics", component: lazy(() => import("@/pages/StatisticsPage")), permission: "scoring:admin", label: { de: "Statistik & Anomalien", en: "Statistics & anomalies" }, icon: "stats", navigation: true },
       { path: "formulas", component: lazy(() => import("@/pages/FormulasPage")), permission: "scoring:formulas", label: { de: "Punkteformeln", en: "Scoring formulas" }, icon: "scoring", navigation: true },
     ],
     dashboardWidgets: [{ id: "matches", permission: "scoring:read", audience: "juror", label: { de: "Wertungen", en: "Scores" } }],
