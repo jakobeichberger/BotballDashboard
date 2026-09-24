@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import assert_team_access, require_permission
+from core.auth import assert_team_access, has_elevated_access, own_team_ids, require_permission
 from core.database import get_db
 from core.exceptions import ForbiddenError, NotFoundError
 from modules.bots import service
@@ -17,12 +17,27 @@ async def _assert_bot_access(db: AsyncSession, user, team_id: str | None) -> Non
     if team_id:
         await assert_team_access(db, user, team_id, "teams:admin")
         return
-    if user.is_superuser:
-        return
-    from modules.auth.service import get_user_permissions
-
-    if "teams:admin" not in await get_user_permissions(db, user.id):
+    if not await has_elevated_access(db, user, "teams:admin"):
         raise ForbiddenError("Only organizers may manage bots of external teams")
+
+
+async def _visible_filter(db: AsyncSession, user):
+    """Predicate for which bots `user` may see.
+
+    Published bots form the shared gallery. Unpublished ones are drafts: only
+    organizers and the owning team see them (teams:read also reaches guests).
+    """
+    if await has_elevated_access(db, user, "teams:admin"):
+        return lambda bot: True
+    mine = await own_team_ids(db, user)
+    return lambda bot: bot.is_published or (bot.team_id is not None and bot.team_id in mine)
+
+
+async def _get_visible_bot(db: AsyncSession, user, bot_id: str):
+    bot = await service.get_bot(db, bot_id)
+    if not (await _visible_filter(db, user))(bot):
+        raise NotFoundError("Bot not found")
+    return bot
 
 
 @router.get("", response_model=list[BotResponse])
@@ -30,19 +45,20 @@ async def list_bots(
     season_id: str | None = Query(None),
     team_id: str | None = Query(None),
     external: bool | None = Query(None),
-    _=Depends(require_permission("teams:read")),
+    current_user=Depends(require_permission("teams:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_bots(db, season_id, team_id, external)
+    visible = await _visible_filter(db, current_user)
+    return [b for b in await service.list_bots(db, season_id, team_id, external) if visible(b)]
 
 
 @router.get("/{bot_id}", response_model=BotResponse)
 async def get_bot(
     bot_id: str,
-    _=Depends(require_permission("teams:read")),
+    current_user=Depends(require_permission("teams:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_bot(db, bot_id)
+    return await _get_visible_bot(db, current_user, bot_id)
 
 
 @router.post("", response_model=BotResponse, status_code=201)
@@ -93,10 +109,10 @@ async def upload_bot_image(
 @router.get("/{bot_id}/image")
 async def get_bot_image(
     bot_id: str,
-    _=Depends(require_permission("teams:read")),
+    current_user=Depends(require_permission("teams:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    bot = await service.get_bot(db, bot_id)
+    bot = await _get_visible_bot(db, current_user, bot_id)
     if not bot.image_name:
         raise NotFoundError("No image uploaded")
     # Serve with the media type we validated from the magic bytes, never one

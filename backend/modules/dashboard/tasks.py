@@ -13,6 +13,22 @@ from modules.auth.models import PushSubscription
 from modules.dashboard.models import NotificationEvent
 
 
+def push_targets(payload: dict, subscriptions: list) -> list:
+    """Subscriptions a notification may be pushed to.
+
+    Recipients are opt-in: `userId` / `userIds` address specific users, and only
+    an explicit `broadcast` reaches every subscriber. An event without either
+    (it used to go to everyone) is pushed to no one — paper decisions and other
+    team-internal news must not reach all users of all events.
+    """
+    if payload.get("broadcast"):
+        return list(subscriptions)
+    user_ids = set(payload.get("userIds") or [])
+    if payload.get("userId"):
+        user_ids.add(payload["userId"])
+    return [s for s in subscriptions if s.user_id in user_ids]
+
+
 @celery_app.task(name="notifications.deliver_outbox")
 def deliver_outbox() -> None:
     async def run() -> None:
@@ -35,12 +51,7 @@ def deliver_outbox() -> None:
                         await publish_live_event(item.event_id, item.event_type, item.payload)
                     title = item.payload.get("title") or item.event_type.replace("_", " ").title()
                     body = item.payload.get("message") or item.payload.get("body") or ""
-                    user_id = item.payload.get("userId")
-                    targets = [
-                        subscription
-                        for subscription in subscriptions
-                        if not user_id or subscription.user_id == user_id
-                    ]
+                    targets = push_targets(item.payload, subscriptions)
                     if body and targets:
                         await asyncio.gather(
                             *(

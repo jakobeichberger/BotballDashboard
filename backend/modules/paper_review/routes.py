@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import (
     assert_team_access,
+    has_elevated_access,
+    own_team_ids,
     require_permission,
 )
 from core.database import get_db
@@ -28,6 +30,14 @@ from modules.paper_review.schemas import (
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
+# Organizers and reviewers work across all teams; anyone else holding
+# papers:read (a mentor) only sees their own team's papers.
+_ALL_PAPERS = ("papers:admin", "papers:review")
+
+
+async def _assert_paper_read(db: AsyncSession, user, paper) -> None:
+    await assert_team_access(db, user, paper.team_id, _ALL_PAPERS)
+
 
 @router.get("", response_model=list[PaperListItem])
 async def list_papers(
@@ -35,10 +45,13 @@ async def list_papers(
     team_id: str | None = Query(None),
     status: str | None = Query(None),
     event_id: str | None = Query(None),
-    _=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_papers(db, season_id, team_id, status, event_id)
+    team_ids = None
+    if not await has_elevated_access(db, current_user, _ALL_PAPERS):
+        team_ids = await own_team_ids(db, current_user)
+    return await service.list_papers(db, season_id, team_id, status, event_id, team_ids)
 
 
 @router.post("", response_model=PaperResponse, status_code=201)
@@ -59,15 +72,12 @@ async def get_paper(
     db: AsyncSession = Depends(get_db),
 ):
     paper = await service.get_paper(db, paper_id)
+    await _assert_paper_read(db, current_user, paper)
     resp = PaperResponse.model_validate(paper)
     # GET /{id}/reviews is papers:admin-gated; don't let this endpoint hand the
     # same scores/comments (incl. unsubmitted drafts) to everyone with
     # papers:read. Reviewers still get their own review back for editing.
-    from modules.auth.service import get_user_permissions
-
-    if not current_user.is_superuser and "papers:admin" not in await get_user_permissions(
-        db, current_user.id
-    ):
+    if not await has_elevated_access(db, current_user, "papers:admin"):
         resp.reviews = [r for r in resp.reviews if r.reviewer_id == current_user.id]
     return resp
 
@@ -111,10 +121,11 @@ async def upload_paper_file(
 @router.get("/{paper_id}/download")
 async def download_paper(
     paper_id: str,
-    _=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
     paper = await service.get_paper(db, paper_id)
+    await _assert_paper_read(db, current_user, paper)
     if not paper.file_name:
         from core.exceptions import NotFoundError
 
@@ -244,7 +255,8 @@ async def list_reviews(
 @router.get("/{paper_id}/history", response_model=list[PaperStatusHistoryResponse])
 async def get_paper_history(
     paper_id: str,
-    _=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    await _assert_paper_read(db, current_user, await service.get_paper(db, paper_id))
     return await service.list_status_history(db, paper_id)

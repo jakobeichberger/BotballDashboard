@@ -141,26 +141,35 @@ def require_any_permission(*permissions: str):
     return _check
 
 
-async def assert_team_access(db, user, team_id: str, elevated_permission: str) -> None:
+async def has_elevated_access(db, user, elevated_permission: str | tuple[str, ...]) -> bool:
+    """True for superusers and holders of any of the given permissions."""
+    if user.is_superuser:
+        return True
+    wanted = (elevated_permission,) if isinstance(elevated_permission, str) else elevated_permission
+    held = await _permissions_for(db, user)
+    return any(p in held for p in wanted)
+
+
+async def own_team_ids(db, user) -> set[str]:
+    """Ids of the teams `user` is a member of (a mentor's own teams)."""
+    from modules.teams.models import TeamMember
+
+    result = await db.execute(select(TeamMember.team_id).where(TeamMember.user_id == user.id))
+    return set(result.scalars().all())
+
+
+async def assert_team_access(
+    db, user, team_id: str, elevated_permission: str | tuple[str, ...]
+) -> None:
     """Authorize an action scoped to a single team.
 
     Superusers and holders of ``elevated_permission`` (e.g. an organizer with
-    ``scoring:admin`` / ``papers:admin``) may act on any team. Everyone else –
-    typically a mentor doing self-service – must be a member of ``team_id``.
+    ``scoring:admin`` / ``papers:admin``; a tuple means any of them) may act on
+    any team. Everyone else – typically a mentor doing self-service – must be a
+    member of ``team_id``.
     """
-    if user.is_superuser:
+    if await has_elevated_access(db, user, elevated_permission):
         return
 
-    if elevated_permission in await _permissions_for(db, user):
-        return
-
-    from modules.teams.models import TeamMember
-
-    result = await db.execute(
-        select(TeamMember).where(
-            TeamMember.team_id == team_id,
-            TeamMember.user_id == user.id,
-        )
-    )
-    if result.scalar_one_or_none() is None:
-        raise ForbiddenError("You may only submit for your own team")
+    if team_id not in await own_team_ids(db, user):
+        raise ForbiddenError("You may only access your own team")

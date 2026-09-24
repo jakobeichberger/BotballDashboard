@@ -74,7 +74,9 @@ async def list_print_jobs(
     team_id: str | None = None,
     status: str | None = None,
     event_id: str | None = None,
+    team_ids: set[str] | None = None,
 ) -> list[PrintJob]:
+    """`team_ids`, when given, limits the result to those teams (mentor scoping)."""
     q = select(PrintJob).order_by(PrintJob.priority.desc(), PrintJob.created_at)
     if season_id:
         q = q.where(PrintJob.season_id == season_id)
@@ -84,6 +86,8 @@ async def list_print_jobs(
         q = q.where(PrintJob.status == status)
     if event_id:
         q = q.where(PrintJob.event_id == event_id)
+    if team_ids is not None:
+        q = q.where(PrintJob.team_id.in_(team_ids))
     result = await db.execute(q)
     return list(result.scalars().all())
 

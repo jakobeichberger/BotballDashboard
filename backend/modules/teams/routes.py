@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import (
     assert_team_access,
     get_current_user,
+    has_elevated_access,
+    own_team_ids,
     require_permission,
 )
 from core.database import get_db
@@ -118,10 +120,19 @@ async def get_team_history(
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(
     team_id: str,
-    _=Depends(require_permission("teams:read")),
+    current_user=Depends(require_permission("teams:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_team(db, team_id)
+    resp = TeamResponse.model_validate(await service.get_team(db, team_id))
+    # teams:read reaches guests and every mentor. Member e-mail addresses (mostly
+    # students) and the organizers' notes are only for the team itself and admins.
+    if not await has_elevated_access(
+        db, current_user, "teams:admin"
+    ) and team_id not in await own_team_ids(db, current_user):
+        resp.notes = None
+        for member in resp.members:
+            member.email = None
+    return resp
 
 
 @router.patch("/{team_id}", response_model=TeamResponse)

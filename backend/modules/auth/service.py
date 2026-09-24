@@ -185,6 +185,9 @@ async def change_password(
     if not verify_password(current_password, user.hashed_password):
         raise BadRequestError("Current password is incorrect")
     user.hashed_password = hash_password(new_password)
+    # A password change is how a user locks out whoever learned the old one;
+    # every session opened with it (refresh tokens live 30 days) must end.
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
 
 
 # ── Roles ─────────────────────────────────────────────────────────────────────

@@ -9,7 +9,8 @@ With explicit password argument (manual use):
     docker compose exec backend python scripts/create_admin.py \
         --email admin@example.com --password "securepassword" --name "Administrator"
 
-Reset / force-update an existing user's password:
+Reset / force-update an existing user's password (keeps their roles; ends
+all of their sessions). Add --superuser to also make them a superuser:
     docker compose exec -T -e ADMIN_PASSWORD backend python scripts/create_admin.py \
         --email admin@example.com --name "Administrator" --reset
 """
@@ -22,12 +23,14 @@ import sys
 sys.path.insert(0, "/app")
 
 
-async def main(email: str, password: str, display_name: str, reset: bool) -> None:
+async def main(
+    email: str, password: str, display_name: str, reset: bool, superuser: bool = False
+) -> None:
     import modules.paper_review.models  # noqa: F401
     import modules.seasons.models  # noqa: F401
     import modules.teams.models  # noqa: F401
     from core.database import AsyncSessionLocal
-    from modules.auth.models import Role, User, UserRole  # noqa: F401
+    from modules.auth.models import RefreshToken, Role, User, UserRole  # noqa: F401
     from modules.auth.service import create_user, hash_password
 
     for mod in ("modules.scoring.models", "modules.printing.models", "modules.dashboard.models"):
@@ -36,7 +39,7 @@ async def main(email: str, password: str, display_name: str, reset: bool) -> Non
         except ModuleNotFoundError:
             pass
 
-    from sqlalchemy import select
+    from sqlalchemy import delete, select
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(User).where(User.email == email.lower()))
@@ -48,10 +51,14 @@ async def main(email: str, password: str, display_name: str, reset: bool) -> Non
                     f"[INFO] User '{email.lower()}' already exists – skipping. Use --reset to force password update."
                 )
                 return
-            # Reset: update password, ensure active + superuser
+            # Reset: new password, reactivate, and end every existing session.
+            # Superuser status is only granted on request: resetting a juror's
+            # forgotten password must not silently make them an administrator.
             existing.hashed_password = hash_password(password)
             existing.is_active = True
-            existing.is_superuser = True
+            if superuser:
+                existing.is_superuser = True
+            await db.execute(delete(RefreshToken).where(RefreshToken.user_id == existing.id))
             await db.commit()
             print(f"[OK] Password reset for: {existing.email} (id={existing.id})")
             return
@@ -76,6 +83,11 @@ if __name__ == "__main__":
     parser.add_argument("--name", default="Administrator", help="Display name")
     parser.add_argument(
         "--reset", action="store_true", help="Force-update password even if user already exists"
+    )
+    parser.add_argument(
+        "--superuser",
+        action="store_true",
+        help="With --reset: also make the existing user a superuser",
     )
     args = parser.parse_args()
 
@@ -103,4 +115,4 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-    asyncio.run(main(args.email, password, args.name, args.reset))
+    asyncio.run(main(args.email, password, args.name, args.reset, args.superuser))

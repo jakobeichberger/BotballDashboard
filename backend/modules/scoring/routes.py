@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, WebSocket
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import (
@@ -6,7 +6,7 @@ from core.auth import (
     require_permission,
 )
 from core.database import get_db
-from core.live import publish_live_event, stream_live_events
+from core.live import publish_live_event
 from modules.events import service as event_svc
 from modules.scoring import competition_service as comp_svc
 from modules.scoring import formula_service as formula_svc
@@ -35,10 +35,10 @@ from modules.seasons import service as season_svc
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
 
-@router.websocket("/scoreboard/ws")
-async def scoreboard_ws(websocket: WebSocket):
-    """Legacy global stream. New screens use the event-specific public stream."""
-    await stream_live_events(websocket, None)
+# The former unauthenticated /scoreboard/ws streamed the global channel of
+# every event — including unpublished ones and their announcement texts — to
+# anyone. No client used it any more; live screens use the per-event public
+# stream (/api/v1/public/events/{slug}/ws), which honours the public_* flags.
 
 
 async def _broadcast_ranking_update(event_id: str) -> None:

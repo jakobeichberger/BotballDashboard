@@ -132,13 +132,29 @@ async def update_me(
     return await service.update_user(db, current_user.id, **update_data)
 
 
-@router.post("/me/password", status_code=204)
+@router.post(
+    "/me/password",
+    status_code=204,
+    dependencies=[Depends(rate_limit("password-change", 10, 60))],
+)
 async def change_password(
     body: UserPasswordChange,
+    response: Response,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     await service.change_password(db, current_user.id, body.current_password, body.new_password)
+    # All refresh tokens were revoked; keep only this device signed in.
+    _access_token, refresh_token = await service.create_tokens(db, current_user)
+    response.set_cookie(
+        REFRESH_COOKIE,
+        refresh_token,
+        httponly=True,
+        secure=not settings.is_dev,
+        samesite="strict",
+        max_age=settings.jwt_refresh_token_expire_days * 86400,
+        path="/api/auth",
+    )
 
 
 # ── Push subscriptions ────────────────────────────────────────────────────────

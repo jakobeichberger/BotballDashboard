@@ -95,7 +95,11 @@ async def publish_announcement(
             "title": ann.title,
             "body": ann.body,
             "announcementId": ann.id,
-            "publicLive": True,
+            # Only announcements meant for everyone go to the public live
+            # stream and to every push subscriber; audience-restricted ones
+            # stay on the authenticated dashboard.
+            "publicLive": ann.audience == "all",
+            "broadcast": ann.audience == "all",
         },
     )
     return ann

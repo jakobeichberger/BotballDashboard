@@ -243,5 +243,12 @@ async def readiness():
 
 
 @app.get("/api/system/metrics", tags=["system"], response_class=PlainTextResponse)
-async def metrics():
+async def metrics(request: Request):
+    # Prometheus scrapes backend:8000 on the internal network. Traefik excludes
+    # this path from the public router; as a second line, refuse anything that
+    # arrived through a proxy (which always sets X-Forwarded-For).
+    if "x-forwarded-for" in request.headers:
+        from core.exceptions import NotFoundError
+
+        raise NotFoundError("Not found")
     return render_metrics()

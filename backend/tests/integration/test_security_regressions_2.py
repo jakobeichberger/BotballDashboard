@@ -13,6 +13,7 @@
 """
 
 import pytest
+from sqlalchemy import select
 
 from core.auth import create_access_token
 from modules.auth.models import Permission, Role, RolePermission, User, UserRole
@@ -28,9 +29,14 @@ async def _mentor(db, team, email="m2@test.com"):
     db.add(role)
     await db.flush()
     for name in ("scoring:write", "papers:read", "teams:read"):
-        p = Permission(name=f"{name}-{email}" if False else name, description=name)
-        db.add(p)
-        await db.flush()
+        # Reuse the permission when an earlier _mentor call already made it.
+        p = (
+            await db.execute(select(Permission).where(Permission.name == name))
+        ).scalar_one_or_none()
+        if p is None:
+            p = Permission(name=name, description=name)
+            db.add(p)
+            await db.flush()
         db.add(RolePermission(role_id=role.id, permission_id=p.id))
     user = User(
         email=email,
@@ -188,12 +194,17 @@ class TestReviewsAreNotLeakedByGetPaper:
         )
         await db.commit()
 
-        # An outsider with papers:read must not see the review…
+        # An outsider with papers:read cannot open another team's paper at all…
         outsider_team = Team(name="Outsider", country="DE")
         db.add(outsider_team)
         await db.commit()
         await db.refresh(outsider_team)
-        _, mentor_headers = await _mentor(db, outsider_team, email="outsider@test.com")
+        _, outsider_headers = await _mentor(db, outsider_team, email="outsider@test.com")
+        blocked = await client.get(f"/api/papers/{pid}", headers=outsider_headers)
+        assert blocked.status_code == 403
+
+        # …and the paper's own team sees the paper but not the reviewers' work…
+        _, mentor_headers = await _mentor(db, team, email="owner@test.com")
         seen = await client.get(f"/api/papers/{pid}", headers=mentor_headers)
         assert seen.status_code == 200
         assert seen.json()["reviews"] == [], "reviews must not leak via GET /papers/{id}"

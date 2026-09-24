@@ -195,7 +195,11 @@ async def generate_schedule(
         db,
         "schedule_updated",
         event_id=event_id,
-        payload={"message": "The event schedule was regenerated.", "publicLive": True},
+        payload={
+            "message": "The event schedule was regenerated.",
+            "publicLive": True,
+            "broadcast": True,
+        },
     )
     return schedule
 
@@ -216,7 +220,12 @@ async def update_scheduled_match(
         db,
         "schedule_updated",
         event_id=event_id,
-        payload={"matchId": match.id, "message": "A match time changed.", "publicLive": True},
+        payload={
+            "matchId": match.id,
+            "message": "A match time changed.",
+            "publicLive": True,
+            "broadcast": True,
+        },
     )
     return match
 
@@ -433,4 +442,13 @@ async def public_event_ws(
     db: AsyncSession = Depends(get_db),
 ):
     event = await service.get_public_event(db, slug)
+    if not (
+        event.public_scoreboard
+        or event.public_schedule
+        or event.public_results
+        or event.public_announcements
+    ):
+        # Nothing about this event is public, so neither is its live stream.
+        await websocket.close(code=1008)
+        return
     await stream_live_events(websocket, event.id)
