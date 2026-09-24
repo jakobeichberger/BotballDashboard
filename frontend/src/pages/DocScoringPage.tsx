@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { useScoringScope } from "@/hooks/useScoringScope";
+import { regionalDocScore } from "@/lib/scoring";
 import { EventLink } from "@/components/EventLink";
 import { FileText, ArrowLeft, Save } from "lucide-react";
 
@@ -21,6 +22,11 @@ interface PaperEntry {
   paper_rank?: number | null;
 }
 
+interface OverallEntry {
+  team_id: string;
+  values: Record<string, number>;
+}
+
 interface Team {
   id: string;
   name: string;
@@ -28,16 +34,10 @@ interface Team {
 }
 
 export default function DocScoringPage() {
-  const [searchParams] = useSearchParams();
-  const sid = searchParams.get("season_id") ?? "";
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"doc" | "paper">("doc");
-
-  const { data: season } = useQuery({
-    queryKey: ["seasons", "active"],
-    queryFn: async () => { const { data } = await api.get("/seasons/active"); return data; },
-  });
-  const seasonId = sid || season?.id;
+  // Results belong to the event of the current route, not the season's first event.
+  const { base, seasonId, season } = useScoringScope();
 
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["teams"],
@@ -47,10 +47,20 @@ export default function DocScoringPage() {
   // ── Documentation ────────────────────────────────────────────────────────
 
   const { data: existingDoc } = useQuery<DocEntry[]>({
-    queryKey: ["doc-scores", seasonId],
-    queryFn: async () => { const { data } = await api.get(`/scoring/seasons/${seasonId}/doc-scores`); return data; },
-    enabled: !!seasonId,
+    queryKey: ["doc-scores", base],
+    queryFn: async () => { const { data } = await api.get(`${base}/doc-scores`); return data; },
+    enabled: !!base,
   });
+
+  // The documentation score the overall ranking actually uses comes from the
+  // season's formula set (ECER: P1–P3 only, GCER: onsite only, …).
+  const { data: overall } = useQuery<OverallEntry[]>({
+    queryKey: ["overall-ranking", base, "doc"],
+    queryFn: async () => { const { data } = await api.get(`${base}/ranking/overall`); return data; },
+    enabled: !!base,
+  });
+  const formulaDocScore = (tid: string): number | undefined =>
+    overall?.find((o) => o.team_id === tid)?.values?.doc_score;
 
   const [docDraft, setDocDraft] = useState<Record<string, Partial<DocEntry>>>({});
 
@@ -65,16 +75,17 @@ export default function DocScoringPage() {
 
   const saveDocMutation = useMutation({
     mutationFn: async (entries: DocEntry[]) => {
-      await api.put(`/scoring/seasons/${seasonId}/doc-scores`, entries);
+      await api.put(`${base}/doc-scores`, entries);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["doc-scores", seasonId] });
+      queryClient.invalidateQueries({ queryKey: ["doc-scores", base] });
+      queryClient.invalidateQueries({ queryKey: ["overall-ranking"] });
       setDocDraft({});
     },
   });
 
   const handleSaveDoc = () => {
-    if (!teams || !seasonId) return;
+    if (!teams || !base) return;
     const entries = teams
       .filter((t) => {
         const e = effectiveDoc(t.id);
@@ -192,6 +203,13 @@ export default function DocScoringPage() {
         )}
       </div>
 
+      {activeTab === "doc" && showDoc && (
+        <p className="text-sm text-gray-500 mb-4">
+          Doku-Score = 0,2·Teil 1 + 0,2·Teil 2 + 0,2·Teil 3 + 0,4·Onsite (fehlende Teile zählen 0).
+          „Formel-Wert“ ist der Wert, den die Gesamtwertung mit dem Formel-Set der Saison verwendet.
+        </p>
+      )}
+
       {/* Documentation Tab */}
       {activeTab === "doc" && showDoc && (
         <div className="card overflow-hidden">
@@ -203,14 +221,16 @@ export default function DocScoringPage() {
                   <th key={h} className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{h} (0–100)</th>
                 ))}
                 <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">Doku-Score (0–1)</th>
+                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">Formel-Wert</th>
               </tr>
             </thead>
             <tbody className="divide-y dark:divide-gray-800">
               {teams?.map((team) => {
                 const e = effectiveDoc(team.id);
                 const dirty = !!docDraft[team.id];
-                const parts = [e.part1, e.part2, e.part3, e.onsite].filter((v): v is number => v != null);
-                const docScore = parts.length > 0 ? (parts.reduce((a, b) => a + b, 0) / parts.length / 100).toFixed(4) : "–";
+                const regional = regionalDocScore([e.part1, e.part2, e.part3, e.onsite]);
+                const docScore = regional == null ? "–" : regional.toFixed(4);
+                const formulaValue = formulaDocScore(team.id);
                 return (
                   <tr key={team.id} className={dirty ? "bg-yellow-50 dark:bg-yellow-900/10" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}>
                     <td className="px-4 py-2">
@@ -231,6 +251,9 @@ export default function DocScoringPage() {
                     ))}
                     <td className="px-4 py-2 text-center font-bold text-gray-700 dark:text-gray-300">
                       {docScore}
+                    </td>
+                    <td className="px-4 py-2 text-center text-gray-500" title="Wert aus dem Formel-Set der Saison">
+                      {formulaValue == null ? "–" : formulaValue.toFixed(4)}
                     </td>
                   </tr>
                 );

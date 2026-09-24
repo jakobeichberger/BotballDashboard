@@ -5,6 +5,7 @@ import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy, Pencil
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { useAuthStore } from "@/store/authStore";
+import { useScoringScope } from "@/hooks/useScoringScope";
 import clsx from "clsx";
 
 interface Field {
@@ -28,11 +29,10 @@ export default function ScoreEntryPage() {
   const [mode, setMode] = useState<Mode>("contest");
   const isPractice = mode === "practice";
 
-  const { data: season } = useQuery({
-    queryKey: ["season-active"],
-    queryFn: async () => (await api.get("/seasons/active")).data,
-  });
-  const sid = season?.id;
+  // Scores are entered for the event of the current route; without one the
+  // backend falls back to the season's default event.
+  const { eventId, seasonId: sid, season } = useScoringScope();
+  const eventQuery = eventId ? `?event_id=${eventId}` : "";
 
   const { data: allTeams } = useQuery({
     queryKey: ["teams"],
@@ -44,13 +44,13 @@ export default function ScoreEntryPage() {
     enabled: canEnter && !canManageAll,
   });
   const { data: schema } = useQuery({
-    queryKey: ["scoring-schema", sid],
-    queryFn: async () => (await api.get(`/scoring/seasons/${sid}/schema`)).data,
+    queryKey: ["scoring-schema", sid, eventId],
+    queryFn: async () => (await api.get(`/scoring/seasons/${sid}/schema${eventQuery}`)).data,
     enabled: !!sid,
   });
   const { data: matches } = useQuery({
-    queryKey: ["matches", sid],
-    queryFn: async () => (await api.get(`/scoring/seasons/${sid}/matches`)).data,
+    queryKey: ["matches", sid, eventId],
+    queryFn: async () => (await api.get(`/scoring/seasons/${sid}/matches${eventQuery}`)).data,
     enabled: !!sid,
   });
 
@@ -64,7 +64,7 @@ export default function ScoreEntryPage() {
   const fields: Field[] = schema?.fields ?? [];
   const preview = fields.reduce((sum, f) => sum + (Number(scores[f.key] || 0) * f.multiplier), 0);
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["matches", sid] });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["matches", sid, eventId] });
   const onError = (e: any) => alert(e?.response?.data?.detail ?? "Aktion fehlgeschlagen.");
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -78,6 +78,7 @@ export default function ScoreEntryPage() {
         await api.patch(`/scoring/matches/${editingId}`, { raw_scores: rawFromScores() });
       } else {
         await api.post(`/scoring/seasons/${sid}/matches`, {
+          ...(eventId ? { event_id: eventId } : {}),
           team_id: teamId,
           round_number: round,
           is_practice: isPractice,

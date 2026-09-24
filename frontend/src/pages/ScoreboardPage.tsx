@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
 import { RankingExportButtons } from "@/components/ExportButtons";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useScoringScope } from "@/hooks/useScoringScope";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,7 +21,9 @@ interface Season {
 }
 
 interface SeedingEntry {
-  rank: number;
+  /** null when the team is disqualified (red card). */
+  rank: number | null;
+  disqualified?: boolean;
   team_id: string;
   team_name: string | null;
   category: string;
@@ -52,7 +54,9 @@ interface AerialEntry {
 }
 
 interface OverallEntry {
-  rank: number;
+  /** null when the team is disqualified (red card). */
+  rank: number | null;
+  disqualified?: boolean;
   team_id: string;
   team_name: string | null;
   category: string;
@@ -61,6 +65,7 @@ interface OverallEntry {
   de_score: number | null;
   paper_score: number | null;
   doc_score: number | null;
+  values?: Record<string, number>;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -71,6 +76,17 @@ const CATEGORY_LABELS: Record<string, string> = {
   aerial: "Aerial",
   jbc: "JBC",
 };
+
+function RankCell({ rank }: { rank: number | null }) {
+  if (rank == null) {
+    return (
+      <td className="px-4 py-3 font-bold text-red-600" title="Disqualifiziert (rote Karte)">
+        DQ
+      </td>
+    );
+  }
+  return <td className={`px-4 py-3 font-bold ${RANK_COLOR(rank)}`}>{rank}</td>;
+}
 
 const RANK_COLOR = (r: number) =>
   r === 1 ? "text-yellow-500" : r === 2 ? "text-gray-400" : r === 3 ? "text-amber-600" : "";
@@ -123,18 +139,18 @@ function CategoryFilter({
 
 // ── Seeding Tab ───────────────────────────────────────────────────────────────
 
-function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) {
+function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: string; categories: string[] }) {
   const [category, setCategory] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<SeedingEntry[]>({
-    queryKey: ["ranking-extended", sid, category],
+    queryKey: ["ranking-extended", base, category],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (category) params.set("category", category);
-      const { data } = await api.get(`/scoring/seasons/${sid}/ranking/extended?${params}`);
+      const { data } = await api.get(`${base}/ranking/extended?${params}`);
       return data;
     },
-    enabled: !!sid,
+    enabled: !!base,
     refetchInterval: 10_000,
   });
 
@@ -142,7 +158,7 @@ function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) 
     <div>
       <div className="flex items-center justify-between mb-3">
         <CategoryFilter categories={categories} active={category} onChange={setCategory} />
-        <RankingExportButtons seasonId={sid} seasonYear={new Date().getFullYear()} />
+        <RankingExportButtons seasonId={seasonId} seasonYear={new Date().getFullYear()} />
       </div>
       {isLoading && <p className="text-gray-500 text-sm">Laden…</p>}
       <div className="card overflow-hidden">
@@ -163,7 +179,7 @@ function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) 
           <tbody className="divide-y dark:divide-gray-800">
             {data?.map((e) => (
               <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
+                <RankCell rank={e.rank} />
                 <td className="px-4 py-3">
                   <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
                     {e.team_name ?? e.team_id}
@@ -195,15 +211,26 @@ function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) 
 
 // ── DE Tab ────────────────────────────────────────────────────────────────────
 
-function DETab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
+function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
   const { data: deData, isLoading } = useQuery<DEEntry[]>({
-    queryKey: ["de-results", sid],
+    queryKey: ["de-results", base],
     queryFn: async () => {
-      const { data } = await api.get(`/scoring/seasons/${sid}/de-results`);
+      const { data } = await api.get(`${base}/de-results`);
       return data;
     },
-    enabled: !!sid,
+    enabled: !!base,
   });
+  // The DE score that counts is the formula engine's (rank → bracket score →
+  // bracket weight); the stored de_score is only what an admin typed in.
+  const { data: overall } = useQuery<OverallEntry[]>({
+    queryKey: ["overall-ranking", base, "de"],
+    queryFn: async () => (await api.get(`${base}/ranking/overall`)).data,
+    enabled: !!base,
+  });
+  const formulaDE = (tid: string) => {
+    const entry = overall?.find((o) => o.team_id === tid);
+    return entry?.de_score ?? entry?.values?.de_score ?? null;
+  };
 
   const groups = { A: deData?.filter((e) => e.bracket === "A") ?? [], B: deData?.filter((e) => e.bracket === "B") ?? [] };
 
@@ -211,7 +238,7 @@ function DETab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
     <div className="space-y-6">
       {isAdmin && (
         <div className="flex justify-end gap-2">
-          <EventLink to={`/scoring/de?season_id=${sid}`} className="btn-secondary text-sm">
+          <EventLink to="/scoring/de" className="btn-secondary text-sm">
             DE-Ergebnisse eingeben
           </EventLink>
         </div>
@@ -243,7 +270,7 @@ function DETab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
                         <td className="px-4 py-3 font-mono text-xs text-gray-900 dark:text-white">{e.team_id}</td>
                         <td className="px-4 py-3 text-right">{e.de_rank ?? "–"}</td>
                         <td className="px-4 py-3 text-right">{fmt(e.bracket_score)}</td>
-                        <td className="px-4 py-3 text-right font-bold">{fmt(e.de_score)}</td>
+                        <td className="px-4 py-3 text-right font-bold">{fmt(formulaDE(e.team_id) ?? e.de_score)}</td>
                       </tr>
                     ))
                 )}
@@ -258,21 +285,21 @@ function DETab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
 
 // ── Aerial Tab ────────────────────────────────────────────────────────────────
 
-function AerialTab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
+function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
   const { data, isLoading } = useQuery<AerialEntry[]>({
-    queryKey: ["aerial-ranking", sid],
+    queryKey: ["aerial-ranking", base],
     queryFn: async () => {
-      const { data } = await api.get(`/scoring/seasons/${sid}/aerial-ranking`);
+      const { data } = await api.get(`${base}/aerial-ranking`);
       return data;
     },
-    enabled: !!sid,
+    enabled: !!base,
   });
 
   return (
     <div>
       {isAdmin && (
         <div className="flex justify-end mb-3">
-          <EventLink to={`/scoring/aerial?season_id=${sid}`} className="btn-secondary text-sm">
+          <EventLink to="/scoring/aerial" className="btn-secondary text-sm">
             Aerial-Ergebnisse eingeben
           </EventLink>
         </div>
@@ -288,7 +315,7 @@ function AerialTab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
               <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Run 2</th>
               <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Run 3</th>
               <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Run 4</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Score (⌀ best 2)</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Score (⌀ aller Läufe)</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -323,25 +350,25 @@ function AerialTab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
 // ── Overall Tab ───────────────────────────────────────────────────────────────
 
 function OverallTab({
-  sid,
+  base,
   season,
   categories,
 }: {
-  sid: string;
+  base: string;
   season: Season;
   categories: string[];
 }) {
   const [category, setCategory] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<OverallEntry[]>({
-    queryKey: ["overall-ranking", sid, category],
+    queryKey: ["overall-ranking", base, category],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (category) params.set("category", category);
-      const { data } = await api.get(`/scoring/seasons/${sid}/ranking/overall?${params}`);
+      const { data } = await api.get(`${base}/ranking/overall?${params}`);
       return data;
     },
-    enabled: !!sid,
+    enabled: !!base,
     refetchInterval: 15_000,
   });
 
@@ -375,7 +402,7 @@ function OverallTab({
           <tbody className="divide-y dark:divide-gray-800">
             {data?.map((e) => (
               <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
+                <RankCell rank={e.rank} />
                 <td className="px-4 py-3">
                   <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
                     {e.team_name ?? e.team_id}
@@ -416,24 +443,18 @@ const TABS = [
 ] as const;
 
 export default function ScoreboardPage() {
-  const [params] = useSearchParams();
-  const seasonId = params.get("season_id") ?? "";
   const { data: currentUser } = useCurrentUser();
   const isAdmin = currentUser?.roles?.some((r: any) => r.name === "admin") ?? false;
   const canEnterScores =
     currentUser?.is_superuser ||
     (currentUser?.roles?.some((r: any) => ["admin", "juror", "mentor"].includes(r.name)) ?? false);
 
-  const { data: activeSeasonData } = useQuery<Season>({
-    queryKey: ["seasons", "active"],
-    queryFn: async () => {
-      const { data } = await api.get("/seasons/active");
-      return data;
-    },
-  });
-
-  const sid = seasonId || activeSeasonData?.id;
-  const season = activeSeasonData;
+  // Under /events/:eventId every tab reads that event's results.
+  const scope = useScoringScope();
+  const base = scope.base;
+  const sid = scope.seasonId;
+  const season = scope.season as Season | undefined;
+  const entryQuery = scope.eventId || !sid ? "" : `?season_id=${sid}`;
 
   const visibleTabs = TABS.filter(
     (t) => t.flag === null || (season as any)?.[t.flag] === true
@@ -463,17 +484,17 @@ export default function ScoreboardPage() {
             </EventLink>
           )}
           {isAdmin && season?.use_double_elimination && (
-            <EventLink to={`/scoring/de${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
+            <EventLink to={`/scoring/de${entryQuery}`} className="btn-secondary text-sm">
               DE eingeben
             </EventLink>
           )}
           {isAdmin && season?.use_aerial && (
-            <EventLink to={`/scoring/aerial${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
+            <EventLink to={`/scoring/aerial${entryQuery}`} className="btn-secondary text-sm">
               Aerial eingeben
             </EventLink>
           )}
           {isAdmin && (season?.use_documentation_scoring || season?.use_paper_scoring) && (
-            <EventLink to={`/scoring/doc${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
+            <EventLink to={`/scoring/doc${entryQuery}`} className="btn-secondary text-sm">
               Doku eingeben
             </EventLink>
           )}
@@ -504,13 +525,13 @@ export default function ScoreboardPage() {
       )}
 
       {/* Tab Content */}
-      {sid && season && (
+      {sid && base && season && (
         <>
-          {currentTab?.id === "seeding" && <SeedingTab sid={sid} categories={categories} />}
-          {currentTab?.id === "de" && <DETab sid={sid} isAdmin={isAdmin} />}
-          {currentTab?.id === "aerial" && <AerialTab sid={sid} isAdmin={isAdmin} />}
+          {currentTab?.id === "seeding" && <SeedingTab base={base} seasonId={sid} categories={categories} />}
+          {currentTab?.id === "de" && <DETab base={base} isAdmin={isAdmin} />}
+          {currentTab?.id === "aerial" && <AerialTab base={base} isAdmin={isAdmin} />}
           {currentTab?.id === "overall" && (
-            <OverallTab sid={sid} season={season} categories={categories} />
+            <OverallTab base={base} season={season} categories={categories} />
           )}
         </>
       )}

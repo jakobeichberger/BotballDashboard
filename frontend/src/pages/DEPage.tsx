@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { useScoringScope } from "@/hooks/useScoringScope";
 import { EventLink } from "@/components/EventLink";
 import { Medal, ArrowLeft, Save } from "lucide-react";
 
@@ -21,20 +21,14 @@ interface Team {
 }
 
 export default function DEPage() {
-  const [searchParams] = useSearchParams();
-  const sid = searchParams.get("season_id") ?? "";
   const queryClient = useQueryClient();
-
-  const { data: season } = useQuery({
-    queryKey: ["seasons", "active"],
-    queryFn: async () => { const { data } = await api.get("/seasons/active"); return data; },
-  });
-  const seasonId = sid || season?.id;
+  // Results belong to the event of the current route, not the season's first event.
+  const { base } = useScoringScope();
 
   const { data: existing } = useQuery<DEEntry[]>({
-    queryKey: ["de-results", seasonId],
-    queryFn: async () => { const { data } = await api.get(`/scoring/seasons/${seasonId}/de-results`); return data; },
-    enabled: !!seasonId,
+    queryKey: ["de-results", base],
+    queryFn: async () => { const { data } = await api.get(`${base}/de-results`); return data; },
+    enabled: !!base,
   });
 
   const { data: teams } = useQuery<Team[]>({
@@ -59,16 +53,17 @@ export default function DEPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (entries: DEEntry[]) => {
-      await api.put(`/scoring/seasons/${seasonId}/de-results`, entries);
+      await api.put(`${base}/de-results`, entries);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["de-results", seasonId] });
+      queryClient.invalidateQueries({ queryKey: ["de-results", base] });
+      queryClient.invalidateQueries({ queryKey: ["overall-ranking"] });
       setDraft({});
     },
   });
 
   const handleSave = () => {
-    if (!teams || !seasonId) return;
+    if (!teams || !base) return;
     const entries: DEEntry[] = teams
       .filter((t) => {
         const e = effective(t.id);
@@ -114,6 +109,11 @@ export default function DEPage() {
           Gespeichert
         </div>
       )}
+
+      <p className="text-sm text-gray-500 mb-4">
+        Bracket-Score = (n − DE-Rang + 1) / n, n = Teams im Bracket (wird aus dem Rang berechnet).
+        Der DE-Score der Gesamtwertung kommt aus der Formel (Bracket-Gewichtung).
+      </p>
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">

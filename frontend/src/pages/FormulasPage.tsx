@@ -35,11 +35,20 @@ interface FunctionDoc {
   description: string;
 }
 
+interface FormulaPreset {
+  id: string;
+  label: string;
+  category: string;
+  description: string;
+  formulas: { key: string; expression: string }[];
+}
+
 interface Reference {
   inputs: Record<string, string>;
   row_functions: FunctionDoc[];
   scope_functions: FunctionDoc[];
   defaults: Record<string, { key: string; expression: string }[]>;
+  presets?: FormulaPreset[];
 }
 
 interface PreviewIssue {
@@ -219,6 +228,18 @@ export default function FormulasPage() {
     setDirty(true);
   };
 
+  // Presets (ECER, regional, GCER, …) are loaded into the editor as a draft,
+  // so they can be reviewed against the live preview before saving.
+  const presets = (reference?.presets ?? []).filter((p) => p.category === category);
+  const [presetId, setPresetId] = useState("");
+  const loadPreset = (id: string) => {
+    const preset = presets.find((p) => p.id === id);
+    if (!preset) return;
+    setFormulas(preset.formulas.map((f) => ({ key: f.key, expression: f.expression })));
+    setDirty(true);
+    setPresetId("");
+  };
+
   const issuesByKey = useMemo(() => {
     const map: Record<string, PreviewIssue[]> = {};
     for (const issue of preview?.issues ?? []) {
@@ -250,6 +271,21 @@ export default function FormulasPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {presets.length > 0 && (
+            <select
+              className="input"
+              aria-label="Vorlage laden"
+              value={presetId}
+              onChange={(e) => loadPreset(e.target.value)}
+            >
+              <option value="">Vorlage laden…</option>
+              {presets.map((p) => (
+                <option key={p.id} value={p.id} title={p.description}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             className="btn-secondary"
             onClick={() => resetMutation.mutate()}
@@ -423,7 +459,7 @@ export default function FormulasPage() {
                   <tbody>
                     {preview.rows.map((r) => (
                       <tr key={r.team_id} className="border-b dark:border-gray-800">
-                        <td className="py-1.5 pr-3 text-gray-500">{r.rank}</td>
+                        <td className="py-1.5 pr-3 text-gray-500">{r.rank ?? "DQ"}</td>
                         <td className="py-1.5 pr-3">{r.team_name ?? r.team_id}</td>
                         {columns.map((c) => (
                           <td key={c} className="py-1.5 pr-3 font-mono text-xs">

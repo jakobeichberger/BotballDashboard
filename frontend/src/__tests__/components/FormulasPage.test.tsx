@@ -30,6 +30,25 @@ const REFERENCE = {
     { name: "rank", signature: "rank(column)", description: "Rank by column" },
   ],
   defaults: { botball: EFFECTIVE },
+  presets: [
+    {
+      id: "gcer_2026_botball",
+      label: "GCER 2026 – Botball",
+      category: "botball",
+      description: "Onsite documentation only, plus double seeding",
+      formulas: [
+        { key: "doc_score", expression: "onsite / 100" },
+        { key: "overall", expression: "doc_score" },
+      ],
+    },
+    {
+      id: "aerial",
+      label: "Aerial",
+      category: "aerial",
+      description: "Mean of all aerial runs",
+      formulas: [{ key: "overall", expression: "avg(aerial_runs)" }],
+    },
+  ],
 };
 
 const PREVIEW = {
@@ -127,6 +146,22 @@ describe("FormulasPage", () => {
     const [url, body] = put.mock.calls[0] as [string, { formulas: { expression: string }[] }];
     expect(url).toBe("/scoring/formulas/seasons/s1/botball");
     expect(body.formulas[1].expression).toBe("seed_total / 50");
+  });
+
+  it("loads a preset of the current category into the editor as an unsaved draft", async () => {
+    renderPage();
+    await screen.findByDisplayValue("seed_total");
+
+    const select = await screen.findByRole("combobox", { name: "Vorlage laden" });
+    // Only presets of the selected category (botball) are offered.
+    expect(screen.getByRole("option", { name: "GCER 2026 – Botball" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Aerial" })).not.toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: "gcer_2026_botball" } });
+    expect(await screen.findByDisplayValue("onsite / 100")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("seed_total")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Speichern" })).toBeEnabled();
+    expect(put).not.toHaveBeenCalled();
   });
 
   it("surfaces a formula error from the preview", async () => {
