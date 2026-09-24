@@ -20,6 +20,7 @@ from modules.printing.schemas import (
     PrinterPublicResponse,
     PrinterResponse,
     PrinterUpdate,
+    PrintJobCancelResponse,
     PrintJobCreate,
     PrintJobCreateResponse,
     PrintJobReject,
@@ -107,7 +108,14 @@ async def create_print_job(
         raise ForbiddenError("Only print admins may override the print quota")
     job = await service.create_print_job(db, body.model_dump(), current_user.id)
     warning = await service.quota_warning(db, job)
-    return PrintJobCreateResponse.model_validate(job).model_copy(update={"quota_warning": warning})
+    from modules.teams.compliance import compliance_warning
+
+    return PrintJobCreateResponse.model_validate(job).model_copy(
+        update={
+            "quota_warning": warning,
+            "compliance_warning": await compliance_warning(db, job.team_id, job.season_id),
+        }
+    )
 
 
 @router.get("/jobs/{job_id}", response_model=PrintJobResponse)
@@ -149,15 +157,20 @@ async def reject_print_job(
     return await service.reject_print_job(db, job_id, body.reason)
 
 
-@router.put("/jobs/{job_id}/cancel", response_model=PrintJobResponse)
+@router.put("/jobs/{job_id}/cancel", response_model=PrintJobCancelResponse)
 async def cancel_print_job(
     job_id: str,
     current_user=Depends(require_any_permission("printing:write", "printing:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Cancel a job. A running print is aborted on the printer as well; the
+    response says whether that worked (printer_cancel / printer_message)."""
     job = await _get_visible_job(db, current_user, job_id)
     as_admin = await has_elevated_access(db, current_user, "printing:admin")
-    return await service.cancel_print_job(db, job.id, as_admin=as_admin)
+    job, printer_result = await service.cancel_print_job(
+        db, job.id, as_admin=as_admin, user_id=current_user.id
+    )
+    return PrintJobCancelResponse.model_validate(job).model_copy(update=printer_result)
 
 
 @router.post(

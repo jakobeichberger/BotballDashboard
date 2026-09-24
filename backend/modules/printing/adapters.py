@@ -79,6 +79,21 @@ class OctoPrintAdapter:
             error=str(error) if error else None,
         )
 
+    def cancel(self) -> str:
+        """Stop the running print (POST /api/job {"command": "cancel"}).
+
+        OctoPrint answers 204 on success and 409 when nothing is printing,
+        which counts as done here: there is nothing left to stop.
+        """
+        with httpx.Client(timeout=8) as client:
+            response = client.post(
+                f"{self.base_url}/api/job", headers=self.headers, json={"command": "cancel"}
+            )
+        if response.status_code == 409:
+            return "No active print on the printer"
+        response.raise_for_status()
+        return "Cancel command accepted by OctoPrint"
+
 
 class BambuLanAdapter:
     """Read one encrypted MQTT report from a Bambu printer on the local network."""
@@ -88,15 +103,42 @@ class BambuLanAdapter:
         self.access_code = access_code
         self.serial = serial
 
-    def poll(self) -> PrinterStatus:
+    def _client(self):
         import paho.mqtt.client as mqtt
 
-        result: dict = {}
-        received = threading.Event()
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         client.username_pw_set("bblp", self.access_code)
         client.tls_set(cert_reqs=ssl.CERT_NONE)
         client.tls_insecure_set(True)
+        return client
+
+    def cancel(self) -> str:
+        """Send the MQTT "stop" command, which aborts the current print."""
+        connected = threading.Event()
+        client = self._client()
+        client.on_connect = lambda *args: connected.set()
+        client.connect(self.host, 8883, keepalive=10)
+        client.loop_start()
+        try:
+            if not connected.wait(8):
+                raise TimeoutError("Bambu MQTT connection timed out")
+            info = client.publish(
+                f"device/{self.serial}/request",
+                json.dumps({"print": {"sequence_id": "0", "command": "stop", "param": ""}}),
+                qos=1,
+            )
+            info.wait_for_publish(timeout=8)
+            if not info.is_published():
+                raise TimeoutError("Bambu printer did not acknowledge the stop command")
+        finally:
+            client.loop_stop()
+            client.disconnect()
+        return "Stop command sent to the Bambu printer"
+
+    def poll(self) -> PrinterStatus:
+        result: dict = {}
+        received = threading.Event()
+        client = self._client()
 
         def on_connect(client, userdata, flags, reason_code, properties):
             client.subscribe(f"device/{self.serial}/report")
@@ -166,4 +208,18 @@ def poll_printer(printer_type: str, api_url: str, api_key: str, device_id: str |
         if not device_id:
             raise ValueError("Bambu printer requires a device serial")
         return BambuLanAdapter(api_url, api_key, device_id).poll()
+    raise ValueError(f"Unsupported printer adapter: {printer_type}")
+
+
+def cancel_printer_job(printer_type: str, api_url: str, api_key: str, device_id: str | None) -> str:
+    """Abort whatever the printer is printing; returns the printer's answer.
+
+    Raises on connection or protocol errors so the caller can report them.
+    """
+    if printer_type == "octoprint":
+        return OctoPrintAdapter(api_url, api_key).cancel()
+    if printer_type == "bambu":
+        if not device_id:
+            raise ValueError("Bambu printer requires a device serial")
+        return BambuLanAdapter(api_url, api_key, device_id).cancel()
     raise ValueError(f"Unsupported printer adapter: {printer_type}")

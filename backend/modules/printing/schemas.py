@@ -117,6 +117,16 @@ class PrintJobResponse(BaseModel):
 class PrintJobCreateResponse(PrintJobResponse):
     # Set when the job takes the team past its soft limit (it is still accepted).
     quota_warning: str | None = None
+    # Set when the team's 3D-print compliance checklist for the season is not
+    # complete (the job is still accepted).
+    compliance_warning: str | None = None
+
+
+class PrintJobCancelResponse(PrintJobResponse):
+    # sent | failed | not_applicable – whether a running print was also
+    # aborted on the printer itself.
+    printer_cancel: str = "not_applicable"
+    printer_message: str | None = None
 
 
 class PrintJobReject(BaseModel):
