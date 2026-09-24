@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { useAuthStore } from "@/store/authStore";
 import { DeadlineBanner } from "@/modules/papers/DeadlineBanner";
+import { VersionDiff } from "@/modules/papers/VersionDiff";
 import {
   ADMIN_STATUS_OPTIONS,
   EDITABLE_STATUSES,
@@ -289,7 +290,9 @@ export default function PaperDetailPage() {
   const isMyTeam = !!myTeams?.some((t: any) => t.id === paper.team_id);
   const canWritePaper = canPapersWrite && (isAdmin || isMyTeam); // upload / submit
   const editable = EDITABLE_STATUSES.has(paper.status);
-  const deadlineLocked = !!paper.deadline?.locked && paper.revision_number <= 1;
+  // First submission: the submission deadline; revisions: a blocking official_final one.
+  const deadlineLocked =
+    paper.revision_number <= 1 ? !!paper.deadline?.locked : !!paper.deadline?.final_locked;
   const versions = [...(paper.versions ?? [])].reverse();
 
   return (
@@ -396,6 +399,7 @@ export default function PaperDetailPage() {
             )}
           </tbody>
         </table>
+        <VersionDiff paperId={paper.id} versions={paper.versions ?? []} />
         {canWritePaper && (
           <div className="border-t p-4 flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-800/40">
             {editable ? (

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Clock, Lock, ShieldAlert } from "lucide-react";
-import { formatCountdown, type PaperDeadline } from "./paperMeta";
+import { DEADLINE_TYPE_LABEL, formatCountdown, passedInternalDeadlines, type PaperDeadline } from "./paperMeta";
 
 /**
  * The season's paper deadline with a live countdown. After the cut-off it
@@ -14,13 +14,29 @@ export function DeadlineBanner({ deadline }: { deadline?: PaperDeadline | null }
     return () => window.clearInterval(timer);
   }, []);
 
-  if (!deadline?.cutoff_at) return null;
+  const internal = passedInternalDeadlines(deadline);
+  const internalWarning = internal.length > 0 && (
+    <div role="status" className="card flex flex-wrap items-center gap-2 border-yellow-200 p-3 text-sm dark:border-yellow-900">
+      <ShieldAlert className="h-4 w-4 text-yellow-600" aria-hidden />
+      <span>
+        Interne Frist abgelaufen:{" "}
+        {internal
+          .map((d) => `${d.label || DEADLINE_TYPE_LABEL[d.deadline_type] || d.deadline_type} (${new Date(`${d.due_date}T00:00:00`).toLocaleDateString("de-DE")})`)
+          .join(", ")}
+        . Hochladen bleibt möglich.
+      </span>
+    </div>
+  );
+
+  if (!deadline?.cutoff_at) return internalWarning || null;
   const cutoff = new Date(deadline.cutoff_at);
   const when = cutoff.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" });
   const remaining = formatCountdown(cutoff, now);
 
   if (remaining) {
     return (
+      <>
+      {internalWarning}
       <div role="status" className="card flex flex-wrap items-center gap-2 border-blue-200 p-3 text-sm dark:border-blue-900">
         <Clock className="h-4 w-4 text-blue-600" aria-hidden />
         <span>
@@ -29,6 +45,7 @@ export function DeadlineBanner({ deadline }: { deadline?: PaperDeadline | null }
         </span>
         <span className="badge-blue ml-auto">noch {remaining}</span>
       </div>
+      </>
     );
   }
   return (

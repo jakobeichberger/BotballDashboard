@@ -92,7 +92,10 @@ Derzeit verschickt das Dashboard nur eine Mitteilung beim Anlegen eines Kontos. 
 |---|---|---|
 | `PRINTER_CREDENTIAL_ENCRYPTION_KEY` | – (Pflicht in Produktion) | Fernet-Schlüssel für gespeicherte Drucker-Zugangsdaten. Nicht mehr ändern, sobald Drucker gespeichert sind. |
 | `UPLOAD_DIR` | `/app/uploads` | Upload-Verzeichnis im Container (Volume `uploads`) |
-| `MAX_UPLOAD_SIZE_MB` | `20` | Maximale Uploadgröße |
+| `MAX_UPLOAD_SIZE_MB` | `20` | Maximale Uploadgröße (Paper, Dokumente, Bilder, Score-Sheets) |
+| `PRINT_UPLOAD_MAX_MB` | `100` | Maximale Größe von Druckdateien (STL, 3MF, OBJ, G-Code) |
+
+Das Backend prüft beide Grenzen selbst: Anfragen an `/api/printing/jobs/{id}/file` dürfen bis `PRINT_UPLOAD_MAX_MB` groß sein, alle anderen bis `MAX_UPLOAD_SIZE_MB` (jeweils + 1 MB für den Multipart-Overhead). Traefik (`docker-compose.yml`) setzt kein eigenes Limit. Steht ein anderer Reverse Proxy vor der API, muss er mindestens den größeren Wert + 1 MB durchlassen, bei nginx z. B. `client_max_body_size 101m;` im `location /api/`-Block. Das `client_max_body_size 21m` in `frontend/nginx.conf` betrifft nur den Frontend-Container, der keine API-Anfragen annimmt.
 
 Fernet-Schlüssel erzeugen (beide Befehle liefern dasselbe Format):
 

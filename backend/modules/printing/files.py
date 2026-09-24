@@ -17,9 +17,17 @@ from core.config import get_settings
 from core.exceptions import ValidationError
 from core.files import ensure_within, safe_filename
 
-# Slicer projects and meshes are larger than papers or photos, so this limit is
-# separate from max_upload_size_mb. Keep it in sync with the reverse proxy.
-MAX_PRINT_FILE_MB = 100
+
+def max_print_file_mb() -> int:
+    """Upload limit for print files (PRINT_UPLOAD_MAX_MB, default 100).
+
+    Slicer projects and meshes are larger than papers or photos, so this limit
+    is separate from MAX_UPLOAD_SIZE_MB. main.py lets requests to the print
+    upload route through up to this size; a reverse proxy in front of the API
+    must allow it as well.
+    """
+    return get_settings().print_upload_max_mb
+
 
 ALLOWED_EXTENSIONS = (".stl", ".3mf", ".obj", ".gcode", ".bgcode")
 
@@ -114,10 +122,11 @@ async def save_print_file(file: UploadFile, job_id: str) -> tuple[str, str, int]
     if not safe_name or ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(f"Unsupported file type (allowed: {', '.join(ALLOWED_EXTENSIONS)})")
 
-    max_bytes = MAX_PRINT_FILE_MB * 1024 * 1024
+    max_mb = max_print_file_mb()
+    max_bytes = max_mb * 1024 * 1024
     declared = getattr(file, "size", None)
     if declared is not None and declared > max_bytes:
-        raise ValidationError(f"File too large (max {MAX_PRINT_FILE_MB} MB)")
+        raise ValidationError(f"File too large (max {max_mb} MB)")
 
     base = job_dir(job_id)
     base.mkdir(parents=True, exist_ok=True)
@@ -132,7 +141,7 @@ async def save_print_file(file: UploadFile, job_id: str) -> tuple[str, str, int]
                     head += chunk[: _HEAD_BYTES - len(head)]
                 size += len(chunk)
                 if size > max_bytes:
-                    raise ValidationError(f"File too large (max {MAX_PRINT_FILE_MB} MB)")
+                    raise ValidationError(f"File too large (max {max_mb} MB)")
                 await out.write(chunk)
         validate_print_file(ext, head, size)
         temp.replace(target)

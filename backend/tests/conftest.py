@@ -10,6 +10,8 @@ from collections.abc import AsyncGenerator
 
 os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("UPLOAD_DIR", "/tmp/botball-dashboard-tests/uploads")
+# No Redis in the unit/integration suite: keep logged-out tokens in-process.
+os.environ.setdefault("TOKEN_DENYLIST_BACKEND", "memory")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

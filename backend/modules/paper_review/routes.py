@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,10 +12,15 @@ from core.auth import (
 )
 from core.database import get_db
 from core.rate_limit import rate_limit
-from modules.paper_review import service
+from modules.paper_review import assignment, deadlines, diff, service
 from modules.paper_review.schemas import (
+    AutoAssignRequest,
+    AutoAssignResponse,
     PaperCreate,
+    PaperDeadlineCreate,
     PaperDeadlineInfo,
+    PaperDeadlineResponse,
+    PaperDeadlineUpdate,
     PaperListItem,
     PaperResponse,
     PaperScoreUpdate,
@@ -21,6 +28,7 @@ from modules.paper_review.schemas import (
     PaperStatus,
     PaperStatusHistoryResponse,
     PaperUpdate,
+    PaperVersionDiff,
     PaperVersionResponse,
     ReviewCreateUpdate,
     ReviewerAssignmentCreate,
@@ -89,6 +97,64 @@ async def get_paper_deadline(
     """The season's paper deadline, resolved to the event's timezone."""
     return await service.deadline_info(
         db, season_id, event_id, await _is_paper_admin(db, current_user)
+    )
+
+
+@router.get("/deadlines", response_model=list[PaperDeadlineResponse])
+async def list_paper_deadlines(
+    season_id: str = Query(...),
+    _=Depends(require_permission("papers:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Official and internal paper deadlines of a season."""
+    return await deadlines.list_deadlines(db, season_id)
+
+
+@router.post("/deadlines", response_model=PaperDeadlineResponse, status_code=201)
+async def create_paper_deadline(
+    body: PaperDeadlineCreate,
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await deadlines.create_deadline(db, body.model_dump())
+
+
+@router.patch("/deadlines/{deadline_id}", response_model=PaperDeadlineResponse)
+async def update_paper_deadline(
+    deadline_id: str,
+    body: PaperDeadlineUpdate,
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await deadlines.update_deadline(db, deadline_id, body.model_dump(exclude_unset=True))
+
+
+@router.delete("/deadlines/{deadline_id}", status_code=204)
+async def delete_paper_deadline(
+    deadline_id: str,
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    await deadlines.delete_deadline(db, deadline_id)
+
+
+@router.post("/auto-assign", response_model=AutoAssignResponse)
+async def auto_assign_reviewers(
+    body: AutoAssignRequest,
+    current_user=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Give every open paper up to N reviewers, balancing the reviewers'
+    workload and skipping conflicts of interest (own team, same school)."""
+    return await assignment.auto_assign(
+        db,
+        season_id=body.season_id,
+        event_id=body.event_id,
+        reviewers_per_paper=body.reviewers_per_paper,
+        assigned_by=current_user.id,
+        reviewer_ids=body.reviewer_ids,
+        due_at=body.due_at,
+        dry_run=body.dry_run,
     )
 
 
@@ -188,6 +254,21 @@ async def list_paper_versions(
     paper = await service.get_paper(db, paper_id)
     await _assert_paper_read(db, current_user, paper)
     return paper.versions
+
+
+@router.get("/{paper_id}/versions/diff", response_model=PaperVersionDiff)
+async def diff_paper_versions(
+    paper_id: str,
+    from_version: int | None = Query(None, ge=1),
+    to_version: int | None = Query(None, ge=1),
+    current_user=Depends(require_permission("papers:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Text diff between two PDF versions (default: previous vs. latest)."""
+    paper = await service.get_paper(db, paper_id)
+    await _assert_paper_read(db, current_user, paper)
+    # PDF parsing is CPU-bound; keep it off the event loop.
+    return await asyncio.to_thread(diff.version_diff, paper, from_version, to_version)
 
 
 @router.get("/{paper_id}/download")

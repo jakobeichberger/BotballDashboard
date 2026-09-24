@@ -12,12 +12,14 @@ import {
   STATUS_BADGE,
   STATUS_LABEL,
   apiError,
+  cancelNotice,
   downloadPrintFile,
   formatBytes,
   formatDuration,
   uploadPrintFile,
   type FilamentSpool,
   type PrintJob,
+  type PrintJobCancelled,
   type PrintJobStatus,
   type PrinterInfo,
 } from "@/lib/printing";
@@ -36,6 +38,7 @@ export default function PrintJobDetailPage() {
   const canAdmin = useAuthStore((s) => s.hasPermission("printing:admin"));
   const canWrite = useAuthStore((s) => s.hasPermission("printing:write"));
   const [message, setMessage] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [printerId, setPrinterId] = useState("");
   const [completion, setCompletion] = useState<{ grams: string; minutes: string; spool: string } | null>(null);
@@ -77,7 +80,11 @@ export default function PrintJobDetailPage() {
     onSuccess: () => { setRejectReason(""); onSuccess(); },
     onError,
   });
-  const cancelM = useMutation({ mutationFn: () => api.put(`/printing/jobs/${id}/cancel`), onSuccess, onError });
+  const cancelM = useMutation({
+    mutationFn: () => api.put<PrintJobCancelled>(`/printing/jobs/${id}/cancel`),
+    onSuccess: (response) => { onSuccess(); setInfo(cancelNotice(response.data)); },
+    onError,
+  });
   const patchM = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.patch(`/printing/jobs/${id}`, body),
     onSuccess: () => { setCompletion(null); onSuccess(); },
@@ -145,6 +152,7 @@ export default function PrintJobDetailPage() {
         <ArrowLeft className="w-4 h-4" /> Zurück zu 3D-Druck
       </EventLink>
 
+      {info && <p role="status" className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-100">{info}</p>}
       {message && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">{message}</p>}
 
       {/* Header */}

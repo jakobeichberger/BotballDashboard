@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -241,5 +242,42 @@ class PaperStatusHistory(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     changed_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"))
     changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# Deadline types of module 06. Official ones come from the organizer's call
+# for papers (KIPR/PRIA), internal ones are our own buffer for the review.
+OFFICIAL_DEADLINE_TYPES = ("official_submission", "official_final")
+INTERNAL_DEADLINE_TYPES = (
+    "internal_draft",
+    "internal_review",
+    "internal_revision",
+    "internal_final",
+)
+DEADLINE_TYPES = OFFICIAL_DEADLINE_TYPES + INTERNAL_DEADLINE_TYPES
+
+
+class PaperDeadline(Base):
+    """A dated paper deadline of a season.
+
+    Official deadlines with ``is_hard_block`` lock uploads once they passed
+    (organizers can still override); internal deadlines only warn. Teams (or,
+    for internal_review, reviewers) are reminded 7, 3 and 1 day(s) before.
+    """
+
+    __tablename__ = "paper_deadlines"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    season_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    deadline_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    # A calendar day, like Season.paper_submission_deadline: "15 March" means
+    # the end of that day in the event's timezone.
+    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_hard_block: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

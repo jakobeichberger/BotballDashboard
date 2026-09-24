@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.audit import log_action
 from core.domain_events import emit_event
 from core.exceptions import ConflictError, NotFoundError
+from modules.printing.adapters import cancel_printer_job
 from modules.printing.crypto import decrypt_credential, encrypt_credential
 from modules.printing.models import FilamentSpool, Printer, PrintJob, TeamSeasonPrintQuota
 from modules.scoring.service import get_default_event, resolve_event
@@ -262,15 +264,64 @@ async def reject_print_job(db: AsyncSession, job_id: str, reason: str) -> PrintJ
     return await update_print_job(db, job.id, status="rejected")
 
 
-async def cancel_print_job(db: AsyncSession, job_id: str, *, as_admin: bool) -> PrintJob:
-    """Teams may withdraw their own job while it is pending; admins any open job."""
+async def stop_on_printer(db: AsyncSession, job: PrintJob, user_id: str | None) -> dict:
+    """Abort a running job on its printer (OctoPrint cancel, Bambu MQTT stop).
+
+    Returns ``{"printer_cancel": "sent" | "failed" | "not_applicable",
+    "printer_message": …}``. A failure is reported, not raised: the job is
+    still cancelled in the database and the organizer is told to stop the
+    print at the device.
+    """
+    if job.status != "printing" or not job.printer_id:
+        return {"printer_cancel": "not_applicable", "printer_message": None}
+    printer = await get_printer(db, job.printer_id)
+    if printer.printer_type == "generic" or not printer.api_url:
+        return {
+            "printer_cancel": "not_applicable",
+            "printer_message": "Manually operated printer: stop the print on the device.",
+        }
+    try:
+        api_key = decrypt_credential(printer.api_key_encrypted) if printer.api_key_encrypted else ""
+        message = await asyncio.to_thread(
+            cancel_printer_job,
+            printer.printer_type,
+            printer.api_url,
+            api_key,
+            printer.device_id,
+        )
+        result = {"printer_cancel": "sent", "printer_message": message}
+    except Exception as exc:
+        result = {
+            "printer_cancel": "failed",
+            "printer_message": f"Could not stop the print on {printer.name}: {exc}"[:500],
+        }
+    await log_action(
+        db,
+        "printing.printer_cancel",
+        user_id=user_id,
+        resource_type="print_job",
+        resource_id=job.id,
+        detail={"printer_id": printer.id, **result},
+    )
+    return result
+
+
+async def cancel_print_job(
+    db: AsyncSession, job_id: str, *, as_admin: bool, user_id: str | None = None
+) -> tuple[PrintJob, dict]:
+    """Teams may withdraw their own job while it is pending; admins any open job.
+
+    A job that is printing is also aborted on the printer (spec: "auf Drucker
+    und in Datenbank"). Returns the job and the printer's answer.
+    """
     job = await get_print_job(db, job_id)
     await ensure_job_writable(db, job)
     if not as_admin and job.status != "pending":
         raise ConflictError("Only pending print jobs can be cancelled by the team")
     if "cancelled" not in JOB_TRANSITIONS[job.status]:
         raise ConflictError(f"Print job cannot be cancelled from {job.status}")
-    return await update_print_job(db, job.id, status="cancelled")
+    printer_result = await stop_on_printer(db, job, user_id)
+    return await update_print_job(db, job.id, status="cancelled"), printer_result
 
 
 def assert_file_replaceable(job: PrintJob, *, as_admin: bool) -> None:

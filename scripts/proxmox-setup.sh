@@ -538,6 +538,7 @@ REDIS_URL=redis://redis:6379/0
 JWT_SECRET_KEY=$(_q "${JWT_SECRET_KEY}")
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=15
 JWT_REFRESH_TOKEN_EXPIRE_DAYS=30
+TOKEN_DENYLIST_BACKEND=redis
 
 # ── Email (primary SMTP) ──────────────────────
 SMTP_HOST=${SMTP_HOST}
@@ -562,6 +563,7 @@ PRINTER_CREDENTIAL_ENCRYPTION_KEY=$(_q "${PRINTER_CREDENTIAL_ENCRYPTION_KEY}")
 # ── File uploads ─────────────────────────────
 UPLOAD_DIR=/app/uploads
 MAX_UPLOAD_SIZE_MB=20
+PRINT_UPLOAD_MAX_MB=100
 
 # ── Traefik / SSL ─────────────────────────────
 TRAEFIK_EMAIL=${TRAEFIK_EMAIL}

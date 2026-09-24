@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { Users, ArrowLeft, FileText, Printer, Trophy, MapPin, Pencil, Trash2, UserPlus, Save, X, Activity } from "lucide-react";
+import { Users, ArrowLeft, FileText, Printer, MapPin, Pencil, Trash2, UserPlus, Save, X, Activity, ClipboardCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { TeamReportExportButtons } from "@/components/ExportButtons";
@@ -10,6 +10,9 @@ import { useTeamHistory } from "@/api/analytics";
 import { useEventNavigate } from "@/hooks/useEventPath";
 import { useAuthStore } from "@/store/authStore";
 import { PAPER_STATUS_BADGE, PAPER_STATUS_LABEL, apiErrorMessage } from "@/modules/papers/paperMeta";
+import { ComplianceChecklist } from "@/components/teams/ComplianceChecklist";
+import { SeasonRegistrations } from "@/components/teams/SeasonRegistrations";
+import { TeamDocuments } from "@/components/teams/TeamDocuments";
 
 interface UserOption {
   id: string;
@@ -74,6 +77,7 @@ export default function TeamDetailPage() {
   const isAdmin = useAuthStore((s) => s.hasRole("admin"));
   const isMentor = useAuthStore((s) => s.hasRole("mentor"));
   const canLinkAccounts = useAuthStore((s) => s.hasPermission("teams:admin"));
+  const canVerifyCompliance = useAuthStore((s) => s.hasPermission("teams:admin") || s.hasPermission("printing:admin"));
 
   const { data: team, isLoading, isError } = useQuery({
     queryKey: ["team", id],
@@ -338,27 +342,28 @@ export default function TeamDetailPage() {
         )}
       </section>
 
-      {/* Season registrations */}
-      <section className="card overflow-hidden">
-        <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2"><Trophy className="w-4 h-4" /> Saison-Registrierungen ({registrations?.length ?? 0})</h2>
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
-            <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Saison</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Stufe</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
-          </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
-            {registrations?.map((r: any) => (
-              <tr key={r.id}>
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{seasonName(r.season_id)}</td>
-                <td className="px-4 py-3 text-gray-500">{levelName(r.competition_level_id)}</td>
-                <td className="px-4 py-3"><span className={r.confirmed ? "badge-green" : "badge-yellow"}>{r.confirmed ? "Bestätigt" : "Offen"}</span></td>
-              </tr>
-            ))}
-            {(!registrations || registrations.length === 0) && (<tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400">Keine Registrierungen</td></tr>)}
-          </tbody>
-        </table>
-      </section>
+      <SeasonRegistrations
+        teamId={team.id}
+        members={team.members ?? []}
+        seasonName={seasonName}
+        levelName={levelName}
+        canManage={canManage}
+        isOrganizer={canLinkAccounts}
+      />
+
+      {/* 3D-print compliance checklist of the active season */}
+      {activeSeason?.id && registrations?.some((r: any) => r.season_id === activeSeason.id) && (canManage || canVerifyCompliance) && (
+        <section className="card overflow-hidden">
+          <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <ClipboardCheck className="w-4 h-4" /> 3D-Druck-Checkliste {activeSeason.name}
+          </h2>
+          <ComplianceChecklist teamId={team.id} seasonId={activeSeason.id} canTick={canManage} canVerify={canVerifyCompliance} />
+        </section>
+      )}
+
+      {(canManage || canLinkAccounts) && (
+        <TeamDocuments teamId={team.id} seasons={seasons} canUpload={canManage} />
+      )}
 
       {/* Papers */}
       <section className="card overflow-hidden">

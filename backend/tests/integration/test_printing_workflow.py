@@ -123,7 +123,7 @@ class TestFileUpload:
 
     @pytest.mark.asyncio
     async def test_size_limit(self, client, auth_headers, team, season, monkeypatch):
-        monkeypatch.setattr(files, "MAX_PRINT_FILE_MB", 0)
+        monkeypatch.setattr(files, "max_print_file_mb", lambda: 0)
         job = (await _create(client, auth_headers, team, season)).json()
         resp = await _upload(client, auth_headers, job["id"], "part.stl", _binary_stl())
         assert resp.status_code == 422

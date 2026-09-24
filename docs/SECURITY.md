@@ -42,7 +42,7 @@ Unauthenticated and tampered-token requests are rejected with `401`.
 ### Verified SAFE (no change needed)
 - No SQL injection — all queries use SQLAlchemy bound parameters.
 - No command injection — `pdftotext` is invoked with a list argv, `shell=False`.
-- JWT: algorithm pinned to `HS256` on decode (no `alg:none`/confusion), token type enforced, expiry validated.
+- JWT (PyJWT; `python-jose` and its unpatched `ecdsa` dependency were removed): algorithm pinned to `HS256` on decode (no `alg:none`/confusion), token type enforced, `exp` and `sub` required and validated.
 - Refresh tokens stored as SHA-256 hashes, rotated on use, revocable; cookie is `HttpOnly`, `Secure` (prod), `SameSite=strict`.
 - Secrets (`hashed_password`, printer `api_key_encrypted`) never appear in any response model; not logged.
 - Superuser bypass cannot be reached via mass assignment (`is_superuser` absent from all input schemas).
@@ -59,8 +59,11 @@ These need product decisions or larger changes and are documented for follow-up:
    team↔mentor ownership model and per-object checks.
 2. **Login rate limiting — Medium.** No throttling/lockout on `/auth/login`
    (Redis is available to back one).
-3. **Session revocation — Medium.** Access tokens remain valid until expiry
-   (15 min); consider a jti denylist for true logout-everywhere.
+3. **Session revocation — resolved.** A password change, reset or
+   deactivation bumps `token_version`, which ends every session at once. A
+   plain logout puts the presented access token's `jti` on a Redis deny-list
+   until the token expires (`core/token_denylist.py`), so that one session
+   ends immediately while the user's other devices stay signed in.
 4. **Password policy — Low/Medium.** Only length ≥ 8; consider complexity/HIBP.
 5. **Starlette DoS CVEs — Medium.** Remaining advisories require a major
    FastAPI/Starlette (1.x) upgrade; mitigated meanwhile by upload size limits

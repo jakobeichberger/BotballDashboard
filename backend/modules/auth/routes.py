@@ -155,6 +155,12 @@ async def logout(
     token = request.cookies.get(REFRESH_COOKIE)
     if token:
         await service.revoke_refresh_token(db, token)
+    # The access token presented with the logout would otherwise stay valid
+    # until it expires; deny it. Only this session ends, other devices stay
+    # signed in (a password change ends all of them via token_version).
+    authorization = request.headers.get("authorization", "")
+    if authorization.lower().startswith("bearer "):
+        await service.deny_access_token(authorization.split(" ", 1)[1])
     response.delete_cookie(REFRESH_COOKIE, path="/api/auth")
 
 

@@ -141,12 +141,66 @@ class PaperVersionResponse(BaseModel):
     submitted_at: datetime | None
 
 
+DeadlineType = Literal[
+    "official_submission",
+    "official_final",
+    "internal_draft",
+    "internal_review",
+    "internal_revision",
+    "internal_final",
+]
+
+
+class PaperDeadlineCreate(BaseModel):
+    season_id: str
+    deadline_type: DeadlineType
+    due_date: date
+    label: str | None = Field(default=None, max_length=255)
+    # Only official deadlines may block uploads; internal ones warn.
+    is_hard_block: bool = False
+
+
+class PaperDeadlineUpdate(BaseModel):
+    deadline_type: DeadlineType | None = None
+    due_date: date | None = None
+    label: str | None = Field(default=None, max_length=255)
+    is_hard_block: bool | None = None
+
+
+class PaperDeadlineResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    season_id: str
+    deadline_type: str
+    due_date: date
+    label: str | None
+    is_hard_block: bool
+    created_at: datetime
+
+
+class PaperDeadlineStatus(BaseModel):
+    """One configured deadline, resolved to the event's timezone."""
+
+    id: str
+    deadline_type: str
+    due_date: date
+    label: str | None
+    is_hard_block: bool
+    cutoff_at: datetime
+    passed: bool
+
+
 class PaperDeadlineInfo(BaseModel):
     """The season's paper deadline as a concrete instant.
 
-    deadline_date is the calendar day from the season; cutoff_at is the end of
-    that day in the event's timezone (UTC). locked is what applies to the
-    caller: False for papers:admin even after the cut-off (override).
+    deadline_date is the blocking official_submission deadline or, without
+    one, the season's paper_submission_deadline; cutoff_at is the end of that
+    day in the event's timezone (UTC). locked is what applies to the caller:
+    False for papers:admin even after the cut-off (override). final_* is the
+    blocking official_final deadline for revised versions. deadlines lists
+    every official and internal deadline of the season; a passed internal
+    one is a warning, not a lock.
     """
 
     deadline_date: date | None
@@ -155,6 +209,68 @@ class PaperDeadlineInfo(BaseModel):
     passed: bool
     locked: bool
     can_override: bool
+    final_deadline_date: date | None = None
+    final_cutoff_at: datetime | None = None
+    final_locked: bool = False
+    deadlines: list[PaperDeadlineStatus] = []
+
+
+class AutoAssignRequest(BaseModel):
+    season_id: str
+    event_id: str | None = None
+    # Target number of reviewers per paper; papers that already have some
+    # only get the missing ones.
+    reviewers_per_paper: int = Field(default=2, ge=1, le=10)
+    # Restrict the pool; default: every active user holding papers:review.
+    reviewer_ids: list[str] | None = None
+    due_at: datetime | None = None
+    # Only compute the plan, create nothing.
+    dry_run: bool = False
+
+
+class AutoAssignment(BaseModel):
+    paper_id: str
+    paper_title: str
+    reviewer_id: str
+    reviewer_name: str
+
+
+class AutoAssignUnfilled(BaseModel):
+    paper_id: str
+    paper_title: str
+    missing: int
+
+
+class AutoAssignResponse(BaseModel):
+    dry_run: bool
+    assignments: list[AutoAssignment]
+    unfilled: list[AutoAssignUnfilled]
+
+
+class PaperVersionMeta(BaseModel):
+    version_number: int
+    file_name: str
+    file_size_bytes: int
+    uploaded_at: datetime
+    pages: int | None
+
+
+class PaperVersionDiff(BaseModel):
+    """Line diff of the text extracted from two PDF versions.
+
+    text_available is False when the text could not be extracted (pypdf
+    missing, scanned PDF without text, broken file); reason says why and only
+    the metadata of both versions is compared then.
+    """
+
+    from_version: PaperVersionMeta
+    to_version: PaperVersionMeta
+    text_available: bool
+    reason: str | None
+    diff: list[str]
+    added: int
+    removed: int
+    truncated: bool
 
 
 class PaperResponse(BaseModel):
