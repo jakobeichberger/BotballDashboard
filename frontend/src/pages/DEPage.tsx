@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { Medal, ArrowLeft, Save } from "lucide-react";
+import DEPlacementPanel from "@/modules/scoring/extras/DEPlacementPanel";
 
 interface DEEntry {
   id?: string;
@@ -22,6 +23,7 @@ interface Team {
 
 export default function DEPage() {
   const [searchParams] = useSearchParams();
+  const { eventId = "" } = useParams();
   const sid = searchParams.get("season_id") ?? "";
   const queryClient = useQueryClient();
 
@@ -187,6 +189,7 @@ export default function DEPage() {
           </tbody>
         </table>
       </div>
+      <DEPlacementPanel eventId={eventId} />
     </div>
   );
 }

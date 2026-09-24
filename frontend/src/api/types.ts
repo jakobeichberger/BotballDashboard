@@ -1,3 +1,5 @@
+import type { SheetDefinition } from "@/modules/scoring/sheet/calculator";
+
 export interface EventSummary {
   id: string;
   season_id: string;
@@ -70,6 +72,8 @@ export interface RankingEntry {
   best_score: number;
   average_score: number;
   rounds_played: number;
+  /** Label of the tie-breaker that placed the team against an equal seed score. */
+  tiebreaker?: string | null;
   updated_at: string;
 }
 
@@ -103,6 +107,8 @@ export interface ScoringSchema {
   event_id: string | null;
   competition_level_id: string | null;
   fields: ScoringField[];
+  /** Structured sheet (sections, area multipliers, sides A/B); null for flat schemas. */
+  definition?: SheetDefinition | null;
   version: number;
   is_active: boolean;
 }

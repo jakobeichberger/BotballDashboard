@@ -95,6 +95,7 @@ export const modules: readonly ModuleDefinition[] = [
     routes: [
       { path: "scoring", component: lazy(() => import("@/pages/EventScoringPage")), permission: "scoring:read", label: { de: "Wertung", en: "Scoring" }, icon: "scoring", navigation: true },
       { path: "scans", component: lazy(() => import("@/pages/ScanReviewPage")), permission: "scoring:read", label: { de: "OCR-Prüfung", en: "OCR review" }, icon: "scans", navigation: true },
+      { path: "scouting", component: lazy(() => import("@/pages/ScoutingPage")), permission: "scoring:read", label: { de: "Scouting", en: "Scouting" }, icon: "scoring", navigation: true },
       { path: "scoreboard", component: lazy(() => import("@/pages/ScoreboardPage")), permission: "scoring:read", label: { de: "Rangliste & Ergebnisse", en: "Rankings & results" }, icon: "scoring", navigation: true },
       { path: "scoring/entry", component: lazy(() => import("@/pages/ScoreEntryPage")), permission: "scoring:write", label: { de: "Punkte eintragen", en: "Enter scores" }, icon: "scoring", navigation: false },
       { path: "scoring/de", component: lazy(() => import("@/pages/DEPage")), permission: "scoring:admin", label: { de: "Double Elimination", en: "Double elimination" }, icon: "scoring", navigation: false },
