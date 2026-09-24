@@ -12,8 +12,9 @@ from core.database import AsyncSessionLocal
 from core.live import publish_live_event
 from core.logging import get_logger
 from core.notifications import email_enabled, send_email, send_push_notification
-from modules.auth.models import PushSubscription
+from modules.auth.models import PushSubscription, User
 from modules.dashboard.models import NotificationEvent
+from modules.dashboard.notifications import category_of, recipients_of, wants_push
 
 logger = get_logger(__name__)
 
@@ -21,20 +22,42 @@ MAX_ATTEMPTS = 5
 BATCH_SIZE = 100
 
 
-def push_targets(payload: dict, subscriptions: list) -> list:
+def push_targets(
+    payload: dict,
+    subscriptions: list,
+    *,
+    event_type: str = "",
+    preferences: dict[str, dict] | None = None,
+) -> list:
     """Subscriptions a notification may be pushed to.
 
     Recipients are opt-in: `userId` / `userIds` address specific users, and only
     an explicit `broadcast` reaches every subscriber. An event without either
     (it used to go to everyone) is pushed to no one — paper decisions and other
     team-internal news must not reach all users of all events.
+
+    `preferences` maps user id → that user's notification preferences; users
+    who muted the event's category are skipped.
     """
     if payload.get("broadcast"):
-        return list(subscriptions)
-    user_ids = set(payload.get("userIds") or [])
-    if payload.get("userId"):
-        user_ids.add(payload["userId"])
-    return [s for s in subscriptions if s.user_id in user_ids]
+        addressed = list(subscriptions)
+    else:
+        user_ids = recipients_of(payload)
+        addressed = [s for s in subscriptions if s.user_id in user_ids]
+    category = category_of(event_type, payload)
+    prefs = preferences or {}
+    return [s for s in addressed if wants_push(prefs.get(s.user_id), category)]
+
+
+async def load_preferences(db: AsyncSession, subscriptions: list) -> dict[str, dict]:
+    """Notification preferences of every user owning one of `subscriptions`."""
+    user_ids = {s.user_id for s in subscriptions}
+    if not user_ids:
+        return {}
+    rows = await db.execute(
+        select(User.id, User.notification_preferences).where(User.id.in_(user_ids))
+    )
+    return {user_id: prefs or {} for user_id, prefs in rows}
 
 
 def _retry_delay(attempts: int) -> timedelta:
@@ -42,8 +65,16 @@ def _retry_delay(attempts: int) -> timedelta:
     return timedelta(seconds=30 * 2 ** max(0, attempts - 1))
 
 
-async def _deliver(db: AsyncSession, item: NotificationEvent, subscriptions: list) -> list[str]:
+async def _deliver(
+    db: AsyncSession,
+    item: NotificationEvent,
+    subscriptions: list,
+    preferences: dict[str, dict] | None = None,
+) -> list[str]:
     """Send one outbox item. Returns the ids of subscriptions that are gone.
+
+    Push goes only to recipients who have not muted the item's category
+    (`preferences`, see modules.dashboard.notifications).
 
     Raises when there were recipients but not a single send succeeded, so the
     item is retried.
@@ -55,7 +86,11 @@ async def _deliver(db: AsyncSession, item: NotificationEvent, subscriptions: lis
     body = payload.get("message") or payload.get("body") or ""
     url = payload.get("url") or (f"/events/{item.event_id}/dashboard" if item.event_id else "/")
 
-    targets = push_targets(payload, subscriptions) if body else []
+    targets = (
+        push_targets(payload, subscriptions, event_type=item.event_type, preferences=preferences)
+        if body
+        else []
+    )
     statuses = await asyncio.gather(
         *(send_push_notification(s.endpoint, s.p256dh, s.auth, title, body, url) for s in targets),
         return_exceptions=True,
@@ -108,11 +143,12 @@ async def deliver_pending(db: AsyncSession, now: datetime | None = None) -> int:
     if not items:
         return 0
     subscriptions = list((await db.execute(select(PushSubscription))).scalars())
+    preferences = await load_preferences(db, subscriptions)
     delivered = 0
     for item in items:
         item.attempts += 1
         try:
-            gone = await _deliver(db, item, subscriptions)
+            gone = await _deliver(db, item, subscriptions, preferences)
         except Exception as exc:
             item.last_error = str(exc)[:2000]
             if item.attempts >= MAX_ATTEMPTS:

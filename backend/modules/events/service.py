@@ -19,6 +19,7 @@ from modules.events.models import (
     MatchParticipant,
     ScheduledMatch,
 )
+from modules.events.module_access import assert_phase_allowed, modules_for_season
 from modules.scoring.competition_models import DEResult
 from modules.scoring.models import Match, Ranking
 from modules.seasons.lifecycle import ARCHIVED, DRAFT, ensure_writable
@@ -78,9 +79,12 @@ async def get_public_event(db: AsyncSession, slug: str) -> Event:
 
 
 async def create_event(db: AsyncSession, data: dict) -> Event:
-    if not await db.get(Season, data["season_id"]):
+    season = await db.get(Season, data["season_id"])
+    if not season:
         raise NotFoundError("Season not found")
     await ensure_writable(db, season_id=data["season_id"])
+    if data.get("active_modules") is None:
+        data = {**data, "active_modules": modules_for_season(season)}
     event = Event(**data)
     db.add(event)
     try:
@@ -237,8 +241,9 @@ async def list_phases(db: AsyncSession, event_id: str) -> list[EventPhase]:
 
 
 async def create_phase(db: AsyncSession, event_id: str, data: dict) -> EventPhase:
-    await get_event(db, event_id)
+    event = await get_event(db, event_id)
     await ensure_writable(db, event_id=event_id)
+    await assert_phase_allowed(db, event, data.get("phase_type", ""))
     phase = EventPhase(event_id=event_id, **data)
     db.add(phase)
     try:
@@ -257,6 +262,9 @@ async def update_phase(db: AsyncSession, event_id: str, phase_id: str, data: dic
     phase = result.scalar_one_or_none()
     if not phase:
         raise NotFoundError("Event phase not found")
+    if data.get("phase_type") and data["phase_type"] != phase.phase_type:
+        # Switching a phase to a disabled module is the same as creating one.
+        await assert_phase_allowed(db, await get_event(db, event_id), data["phase_type"])
     for key, value in data.items():
         setattr(phase, key, value)
     if phase.starts_at and phase.ends_at and phase.ends_at <= phase.starts_at:
@@ -469,6 +477,7 @@ async def generate_schedule(db: AsyncSession, event_id: str, data: dict) -> list
     phase = await db.get(EventPhase, data["phase_id"])
     if not phase or phase.event_id != event_id:
         raise NotFoundError("Event phase not found")
+    await assert_phase_allowed(db, event, phase.phase_type)
     existing = await db.execute(
         select(ScheduledMatch.id).where(ScheduledMatch.phase_id == phase.id).limit(1)
     )

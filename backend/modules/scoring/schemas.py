@@ -68,6 +68,8 @@ class MatchResponse(BaseModel):
     entered_by: str | None
     confirmed_by: str | None
     confirmed_at: datetime | None
+    # Lets an offline client recognise its own, already synced entry.
+    idempotency_key: str | None = None
     created_at: datetime
 
 

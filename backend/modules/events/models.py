@@ -41,8 +41,10 @@ class Event(Base):
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="draft")
+    # Feature modules the organizer enabled; see modules.events.module_access
+    # for how they combine with the season flags.
     active_modules: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=lambda: ["seeding"]
+        JSON, nullable=False, default=lambda: ["seeding", "paper", "printing", "bots"]
     )
     public_scoreboard: Mapped[bool] = mapped_column(default=False, nullable=False)
     public_schedule: Mapped[bool] = mapped_column(default=False, nullable=False)

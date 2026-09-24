@@ -7,11 +7,13 @@ from core.database import get_db
 from core.domain_events import emit_event
 from core.live import publish_after_commit, stream_live_events
 from modules.events import service
+from modules.events.module_access import MODULE_KEYS, SEASON_FLAGS, effective_modules
 from modules.events.schemas import (
     AllianceStanding,
     BracketPhaseResponse,
     BracketWeightsUpdate,
     EventCreate,
+    EventModulesResponse,
     EventPhaseCreate,
     EventPhaseResponse,
     EventPhaseUpdate,
@@ -35,6 +37,7 @@ from modules.events.schemas import (
 )
 from modules.scoring import service as scoring_service
 from modules.scoring.schemas import MatchResponse, RankingResponse
+from modules.seasons.models import Season
 from modules.teams.models import Team
 
 router = APIRouter(prefix="/v1/events", tags=["events"])
@@ -95,6 +98,25 @@ async def delete_event(
     db: AsyncSession = Depends(get_db),
 ):
     await service.delete_event(db, event_id)
+
+
+@router.get("/{event_id}/modules", response_model=EventModulesResponse)
+async def get_event_modules(
+    event_id: str,
+    _=Depends(require_permission("events:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Which modules the event uses — drives the navigation and route guards."""
+    event = await service.get_event(db, event_id)
+    season = await db.get(Season, event.season_id)
+    flags = (*SEASON_FLAGS.values(), "use_paper_scoring")
+    return EventModulesResponse(
+        event_id=event.id,
+        available_modules=list(MODULE_KEYS),
+        active_modules=list(event.active_modules or []),
+        effective_modules=effective_modules(event, season),
+        season_flags={flag: bool(getattr(season, flag, False)) for flag in flags},
+    )
 
 
 @router.get("/{event_id}/registrations", response_model=list[EventRegistrationResponse])

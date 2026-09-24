@@ -13,6 +13,15 @@ from modules.teams.models import Team
 START = datetime(2026, 7, 18, 8, 0, tzinfo=UTC).isoformat()
 
 
+@pytest.fixture(autouse=True)
+async def _double_elimination_enabled(db, season, event):
+    """DE phases need the module on the season and the event
+    (modules.events.module_access); these tests exercise the brackets."""
+    season.use_double_elimination = True
+    event.active_modules = [*event.active_modules, "double_elimination"]
+    await db.commit()
+
+
 async def _register(db, event, count: int, category: str = "botball") -> list[Team]:
     teams = [Team(name=f"Team {i:02d}", team_number=f"T{i:02d}") for i in range(1, count + 1)]
     db.add_all(teams)

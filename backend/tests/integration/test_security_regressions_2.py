@@ -134,6 +134,15 @@ class TestScoreCannotBeForged:
 
 
 class TestOrganizerOnlyResultRoutes:
+    @pytest.fixture(autouse=True)
+    async def _modules_enabled(self, db, season, event):
+        # The result routes answer 404 for events without these modules.
+        season.use_double_elimination = True
+        season.use_documentation_scoring = True
+        season.use_aerial = True
+        event.active_modules = ["seeding", "double_elimination", "documentation", "aerial"]
+        await db.commit()
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "path,payload",

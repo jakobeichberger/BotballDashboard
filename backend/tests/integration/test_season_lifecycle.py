@@ -109,6 +109,10 @@ class TestArchivedIsReadOnly:
         paper = Paper(season_id=season.id, event_id=event.id, team_id=team.id, title="P")
         job = PrintJob(season_id=season.id, event_id=event.id, team_id=team.id, file_name="a")
         db.add_all([paper, job])
+        # Documentation results need their module; the archive guard must win
+        # over an otherwise allowed write.
+        season.use_documentation_scoring = True
+        event.active_modules = [*event.active_modules, "documentation"]
         await db.commit()
         match = await client.post(
             f"/api/scoring/seasons/{season.id}/matches",

@@ -42,5 +42,12 @@
   "scoreSaved": "Score saved officially.",
   "saveFailed": "Saving failed.",
   "noSchema": "No active scoring schema is configured for this event.",
-  "currentRanking": "Current ranking"
+  "currentRanking": "Current ranking",
+  "offlineScoring": "Offline: scores are stored on this device and synced automatically once the connection is back.",
+  "scoreQueued": "Saved offline – will sync once the connection is back.",
+  "reviewScore": "Review & submit",
+  "previousMatch": "Previous match",
+  "nextMatch": "Next match",
+  "matchPosition": "Match {{current}} of {{total}}",
+  "swipeHint": "Swipe to switch between matches"
 }

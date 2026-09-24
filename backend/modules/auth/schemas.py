@@ -63,6 +63,26 @@ def _new_password(v: str) -> str:
     return check_password(v)
 
 
+class NotificationPreferences(BaseModel):
+    """Push delivery per notification category (see modules.dashboard.notifications)."""
+
+    match_soon: bool = True
+    score_corrected: bool = True
+    deadlines: bool = True
+    paper_status: bool = True
+    print_status: bool = True
+    announcements: bool = True
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    match_soon: bool | None = None
+    score_corrected: bool | None = None
+    deadlines: bool | None = None
+    paper_status: bool | None = None
+    print_status: bool | None = None
+    announcements: bool | None = None
+
+
 class UserPasswordChange(BaseModel):
     current_password: str
     new_password: str

@@ -75,6 +75,7 @@ async def create_season(
     create_default_event: bool = True,
 ) -> Season:
     from modules.events.models import Event, EventPhase
+    from modules.events.module_access import modules_for_season
 
     is_active = bool(data.pop("is_active", False))
     status = data.pop("status", None) or ("active" if is_active else DRAFT)
@@ -96,7 +97,7 @@ async def create_season(
             name=f"{season.name} – Main Event",
             slug=f"season-{season.year}-{season.id[:8]}",
             status="draft",
-            active_modules=["seeding"],
+            active_modules=modules_for_season(season),
         )
         db.add(event)
         await db.flush()
