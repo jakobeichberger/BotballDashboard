@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, Query, WebSocket
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission
+from core.auth import (
+    assert_team_access,
+    require_permission,
+)
 from core.database import get_db
-from core.live import publish_live_event, stream_live_events
+from core.live import publish_live_event
 from modules.events import service as event_svc
 from modules.scoring import competition_service as comp_svc
 from modules.scoring import formula_service as formula_svc
@@ -25,16 +28,17 @@ from modules.scoring.schemas import (
     RankingResponse,
     ScoreBulkEntry,
     ScoreRevisionResponse,
+    ScoringSchemaResponse,
 )
 from modules.seasons import service as season_svc
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
 
-@router.websocket("/scoreboard/ws")
-async def scoreboard_ws(websocket: WebSocket):
-    """Legacy global stream. New screens use the event-specific public stream."""
-    await stream_live_events(websocket, None)
+# The former unauthenticated /scoreboard/ws streamed the global channel of
+# every event — including unpublished ones and their announcement texts — to
+# anyone. No client used it any more; live screens use the per-event public
+# stream (/api/v1/public/events/{slug}/ws), which honours the public_* flags.
 
 
 async def _broadcast_ranking_update(event_id: str) -> None:
@@ -44,15 +48,29 @@ async def _broadcast_ranking_update(event_id: str) -> None:
 # ── Matches ───────────────────────────────────────────────────────────────────
 
 
+@router.get("/seasons/{season_id}/schema", response_model=ScoringSchemaResponse | None)
+async def get_scoring_schema(
+    season_id: str,
+    competition_level_id: str | None = Query(None),
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """The active scoring schema (scored fields + multipliers) for a season."""
+    return await service.get_active_schema(db, season_id, competition_level_id)
+
+
 @router.get("/seasons/{season_id}/matches", response_model=list[MatchResponse])
 async def list_matches(
     season_id: str,
     team_id: str | None = Query(None),
     phase_id: str | None = Query(None),
+    is_practice: bool | None = Query(None),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_matches(db, season_id, team_id, phase_id)
+    return await service.list_matches(
+        db, season_id, team_id=team_id, phase_id=phase_id, is_practice=is_practice
+    )
 
 
 @router.post("/seasons/{season_id}/matches", response_model=MatchResponse, status_code=201)
@@ -62,6 +80,8 @@ async def create_match(
     current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Organizers (scoring:admin) may score any team; mentors only their own.
+    await assert_team_access(db, current_user, body.team_id, "scoring:admin")
     data = body.model_dump()
     data["season_id"] = season_id
     match = await service.create_match(db, data, current_user.id)
@@ -80,6 +100,9 @@ async def bulk_create_matches(
 ):
     results = []
     for entry in body.entries:
+        # Same scoping as the single-match route — otherwise this endpoint
+        # would be a way around it.
+        await assert_team_access(db, current_user, entry.team_id, "scoring:admin")
         data = entry.model_dump()
         data["season_id"] = season_id
         results.append(await service.create_match(db, data, current_user.id))
@@ -104,6 +127,9 @@ async def update_match(
     current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Organizers may edit any match; mentors only their own team's.
+    existing = await service.get_match(db, match_id)
+    await assert_team_access(db, current_user, existing.team_id, "scoring:admin")
     match = await service.update_match(
         db,
         match_id,
@@ -269,7 +295,7 @@ async def list_de_results(
 async def bulk_upsert_de_results(
     season_id: str,
     body: list[DEResultUpsert],
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     entries = [e.model_dump() for e in body]
@@ -283,7 +309,7 @@ async def upsert_de_result(
     season_id: str,
     team_id: str,
     body: DEResultUpsert,
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump()
@@ -315,7 +341,7 @@ async def get_aerial_ranking(
 async def bulk_upsert_aerial_results(
     season_id: str,
     body: list[AerialResultUpsert],
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     entries = [e.model_dump() for e in body]
@@ -327,7 +353,7 @@ async def upsert_aerial_result(
     season_id: str,
     team_id: str,
     body: AerialResultUpsert,
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump()
@@ -351,7 +377,7 @@ async def list_doc_scores(
 async def bulk_upsert_doc_scores(
     season_id: str,
     body: list[DocScoreUpsert],
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     entries = [e.model_dump() for e in body]
@@ -363,7 +389,7 @@ async def upsert_doc_score(
     season_id: str,
     team_id: str,
     body: DocScoreUpsert,
-    _=Depends(require_permission("scoring:write")),
+    _=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump()

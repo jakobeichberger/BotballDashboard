@@ -4,6 +4,7 @@ import { FileText } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import Modal from "@/components/Modal";
+import { EventLink } from "@/components/EventLink";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration } from "@/api/types";
@@ -39,6 +40,13 @@ export default function PapersPage() {
   const [selectedPaperId, setSelectedPaperId] = useState("");
   const [assignment, setAssignment] = useState({ reviewer_id: "", due_at: "" });
   const [review, setReview] = useState({ score_content: "", score_methodology: "", score_presentation: "", score_originality: "", comments: "" });
+  // Mentors may only file for teams they belong to; the backend enforces this
+  // too (assert_team_access), this just keeps the choice list honest.
+  const { data: myTeams } = useQuery<{ id: string }[]>({
+    queryKey: ["teams-mine"],
+    queryFn: async () => (await api.get("/teams/mine")).data,
+    enabled: canWrite && !canAdmin,
+  });
   const { data: registrations } = useQuery<EventRegistration[]>({
     queryKey: ["event-registrations", eventId],
     queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data,
@@ -106,7 +114,7 @@ export default function PapersPage() {
           <tbody className="divide-y dark:divide-gray-800">
             {papers?.map((paper: any) => (
               <tr key={paper.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white"><button className="text-left text-primary-700 hover:underline dark:text-primary-300" onClick={() => setSelectedPaperId(paper.id)}>{paper.title}</button></td>
+                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white"><button className="text-left text-primary-700 hover:underline dark:text-primary-300" onClick={() => setSelectedPaperId(paper.id)}>{paper.title}</button> <EventLink to={`/papers/${paper.id}`} className="ml-2 text-xs text-gray-500 hover:underline">Details</EventLink></td>
                 <td className="px-4 py-3">
                   <span className={STATUS_BADGE[paper.status] ?? "badge-gray"}>
                     {STATUS_LABEL[paper.status] ?? paper.status}
@@ -135,7 +143,9 @@ export default function PapersPage() {
           <label className="block text-sm font-medium">Team *
             <select className="input mt-1 w-full" required value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
               <option value="">Bitte wählen</option>
-              {registrations?.map((registration) => <option key={registration.id} value={registration.team_id}>{registration.team_name}</option>)}
+              {registrations
+                ?.filter((registration) => canAdmin || myTeams?.some((team) => team.id === registration.team_id))
+                .map((registration) => <option key={registration.id} value={registration.team_id}>{registration.team_name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-medium">Titel *

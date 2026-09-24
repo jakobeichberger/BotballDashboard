@@ -65,6 +65,11 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/0
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-/app/vapid/private_key.pem}
+      # The backend publishes no port; it is reached only through Traefik, which
+      # discards client-sent X-Forwarded-For and sets the real client address.
+      # Trusting the proxy header here gives the login rate limit and the audit
+      # log the client IP instead of Traefik's (one shared bucket for everyone).
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-*}
     volumes:
       - uploads:/app/uploads
       - vapid:/app/vapid
@@ -76,7 +81,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`) && !Path(`/api/system/metrics`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=le"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
@@ -92,8 +97,11 @@ services:
         required: false
     environment:
       REDIS_URL: redis://redis:6379/0
+      # The worker delivers Web Push, so it needs the same VAPID key as the API.
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-/app/vapid/private_key.pem}
     volumes:
       - uploads:/app/uploads
+      - vapid:/app/vapid:ro
     depends_on:
       db:
         condition: service_healthy

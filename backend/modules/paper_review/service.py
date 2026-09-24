@@ -62,7 +62,9 @@ async def list_papers(
     team_id: str | None = None,
     status: str | None = None,
     event_id: str | None = None,
+    team_ids: set[str] | None = None,
 ) -> list[Paper]:
+    """`team_ids`, when given, limits the result to those teams (mentor scoping)."""
     q = (
         select(Paper)
         .options(
@@ -79,6 +81,8 @@ async def list_papers(
         q = q.where(Paper.status == status)
     if event_id:
         q = q.where(Paper.event_id == event_id)
+    if team_ids is not None:
+        q = q.where(Paper.team_id.in_(team_ids))
     result = await db.execute(q)
     return list(result.scalars().all())
 
@@ -155,10 +159,23 @@ async def submit_paper(db: AsyncSession, paper_id: str, submitted_by: str) -> Pa
             "paperId": paper.id,
             "status": "submitted",
             "message": "Paper status: submitted",
+            "userIds": await _team_user_ids(db, paper.team_id),
         },
     )
     await db.flush()
     return await get_paper(db, paper.id)
+
+
+async def _team_user_ids(db: AsyncSession, team_id: str) -> list[str]:
+    """Accounts linked to the paper's team: the only recipients of its news."""
+    from modules.teams.models import TeamMember
+
+    result = await db.execute(
+        select(TeamMember.user_id).where(
+            TeamMember.team_id == team_id, TeamMember.user_id.isnot(None)
+        )
+    )
+    return [uid for uid in result.scalars().all() if uid]
 
 
 async def set_paper_status(
@@ -188,7 +205,12 @@ async def set_paper_status(
         db,
         "paper_status_changed",
         event_id=paper.event_id,
-        payload={"paperId": paper.id, "status": status, "message": f"Paper status: {status}"},
+        payload={
+            "paperId": paper.id,
+            "status": status,
+            "message": f"Paper status: {status}",
+            "userIds": await _team_user_ids(db, paper.team_id),
+        },
     )
     await db.flush()
     return await get_paper(db, paper.id)
@@ -254,6 +276,43 @@ async def get_or_create_review(
         await db.flush()
         await db.refresh(review)
     return review
+
+
+async def _recompute_paper_ranks(db: AsyncSession, season_id: str) -> None:
+    """Rank papers in a season by final_score DESC; papers without a score get no rank."""
+    scored = await db.execute(
+        select(Paper)
+        .where(Paper.season_id == season_id, Paper.final_score.isnot(None))
+        .order_by(Paper.final_score.desc())
+    )
+    for i, p in enumerate(scored.scalars().all(), start=1):
+        p.paper_rank = i
+    unscored = await db.execute(
+        select(Paper).where(Paper.season_id == season_id, Paper.final_score.is_(None))
+    )
+    for p in unscored.scalars().all():
+        p.paper_rank = None
+
+
+async def finalize_paper(db: AsyncSession, paper_id: str) -> Paper:
+    """Aggregate the submitted reviews of the current revision into a final
+    score (0-1 = average reviewer score / 10) and recompute the season ranking."""
+    paper = await get_paper(db, paper_id)
+    submitted = [
+        r
+        for r in paper.reviews
+        if r.is_submitted
+        and r.revision_number == paper.revision_number
+        and r.total_score is not None
+    ]
+    if submitted:
+        avg = sum(r.total_score or 0.0 for r in submitted) / len(submitted)
+        paper.final_score = round(avg / 10.0, 4)
+    else:
+        paper.final_score = None
+    await db.flush()
+    await _recompute_paper_ranks(db, paper.season_id)
+    return await get_paper(db, paper_id)
 
 
 async def save_review(

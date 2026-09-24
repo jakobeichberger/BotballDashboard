@@ -1,7 +1,13 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission
+from core.auth import (
+    assert_team_access,
+    get_current_user,
+    has_elevated_access,
+    own_team_ids,
+    require_permission,
+)
 from core.database import get_db
 from modules.teams import service
 from modules.teams.schemas import (
@@ -29,10 +35,19 @@ async def list_teams(
     return await service.list_teams(db, season_id, competition_level_id)
 
 
+@router.get("/mine", response_model=list[TeamListItem])
+async def list_my_teams(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Teams the current user belongs to — used for mentor self-service dropdowns."""
+    return await service.list_my_teams(db, current_user.id)
+
+
 @router.post("", response_model=TeamResponse, status_code=201)
 async def create_team(
     body: TeamCreate,
-    _=Depends(require_permission("teams:write")),
+    _=Depends(require_permission("teams:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     members = [m.model_dump() for m in body.members]
@@ -56,9 +71,11 @@ async def list_registrations(
 @router.post("/registrations", response_model=TeamSeasonRegistrationResponse, status_code=201)
 async def register_for_season(
     body: TeamSeasonRegistrationCreate,
-    _=Depends(require_permission("teams:write")),
+    current_user=Depends(require_permission("teams:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Mentors may register their own team; organizers any team.
+    await assert_team_access(db, current_user, body.team_id, "teams:admin")
     return await service.register_for_season(
         db,
         body.team_id,
@@ -73,10 +90,19 @@ async def register_for_season(
 )
 async def confirm_registration(
     registration_id: str,
-    _=Depends(require_permission("teams:write")),
+    _=Depends(require_permission("teams:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.confirm_registration(db, registration_id)
+
+
+@router.delete("/registrations/{registration_id}", status_code=204)
+async def delete_registration(
+    registration_id: str,
+    _=Depends(require_permission("teams:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    await service.delete_registration(db, registration_id)
 
 
 # ── Individual team routes ────────────────────────────────────────────────────
@@ -94,26 +120,36 @@ async def get_team_history(
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(
     team_id: str,
-    _=Depends(require_permission("teams:read")),
+    current_user=Depends(require_permission("teams:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_team(db, team_id)
+    resp = TeamResponse.model_validate(await service.get_team(db, team_id))
+    # teams:read reaches guests and every mentor. Member e-mail addresses (mostly
+    # students) and the organizers' notes are only for the team itself and admins.
+    if not await has_elevated_access(
+        db, current_user, "teams:admin"
+    ) and team_id not in await own_team_ids(db, current_user):
+        resp.notes = None
+        for member in resp.members:
+            member.email = None
+    return resp
 
 
 @router.patch("/{team_id}", response_model=TeamResponse)
 async def update_team(
     team_id: str,
     body: TeamUpdate,
-    _=Depends(require_permission("teams:write")),
+    current_user=Depends(require_permission("teams:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_team_access(db, current_user, team_id, "teams:admin")
     return await service.update_team(db, team_id, **body.model_dump(exclude_unset=True))
 
 
 @router.delete("/{team_id}", status_code=204)
 async def delete_team(
     team_id: str,
-    _=Depends(require_permission("teams:write")),
+    _=Depends(require_permission("teams:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     await service.delete_team(db, team_id)
@@ -123,9 +159,10 @@ async def delete_team(
 async def add_member(
     team_id: str,
     body: TeamMemberCreate,
-    _=Depends(require_permission("teams:write")),
+    current_user=Depends(require_permission("teams:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_team_access(db, current_user, team_id, "teams:admin")
     return await service.add_member(db, team_id, body.model_dump())
 
 
@@ -133,7 +170,8 @@ async def add_member(
 async def remove_member(
     team_id: str,
     member_id: str,
-    _=Depends(require_permission("teams:write")),
+    current_user=Depends(require_permission("teams:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_team_access(db, current_user, team_id, "teams:admin")
     await service.remove_member(db, team_id, member_id)

@@ -21,7 +21,22 @@ async def test_postgresql_and_migration_head_are_available():
         assert (await connection.execute(text("SELECT 1"))).scalar_one() == 1
         result = await connection.execute(text("SELECT version_num FROM alembic_version"))
         version = result.scalar_one()
-        assert version == "0012"
+        assert version == _migration_head()
+
+
+def _migration_head() -> str:
+    """The single head of the migration chain, so new migrations need no test edit."""
+    from pathlib import Path
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    backend = Path(__file__).resolve().parents[2]
+    config = Config(str(backend / "alembic.ini"))
+    config.set_main_option("script_location", str(backend / "alembic"))
+    heads = ScriptDirectory.from_config(config).get_heads()
+    assert len(heads) == 1, f"migration chain has several heads: {heads}"
+    return heads[0]
 
 
 @pytest.mark.asyncio

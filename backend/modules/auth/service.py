@@ -185,6 +185,9 @@ async def change_password(
     if not verify_password(current_password, user.hashed_password):
         raise BadRequestError("Current password is incorrect")
     user.hashed_password = hash_password(new_password)
+    # A password change is how a user locks out whoever learned the old one;
+    # every session opened with it (refresh tokens live 30 days) must end.
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
 
 
 # ── Roles ─────────────────────────────────────────────────────────────────────
@@ -194,6 +197,11 @@ async def list_roles(db: AsyncSession) -> list[Role]:
     result = await db.execute(
         select(Role).options(selectinload(Role.permissions)).order_by(Role.name)
     )
+    return list(result.scalars().all())
+
+
+async def list_permissions(db: AsyncSession) -> list[Permission]:
+    result = await db.execute(select(Permission).order_by(Permission.name))
     return list(result.scalars().all())
 
 

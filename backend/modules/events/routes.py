@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Response, WebSocket
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission
+from core.auth import assert_team_access, require_permission
 from core.database import get_db
 from core.domain_events import emit_event
 from core.live import publish_live_event, stream_live_events
@@ -195,7 +195,11 @@ async def generate_schedule(
         db,
         "schedule_updated",
         event_id=event_id,
-        payload={"message": "The event schedule was regenerated.", "publicLive": True},
+        payload={
+            "message": "The event schedule was regenerated.",
+            "publicLive": True,
+            "broadcast": True,
+        },
     )
     return schedule
 
@@ -216,7 +220,12 @@ async def update_scheduled_match(
         db,
         "schedule_updated",
         event_id=event_id,
-        payload={"matchId": match.id, "message": "A match time changed.", "publicLive": True},
+        payload={
+            "matchId": match.id,
+            "message": "A match time changed.",
+            "publicLive": True,
+            "broadcast": True,
+        },
     )
     return match
 
@@ -241,6 +250,9 @@ async def create_event_score(
     current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Mentors hold scoring:write for self-service (migration 0014); without this
+    # they could enter scores for any team. Organizers/jurors hold scoring:admin.
+    await assert_team_access(db, current_user, body.team_id, "scoring:admin")
     event = await service.get_event(db, event_id)
     data = body.model_dump()
     data.update({"event_id": event.id, "season_id": event.season_id})
@@ -355,7 +367,8 @@ async def get_public_results(slug: str, db: AsyncSession = Depends(get_db)):
         from core.exceptions import NotFoundError
 
         raise NotFoundError("Public detailed results are disabled")
-    matches = await scoring_service.list_matches(db, event_id=event.id)
+    # Practice runs are internal preparation, not tournament results.
+    matches = await scoring_service.list_matches(db, event_id=event.id, is_practice=False)
     team_ids = [match.team_id for match in matches]
     teams_result = await db.execute(select(Team).where(Team.id.in_(team_ids)))
     teams = {team.id: team for team in teams_result.scalars().all()}
@@ -429,4 +442,13 @@ async def public_event_ws(
     db: AsyncSession = Depends(get_db),
 ):
     event = await service.get_public_event(db, slug)
+    if not (
+        event.public_scoreboard
+        or event.public_schedule
+        or event.public_results
+        or event.public_announcements
+    ):
+        # Nothing about this event is public, so neither is its live stream.
+        await websocket.close(code=1008)
+        return
     await stream_live_events(websocket, event.id)

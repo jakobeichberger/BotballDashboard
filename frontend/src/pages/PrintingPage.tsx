@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
@@ -28,6 +29,13 @@ export default function PrintingPage() {
   const [form, setForm] = useState({ team_id: "", file_name: "", material: "PLA", color: "", estimated_grams: "" });
   const [printerForm, setPrinterForm] = useState({ name: "", printer_type: "octoprint", api_url: "", device_id: "", api_key: "" });
   const [jobPrinters, setJobPrinters] = useState<Record<string, string>>({});
+  // Mentors may only submit for teams they belong to; the backend enforces
+  // this too (assert_team_access), this keeps the choice list honest.
+  const { data: myTeams } = useQuery<{ id: string }[]>({
+    queryKey: ["teams-mine"],
+    queryFn: async () => (await api.get("/teams/mine")).data,
+    enabled: canWrite && !canAdmin,
+  });
   const { data: registrations } = useQuery<EventRegistration[]>({
     queryKey: ["event-registrations", eventId],
     queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data,
@@ -100,7 +108,7 @@ export default function PrintingPage() {
           <tbody className="divide-y dark:divide-gray-800">
             {jobs?.map((job: any) => (
               <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{job.file_name}</td>
+                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white"><EventLink to={`/printing/jobs/${job.id}`} className="text-primary-700 hover:underline dark:text-primary-300">{job.file_name}</EventLink></td>
                 <td className="px-4 py-3 text-gray-500">{job.material}</td>
                 <td className="px-4 py-3">
                   <span className={STATUS_BADGE[job.status] ?? "badge-gray"}>{job.status}</span>
@@ -131,7 +139,9 @@ export default function PrintingPage() {
           <label className="block text-sm font-medium">Team *
             <select className="input mt-1 w-full" required value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
               <option value="">Bitte wählen</option>
-              {registrations?.map((registration) => <option key={registration.id} value={registration.team_id}>{registration.team_name}</option>)}
+              {registrations
+                ?.filter((registration) => canAdmin || myTeams?.some((team) => team.id === registration.team_id))
+                .map((registration) => <option key={registration.id} value={registration.team_id}>{registration.team_name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-medium">Dateiname *

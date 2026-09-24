@@ -41,6 +41,9 @@ class ReviewerAssignmentCreate(BaseModel):
 
 
 class ReviewCreateUpdate(BaseModel):
+    # Each criterion is scored 0-10; finalize_paper divides the mean by 10 to
+    # get final_score, so out-of-range values would push it outside 0-1 and
+    # skew the overall competition ranking.
     score_content: float | None = Field(default=None, ge=0, le=10)
     score_methodology: float | None = Field(default=None, ge=0, le=10)
     score_presentation: float | None = Field(default=None, ge=0, le=10)

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { EventLink } from "@/components/EventLink";
 import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
 import { RankingExportButtons } from "@/components/ExportButtons";
 import { useCurrentUser } from "@/hooks/useAuth";
@@ -164,7 +165,9 @@ function SeedingTab({ sid, categories }: { sid: string; categories: string[] }) 
               <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-white">{e.team_name ?? e.team_id}</div>
+                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                    {e.team_name ?? e.team_id}
+                  </EventLink>
                   <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 {categories.length > 1 && (
@@ -208,9 +211,9 @@ function DETab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
     <div className="space-y-6">
       {isAdmin && (
         <div className="flex justify-end gap-2">
-          <Link to={`/scoring/de?season_id=${sid}`} className="btn-secondary text-sm">
+          <EventLink to={`/scoring/de?season_id=${sid}`} className="btn-secondary text-sm">
             DE-Ergebnisse eingeben
-          </Link>
+          </EventLink>
         </div>
       )}
       {isLoading && <p className="text-gray-500 text-sm">Laden…</p>}
@@ -269,9 +272,9 @@ function AerialTab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
     <div>
       {isAdmin && (
         <div className="flex justify-end mb-3">
-          <Link to={`/scoring/aerial?season_id=${sid}`} className="btn-secondary text-sm">
+          <EventLink to={`/scoring/aerial?season_id=${sid}`} className="btn-secondary text-sm">
             Aerial-Ergebnisse eingeben
-          </Link>
+          </EventLink>
         </div>
       )}
       {isLoading && <p className="text-gray-500 text-sm">Laden…</p>}
@@ -293,7 +296,9 @@ function AerialTab({ sid, isAdmin }: { sid: string; isAdmin: boolean }) {
               <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-white">{e.team_name ?? e.team_id}</div>
+                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                    {e.team_name ?? e.team_id}
+                  </EventLink>
                   <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 <td className="px-4 py-3 text-right">{fmt(e.run1, 1)}</td>
@@ -372,7 +377,9 @@ function OverallTab({
               <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-white">{e.team_name ?? e.team_id}</div>
+                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                    {e.team_name ?? e.team_id}
+                  </EventLink>
                   <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 {categories.length > 1 && (
@@ -413,6 +420,9 @@ export default function ScoreboardPage() {
   const seasonId = params.get("season_id") ?? "";
   const { data: currentUser } = useCurrentUser();
   const isAdmin = currentUser?.roles?.some((r: any) => r.name === "admin") ?? false;
+  const canEnterScores =
+    currentUser?.is_superuser ||
+    (currentUser?.roles?.some((r: any) => ["admin", "juror", "mentor"].includes(r.name)) ?? false);
 
   const { data: activeSeasonData } = useQuery<Season>({
     queryKey: ["seasons", "active"],
@@ -442,25 +452,30 @@ export default function ScoreboardPage() {
           Rangliste
         </h1>
         <div className="flex items-center gap-3">
+          {canEnterScores && (
+            <EventLink to="/scoring/entry" className="btn-primary text-sm">
+              Wertung erfassen
+            </EventLink>
+          )}
           {isAdmin && (
-            <Link to="/scoring/score-sheets" className="btn-secondary text-sm">
+            <EventLink to="/scoring/score-sheets" className="btn-secondary text-sm">
               Score-Sheets
-            </Link>
+            </EventLink>
           )}
           {isAdmin && season?.use_double_elimination && (
-            <Link to={`/scoring/de${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
+            <EventLink to={`/scoring/de${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
               DE eingeben
-            </Link>
+            </EventLink>
           )}
           {isAdmin && season?.use_aerial && (
-            <Link to={`/scoring/aerial${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
+            <EventLink to={`/scoring/aerial${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
               Aerial eingeben
-            </Link>
+            </EventLink>
           )}
           {isAdmin && (season?.use_documentation_scoring || season?.use_paper_scoring) && (
-            <Link to={`/scoring/doc${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
+            <EventLink to={`/scoring/doc${sid ? `?season_id=${sid}` : ""}`} className="btn-secondary text-sm">
               Doku eingeben
-            </Link>
+            </EventLink>
           )}
         </div>
       </div>

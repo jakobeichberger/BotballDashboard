@@ -14,15 +14,16 @@ class MatchCreate(BaseModel):
     round_number: int = 1
     table_number: int | None = None
     raw_scores: dict = Field(default_factory=dict)
+    is_practice: bool = False
     notes: str | None = None
     idempotency_key: str | None = Field(default=None, min_length=8, max_length=100)
 
 
 class MatchUpdate(BaseModel):
-    # total_score is deliberately not settable: create_match already strips a
-    # client-supplied total and recomputes it from the versioned schema, but
-    # update_match used to assign it straight through, so a PATCH bypassed
-    # validate_raw_scores entirely and could write any score it liked.
+    # total_score is deliberately not settable: it is always derived from
+    # raw_scores via the versioned scoring schema. Accepting it let anyone who
+    # may edit a match (incl. a mentor on their own match) bypass
+    # validate_raw_scores and write an arbitrary score into the ranking.
     raw_scores: dict | None = None
     is_disqualified: bool | None = None
     yellow_card: bool | None = None
@@ -30,6 +31,17 @@ class MatchUpdate(BaseModel):
     notes: str | None = None
     expected_version: int | None = Field(default=None, ge=1)
     correction_reason: str | None = Field(default=None, max_length=1000)
+
+
+class ScoringSchemaResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    season_id: str
+    competition_level_id: str | None
+    fields: list
+    version: int
+    is_active: bool
 
 
 class MatchResponse(BaseModel):
@@ -47,6 +59,7 @@ class MatchResponse(BaseModel):
     raw_scores: dict
     total_score: float
     is_disqualified: bool
+    is_practice: bool
     yellow_card: bool
     red_card: bool
     notes: str | None

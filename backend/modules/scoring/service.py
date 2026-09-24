@@ -20,12 +20,36 @@ def compute_seed_score(scores: list[float]) -> float:
 
 
 def compute_match_total(raw_scores: dict, schema_fields: list[dict]) -> float:
-    """Multiply each submitted field by the configured multiplier and sum it."""
+    """Sum each scored field's value times its multiplier.
+
+    When a schema is defined it is authoritative: keys it doesn't define score
+    nothing, and a field's ``max_value`` is enforced. Both matter because the
+    client supplies raw_scores — previously an invented key scored with an
+    implicit multiplier of 1, and any value was accepted, so a mentor could
+    score themselves arbitrarily high on their own match.
+
+    With no schema configured the legacy fallback still applies: values are
+    summed as-is (multiplier 1), which is what a season without a schema means.
+    """
     total = 0.0
     field_map = {field["key"]: field for field in schema_fields}
     for key, value in raw_scores.items():
-        multiplier = field_map.get(key, {}).get("multiplier", 1)
-        total += float(value) * float(multiplier)
+        field = field_map.get(key)
+        if field is None:
+            if field_map:
+                continue  # schema is authoritative → unknown keys score nothing
+            field = {}  # no schema at all → sum as-is
+
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            raise ValidationError(f"Score for '{key}' must be a number")
+
+        max_value = field.get("max_value")
+        if max_value is not None and numeric > float(max_value):
+            raise ValidationError(f"Score for '{key}' exceeds the maximum of {max_value}")
+
+        total += numeric * float(field.get("multiplier", 1))
     return round(total, 2)
 
 
@@ -156,6 +180,7 @@ async def list_matches(
     team_id: str | None = None,
     phase_id: str | None = None,
     event_id: str | None = None,
+    is_practice: bool | None = None,
 ) -> list[Match]:
     query = select(Match).order_by(Match.round_number, Match.created_at)
     if season_id:
@@ -166,6 +191,8 @@ async def list_matches(
         query = query.where(Match.team_id == team_id)
     if phase_id:
         query = query.where(Match.event_phase_id == phase_id)
+    if is_practice is not None:
+        query = query.where(Match.is_practice.is_(is_practice))
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -354,6 +381,7 @@ async def _recompute_ranking(
         Match.event_id == event_id,
         Match.team_id == team_id,
         Match.is_disqualified.is_(False),
+        Match.is_practice.is_(False),  # practice runs never count toward the ranking
     )
     match_query = (
         match_query.where(Match.event_phase_id == event_phase_id)

@@ -20,8 +20,12 @@ for i in $(seq 1 15); do
 done
 
 echo "==> Starting BotballDashboard API..."
+# Client IPs come from X-Forwarded-For only for trusted proxies
+# (FORWARDED_ALLOW_IPS; docker-compose.yml sets it for the Traefik setup).
 exec uvicorn main:app \
     --host 0.0.0.0 \
     --port 8000 \
+    --proxy-headers \
+    --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-127.0.0.1}" \
     --no-access-log \
     --log-level warning

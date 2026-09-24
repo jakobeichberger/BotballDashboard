@@ -162,6 +162,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Permissions */
+        get: operations["list_permissions_api_auth_permissions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/seasons": {
         parameters: {
             query?: never;
@@ -262,6 +279,76 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/seasons/competition-levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Competition Level */
+        post: operations["create_competition_level_api_seasons_competition_levels_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/seasons/competition-levels/{level_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Competition Level */
+        delete: operations["delete_competition_level_api_seasons_competition_levels__level_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Competition Level */
+        patch: operations["update_competition_level_api_seasons_competition_levels__level_id__patch"];
+        trace?: never;
+    };
+    "/api/seasons/{season_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Season Events */
+        get: operations["list_season_events_api_seasons__season_id__events_get"];
+        put?: never;
+        /** Create Season Event */
+        post: operations["create_season_event_api_seasons__season_id__events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/seasons/{season_id}/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Season Event */
+        delete: operations["delete_season_event_api_seasons__season_id__events__event_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -616,6 +703,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List My Teams
+         * @description Teams the current user belongs to — used for mentor self-service dropdowns.
+         */
+        get: operations["list_my_teams_api_teams_mine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/teams/registrations": {
         parameters: {
             query?: never;
@@ -646,6 +753,23 @@ export interface paths {
         put: operations["confirm_registration_api_teams_registrations__registration_id__confirm_put"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/registrations/{registration_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Registration */
+        delete: operations["delete_registration_api_teams_registrations__registration_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -716,6 +840,26 @@ export interface paths {
         post?: never;
         /** Remove Member */
         delete: operations["remove_member_api_teams__team_id__members__member_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/seasons/{season_id}/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scoring Schema
+         * @description The active scoring schema (scored fields + multipliers) for a season.
+         */
+        get: operations["get_scoring_schema_api_scoring_seasons__season_id__schema_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -819,6 +963,9 @@ export interface paths {
         /**
          * Get Ranking
          * @description Public endpoint – no auth required for scoreboard display.
+         *
+         *     NOTE: unlike GET /v1/public/events/{slug}/ranking this does not honour the
+         *     event's public_scoreboard / public_results flags.
          */
         get: operations["get_ranking_api_scoring_seasons__season_id__ranking_get"];
         put?: never;
@@ -856,8 +1003,34 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Overall Ranking */
+        /**
+         * Get Overall Ranking
+         * @description Overall ranking computed from the season's configured formula set.
+         *
+         *     Results are recorded per event, so this ranks one event: the one named by
+         *     `event_id`, otherwise the season's most recent one.
+         */
         get: operations["get_overall_ranking_api_scoring_seasons__season_id__ranking_overall_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/ranking/overall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Event Overall Ranking
+         * @description Overall ranking for one event, using its season's formula set.
+         */
+        get: operations["get_event_overall_ranking_api_scoring_events__event_id__ranking_overall_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1092,6 +1265,135 @@ export interface paths {
         patch: operations["update_score_sheet_layout_api_scoring_score_sheets__sheet_id__layout_patch"];
         trace?: never;
     };
+    "/api/scoring/formulas/reference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Reference
+         * @description Variables, functions and shipped defaults — drives the editor's help panel.
+         */
+        get: operations["get_reference_api_scoring_formulas_reference_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/formulas/seasons/{season_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Formulas */
+        get: operations["list_formulas_api_scoring_formulas_seasons__season_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/formulas/seasons/{season_id}/{category}/effective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Effective Set
+         * @description The formulas actually in use, falling back to the documented defaults.
+         */
+        get: operations["get_effective_set_api_scoring_formulas_seasons__season_id___category__effective_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/formulas/seasons/{season_id}/{category}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Formula Set */
+        put: operations["replace_formula_set_api_scoring_formulas_seasons__season_id___category__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/formulas/seasons/{season_id}/{category}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset Formula Set */
+        post: operations["reset_formula_set_api_scoring_formulas_seasons__season_id___category__reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/formulas/events/{event_id}/{category}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Formula Set
+         * @description Run a candidate formula set against this event's real results, without saving.
+         */
+        post: operations["preview_formula_set_api_scoring_formulas_events__event_id___category__preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/formulas/seasons/{season_id}/{category}/bracket-weights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bracket Weights */
+        get: operations["get_bracket_weights_api_scoring_formulas_seasons__season_id___category__bracket_weights_get"];
+        /** Set Bracket Weights */
+        put: operations["set_bracket_weights_api_scoring_formulas_seasons__season_id___category__bracket_weights_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/score-sheet-scans": {
         parameters: {
             query?: never;
@@ -1282,6 +1584,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/papers/{paper_id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize Paper
+         * @description Aggregate submitted reviews into final_score and recompute paper ranks.
+         */
+        post: operations["finalize_paper_api_papers__paper_id__finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/papers/{paper_id}/assignments": {
         parameters: {
             query?: never;
@@ -1310,6 +1632,27 @@ export interface paths {
         put?: never;
         /** Remind Reviewer */
         post: operations["remind_reviewer_api_papers__paper_id__assignments__assignment_id__remind_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/papers/{paper_id}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Paper Score
+         * @description Record the review outcome. Separate from PATCH /{paper_id} because
+         *     final_score feeds the overall ranking and papers:write reaches mentors.
+         */
+        put: operations["set_paper_score_api_papers__paper_id__score_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1464,7 +1807,8 @@ export interface paths {
         };
         /** Get Quota */
         get: operations["get_quota_api_printing_quotas_get"];
-        put?: never;
+        /** Set Quota */
+        put: operations["set_quota_api_printing_quotas_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1749,6 +2093,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bots */
+        get: operations["list_bots_api_bots_get"];
+        put?: never;
+        /** Create Bot */
+        post: operations["create_bot_api_bots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bots/{bot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bot */
+        get: operations["get_bot_api_bots__bot_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Bot */
+        delete: operations["delete_bot_api_bots__bot_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Bot */
+        patch: operations["update_bot_api_bots__bot_id__patch"];
+        trace?: never;
+    };
+    "/api/bots/{bot_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bot Image */
+        get: operations["get_bot_image_api_bots__bot_id__image_get"];
+        put?: never;
+        /** Upload Bot Image */
+        post: operations["upload_bot_image_api_bots__bot_id__image_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/health": {
         parameters: {
             query?: never;
@@ -1838,7 +2237,7 @@ export interface components {
         /** AerialResultUpsert */
         AerialResultUpsert: {
             /** Team Id */
-            team_id: string;
+            team_id?: string | null;
             /** Run1 */
             run1?: number | null;
             /** Run2 */
@@ -1894,12 +2293,14 @@ export interface components {
              */
             created_at: string;
         };
+        /** Body_upload_bot_image_api_bots__bot_id__image_post */
+        Body_upload_bot_image_api_bots__bot_id__image_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_paper_file_api_papers__paper_id__upload_post */
         Body_upload_paper_file_api_papers__paper_id__upload_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_upload_scan_api_v1_events__event_id__score_sheet_scans_post */
@@ -1916,17 +2317,13 @@ export interface components {
             team_id: string;
             /** Scheduled Match Id */
             scheduled_match_id?: string | null;
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_upload_score_sheet_api_scoring_seasons__season_id__score_sheets_post */
         Body_upload_score_sheet_api_scoring_seasons__season_id__score_sheets_post: {
             /**
              * File
-             * Format: binary
              * @description PDF file of the official scoring sheet
              */
             file: string;
@@ -1942,6 +2339,96 @@ export interface components {
             /** Competition Level Id */
             competition_level_id?: string | null;
         };
+        /** BotCreate */
+        BotCreate: {
+            /** Name */
+            name: string;
+            /** Team Id */
+            team_id?: string | null;
+            /** External Team Name */
+            external_team_name?: string | null;
+            /** Season Id */
+            season_id?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Functionality */
+            functionality?: string | null;
+            /** Drive Type */
+            drive_type?: string | null;
+            /** Sensors */
+            sensors?: string | null;
+        };
+        /** BotResponse */
+        BotResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Team Id */
+            team_id: string | null;
+            /** External Team Name */
+            external_team_name: string | null;
+            /** Season Id */
+            season_id: string | null;
+            /** Description */
+            description: string | null;
+            /** Functionality */
+            functionality: string | null;
+            /** Drive Type */
+            drive_type: string | null;
+            /** Sensors */
+            sensors: string | null;
+            /** Is Published */
+            is_published: boolean;
+            /** Image Name */
+            image_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** BotUpdate */
+        BotUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Season Id */
+            season_id?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Functionality */
+            functionality?: string | null;
+            /** Drive Type */
+            drive_type?: string | null;
+            /** Sensors */
+            sensors?: string | null;
+            /** Is Published */
+            is_published?: boolean | null;
+        };
+        /**
+         * BracketWeightsUpdate
+         * @description Bracket -> weight, e.g. {"A": 1.0, "B": 0.5683760683760684}.
+         */
+        BracketWeightsUpdate: {
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+        };
+        /** CompetitionLevelCreate */
+        CompetitionLevelCreate: {
+            /** Name */
+            name: string;
+            /** Code */
+            code: string;
+            /** Description */
+            description?: string | null;
+        };
         /** CompetitionLevelResponse */
         CompetitionLevelResponse: {
             /** Id */
@@ -1954,6 +2441,17 @@ export interface components {
             description: string | null;
             /** Is Active */
             is_active: boolean;
+        };
+        /** CompetitionLevelUpdate */
+        CompetitionLevelUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Code */
+            code?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
         };
         /**
          * ConfirmFieldsRequest
@@ -2024,7 +2522,7 @@ export interface components {
         /** DEResultUpsert */
         DEResultUpsert: {
             /** Team Id */
-            team_id: string;
+            team_id?: string | null;
             /** Bracket */
             bracket: string;
             /** De Rank */
@@ -2067,7 +2565,7 @@ export interface components {
         /** DocScoreUpsert */
         DocScoreUpsert: {
             /** Team Id */
-            team_id: string;
+            team_id?: string | null;
             /** Part1 */
             part1?: number | null;
             /** Part2 */
@@ -2166,7 +2664,9 @@ export interface components {
             /** Ends At */
             ends_at?: string | null;
             /** Settings */
-            settings?: Record<string, never>;
+            settings?: {
+                [key: string]: unknown;
+            };
         };
         /** EventPhaseResponse */
         EventPhaseResponse: {
@@ -2189,7 +2689,9 @@ export interface components {
             /** Ends At */
             ends_at: string | null;
             /** Settings */
-            settings: Record<string, never>;
+            settings: {
+                [key: string]: unknown;
+            };
         };
         /** EventPhaseUpdate */
         EventPhaseUpdate: {
@@ -2208,7 +2710,9 @@ export interface components {
             /** Ends At */
             ends_at?: string | null;
             /** Settings */
-            settings?: Record<string, never> | null;
+            settings?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** EventPublicResponse */
         EventPublicResponse: {
@@ -2362,7 +2866,9 @@ export interface components {
             /** Table Number */
             table_number?: number | null;
             /** Raw Scores */
-            raw_scores?: Record<string, never>;
+            raw_scores?: {
+                [key: string]: unknown;
+            };
             /** Notes */
             notes?: string | null;
             /** Idempotency Key */
@@ -2476,6 +2982,156 @@ export interface components {
              */
             created_at: string;
         };
+        /** FormulaBase */
+        FormulaBase: {
+            /**
+             * Key
+             * @description Identifier other formulas reference, e.g. seed_score
+             */
+            key: string;
+            /**
+             * Expression
+             * @description e.g. 3/4 * ((n - rank(x) + 1) / n)
+             */
+            expression: string;
+            /** Label */
+            label?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /** FormulaFunctionDoc */
+        FormulaFunctionDoc: {
+            /** Name */
+            name: string;
+            /** Signature */
+            signature: string;
+            /** Description */
+            description: string;
+        };
+        /** FormulaIssueResponse */
+        FormulaIssueResponse: {
+            /** Key */
+            key: string;
+            /** Team Id */
+            team_id?: string | null;
+            /** Message */
+            message: string;
+        };
+        /**
+         * FormulaPreviewResponse
+         * @description Result of running a candidate formula set against the season's real data.
+         */
+        FormulaPreviewResponse: {
+            /** Ok */
+            ok: boolean;
+            /**
+             * Order
+             * @default []
+             */
+            order: string[];
+            /**
+             * Issues
+             * @default []
+             */
+            issues: components["schemas"]["FormulaIssueResponse"][];
+            /**
+             * Rows
+             * @default []
+             */
+            rows: components["schemas"]["FormulaPreviewRow"][];
+        };
+        /** FormulaPreviewRow */
+        FormulaPreviewRow: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name?: string | null;
+            /** Rank */
+            rank?: number | null;
+            /**
+             * Values
+             * @default {}
+             */
+            values: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * FormulaReferenceResponse
+         * @description Everything the editor needs to offer autocompletion and help.
+         */
+        FormulaReferenceResponse: {
+            /** Inputs */
+            inputs: {
+                [key: string]: string;
+            };
+            /** Row Functions */
+            row_functions: components["schemas"]["FormulaFunctionDoc"][];
+            /** Scope Functions */
+            scope_functions: components["schemas"]["FormulaFunctionDoc"][];
+            /** Defaults */
+            defaults: {
+                [key: string]: {
+                    [key: string]: string;
+                }[];
+            };
+        };
+        /** FormulaResponse */
+        FormulaResponse: {
+            /**
+             * Key
+             * @description Identifier other formulas reference, e.g. seed_score
+             */
+            key: string;
+            /**
+             * Expression
+             * @description e.g. 3/4 * ((n - rank(x) + 1) / n)
+             */
+            expression: string;
+            /** Label */
+            label?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Category */
+            category: string;
+        };
+        /**
+         * FormulaSetUpdate
+         * @description Replaces every formula of one category at once.
+         */
+        FormulaSetUpdate: {
+            /** Formulas */
+            formulas: components["schemas"]["FormulaBase"][];
+        };
+        /** FormulaValidateRequest */
+        FormulaValidateRequest: {
+            /** Formulas */
+            formulas: components["schemas"]["FormulaBase"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2490,6 +3146,8 @@ export interface components {
         };
         /** MatchCreate */
         MatchCreate: {
+            /** Season Id */
+            season_id?: string | null;
             /** Event Id */
             event_id?: string | null;
             /** Scheduled Match Id */
@@ -2508,7 +3166,14 @@ export interface components {
             /** Table Number */
             table_number?: number | null;
             /** Raw Scores */
-            raw_scores?: Record<string, never>;
+            raw_scores?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Is Practice
+             * @default false
+             */
+            is_practice: boolean;
             /** Notes */
             notes?: string | null;
             /** Idempotency Key */
@@ -2554,11 +3219,15 @@ export interface components {
             /** Table Number */
             table_number: number | null;
             /** Raw Scores */
-            raw_scores: Record<string, never>;
+            raw_scores: {
+                [key: string]: unknown;
+            };
             /** Total Score */
             total_score: number;
             /** Is Disqualified */
             is_disqualified: boolean;
+            /** Is Practice */
+            is_practice: boolean;
             /** Yellow Card */
             yellow_card: boolean;
             /** Red Card */
@@ -2566,7 +3235,9 @@ export interface components {
             /** Notes */
             notes: string | null;
             /** Schema Snapshot */
-            schema_snapshot: Record<string, never> | null;
+            schema_snapshot: {
+                [key: string]: unknown;
+            } | null;
             /** Version */
             version: number;
             /** Entered By */
@@ -2584,9 +3255,9 @@ export interface components {
         /** MatchUpdate */
         MatchUpdate: {
             /** Raw Scores */
-            raw_scores?: Record<string, never> | null;
-            /** Total Score */
-            total_score?: number | null;
+            raw_scores?: {
+                [key: string]: unknown;
+            } | null;
             /** Is Disqualified */
             is_disqualified?: boolean | null;
             /** Yellow Card */
@@ -2599,6 +3270,19 @@ export interface components {
             expected_version?: number | null;
             /** Correction Reason */
             correction_reason?: string | null;
+        };
+        /**
+         * MeUpdate
+         * @description Self-service profile update. Deliberately excludes privilege fields
+         *     (is_active, role_ids) so a user can never escalate or lock themselves out.
+         */
+        MeUpdate: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Preferred Language */
+            preferred_language?: string | null;
+            /** Theme */
+            theme?: string | null;
         };
         /** OcrAnchor */
         OcrAnchor: {
@@ -2648,6 +3332,13 @@ export interface components {
             doc_score: number | null;
             /** Aerial Score */
             aerial_score: number | null;
+            /**
+             * Values
+             * @default {}
+             */
+            values: {
+                [key: string]: number;
+            };
         };
         /** PaperCreate */
         PaperCreate: {
@@ -2743,6 +3434,16 @@ export interface components {
             /** Assignments */
             assignments: components["schemas"]["ReviewerAssignmentResponse"][];
         };
+        /**
+         * PaperScoreUpdate
+         * @description The review outcome, settable only by papers:admin.
+         */
+        PaperScoreUpdate: {
+            /** Final Score */
+            final_score?: number | null;
+            /** Paper Rank */
+            paper_rank?: number | null;
+        };
         /** PaperStatusHistoryResponse */
         PaperStatusHistoryResponse: {
             /** Id */
@@ -2763,7 +3464,15 @@ export interface components {
              */
             changed_at: string;
         };
-        /** PaperUpdate */
+        /**
+         * PaperUpdate
+         * @description What the submitting team may change about its own paper.
+         *
+         *     final_score and paper_rank are deliberately absent: they are the review
+         *     outcome, they feed the overall ranking, and papers:write is granted to
+         *     mentors — so leaving them here let any mentor score every team's paper.
+         *     They live on PaperScoreUpdate behind papers:admin instead.
+         */
         PaperUpdate: {
             /** Title */
             title?: string | null;
@@ -2771,10 +3480,15 @@ export interface components {
             abstract?: string | null;
             /** Notes */
             notes?: string | null;
-            /** Final Score */
-            final_score?: number | null;
-            /** Paper Rank */
-            paper_rank?: number | null;
+        };
+        /** PermissionResponse */
+        PermissionResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
         };
         /** PrintJobCreate */
         PrintJobCreate: {
@@ -2988,7 +3702,9 @@ export interface components {
             /** Table Number */
             table_number: number | null;
             /** Raw Scores */
-            raw_scores: Record<string, never>;
+            raw_scores: {
+                [key: string]: unknown;
+            };
             /** Total Score */
             total_score: number;
             /** Is Disqualified */
@@ -3034,6 +3750,19 @@ export interface components {
             used_grams: number;
             /** Notes */
             notes: string | null;
+        };
+        /** QuotaUpsert */
+        QuotaUpsert: {
+            /** Team Id */
+            team_id: string;
+            /** Season Id */
+            season_id: string;
+            /** Max Parts */
+            max_parts?: number | null;
+            /** Soft Limit Parts */
+            soft_limit_parts?: number | null;
+            /** Max Grams */
+            max_grams?: number | null;
         };
         /** RankingResponse */
         RankingResponse: {
@@ -3261,6 +3990,9 @@ export interface components {
         /**
          * ScoreBulkEntry
          * @description Used for rapid multi-match entry (e.g., score table entry).
+         *
+         *     Bounded because each entry triggers a ranking recompute; an unbounded list
+         *     would hold a DB connection for minutes.
          */
         ScoreBulkEntry: {
             /** Entries */
@@ -3277,9 +4009,13 @@ export interface components {
             /** Revision */
             revision: number;
             /** Previous Value */
-            previous_value: Record<string, never> | null;
+            previous_value: {
+                [key: string]: unknown;
+            } | null;
             /** New Value */
-            new_value: Record<string, never>;
+            new_value: {
+                [key: string]: unknown;
+            };
             /** Reason */
             reason: string | null;
             /** Changed By */
@@ -3330,9 +4066,13 @@ export interface components {
             /** Provider */
             provider: string;
             /** Extracted Values */
-            extracted_values: Record<string, never>[] | null;
+            extracted_values: {
+                [key: string]: unknown;
+            }[] | null;
             /** Reviewed Values */
-            reviewed_values: Record<string, never> | null;
+            reviewed_values: {
+                [key: string]: unknown;
+            } | null;
             /** Error */
             error: string | null;
             /** Accepted Match Id */
@@ -3365,7 +4105,9 @@ export interface components {
             /** Field Regions */
             field_regions: components["schemas"]["OcrFieldRegion"][];
             /** Validation Rules */
-            validation_rules?: Record<string, never>;
+            validation_rules?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ScoreSheetTemplateListItem
@@ -3434,11 +4176,17 @@ export interface components {
             /** Page Height */
             page_height: number | null;
             /** Anchors */
-            anchors: Record<string, never>[] | null;
+            anchors: {
+                [key: string]: unknown;
+            }[] | null;
             /** Field Regions */
-            field_regions: Record<string, never>[] | null;
+            field_regions: {
+                [key: string]: unknown;
+            }[] | null;
             /** Validation Rules */
-            validation_rules: Record<string, never> | null;
+            validation_rules: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Uploaded By
              * Format: uuid
@@ -3493,7 +4241,9 @@ export interface components {
              * Region
              * @description Pixel or normalized x/y/width/height crop coordinates
              */
-            region?: Record<string, never> | null;
+            region?: {
+                [key: string]: unknown;
+            } | null;
             /** Min Value */
             min_value?: number | null;
             /**
@@ -3530,28 +4280,6 @@ export interface components {
             required: boolean;
             /** Section */
             section?: string | null;
-        };
-        /** ScoringSchemaResponse */
-        ScoringSchemaResponse: {
-            /** Id */
-            id: string;
-            /** Season Id */
-            season_id: string;
-            /** Event Id */
-            event_id: string | null;
-            /** Competition Level Id */
-            competition_level_id: string | null;
-            /** Fields */
-            fields: Record<string, never>[];
-            /** Version */
-            version: number;
-            /** Is Active */
-            is_active: boolean;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
         };
         /** ScoringSchemaVersionCreate */
         ScoringSchemaVersionCreate: {
@@ -3624,6 +4352,41 @@ export interface components {
              *     ]
              */
             active_categories: string[];
+        };
+        /** SeasonEventCreate */
+        SeasonEventCreate: {
+            /** Title */
+            title: string;
+            /**
+             * Event Type
+             * @default deadline
+             */
+            event_type: string;
+            /**
+             * Event Date
+             * Format: date
+             */
+            event_date: string;
+            /** Description */
+            description?: string | null;
+        };
+        /** SeasonEventResponse */
+        SeasonEventResponse: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Title */
+            title: string;
+            /** Event Type */
+            event_type: string;
+            /**
+             * Event Date
+             * Format: date
+             */
+            event_date: string;
+            /** Description */
+            description: string | null;
         };
         /** SeasonListItem */
         SeasonListItem: {
@@ -4053,6 +4816,49 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+        /** ScoringSchemaResponse */
+        modules__events__schemas__ScoringSchemaResponse: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Event Id */
+            event_id: string | null;
+            /** Competition Level Id */
+            competition_level_id: string | null;
+            /** Fields */
+            fields: {
+                [key: string]: unknown;
+            }[];
+            /** Version */
+            version: number;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ScoringSchemaResponse */
+        modules__scoring__schemas__ScoringSchemaResponse: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Competition Level Id */
+            competition_level_id: string | null;
+            /** Fields */
+            fields: unknown[];
+            /** Version */
+            version: number;
+            /** Is Active */
+            is_active: boolean;
         };
     };
     responses: never;
@@ -4163,7 +4969,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UserUpdate"];
+                "application/json": components["schemas"]["MeUpdate"];
             };
         };
         responses: {
@@ -4454,6 +5260,26 @@ export interface operations {
             };
         };
     };
+    list_permissions_api_auth_permissions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionResponse"][];
+                };
+            };
+        };
+    };
     list_seasons_api_seasons_get: {
         parameters: {
             query?: never;
@@ -4687,7 +5513,9 @@ export interface operations {
     };
     list_competition_levels_api_seasons_competition_levels_all_get: {
         parameters: {
-            query?: never;
+            query?: {
+                include_inactive?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4701,6 +5529,208 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompetitionLevelResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_competition_level_api_seasons_competition_levels_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompetitionLevelCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompetitionLevelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_competition_level_api_seasons_competition_levels__level_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                level_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_competition_level_api_seasons_competition_levels__level_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                level_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompetitionLevelUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompetitionLevelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_season_events_api_seasons__season_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeasonEventResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_season_event_api_seasons__season_id__events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeasonEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeasonEventResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_season_event_api_seasons__season_id__events__event_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5355,7 +6385,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScoringSchemaResponse"];
+                    "application/json": components["schemas"]["modules__events__schemas__ScoringSchemaResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5390,7 +6420,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScoringSchemaResponse"];
+                    "application/json": components["schemas"]["modules__events__schemas__ScoringSchemaResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5653,6 +6683,26 @@ export interface operations {
             };
         };
     };
+    list_my_teams_api_teams_mine_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamListItem"][];
+                };
+            };
+        };
+    };
     list_registrations_api_teams_registrations_get: {
         parameters: {
             query?: {
@@ -5737,6 +6787,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TeamSeasonRegistrationResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_registration_api_teams_registrations__registration_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                registration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5940,11 +7019,45 @@ export interface operations {
             };
         };
     };
+    get_scoring_schema_api_scoring_seasons__season_id__schema_get: {
+        parameters: {
+            query?: {
+                competition_level_id?: string | null;
+            };
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["modules__scoring__schemas__ScoringSchemaResponse"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_matches_api_scoring_seasons__season_id__matches_get: {
         parameters: {
             query?: {
                 team_id?: string | null;
                 phase_id?: string | null;
+                is_practice?: boolean | null;
             };
             header?: never;
             path: {
@@ -6271,10 +7384,44 @@ export interface operations {
         parameters: {
             query?: {
                 category?: string | null;
+                event_id?: string | null;
             };
             header?: never;
             path: {
                 season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverallRankingEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_overall_ranking_api_scoring_events__event_id__ranking_overall_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+            };
+            header?: never;
+            path: {
+                event_id: string;
             };
             cookie?: never;
         };
@@ -6895,6 +8042,269 @@ export interface operations {
             };
         };
     };
+    get_reference_api_scoring_formulas_reference_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaReferenceResponse"];
+                };
+            };
+        };
+    };
+    list_formulas_api_scoring_formulas_seasons__season_id__get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+            };
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_effective_set_api_scoring_formulas_seasons__season_id___category__effective_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_formula_set_api_scoring_formulas_seasons__season_id___category__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormulaSetUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_formula_set_api_scoring_formulas_seasons__season_id___category__reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_formula_set_api_scoring_formulas_events__event_id___category__preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormulaValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaPreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_bracket_weights_api_scoring_formulas_seasons__season_id___category__bracket_weights_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_bracket_weights_api_scoring_formulas_seasons__season_id___category__bracket_weights_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BracketWeightsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_scans_api_v1_events__event_id__score_sheet_scans_get: {
         parameters: {
             query?: {
@@ -7359,6 +8769,37 @@ export interface operations {
             };
         };
     };
+    finalize_paper_api_papers__paper_id__finalize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paper_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     assign_reviewer_api_papers__paper_id__assignments_post: {
         parameters: {
             query?: never;
@@ -7413,6 +8854,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewerAssignmentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_paper_score_api_papers__paper_id__score_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paper_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaperScoreUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperResponse"];
                 };
             };
             /** @description Validation Error */
@@ -7810,6 +9286,39 @@ export interface operations {
             };
         };
     };
+    set_quota_api_printing_quotas_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuotaUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotaResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_spools_api_printing_spools_get: {
         parameters: {
             query?: {
@@ -7911,6 +9420,8 @@ export interface operations {
         parameters: {
             query?: {
                 season_id?: string | null;
+                event_id?: string | null;
+                include_unpublished?: boolean;
             };
             header?: never;
             path?: never;
@@ -8367,6 +9878,233 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_bots_api_bots_get: {
+        parameters: {
+            query?: {
+                season_id?: string | null;
+                team_id?: string | null;
+                external?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_bot_api_bots_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BotCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_bot_api_bots__bot_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_bot_api_bots__bot_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_bot_api_bots__bot_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BotUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_bot_image_api_bots__bot_id__image_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_bot_image_api_bots__bot_id__image_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_bot_image_api_bots__bot_id__image_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotResponse"];
                 };
             };
             /** @description Validation Error */

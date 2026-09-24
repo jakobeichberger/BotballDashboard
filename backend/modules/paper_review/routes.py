@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission
+from core.auth import (
+    assert_team_access,
+    has_elevated_access,
+    own_team_ids,
+    require_permission,
+)
 from core.database import get_db
 from core.rate_limit import rate_limit
 from modules.paper_review import service
@@ -25,6 +30,14 @@ from modules.paper_review.schemas import (
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
+# Organizers and reviewers work across all teams; anyone else holding
+# papers:read (a mentor) only sees their own team's papers.
+_ALL_PAPERS = ("papers:admin", "papers:review")
+
+
+async def _assert_paper_read(db: AsyncSession, user, paper) -> None:
+    await assert_team_access(db, user, paper.team_id, _ALL_PAPERS)
+
 
 @router.get("", response_model=list[PaperListItem])
 async def list_papers(
@@ -32,37 +45,52 @@ async def list_papers(
     team_id: str | None = Query(None),
     status: str | None = Query(None),
     event_id: str | None = Query(None),
-    _=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_papers(db, season_id, team_id, status, event_id)
+    team_ids = None
+    if not await has_elevated_access(db, current_user, _ALL_PAPERS):
+        team_ids = await own_team_ids(db, current_user)
+    return await service.list_papers(db, season_id, team_id, status, event_id, team_ids)
 
 
 @router.post("", response_model=PaperResponse, status_code=201)
 async def create_paper(
     body: PaperCreate,
-    _=Depends(require_permission("papers:write")),
+    current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Organizers (papers:admin) may file for any team; mentors only their own.
+    await assert_team_access(db, current_user, body.team_id, "papers:admin")
     return await service.create_paper(db, body.model_dump())
 
 
 @router.get("/{paper_id}", response_model=PaperResponse)
 async def get_paper(
     paper_id: str,
-    _=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_paper(db, paper_id)
+    paper = await service.get_paper(db, paper_id)
+    await _assert_paper_read(db, current_user, paper)
+    resp = PaperResponse.model_validate(paper)
+    # GET /{id}/reviews is papers:admin-gated; don't let this endpoint hand the
+    # same scores/comments (incl. unsubmitted drafts) to everyone with
+    # papers:read. Reviewers still get their own review back for editing.
+    if not await has_elevated_access(db, current_user, "papers:admin"):
+        resp.reviews = [r for r in resp.reviews if r.reviewer_id == current_user.id]
+    return resp
 
 
 @router.patch("/{paper_id}", response_model=PaperResponse)
 async def update_paper(
     paper_id: str,
     body: PaperUpdate,
-    _=Depends(require_permission("papers:write")),
+    current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    paper = await service.get_paper(db, paper_id)
+    await assert_team_access(db, current_user, paper.team_id, "papers:admin")
     return await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
 
 
@@ -74,11 +102,12 @@ async def update_paper(
 async def upload_paper_file(
     paper_id: str,
     file: UploadFile = File(...),
-    _=Depends(require_permission("papers:write")),
+    current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    # Validate the record before writing anything to disk.
-    await service.get_paper(db, paper_id)
+    # Validate the record and the caller's access before writing anything to disk.
+    paper = await service.get_paper(db, paper_id)
+    await assert_team_access(db, current_user, paper.team_id, "papers:admin")
     _file_path, file_name, file_size = await service.save_file(file, paper_id)
     return await service.update_paper(
         db,
@@ -92,10 +121,11 @@ async def upload_paper_file(
 @router.get("/{paper_id}/download")
 async def download_paper(
     paper_id: str,
-    _=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
     paper = await service.get_paper(db, paper_id)
+    await _assert_paper_read(db, current_user, paper)
     if not paper.file_name:
         from core.exceptions import NotFoundError
 
@@ -120,6 +150,8 @@ async def submit_paper(
     current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    paper = await service.get_paper(db, paper_id)
+    await assert_team_access(db, current_user, paper.team_id, "papers:admin")
     return await service.submit_paper(db, paper_id, current_user.id)
 
 
@@ -133,6 +165,16 @@ async def set_paper_status(
     db: AsyncSession = Depends(get_db),
 ):
     return await service.set_paper_status(db, paper_id, status, current_user.id)
+
+
+@router.post("/{paper_id}/finalize", response_model=PaperResponse)
+async def finalize_paper(
+    paper_id: str,
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aggregate submitted reviews into final_score and recompute paper ranks."""
+    return await service.finalize_paper(db, paper_id)
 
 
 # ── Reviewer assignments ──────────────────────────────────────────────────────
@@ -213,7 +255,8 @@ async def list_reviews(
 @router.get("/{paper_id}/history", response_model=list[PaperStatusHistoryResponse])
 async def get_paper_history(
     paper_id: str,
-    _=Depends(require_permission("papers:read")),
+    current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    await _assert_paper_read(db, current_user, await service.get_paper(db, paper_id))
     return await service.list_status_history(db, paper_id)

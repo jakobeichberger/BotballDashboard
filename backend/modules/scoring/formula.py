@@ -392,7 +392,8 @@ class _Evaluator(ast.NodeVisitor):
     def visit_List(self, node: ast.List) -> Any:
         return [self.visit(e) for e in node.elts]
 
-    visit_Tuple = visit_List
+    def visit_Tuple(self, node: ast.Tuple) -> Any:
+        return [self.visit(e) for e in node.elts]
 
     def visit_UnaryOp(self, node: ast.UnaryOp) -> Any:
         val = self.visit(node.operand)
@@ -468,11 +469,15 @@ class _Evaluator(ast.NodeVisitor):
         return self.visit(node.body) if self.visit(node.test) else self.visit(node.orelse)
 
     def visit_Call(self, node: ast.Call) -> Any:
-        fname = node.func.id  # validated by parse_formula
+        # parse_formula guarantees a bare-name call; assert it for the type checker.
+        assert isinstance(node.func, ast.Name)
+        fname = node.func.id
         if fname in SCOPE_FUNCTIONS:
             if fname == "count_all":
                 return self.scope.team_count()
-            col_name = node.args[0].id
+            column_arg = node.args[0]
+            assert isinstance(column_arg, ast.Name)
+            col_name = column_arg.id
             if fname != "rank" and fname != "rank_asc":
                 return self.scope.aggregate(fname, col_name)
             # rank / rank_asc need this team's own value for that column

@@ -4,7 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 
 import modules.auth.models  # noqa: F401
+import modules.bots.models  # noqa: F401
 import modules.dashboard.models  # noqa: F401
+import modules.events.models  # noqa: F401
 import modules.paper_review.models  # noqa: F401
 import modules.printing.models  # noqa: F401
 import modules.scoring.competition_models  # noqa: F401

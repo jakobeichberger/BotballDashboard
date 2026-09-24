@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission
+from core.auth import assert_team_access, has_elevated_access, own_team_ids, require_permission
 from core.database import get_db
 from modules.printing import service
 from modules.printing.schemas import (
@@ -14,6 +14,7 @@ from modules.printing.schemas import (
     PrintJobResponse,
     PrintJobUpdate,
     QuotaResponse,
+    QuotaUpsert,
 )
 
 router = APIRouter(prefix="/printing", tags=["printing"])
@@ -57,10 +58,14 @@ async def list_print_jobs(
     team_id: str | None = Query(None),
     status: str | None = Query(None),
     event_id: str | None = Query(None),
-    _=Depends(require_permission("printing:read")),
+    current_user=Depends(require_permission("printing:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_print_jobs(db, season_id, team_id, status, event_id)
+    # Mentors hold printing:read too; they see their own teams' jobs only.
+    team_ids = None
+    if not await has_elevated_access(db, current_user, "printing:admin"):
+        team_ids = await own_team_ids(db, current_user)
+    return await service.list_print_jobs(db, season_id, team_id, status, event_id, team_ids)
 
 
 @router.post("/jobs", response_model=PrintJobResponse, status_code=201)
@@ -69,6 +74,8 @@ async def create_print_job(
     current_user=Depends(require_permission("printing:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Organizers (printing:admin) may submit for any team; mentors only their own.
+    await assert_team_access(db, current_user, body.team_id, "printing:admin")
     return await service.create_print_job(db, body.model_dump(), current_user.id)
 
 
@@ -99,10 +106,27 @@ async def get_quota(
     team_id: str = Query(...),
     season_id: str = Query(...),
     event_id: str | None = Query(None),
-    _=Depends(require_permission("printing:read")),
+    current_user=Depends(require_permission("printing:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_team_access(db, current_user, team_id, "printing:admin")
     return await service.get_quota(db, team_id, season_id, event_id)
+
+
+@router.put("/quotas", response_model=QuotaResponse)
+async def set_quota(
+    body: QuotaUpsert,
+    _=Depends(require_permission("printing:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.set_quota(
+        db,
+        body.team_id,
+        body.season_id,
+        max_parts=body.max_parts,
+        soft_limit_parts=body.soft_limit_parts,
+        max_grams=body.max_grams,
+    )
 
 
 # ── Filament spools ───────────────────────────────────────────────────────────

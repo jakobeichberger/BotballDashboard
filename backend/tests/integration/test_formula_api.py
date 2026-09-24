@@ -70,7 +70,8 @@ async def scored_season(db, season, event, admin_user):
                 event_id=event.id,
                 team_id=teams[0].id,
                 title="Alpha paper",
-                final_score=80.0,
+                # Stored 0-1, exactly as finalize_paper / PaperScoreUpdate write it.
+                final_score=0.8,
             ),
         ]
     )
