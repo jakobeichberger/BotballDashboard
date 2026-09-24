@@ -113,6 +113,71 @@ export interface PaperDeadline {
   passed: boolean;
   locked: boolean;
   can_override: boolean;
+  /** Blocking official_final deadline for revised versions (migration 0029). */
+  final_deadline_date?: string | null;
+  final_cutoff_at?: string | null;
+  final_locked?: boolean;
+  /** Every official and internal deadline of the season, resolved to the event's timezone. */
+  deadlines?: (PaperDeadlineRow & { cutoff_at: string; passed: boolean })[];
+}
+
+/** A configured paper deadline (GET /papers/deadlines). */
+export interface PaperDeadlineRow {
+  id: string;
+  season_id?: string;
+  deadline_type: string;
+  due_date: string;
+  label: string | null;
+  is_hard_block: boolean;
+}
+
+export const DEADLINE_TYPE_LABEL: Record<string, string> = {
+  official_submission: "Offizielle Einreichung",
+  official_final: "Offizielle finale Abgabe",
+  internal_draft: "Interner Entwurf",
+  internal_review: "Interne Review-Frist",
+  internal_revision: "Interne Überarbeitung",
+  internal_final: "Interne finale Abgabe",
+};
+export const OFFICIAL_DEADLINE_TYPES = new Set(["official_submission", "official_final"]);
+
+/** Internal deadlines that have passed: a warning, never a lock. */
+export function passedInternalDeadlines(deadline?: PaperDeadline | null) {
+  return (deadline?.deadlines ?? []).filter((d) => d.passed && !OFFICIAL_DEADLINE_TYPES.has(d.deadline_type));
+}
+
+export interface PaperVersionMeta {
+  version_number: number;
+  file_name: string;
+  file_size_bytes: number;
+  uploaded_at: string;
+  pages: number | null;
+}
+
+export interface PaperVersionDiff {
+  from_version: PaperVersionMeta;
+  to_version: PaperVersionMeta;
+  text_available: boolean;
+  reason: string | null;
+  diff: string[];
+  added: number;
+  removed: number;
+  truncated: boolean;
+}
+
+export interface AutoAssignResult {
+  dry_run: boolean;
+  assignments: { paper_id: string; paper_title: string; reviewer_id: string; reviewer_name: string }[];
+  unfilled: { paper_id: string; paper_title: string; missing: number }[];
+}
+
+/** CSS class of one unified-diff line. */
+export function diffLineClass(line: string): string {
+  if (line.startsWith("+++") || line.startsWith("---")) return "text-gray-500";
+  if (line.startsWith("@@")) return "text-blue-600 dark:text-blue-400";
+  if (line.startsWith("+")) return "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200";
+  if (line.startsWith("-")) return "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200";
+  return "text-gray-600 dark:text-gray-400";
 }
 
 export interface PaperDetail {

@@ -10,6 +10,8 @@ import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration } from "@/api/types";
 import { DeadlineBanner } from "@/modules/papers/DeadlineBanner";
+import { AutoAssignPanel } from "@/modules/papers/AutoAssignPanel";
+import { PaperDeadlinesPanel } from "@/modules/papers/PaperDeadlinesPanel";
 import {
   PAPER_STATUS_BADGE,
   PAPER_STATUS_LABEL,
@@ -148,7 +150,11 @@ export default function PapersPage() {
 
       {isLoading && <p className="text-gray-500">Laden...</p>}
 
+      {seasonId && <PaperDeadlinesPanel seasonId={seasonId} canAdmin={canAdmin} />}
+
       {canAdmin && stats && <PaperStatsPanel stats={stats} />}
+
+      {canAdmin && seasonId && <AutoAssignPanel seasonId={seasonId} eventId={eventId} />}
 
       {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">Reviewer-Auslastung</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-gray-500">{item.open} offen · {item.overdue} überfällig · {item.completed} erledigt</p></div>)}</div></section>}
 

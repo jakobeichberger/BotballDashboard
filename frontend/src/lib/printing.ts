@@ -46,6 +46,23 @@ export interface PrintJob {
 
 export interface PrintJobCreated extends PrintJob {
   quota_warning: string | null;
+  /** Set when the team's 3D-print compliance checklist is incomplete. */
+  compliance_warning?: string | null;
+}
+
+/** PUT /printing/jobs/{id}/cancel: whether a running print was stopped on the printer. */
+export interface PrintJobCancelled extends PrintJob {
+  printer_cancel?: "sent" | "failed" | "not_applicable" | string;
+  printer_message?: string | null;
+}
+
+/** Message to show after a cancel, or null when there is nothing to report. */
+export function cancelNotice(job: PrintJobCancelled): string | null {
+  if (job.printer_cancel === "sent") return `Druck am Drucker abgebrochen. ${job.printer_message ?? ""}`.trim();
+  if (job.printer_cancel === "failed") {
+    return `Auftrag storniert, aber der Drucker hat den Abbruch nicht bestätigt: ${job.printer_message ?? "unbekannter Fehler"}. Bitte den Druck am Gerät stoppen.`;
+  }
+  return job.printer_message ?? null;
 }
 
 export interface PrinterInfo {

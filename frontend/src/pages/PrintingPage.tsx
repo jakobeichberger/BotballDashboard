@@ -8,6 +8,7 @@ import Modal from "@/components/Modal";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration } from "@/api/types";
+import { complianceHint, complianceUrl, type ComplianceStatus } from "@/lib/teams";
 import {
   PRINT_FILE_ACCEPT,
   PRINT_REFRESH_MS,
@@ -16,9 +17,11 @@ import {
   STATUS_BADGE,
   STATUS_LABEL,
   apiError,
+  cancelNotice,
   formatDuration,
   uploadPrintFile,
   type PrintJob,
+  type PrintJobCancelled,
   type PrintJobCreated,
   type PrinterInfo,
 } from "@/lib/printing";
@@ -62,6 +65,15 @@ export default function PrintingPage() {
     queryFn: async () => (await api.get("/printing/printers")).data,
     refetchInterval: 15_000,
   });
+  // Warn before submitting when the team's 3D-print checklist is incomplete
+  // (the backend accepts the job and repeats the warning).
+  const { data: compliance } = useQuery<ComplianceStatus>({
+    queryKey: ["print-compliance", form.team_id, event?.season_id],
+    queryFn: async () => (await api.get(complianceUrl(form.team_id, event!.season_id))).data,
+    enabled: open && !!form.team_id && !!event?.season_id,
+    retry: false,
+  });
+  const complianceWarning = complianceHint(compliance);
   const teamName = (teamId: string) => registrations?.find((r) => r.team_id === teamId)?.team_name ?? "";
   const invalidateJobs = () => queryClient.invalidateQueries({ queryKey: ["print-jobs", eventId] });
 
@@ -91,7 +103,7 @@ export default function PrintingPage() {
     },
     onSuccess: (data) => {
       invalidateJobs();
-      setNotice(data.quota_warning);
+      setNotice([data.quota_warning, data.compliance_warning].filter(Boolean).join(" ") || null);
       setForm(EMPTY_FORM);
       setFile(null);
       setOpen(false);
@@ -113,7 +125,10 @@ export default function PrintingPage() {
       if (action === "cancel") return api.put(`/printing/jobs/${id}/cancel`);
       return api.patch(`/printing/jobs/${id}`, { status: "queued", printer_id: jobPrinters[id] });
     },
-    onSuccess: invalidateJobs,
+    onSuccess: (response, variables) => {
+      invalidateJobs();
+      if (variables.action === "cancel") setNotice(cancelNotice(response.data as PrintJobCancelled));
+    },
     onError: (error) => setNotice(apiError(error)),
   });
   const reject = (id: string) => {
@@ -283,6 +298,12 @@ export default function PrintingPage() {
               <input type="checkbox" checked={form.quota_override} onChange={(e) => setForm((current) => ({ ...current, quota_override: e.target.checked }))} />
               Kontingent überschreiben (Admin)
             </label>
+          )}
+          {complianceWarning && (
+            <p role="status" className="flex items-start gap-2 rounded border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-100">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              {complianceWarning}
+            </p>
           )}
           {createJob.isError && <p className="text-sm text-red-600">{apiError(createJob.error, "Druckauftrag konnte nicht angelegt werden.")}</p>}
           <div className="flex justify-end gap-3">

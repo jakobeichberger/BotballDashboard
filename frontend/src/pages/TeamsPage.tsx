@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, Users } from "lucide-react";
+import { Pencil, Search, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
 import { useAuthStore } from "@/store/authStore";
+import { CATEGORY_LABEL, EMPTY_TEAM_FILTERS as EMPTY_FILTERS, teamFilterParams, type TeamFilters } from "@/lib/teams";
 
 interface TeamForm {
   name: string;
@@ -61,9 +62,27 @@ export default function TeamsPage() {
   const [form, setForm] = useState<TeamForm>(EMPTY_FORM);
   const [memberForm, setMemberForm] = useState({ name: "", email: "", role: "member" });
 
+  const [filters, setFilters] = useState<TeamFilters>(EMPTY_FILTERS);
+  // Typing in the search box should not fire a request per keystroke.
+  const [debouncedQ, setDebouncedQ] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQ(filters.q), 250);
+    return () => window.clearTimeout(timer);
+  }, [filters.q]);
+  const params = teamFilterParams({ ...filters, q: debouncedQ });
+  const filtered = Object.keys(params).length > 0;
+
   const { data: teams, isLoading } = useQuery<any[]>({
-    queryKey: ["teams"],
-    queryFn: async () => (await api.get("/teams")).data,
+    queryKey: ["teams", params],
+    queryFn: async () => (await api.get("/teams", filtered ? { params } : undefined)).data,
+  });
+  const { data: countries } = useQuery<string[]>({
+    queryKey: ["team-countries"],
+    queryFn: async () => (await api.get("/teams/countries")).data,
+  });
+  const { data: seasons } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["seasons"],
+    queryFn: async () => (await api.get("/seasons")).data,
   });
   const { data: competitionLevels } = useQuery<any[]>({
     queryKey: ["competition-levels"],
@@ -169,6 +188,54 @@ export default function TeamsPage() {
         </div>
       </div>
 
+      <form role="search" className="card mb-6 flex flex-wrap items-end gap-3 p-4" onSubmit={(e) => e.preventDefault()}>
+        <label className="flex-1 min-w-[12rem] text-sm font-medium">
+          Suche
+          <span className="relative mt-1 block">
+            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" aria-hidden="true" />
+            <input
+              type="search"
+              className="input w-full pl-8"
+              placeholder="Name, Nummer, Schule oder Ort"
+              value={filters.q}
+              onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+            />
+          </span>
+        </label>
+        <label className="text-sm font-medium">
+          Land
+          <select className="input mt-1 block" value={filters.country} onChange={(e) => setFilters((f) => ({ ...f, country: e.target.value }))}>
+            <option value="">Alle</option>
+            {countries?.map((country) => <option key={country} value={country}>{country}</option>)}
+          </select>
+        </label>
+        <label className="text-sm font-medium">
+          Status
+          <select className="input mt-1 block" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as TeamFilters["status"] }))}>
+            <option value="">Alle</option>
+            <option value="active">Aktiv</option>
+            <option value="archived">Archiviert</option>
+          </select>
+        </label>
+        <label className="text-sm font-medium">
+          Saison
+          <select className="input mt-1 block" value={filters.season_id} onChange={(e) => setFilters((f) => ({ ...f, season_id: e.target.value, category: "" }))}>
+            <option value="">Alle</option>
+            {seasons?.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
+          </select>
+        </label>
+        <label className="text-sm font-medium">
+          Team-Typ
+          <select className="input mt-1 block" disabled={!filters.season_id} value={filters.category} onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}>
+            <option value="">Alle</option>
+            {Object.entries(CATEGORY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        {(filters.q || filters.country || filters.status || filters.season_id) && (
+          <button type="button" className="btn-secondary text-sm" onClick={() => setFilters(EMPTY_FILTERS)}>Filter zurücksetzen</button>
+        )}
+      </form>
+
       {isLoading && <p className="text-gray-500">Laden...</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -205,7 +272,9 @@ export default function TeamsPage() {
           </article>
         ))}
         {teams?.length === 0 && (
-          <div className="col-span-3 py-12 text-center text-gray-400">Noch keine Teams angelegt</div>
+          <div className="col-span-3 py-12 text-center text-gray-400">
+            {filtered ? "Keine Teams gefunden" : "Noch keine Teams angelegt"}
+          </div>
         )}
       </div>
 
