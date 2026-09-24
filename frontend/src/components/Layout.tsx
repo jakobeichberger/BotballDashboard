@@ -30,6 +30,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useEvent, useEvents } from "@/hooks/useEvents";
 import i18n from "@/i18n/config";
 import { navigationRoutes } from "@/core/plugins";
+import { api } from "@/lib/api";
 
 const ICONS = {
   dashboard: LayoutDashboard,
@@ -46,7 +47,7 @@ const ICONS = {
 export default function Layout() {
   const { t } = useTranslation();
   const { eventId = "" } = useParams();
-  const { user, hasPermission } = useAuthStore();
+  const { user, hasPermission, setUser } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
   const logout = useLogout();
   const navigate = useNavigate();
@@ -63,6 +64,15 @@ export default function Layout() {
   const nextTheme = () => {
     const order = ["light", "dark", "system"] as const;
     setTheme(order[(order.indexOf(theme) + 1) % order.length]);
+  };
+  const toggleLanguage = () => {
+    const language = i18n.language === "de" ? "en" : "de";
+    i18n.changeLanguage(language);
+    // Persist to the profile so the choice follows the user to other devices.
+    if (user) {
+      setUser({ ...user, preferred_language: language });
+      api.patch("/auth/me", { preferred_language: language }).catch(() => undefined);
+    }
   };
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
   const visibleNav = navigationRoutes.filter((item) => hasPermission(item.permission));
@@ -149,7 +159,7 @@ export default function Layout() {
         </button>
         <button
           type="button"
-          onClick={() => i18n.changeLanguage(i18n.language === "de" ? "en" : "de")}
+          onClick={toggleLanguage}
           className="sidebar-action"
           aria-label={t("changeLanguage")}
         >

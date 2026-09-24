@@ -4,12 +4,13 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import { Settings, Users, Layers, Save, Calendar, CalendarClock, Printer, Megaphone, Award, Trash2, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import clsx from "clsx";
+import { PASSWORD_HINT, apiErrorMessage, passwordProblem } from "@/lib/passwordPolicy";
 
 function useInvalidate(keys: string[]) {
   const qc = useQueryClient();
   return () => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 }
-const onErr = (e: any) => alert(e?.response?.data?.detail ?? "Aktion fehlgeschlagen.");
+const onErr = (e: any) => alert(apiErrorMessage(e, "Aktion fehlgeschlagen."));
 
 // ── Users ───────────────────────────────────────────────────────────────────
 function UsersSettings() {
@@ -37,6 +38,18 @@ function UsersSettings() {
     mutationFn: () => api.patch(`/auth/users/${editUser!.id}`, { role_ids: editUser!.roleIds }),
     onSuccess: () => { setEditUser(null); invalidate(); }, onError: onErr,
   });
+  const [pwUser, setPwUser] = useState<{ id: string; email: string; password: string } | null>(null);
+  const setPasswordM = useMutation({
+    mutationFn: () => api.post(`/auth/users/${pwUser!.id}/password`, { new_password: pwUser!.password }),
+    onSuccess: () => { setPwUser(null); alert("Passwort gesetzt. Alle Sitzungen des Benutzers wurden beendet."); },
+    onError: onErr,
+  });
+  const deleteUserM = useMutation({
+    mutationFn: (uid: string) => api.delete(`/auth/users/${uid}`),
+    onSuccess: invalidate, onError: onErr,
+  });
+  const createPwProblem = password ? passwordProblem(password, email) : null;
+  const pwUserProblem = pwUser?.password ? passwordProblem(pwUser.password, pwUser.email) : null;
 
   return (
     <div>
@@ -50,7 +63,7 @@ function UsersSettings() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
             <div><label className="label">E-Mail</label><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-            <div><label className="label">Passwort (min. 8)</label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+            <div><label className="label">Passwort</label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><p className={clsx("mt-1 text-xs", createPwProblem ? "text-red-600" : "text-gray-500")}>{createPwProblem ?? PASSWORD_HINT}</p></div>
           </div>
           <div>
             <label className="label">Rollen</label>
@@ -68,7 +81,19 @@ function UsersSettings() {
             </div>
           </div>
           <div className="flex justify-end">
-            <button className="btn-primary text-sm disabled:opacity-40" disabled={!email || !name || password.length < 8 || createM.isPending} onClick={() => createM.mutate()}>Anlegen</button>
+            <button className="btn-primary text-sm disabled:opacity-40" disabled={!email || !name || !password || !!createPwProblem || createM.isPending} onClick={() => createM.mutate()}>Anlegen</button>
+          </div>
+        </div>
+      )}
+
+      {pwUser && (
+        <div className="card p-4 mb-4 space-y-3">
+          <h3 className="text-sm font-semibold">Neues Passwort für {pwUser.email}</h3>
+          <input className="input" type="password" aria-label="Neues Passwort" value={pwUser.password} onChange={(e) => setPwUser({ ...pwUser, password: e.target.value })} />
+          <p className={clsx("text-xs", pwUserProblem ? "text-red-600" : "text-gray-500")}>{pwUserProblem ?? PASSWORD_HINT}</p>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary text-sm" onClick={() => setPwUser(null)}>Abbrechen</button>
+            <button className="btn-primary text-sm disabled:opacity-40" disabled={!pwUser.password || !!pwUserProblem || setPasswordM.isPending} onClick={() => setPasswordM.mutate()}>Passwort setzen</button>
           </div>
         </div>
       )}
@@ -119,6 +144,8 @@ function UsersSettings() {
                       <button className="btn-secondary text-xs" disabled={toggleActiveM.isPending} onClick={() => toggleActiveM.mutate(user)}>
                         {user.is_active ? "Deaktivieren" : "Aktivieren"}
                       </button>
+                      <button className="btn-secondary text-xs" onClick={() => setPwUser({ id: user.id, email: user.email, password: "" })}>Passwort setzen</button>
+                      <button className="btn-danger text-xs" disabled={deleteUserM.isPending} onClick={() => { if (confirm(`Benutzer "${user.display_name}" löschen? Persönliche Daten werden entfernt, die Historie bleibt anonym erhalten.`)) deleteUserM.mutate(user.id); }}>Löschen</button>
                     </>
                   )}
                 </td>
@@ -132,6 +159,23 @@ function UsersSettings() {
 }
 
 // ── Seasons ───────────────────────────────────────────────────────────────────
+const SEASON_STATUS: Record<string, { label: string; badge: string }> = {
+  draft: { label: "Entwurf", badge: "badge-gray" },
+  active: { label: "Aktiv", badge: "badge-green" },
+  finished: { label: "Abgeschlossen", badge: "badge-blue" },
+  archived: { label: "Archiviert", badge: "badge-yellow" },
+};
+
+async function downloadSeasonExport(season: { id: string; name: string }) {
+  const { data } = await api.get(`/seasons/${season.id}/export.json`);
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${season.name.replace(/[^A-Za-z0-9_-]+/g, "_")}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function SeasonsSettings() {
   const invalidate = useInvalidate(["seasons", "season-active"]);
   const { data: seasons, isLoading } = useQuery({ queryKey: ["seasons"], queryFn: async () => (await api.get("/seasons")).data });
@@ -150,6 +194,16 @@ function SeasonsSettings() {
   });
   const activateM = useMutation({ mutationFn: (sid: string) => api.put(`/seasons/${sid}/activate`), onSuccess: invalidate, onError: onErr });
   const deleteM = useMutation({ mutationFn: (sid: string) => api.delete(`/seasons/${sid}`), onSuccess: invalidate, onError: onErr });
+  const statusM = useMutation({
+    mutationFn: ({ sid, status }: { sid: string; status: string }) => api.patch(`/seasons/${sid}`, { status }),
+    onSuccess: invalidate, onError: onErr,
+  });
+  const [cloneOf, setCloneOf] = useState<{ id: string; name: string; year: number } | null>(null);
+  const cloneM = useMutation({
+    mutationFn: () => api.post(`/seasons/${cloneOf!.id}/clone`, { name: cloneOf!.name, year: cloneOf!.year }),
+    onSuccess: () => { setCloneOf(null); invalidate(); }, onError: onErr,
+  });
+  const exportM = useMutation({ mutationFn: downloadSeasonExport, onError: onErr });
 
   return (
     <div>
@@ -169,6 +223,20 @@ function SeasonsSettings() {
           <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>Anlegen</button></div>
         </div>
       )}
+      {cloneOf && (
+        <div className="card p-4 mb-4 space-y-3">
+          <h3 className="text-sm font-semibold">Saison klonen</h3>
+          <p className="text-xs text-gray-500">Übernimmt Module, Phasen, Events (als Entwurf), Scoring-Schemas, Formeln, Bracket-Gewichte und Fristen – verschoben um die Jahresdifferenz. Ergebnisse und Anmeldungen werden nicht kopiert.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label className="label" htmlFor="clone-name">Name</label><input id="clone-name" className="input" value={cloneOf.name} onChange={(e) => setCloneOf({ ...cloneOf, name: e.target.value })} /></div>
+            <div><label className="label" htmlFor="clone-year">Jahr</label><input id="clone-year" className="input" type="number" value={cloneOf.year} onChange={(e) => setCloneOf({ ...cloneOf, year: Number(e.target.value) })} /></div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary text-sm" onClick={() => setCloneOf(null)}>Abbrechen</button>
+            <button className="btn-primary text-sm disabled:opacity-40" disabled={!cloneOf.name || cloneM.isPending} onClick={() => cloneM.mutate()}>Klonen</button>
+          </div>
+        </div>
+      )}
       {isLoading && <p className="text-gray-500 text-sm">Laden...</p>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
@@ -181,10 +249,15 @@ function SeasonsSettings() {
               <tr key={s.id}>
                 <td className="px-4 py-3 font-medium">{s.name}</td>
                 <td className="px-4 py-3 text-gray-500">{s.year}</td>
-                <td className="px-4 py-3">{s.is_active ? <span className="badge-green">Aktiv</span> : <span className="badge-gray">Inaktiv</span>}</td>
-                <td className="px-4 py-3 text-right space-x-2">
-                  {!s.is_active && <button className="btn-secondary text-xs" disabled={activateM.isPending} onClick={() => activateM.mutate(s.id)}>Aktivieren</button>}
-                  {!s.is_active && <button className="btn-danger text-xs" disabled={deleteM.isPending} onClick={() => { if (confirm(`Saison "${s.name}" löschen?`)) deleteM.mutate(s.id); }}>Löschen</button>}
+                <td className="px-4 py-3"><span className={SEASON_STATUS[s.status]?.badge ?? "badge-gray"}>{SEASON_STATUS[s.status]?.label ?? s.status}</span></td>
+                <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                  {s.status !== "active" && s.status !== "archived" && <button className="btn-secondary text-xs" disabled={activateM.isPending} onClick={() => activateM.mutate(s.id)}>Aktivieren</button>}
+                  {s.status === "active" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => statusM.mutate({ sid: s.id, status: "finished" })}>Abschließen</button>}
+                  {s.status === "finished" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => { if (confirm(`Saison "${s.name}" archivieren? Danach ist sie schreibgeschützt.`)) statusM.mutate({ sid: s.id, status: "archived" }); }}>Archivieren</button>}
+                  {s.status === "archived" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => statusM.mutate({ sid: s.id, status: "finished" })}>Aus Archiv holen</button>}
+                  <button className="btn-secondary text-xs" onClick={() => setCloneOf({ id: s.id, name: `${s.name} (Kopie)`, year: s.year + 1 })}>Klonen</button>
+                  <button className="btn-secondary text-xs" disabled={exportM.isPending} onClick={() => exportM.mutate(s)}>Export</button>
+                  {!s.is_active && s.status !== "archived" && <button className="btn-danger text-xs" disabled={deleteM.isPending} onClick={() => { if (confirm(`Saison "${s.name}" löschen? Nur Saisons ohne Anmeldungen und Ergebnisse können gelöscht werden.`)) deleteM.mutate(s.id); }}>Löschen</button>}
                 </td>
               </tr>
             ))}
@@ -629,6 +702,12 @@ function RolesSettings() {
     onSuccess: () => { setShow(false); setName(""); setDesc(""); setSelPerms([]); invalidate(); },
     onError: onErr,
   });
+  const [editRole, setEditRole] = useState<{ id: string; names: string[] } | null>(null);
+  const updateRoleM = useMutation({
+    mutationFn: () => api.put(`/auth/roles/${editRole!.id}`, { permission_names: editRole!.names }),
+    onSuccess: () => { setEditRole(null); invalidate(); },
+    onError: onErr,
+  });
 
   return (
     <div>
@@ -666,13 +745,39 @@ function RolesSettings() {
             <th className="px-4 py-3 text-left font-medium">Rolle</th>
             <th className="px-4 py-3 text-left font-medium">Beschreibung</th>
             <th className="px-4 py-3 text-left font-medium">Berechtigungen</th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {roles?.map((r: any) => (
               <tr key={r.id}>
                 <td className="px-4 py-3 font-medium">{r.name} {r.is_system && <span className="badge-gray ml-1">System</span>}</td>
                 <td className="px-4 py-3 text-gray-500">{r.description ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{r.permissions?.length ?? 0} Rechte</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">
+                  {editRole && editRole.id === r.id ? (
+                    <div className="flex flex-wrap gap-1">
+                      {perms?.map((p: any) => {
+                        const on = editRole.names.includes(p.name);
+                        return (
+                          <button key={p.id} type="button" title={p.description ?? ""}
+                            onClick={() => setEditRole({ id: r.id, names: on ? editRole.names.filter((x) => x !== p.name) : [...editRole.names, p.name] })}
+                            className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : `${r.permissions?.length ?? 0} Rechte`}
+                </td>
+                <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                  {editRole && editRole.id === r.id ? (
+                    <>
+                      <button className="btn-primary text-xs" disabled={updateRoleM.isPending} onClick={() => updateRoleM.mutate()}>Speichern</button>
+                      <button className="btn-secondary text-xs" onClick={() => setEditRole(null)}>Abbrechen</button>
+                    </>
+                  ) : (
+                    <button className="btn-secondary text-xs" onClick={() => setEditRole({ id: r.id, names: (r.permissions ?? []).map((p: any) => p.name) })}>Rechte bearbeiten</button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

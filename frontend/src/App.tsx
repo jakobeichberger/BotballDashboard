@@ -11,6 +11,8 @@ import { useAuthStore } from "@/store/authStore";
 const EventSetupPage = lazy(() => import("@/pages/EventSetupPage"));
 const PublicEventPage = lazy(() => import("@/pages/PublicEventPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 
 function AppRoutes() {
   useRestoreSession();
@@ -20,6 +22,8 @@ function AppRoutes() {
   return <Suspense fallback={<div className="grid h-screen place-items-center text-gray-500">Laden…</div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/public/:eventSlug" element={<PublicEventPage />} />
       <Route element={<ProtectedRoute />}>
         <Route index element={<EventIndexRedirect />} />
