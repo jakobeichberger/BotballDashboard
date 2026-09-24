@@ -1,5 +1,16 @@
 {
   "loading": "Event wird geladen…",
+  "bracket": {
+    "title": "Bracket",
+    "label": "Bracket {{label}}",
+    "section": { "winner": "Winner-Bracket", "loser": "Loser-Bracket", "final": "Finale" },
+    "kind": { "minor": "Minor", "major": "Major" },
+    "grandFinal": "Grand Final",
+    "resetFinal": "Reset-Finale",
+    "notNeeded": "nicht nötig",
+    "placements": "Platzierungen",
+    "pickWinner": "{{team}} gewinnt {{match}}"
+  },
   "notPublic": "Dieses Event ist nicht öffentlich verfügbar.",
   "connection": { "connecting": "Verbindung wird hergestellt", "connected": "Verbunden", "disconnected": "Getrennt" },
   "toggleRotation": "Rotation umschalten",

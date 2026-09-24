@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { CalendarDays, WandSparkles } from "lucide-react";
+import { CalendarDays, ListOrdered, WandSparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import type { EventPhase, ScheduledMatch } from "@/api/types";
+import BracketView from "@/components/BracketView";
+import type { BracketPhase, EventPhase, ScheduledMatch } from "@/api/types";
 
 type MatchEdit = {
   scheduled_at?: string;
@@ -24,7 +25,9 @@ export default function EventSchedulePage() {
   const queryClient = useQueryClient();
   const canManage = useAuthStore((state) => state.hasPermission("events:admin"));
   const canEdit = useAuthStore((state) => state.hasPermission("events:write"));
+  const canScore = useAuthStore((state) => state.hasPermission("scoring:admin"));
   const [phaseId, setPhaseId] = useState("");
+  const [notice, setNotice] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [error, setError] = useState("");
   const [edits, setEdits] = useState<Record<string, MatchEdit>>({});
@@ -38,6 +41,39 @@ export default function EventSchedulePage() {
     queryFn: async () => (await api.get(`/v1/events/${eventId}/schedule`)).data,
     refetchInterval: 15_000,
   });
+  const bracket = useQuery<BracketPhase[]>({
+    queryKey: ["event-bracket", eventId],
+    queryFn: async () => (await api.get(`/v1/events/${eventId}/bracket`)).data,
+    refetchInterval: 15_000,
+  });
+  const refreshSchedule = () => {
+    queryClient.invalidateQueries({ queryKey: ["event-schedule", eventId] });
+    queryClient.invalidateQueries({ queryKey: ["event-bracket", eventId] });
+  };
+  const assignSeeds = useMutation({
+    mutationFn: async () =>
+      api.post(`/v1/events/${eventId}/registrations/seeds-from-seeding`, {}),
+    onSuccess: (response) => {
+      setError("");
+      setNotice(`Setzliste aus dem Seeding übernommen (${response.data.length} Teams).`);
+      queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] });
+    },
+    onError: (reason: any) =>
+      setError(reason.response?.data?.detail ?? "Setzliste konnte nicht übernommen werden."),
+  });
+  const recordResult = useMutation({
+    mutationFn: async ({ match, teamId }: { match: ScheduledMatch; teamId: string }) =>
+      api.post(`/v1/events/${eventId}/schedule/${match.id}/result`, {
+        winner_team_id: teamId,
+        expected_version: match.version,
+      }),
+    onSuccess: () => {
+      setError("");
+      refreshSchedule();
+    },
+    onError: (reason: any) =>
+      setError(reason.response?.data?.detail ?? "Ergebnis konnte nicht gespeichert werden."),
+  });
   const generate = useMutation({
     mutationFn: async () =>
       api.post(`/v1/events/${eventId}/schedule/generate`, {
@@ -47,7 +83,7 @@ export default function EventSchedulePage() {
       }),
     onSuccess: () => {
       setError("");
-      queryClient.invalidateQueries({ queryKey: ["event-schedule", eventId] });
+      refreshSchedule();
     },
     onError: (reason: any) =>
       setError(reason.response?.data?.detail ?? "Zeitplan konnte nicht erzeugt werden."),
@@ -83,7 +119,24 @@ export default function EventSchedulePage() {
           <CalendarDays />
           Zeitplan & Brackets
         </h1>
+        {canManage && (
+          <button
+            type="button"
+            className="btn-secondary flex items-center gap-2"
+            disabled={assignSeeds.isPending}
+            onClick={() => assignSeeds.mutate()}
+            title="Setzliste (seed_number) je Kategorie aus der Seeding-Rangliste übernehmen"
+          >
+            <ListOrdered className="h-4 w-4" />
+            Seeds aus Seeding
+          </button>
+        )}
       </div>
+      {notice && (
+        <p role="status" className="mb-4 text-sm text-emerald-600">
+          {notice}
+        </p>
+      )}
 
       {canManage && (
         <form
@@ -259,6 +312,33 @@ export default function EventSchedulePage() {
           <p className="p-8 text-center text-gray-500">Noch kein Zeitplan vorhanden.</p>
         )}
       </div>
+
+      {!!bracket.data?.length && (
+        <section className="card mt-6 p-4" aria-labelledby="bracket-heading">
+          <h2 id="bracket-heading" className="mb-1 text-xl font-bold">
+            Brackets
+          </h2>
+          {canScore && (
+            <p className="mb-4 text-sm text-gray-500">
+              Sieger anklicken, um das Ergebnis zu speichern. Sieger und Verlierer werden
+              automatisch weitergeleitet; eine Korrektur ist möglich, solange das Folgematch
+              noch nicht gespielt ist.
+            </p>
+          )}
+          {!canManage && error && (
+            <p role="alert" className="mb-3 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          <BracketView
+            phases={bracket.data}
+            onPickWinner={
+              canScore ? (match, teamId) => recordResult.mutate({ match, teamId }) : undefined
+            }
+            disabled={recordResult.isPending}
+          />
+        </section>
+      )}
     </div>
   );
 }

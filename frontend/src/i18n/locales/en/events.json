@@ -1,5 +1,16 @@
 {
   "loading": "Loading event…",
+  "bracket": {
+    "title": "Bracket",
+    "label": "Bracket {{label}}",
+    "section": { "winner": "Winners bracket", "loser": "Losers bracket", "final": "Finals" },
+    "kind": { "minor": "minor", "major": "major" },
+    "grandFinal": "Grand final",
+    "resetFinal": "Reset final",
+    "notNeeded": "not needed",
+    "placements": "Placements",
+    "pickWinner": "{{team}} wins {{match}}"
+  },
   "notPublic": "This event is not publicly available.",
   "connection": { "connecting": "Connecting", "connected": "Connected", "disconnected": "Disconnected" },
   "toggleRotation": "Toggle rotation",

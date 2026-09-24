@@ -13,7 +13,14 @@ import {
   WifiOff,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { EventSummary, PublicResult, RankingEntry, ScheduledMatch } from "@/api/types";
+import BracketView from "@/components/BracketView";
+import type {
+  BracketPhase,
+  EventSummary,
+  PublicResult,
+  RankingEntry,
+  ScheduledMatch,
+} from "@/api/types";
 
 interface Announcement {
   id: string;
@@ -52,6 +59,11 @@ export default function PublicEventPage() {
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/schedule`)).data,
     enabled: !!event.data?.public_schedule,
   });
+  const bracket = useQuery<BracketPhase[]>({
+    queryKey: ["public-bracket", eventSlug],
+    queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/bracket`)).data,
+    enabled: !!event.data?.public_schedule,
+  });
   const announcements = useQuery<Announcement[]>({
     queryKey: ["public-announcements", eventSlug],
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/announcements`)).data,
@@ -67,10 +79,11 @@ export default function PublicEventPage() {
       [
         event.data?.public_scoreboard && "ranking",
         event.data?.public_schedule && "schedule",
+        event.data?.public_schedule && !!bracket.data?.length && "bracket",
         event.data?.public_announcements && "announcements",
         event.data?.public_results && "results",
       ].filter(Boolean) as string[],
-    [event.data],
+    [event.data, bracket.data],
   );
 
   useEffect(() => {
@@ -99,6 +112,13 @@ export default function PublicEventPage() {
         }
         if (data.event === "schedule_updated") {
           queryClient.invalidateQueries({ queryKey: ["public-schedule", eventSlug] });
+          queryClient.invalidateQueries({ queryKey: ["public-bracket", eventSlug] });
+        }
+        if (
+          data.event === "announcement_published" ||
+          data.event === "announcement_removed"
+        ) {
+          queryClient.invalidateQueries({ queryKey: ["public-announcements", eventSlug] });
         }
       };
       socket.onclose = () => {
@@ -191,6 +211,13 @@ export default function PublicEventPage() {
         </section>
       )}
 
+      {current === "bracket" && bracket.data && (
+        <section>
+          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-cyan-400" />{t("bracket.title")}</h2>
+          <BracketView phases={bracket.data} dark />
+        </section>
+      )}
+
       {current === "announcements" && (
         <section>
           <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Megaphone className="text-cyan-400" />{t("announcements")}</h2>
@@ -205,7 +232,7 @@ export default function PublicEventPage() {
         </section>
       )}
 
-      <footer className="fixed bottom-3 right-4 flex gap-2">{panels.map((item, index) => <button key={item} aria-label={t("showPanel", { panel: t(item) })} onClick={() => setPanel(index)} className={`h-2 rounded-full transition-all ${index === panel % panels.length ? "w-10 bg-cyan-400" : "w-2 bg-slate-600"}`} />)}</footer>
+      <footer className="fixed bottom-3 right-4 flex gap-2">{panels.map((item, index) => <button key={item} aria-label={t("showPanel", { panel: t(item === "bracket" ? "bracket.title" : item) })} onClick={() => setPanel(index)} className={`h-2 rounded-full transition-all ${index === panel % panels.length ? "w-10 bg-cyan-400" : "w-2 bg-slate-600"}`} />)}</footer>
     </main>
   );
 }
