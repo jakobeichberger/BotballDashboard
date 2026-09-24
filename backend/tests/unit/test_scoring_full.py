@@ -330,7 +330,7 @@ class TestUpdateMatch:
         assert updated.total_score == 8.0
 
     @pytest.mark.asyncio
-    async def test_disqualify_drops_from_seed_aggregate(self, db, season, team):
+    async def test_disqualified_round_counts_zero_in_seed_aggregate(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
         m1 = await create_match(
             db,
@@ -360,8 +360,10 @@ class TestUpdateMatch:
         await db.commit()
 
         ranking = await get_ranking(db, season.id)
-        assert ranking[0].rounds_played == 1
+        # The DQ round stays a round played, worth 0: seed = (40 + 0) / 2.
+        assert ranking[0].rounds_played == 2
         assert ranking[0].best_score == 40.0
+        assert ranking[0].seed_score == 20.0
 
     @pytest.mark.asyncio
     async def test_update_missing_match_raises(self, db):
@@ -558,7 +560,7 @@ class TestRankingOrdering:
         assert ranking[1].rank == 2
 
     @pytest.mark.asyncio
-    async def test_all_matches_disqualified_removes_ranking(self, db, season, team):
+    async def test_all_matches_disqualified_keeps_a_zero_ranking(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
         m = await create_match(
             db,
@@ -577,5 +579,7 @@ class TestRankingOrdering:
         await db.flush()
         await _recompute_ranking(db, season.id, team.id, None)
         await db.commit()
-        # No eligible matches left → ranking row removed.
-        assert await get_ranking(db, season.id) == []
+        # A disqualified round scores 0 — the team still took part.
+        ranking = await get_ranking(db, season.id)
+        assert len(ranking) == 1
+        assert ranking[0].seed_score == 0.0

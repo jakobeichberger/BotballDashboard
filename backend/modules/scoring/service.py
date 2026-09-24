@@ -1,22 +1,140 @@
 """Event-aware scoring, immutable revisions, and ranking computation."""
 
+from collections import defaultdict
+from collections.abc import Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import Select, delete, func, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from core.exceptions import ConflictError, NotFoundError, ValidationError
-from modules.events.models import Event, ScheduledMatch
+from modules.events.models import Event, EventPhase, EventRegistration, ScheduledMatch
 from modules.scoring.models import Match, Ranking, ScoreRevision, ScoringSchema
+from modules.seasons.models import SeasonPhase
+from modules.teams.models import TeamSeasonRegistration
+
+#: Phase kinds as far as scoring is concerned. Everything that is neither
+#: seeding nor double seeding (DE, alliance, finals, …) never feeds the seed
+#: score.
+SEEDING = "seeding"
+DOUBLE_SEEDING = "double_seeding"
+
+DEFAULT_CATEGORY = "botball"
 
 
 def compute_seed_score(scores: list[float]) -> float:
-    """Average of the best two official, non-disqualified scores."""
+    """Average of the best two seeding rounds.
+
+    `scores` are the official round scores as returned by official_run_score,
+    i.e. a disqualified round is already a 0 and still counts as a round played.
+    """
     if not scores:
         return 0.0
     top = sorted(scores, reverse=True)[:2]
     return sum(top) / len(top)
+
+
+def official_run_score(total_score: float | None, is_disqualified: bool) -> float:
+    """The value a seeding round contributes, per the game review.
+
+    "Seed scores of less than 0 will be counted as 0", and a disqualified round
+    is a round with 0 points — it is not dropped, so it can be one of the
+    "best two" a team with a single good run is averaged over.
+    """
+    if is_disqualified:
+        return 0.0
+    return max(0.0, float(total_score or 0.0))
+
+
+def select_matches_with_kind(*columns: Any) -> Select:
+    """SELECT `columns` from matches, plus the phase kind each match belongs to.
+
+    The kind is resolved from the match's event phase, else from its scheduled
+    match's phase, else from the legacy season phase. A match linked to none of
+    them was entered free-hand (score entry page, bulk entry) and counts as a
+    seeding round — that is the only kind the free-hand entry offers.
+    """
+    direct_phase = aliased(EventPhase)
+    scheduled_phase = aliased(EventPhase)
+    kind = func.coalesce(
+        direct_phase.phase_type,
+        scheduled_phase.phase_type,
+        SeasonPhase.phase_type,
+        literal(SEEDING),
+    ).label("phase_kind")
+    return (
+        select(*columns, kind)
+        .select_from(Match)
+        .outerjoin(direct_phase, direct_phase.id == Match.event_phase_id)
+        .outerjoin(ScheduledMatch, ScheduledMatch.id == Match.scheduled_match_id)
+        .outerjoin(scheduled_phase, scheduled_phase.id == ScheduledMatch.phase_id)
+        .outerjoin(SeasonPhase, SeasonPhase.id == Match.phase_id)
+    )
+
+
+async def team_categories(
+    db: AsyncSession, event: Event, team_ids: Iterable[str] | None = None
+) -> dict[str, str]:
+    """Category per team at this event.
+
+    The event registration wins (a team can start in Open at one event and in
+    Botball at another); the season registration is the fallback for events
+    whose field was never registered explicitly.
+    """
+    wanted = set(team_ids) if team_ids is not None else None
+    categories: dict[str, str] = {}
+    season_rows = await db.execute(
+        select(TeamSeasonRegistration.team_id, TeamSeasonRegistration.category).where(
+            TeamSeasonRegistration.season_id == event.season_id
+        )
+    )
+    for team_id, category in season_rows.all():
+        if category and (wanted is None or team_id in wanted):
+            categories[team_id] = category
+    event_rows = await db.execute(
+        select(EventRegistration.team_id, EventRegistration.category).where(
+            EventRegistration.event_id == event.id
+        )
+    )
+    for team_id, category in event_rows.all():
+        if category and (wanted is None or team_id in wanted):
+            categories[team_id] = category
+    return categories
+
+
+async def red_carded_teams(db: AsyncSession, event_id: str) -> set[str]:
+    """Teams with a red card in any official match at this event.
+
+    A red card disqualifies the team from the whole tournament ranking, not
+    just from the round it was shown in.
+    """
+    result = await db.execute(
+        select(Match.team_id)
+        .where(
+            Match.event_id == event_id,
+            Match.red_card.is_(True),
+            Match.is_practice.is_(False),
+        )
+        .distinct()
+    )
+    return set(result.scalars().all())
+
+
+def competition_ranks(values: list[tuple[str, float]]) -> dict[str, int]:
+    """1224 ranking: equal values share a rank and the next rank skips."""
+    ordered = sorted(values, key=lambda item: (-item[1], item[0]))
+    ranks: dict[str, int] = {}
+    previous: float | None = None
+    rank = 0
+    for position, (key, value) in enumerate(ordered, start=1):
+        if previous is None or value < previous:
+            rank = position
+            previous = value
+        ranks[key] = rank
+    return ranks
 
 
 def compute_match_total(raw_scores: dict, schema_fields: list[dict]) -> float:
@@ -224,6 +342,8 @@ def _revision(
     current = _score_state(match)
     return ScoreRevision(
         match_id=match.id,
+        match_ref=match.id,
+        team_id=match.team_id,
         event_id=match.event_id,
         revision=match.version,
         previous_raw_scores=previous and previous["raw_scores"],
@@ -330,16 +450,32 @@ async def update_match(
         match.competition_level_id,
         match.event_phase_id,
     )
+    if previous["red_card"] != match.red_card:
+        await _refresh_all_levels(db, match.event_id)
     return match
 
 
 async def list_revisions(db: AsyncSession, match_id: str) -> list[ScoreRevision]:
-    await get_match(db, match_id)
+    """History of one match — also after the match itself was deleted."""
     result = await db.execute(
         select(ScoreRevision)
-        .where(ScoreRevision.match_id == match_id)
+        .where(ScoreRevision.match_ref == match_id)
         .order_by(ScoreRevision.revision)
     )
+    revisions = list(result.scalars().all())
+    if not revisions:
+        await get_match(db, match_id)  # 404 for an id that never existed
+    return revisions
+
+
+async def list_event_revisions(
+    db: AsyncSession, event_id: str, team_id: str | None = None, limit: int = 500
+) -> list[ScoreRevision]:
+    """Score audit trail of a whole event, newest first, including deletions."""
+    query = select(ScoreRevision).where(ScoreRevision.event_id == event_id)
+    if team_id:
+        query = query.where(ScoreRevision.team_id == team_id)
+    result = await db.execute(query.order_by(ScoreRevision.created_at.desc()).limit(limit))
     return list(result.scalars().all())
 
 
@@ -350,15 +486,65 @@ async def confirm_match(db: AsyncSession, match_id: str, confirmed_by: str) -> M
     return match
 
 
-async def delete_match(db: AsyncSession, match_id: str) -> None:
+async def delete_match(
+    db: AsyncSession,
+    match_id: str,
+    *,
+    deleted_by: str | None = None,
+    reason: str | None = None,
+) -> None:
+    """Delete a match but keep its score history.
+
+    A final revision records the deletion (who, when, the last state), and the
+    existing revisions are detached from the row instead of being cascaded
+    away with it — an official score must stay traceable after a correction.
+    """
     match = await get_match(db, match_id)
     event_id = match.event_id
     team_id = match.team_id
     level_id = match.competition_level_id
     phase_id = match.event_phase_id
+
+    previous = _score_state(match)
+    await db.execute(
+        update(ScoreRevision).where(ScoreRevision.match_id == match.id).values(match_id=None)
+    )
+    db.add(
+        ScoreRevision(
+            match_id=None,
+            match_ref=match.id,
+            team_id=match.team_id,
+            event_id=match.event_id,
+            revision=match.version + 1,
+            previous_raw_scores=previous["raw_scores"],
+            new_raw_scores=previous["raw_scores"],
+            previous_total_score=previous["total_score"],
+            new_total_score=previous["total_score"],
+            previous_value=previous,
+            new_value={**previous, "deleted": True},
+            reason=reason or "Match deleted",
+            changed_by=deleted_by,
+        )
+    )
+    await db.flush()
     await db.delete(match)
     await db.flush()
     await _recompute_ranking(db, event_id, team_id, level_id, phase_id)
+    if previous["red_card"]:
+        await _refresh_all_levels(db, event_id)
+
+
+async def _refresh_all_levels(db: AsyncSession, event_id: str) -> None:
+    """Re-rank every competition level of an event.
+
+    A red card counts for the whole event, so granting or lifting one changes
+    the team's rows at every level, not only at the level of that match.
+    """
+    result = await db.execute(
+        select(Ranking.competition_level_id).where(Ranking.event_id == event_id).distinct()
+    )
+    for level_id in result.scalars().all():
+        await _refresh_ranks(db, event_id, level_id)
 
 
 async def _recompute_ranking(
@@ -368,45 +554,69 @@ async def _recompute_ranking(
     competition_level_id: str | None,
     event_phase_id: str | None = None,
 ) -> None:
+    """Rebuild one team's seeding ranking row at an event.
+
+    The seeding ranking is event-wide (event_phase_id NULL): it combines every
+    seeding round of the team, however the rounds were entered, and ignores DE,
+    double-seeding, alliance and final matches. `event_phase_id` is accepted
+    for backwards compatibility; which phase the triggering match belonged to
+    does not change what the ranking contains.
+    """
+    del event_phase_id
     event = await db.get(Event, event_id)
     if not event:
         # Backwards compatibility for callers of the former season-scoped
         # service API. New code always passes an event id.
         event = await get_default_event(db, event_id)
         event_id = event.id
-    # Only the score is needed. Selecting whole Match rows here pulled the
-    # raw_scores and schema_snapshot JSON (a full copy of the scoring schema)
-    # for every match, on every score write.
-    match_query = select(Match.total_score).where(
-        Match.event_id == event_id,
-        Match.team_id == team_id,
-        Match.is_disqualified.is_(False),
-        Match.is_practice.is_(False),  # practice runs never count toward the ranking
-    )
-    match_query = (
-        match_query.where(Match.event_phase_id == event_phase_id)
-        if event_phase_id
-        else match_query.where(Match.event_phase_id.is_(None))
-    )
-    if competition_level_id:
-        match_query = match_query.where(Match.competition_level_id == competition_level_id)
-    else:
-        match_query = match_query.where(Match.competition_level_id.is_(None))
-    scores = list((await db.execute(match_query)).scalars().all())
 
+    level_filter = (
+        Match.competition_level_id == competition_level_id
+        if competition_level_id
+        else Match.competition_level_id.is_(None)
+    )
+    # Only the scoring columns are needed. Selecting whole Match rows here
+    # pulled raw_scores and schema_snapshot JSON for every match on every write.
+    rows = (
+        await db.execute(
+            select_matches_with_kind(Match.total_score, Match.is_disqualified).where(
+                Match.event_id == event_id,
+                Match.team_id == team_id,
+                Match.is_practice.is_(False),  # practice runs never count
+                level_filter,
+            )
+        )
+    ).all()
+    scores = [
+        official_run_score(total, disqualified)
+        for total, disqualified, kind in rows
+        if kind == SEEDING
+    ]
+
+    level_ranking_filter = (
+        Ranking.competition_level_id == competition_level_id
+        if competition_level_id
+        else Ranking.competition_level_id.is_(None)
+    )
+    # Rows keyed by a phase are from before the seeding ranking was made
+    # event-wide; they would list the team twice.
+    await db.execute(
+        delete(Ranking).where(
+            Ranking.event_id == event_id,
+            Ranking.team_id == team_id,
+            Ranking.event_phase_id.is_not(None),
+            level_ranking_filter,
+        )
+    )
     ranking_filter = [
         Ranking.event_id == event_id,
         Ranking.team_id == team_id,
-        Ranking.event_phase_id == event_phase_id
-        if event_phase_id
-        else Ranking.event_phase_id.is_(None),
-        Ranking.competition_level_id == competition_level_id
-        if competition_level_id
-        else Ranking.competition_level_id.is_(None),
+        Ranking.event_phase_id.is_(None),
+        level_ranking_filter,
     ]
     if not scores:
         await db.execute(delete(Ranking).where(*ranking_filter))
-        await _refresh_ranks(db, event_id, competition_level_id, event_phase_id)
+        await _refresh_ranks(db, event_id, competition_level_id)
         return
 
     result = await db.execute(select(Ranking).where(*ranking_filter))
@@ -415,10 +625,10 @@ async def _recompute_ranking(
         ranking = Ranking(
             season_id=event.season_id,
             event_id=event_id,
-            event_phase_id=event_phase_id,
+            event_phase_id=None,
             team_id=team_id,
             competition_level_id=competition_level_id,
-            rank=0,
+            rank=None,
         )
         db.add(ranking)
     ranking.seed_score = compute_seed_score(scores)
@@ -426,7 +636,7 @@ async def _recompute_ranking(
     ranking.average_score = sum(scores) / len(scores)
     ranking.rounds_played = len(scores)
     await db.flush()
-    await _refresh_ranks(db, event_id, competition_level_id, event_phase_id)
+    await _refresh_ranks(db, event_id, competition_level_id)
 
 
 async def _refresh_ranks(
@@ -435,23 +645,42 @@ async def _refresh_ranks(
     competition_level_id: str | None,
     event_phase_id: str | None = None,
 ) -> None:
-    if not await db.get(Event, event_id):
+    """Re-rank an event's seeding table.
+
+    Ranks are computed per registration category — Botball and Open teams are
+    separate competitions — ties share a rank (1, 2, 2, 4), and red-carded
+    teams take no rank at all. The red-card flag is refreshed for every row,
+    since the card may have been shown in a match of another phase or level.
+    """
+    del event_phase_id
+    event = await db.get(Event, event_id)
+    if not event:
         # Backwards compatibility for callers of the former season-scoped API.
-        event_id = (await get_default_event(db, event_id)).id
-    query = select(Ranking).where(Ranking.event_id == event_id)
-    query = (
-        query.where(Ranking.event_phase_id == event_phase_id)
-        if event_phase_id
-        else query.where(Ranking.event_phase_id.is_(None))
-    )
+        event = await get_default_event(db, event_id)
+        event_id = event.id
+    query = select(Ranking).where(Ranking.event_id == event_id, Ranking.event_phase_id.is_(None))
     query = (
         query.where(Ranking.competition_level_id == competition_level_id)
         if competition_level_id
         else query.where(Ranking.competition_level_id.is_(None))
     )
-    result = await db.execute(query.order_by(Ranking.seed_score.desc(), Ranking.team_id))
-    for rank, ranking in enumerate(result.scalars().all(), start=1):
-        ranking.rank = rank
+    rankings = list((await db.execute(query)).scalars().all())
+    if not rankings:
+        return
+    categories = await team_categories(db, event, [r.team_id for r in rankings])
+    red_carded = await red_carded_teams(db, event_id)
+
+    by_category: dict[str, list[Ranking]] = defaultdict(list)
+    for ranking in rankings:
+        ranking.category = categories.get(ranking.team_id, DEFAULT_CATEGORY)
+        ranking.disqualified = ranking.team_id in red_carded
+        by_category[ranking.category].append(ranking)
+
+    for rows in by_category.values():
+        ranks = competition_ranks([(r.team_id, r.seed_score) for r in rows if not r.disqualified])
+        for ranking in rows:
+            ranking.rank = ranks.get(ranking.team_id)
+    await db.flush()
 
 
 async def get_ranking(
@@ -460,15 +689,34 @@ async def get_ranking(
     competition_level_id: str | None = None,
     event_id: str | None = None,
     event_phase_id: str | None = None,
+    *,
+    category: str | None = None,
+    include_disqualified: bool = False,
 ) -> list[Ranking]:
+    """The event's seeding ranking.
+
+    Red-carded teams are left out unless `include_disqualified` is set: they
+    have no rank, and consumers that print a ranking (exports, the public
+    scoreboard) must not list them as if they had placed.
+    """
     if not event_id:
         if not season_id:
             raise ValidationError("season_id or event_id is required")
         event_id = (await get_default_event(db, season_id)).id
-    query = select(Ranking).where(Ranking.event_id == event_id)
+    if event_phase_id:
+        # The seeding ranking is event-wide; asking for it by one of the
+        # event's seeding phases still returns it, any other phase has none.
+        phase = await db.get(EventPhase, event_phase_id)
+        if not phase or phase.event_id != event_id or phase.phase_type != SEEDING:
+            return []
+    query = select(Ranking).where(Ranking.event_id == event_id, Ranking.event_phase_id.is_(None))
     if competition_level_id:
         query = query.where(Ranking.competition_level_id == competition_level_id)
-    if event_phase_id:
-        query = query.where(Ranking.event_phase_id == event_phase_id)
-    result = await db.execute(query.order_by(Ranking.rank))
+    if category:
+        query = query.where(func.coalesce(Ranking.category, DEFAULT_CATEGORY) == category)
+    if not include_disqualified:
+        query = query.where(Ranking.disqualified.is_(False))
+    result = await db.execute(
+        query.order_by(Ranking.rank.asc().nulls_last(), Ranking.category, Ranking.seed_score.desc())
+    )
     return list(result.scalars().all())

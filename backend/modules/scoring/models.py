@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -130,7 +131,15 @@ class Ranking(Base):
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
     )
-    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    # NULL when the team is disqualified (red card): it keeps its row, so the
+    # scores stay visible, but it takes no place in the ranking.
+    rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Registration category (botball / open / …) the rank is computed within —
+    # Botball and Open teams are ranked separately.
+    category: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    disqualified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     seed_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     best_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     average_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
@@ -141,7 +150,12 @@ class Ranking(Base):
 
 
 class ScoreRevision(Base):
-    """Append-only history for every official score mutation."""
+    """Append-only history for every official score mutation.
+
+    The history outlives the match: deleting a match writes a final "deleted"
+    revision and detaches the rows (match_id → NULL) instead of cascading, and
+    `match_ref` keeps the original match id so the trail stays queryable.
+    """
 
     __tablename__ = "score_revisions"
     __table_args__ = (
@@ -149,9 +163,12 @@ class ScoreRevision(Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
-    match_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("matches.id", ondelete="CASCADE"), nullable=False, index=True
+    match_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("matches.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Plain copies (no FK), so they survive the match being deleted.
+    match_ref: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    team_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     event_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )

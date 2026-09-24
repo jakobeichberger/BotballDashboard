@@ -44,6 +44,7 @@ class FormulaPreviewRow(BaseModel):
     team_id: str
     team_name: str | None = None
     rank: int | None = None
+    disqualified: bool = False
     values: dict[str, float] = {}
 
 
@@ -68,6 +69,14 @@ class FormulaFunctionDoc(BaseModel):
     description: str
 
 
+class FormulaPresetResponse(BaseModel):
+    id: str
+    label: str
+    category: str
+    description: str
+    formulas: list[dict[str, str]]
+
+
 class FormulaReferenceResponse(BaseModel):
     """Everything the editor needs to offer autocompletion and help."""
 
@@ -75,3 +84,4 @@ class FormulaReferenceResponse(BaseModel):
     row_functions: list[FormulaFunctionDoc]
     scope_functions: list[FormulaFunctionDoc]
     defaults: dict[str, list[dict[str, str]]]
+    presets: list[FormulaPresetResponse] = []

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import (
@@ -8,6 +9,7 @@ from core.auth import (
 from core.database import get_db
 from core.live import publish_live_event
 from modules.events import service as event_svc
+from modules.events.models import Event
 from modules.scoring import competition_service as comp_svc
 from modules.scoring import formula_service as formula_svc
 from modules.scoring import service
@@ -19,6 +21,7 @@ from modules.scoring.competition_schemas import (
     DocScoreResponse,
     DocScoreUpsert,
     OverallRankingEntry,
+    ResultRevisionResponse,
     TeamRankingEntry,
 )
 from modules.scoring.schemas import (
@@ -31,9 +34,16 @@ from modules.scoring.schemas import (
     ScoringSchemaResponse,
 )
 from modules.seasons import service as season_svc
+from modules.teams.models import Team
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
+# Results are recorded per event. Every result resource therefore exists twice:
+#   /scoring/events/{event_id}/…    — the event the UI is working in
+#   /scoring/seasons/{season_id}/…  — kept for older clients; it takes an
+#                                     optional ?event_id= and otherwise uses the
+#                                     season's default (earliest) event, for
+#                                     reads, writes and the overall ranking alike.
 
 # The former unauthenticated /scoreboard/ws streamed the global channel of
 # every event — including unpublished ones and their announcement texts — to
@@ -45,6 +55,10 @@ async def _broadcast_ranking_update(event_id: str) -> None:
     await publish_live_event(event_id, "ranking_updated")
 
 
+async def _season_event(db: AsyncSession, season_id: str, event_id: str | None) -> Event:
+    return await service.resolve_event(db, season_id, event_id)
+
+
 # ── Matches ───────────────────────────────────────────────────────────────────
 
 
@@ -52,11 +66,15 @@ async def _broadcast_ranking_update(event_id: str) -> None:
 async def get_scoring_schema(
     season_id: str,
     competition_level_id: str | None = Query(None),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """The active scoring schema (scored fields + multipliers) for a season."""
-    return await service.get_active_schema(db, season_id, competition_level_id)
+    """The active scoring schema (scored fields + multipliers) for a season.
+
+    With `event_id`, an event-specific schema version wins over the season's.
+    """
+    return await service.get_active_schema(db, season_id, competition_level_id, event_id)
 
 
 @router.get("/seasons/{season_id}/matches", response_model=list[MatchResponse])
@@ -65,11 +83,17 @@ async def list_matches(
     team_id: str | None = Query(None),
     phase_id: str | None = Query(None),
     is_practice: bool | None = Query(None),
+    event_id: str | None = Query(None),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.list_matches(
-        db, season_id, team_id=team_id, phase_id=phase_id, is_practice=is_practice
+        db,
+        season_id,
+        team_id=team_id,
+        phase_id=phase_id,
+        event_id=event_id,
+        is_practice=is_practice,
     )
 
 
@@ -106,8 +130,8 @@ async def bulk_create_matches(
         data = entry.model_dump()
         data["season_id"] = season_id
         results.append(await service.create_match(db, data, current_user.id))
-    if results:
-        await _broadcast_ranking_update(results[0].event_id)
+    for event_id in {m.event_id for m in results}:
+        await _broadcast_ranking_update(event_id)
     return results
 
 
@@ -146,6 +170,7 @@ async def list_score_revisions(
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """A match's score history; still available after the match was deleted."""
     return await service.list_revisions(db, match_id)
 
 
@@ -161,10 +186,39 @@ async def confirm_match(
 @router.delete("/matches/{match_id}", status_code=204)
 async def delete_match(
     match_id: str,
-    _=Depends(require_permission("scoring:admin")),
+    reason: str | None = Query(None, max_length=1000),
+    current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    await service.delete_match(db, match_id)
+    match = await service.get_match(db, match_id)
+    event_id = match.event_id
+    await service.delete_match(db, match_id, deleted_by=current_user.id, reason=reason)
+    await _broadcast_ranking_update(event_id)
+
+
+@router.get("/events/{event_id}/revisions", response_model=list[ScoreRevisionResponse])
+async def list_event_score_revisions(
+    event_id: str,
+    team_id: str | None = Query(None),
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Score audit trail of an event, newest first, including deleted matches."""
+    await event_svc.get_event(db, event_id)
+    return await service.list_event_revisions(db, event_id, team_id)
+
+
+@router.get("/events/{event_id}/result-revisions", response_model=list[ResultRevisionResponse])
+async def list_result_revisions(
+    event_id: str,
+    kind: str | None = Query(None, pattern="^(de|aerial|doc)$"),
+    team_id: str | None = Query(None),
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Audit trail of the DE, aerial and documentation results of an event."""
+    event = await event_svc.get_event(db, event_id)
+    return await comp_svc.list_result_revisions(db, event, kind, team_id)
 
 
 # ── Ranking ───────────────────────────────────────────────────────────────────
@@ -187,58 +241,57 @@ async def get_ranking(
 # ── Enhanced Ranking (with team names + category) ─────────────────────────────
 
 
-@router.get("/seasons/{season_id}/ranking/extended", response_model=list[TeamRankingEntry])
-async def get_ranking_extended(
-    season_id: str,
-    category: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
-):
-    """Seeding ranking enriched with team name and registration category."""
-    from sqlalchemy import select
-
-    from modules.scoring.models import Ranking
-    from modules.teams.models import Team, TeamSeasonRegistration
-
-    result = await db.execute(
-        select(
-            Ranking.rank,
-            Ranking.team_id,
-            Ranking.seed_score,
-            Ranking.best_score,
-            Ranking.average_score,
-            Ranking.rounds_played,
-            Team.name.label("team_name"),
-            TeamSeasonRegistration.category,
-        )
-        .join(Team, Team.id == Ranking.team_id)
-        .outerjoin(
-            TeamSeasonRegistration,
-            (TeamSeasonRegistration.team_id == Ranking.team_id)
-            & (TeamSeasonRegistration.season_id == season_id),
-        )
-        .where(Ranking.season_id == season_id)
-        .order_by(Ranking.rank)
+async def _extended_ranking(
+    db: AsyncSession, event: Event, category: str | None
+) -> list[TeamRankingEntry]:
+    rankings = await service.get_ranking(
+        db, event_id=event.id, category=category, include_disqualified=True
     )
-    rows = result.all()
-    if category:
-        rows = [r for r in rows if (r.category or "botball") == category]
-    entries = [
+    names_result = await db.execute(
+        select(Team.id, Team.name).where(Team.id.in_([r.team_id for r in rankings]))
+    )
+    names = dict(names_result.tuples().all())
+    return [
         TeamRankingEntry(
             rank=r.rank,
+            disqualified=r.disqualified,
             team_id=r.team_id,
-            team_name=r.team_name,
-            category=r.category or "botball",
+            team_name=names.get(r.team_id),
+            category=r.category or service.DEFAULT_CATEGORY,
             seed_score=r.seed_score,
             best_score=r.best_score,
             average_score=r.average_score,
             rounds_played=r.rounds_played,
         )
-        for r in rows
+        for r in rankings
     ]
-    if category:
-        for rank, entry in enumerate(entries, 1):
-            entry.rank = rank
-    return entries
+
+
+@router.get("/seasons/{season_id}/ranking/extended", response_model=list[TeamRankingEntry])
+async def get_ranking_extended(
+    season_id: str,
+    category: str | None = Query(None),
+    event_id: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Seeding ranking enriched with team name and category.
+
+    Ranks are per category (Botball and Open are separate competitions); a
+    red-carded team is listed with `disqualified` and no rank.
+    """
+    event = await _season_event(db, season_id, event_id)
+    return await _extended_ranking(db, event, category)
+
+
+@router.get("/events/{event_id}/ranking/extended", response_model=list[TeamRankingEntry])
+async def get_event_ranking_extended(
+    event_id: str,
+    category: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Seeding ranking of one event, with team names and per-category ranks."""
+    event = await event_svc.get_event(db, event_id)
+    return await _extended_ranking(db, event, category)
 
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
@@ -254,16 +307,13 @@ async def get_overall_ranking(
     """Overall ranking computed from the season's configured formula set.
 
     Results are recorded per event, so this ranks one event: the one named by
-    `event_id`, otherwise the season's most recent one.
+    `event_id`, otherwise the season's default event — the same one the other
+    season routes read and write, so a result entered through them shows here.
     """
     season = await season_svc.get_season(db, season_id)
-    if not event_id:
-        events = await event_svc.list_events(db, season_id=season_id, limit=1)
-        if not events:
-            return []
-        event_id = events[0].id
+    event = await _season_event(db, season_id, event_id)
     categories = [category] if category else list(season.active_categories or ["botball"])
-    return await formula_svc.compute_overall_ranking(db, event_id, categories)
+    return await formula_svc.compute_overall_ranking(db, event.id, categories)
 
 
 @router.get("/events/{event_id}/ranking/overall", response_model=list[OverallRankingEntry])
@@ -285,22 +335,25 @@ async def get_event_overall_ranking(
 @router.get("/seasons/{season_id}/de-results", response_model=list[DEResultResponse])
 async def list_de_results(
     season_id: str,
+    event_id: str | None = Query(None),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await comp_svc.get_de_results(db, season_id)
+    return await comp_svc.get_de_results(db, await _season_event(db, season_id, event_id))
 
 
 @router.put("/seasons/{season_id}/de-results", response_model=list[DEResultResponse])
 async def bulk_upsert_de_results(
     season_id: str,
     body: list[DEResultUpsert],
-    _=Depends(require_permission("scoring:admin")),
+    event_id: str | None = Query(None),
+    current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    event = await _season_event(db, season_id, event_id)
     entries = [e.model_dump() for e in body]
-    rows = await comp_svc.bulk_upsert_de_results(db, season_id, entries)
-    await _broadcast_ranking_update(season_id)
+    rows = await comp_svc.bulk_upsert_de_results(db, event, entries, current_user.id)
+    await _broadcast_ranking_update(event.id)
     return rows
 
 
@@ -309,12 +362,56 @@ async def upsert_de_result(
     season_id: str,
     team_id: str,
     body: DEResultUpsert,
-    _=Depends(require_permission("scoring:admin")),
+    event_id: str | None = Query(None),
+    current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    event = await _season_event(db, season_id, event_id)
     data = body.model_dump()
     data["team_id"] = team_id
-    return await comp_svc.upsert_de_result(db, season_id, data)
+    row = await comp_svc.upsert_de_result(db, event, data, current_user.id)
+    await _broadcast_ranking_update(event.id)
+    return row
+
+
+@router.get("/events/{event_id}/de-results", response_model=list[DEResultResponse])
+async def list_event_de_results(
+    event_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await comp_svc.get_de_results(db, await event_svc.get_event(db, event_id))
+
+
+@router.put("/events/{event_id}/de-results", response_model=list[DEResultResponse])
+async def bulk_upsert_event_de_results(
+    event_id: str,
+    body: list[DEResultUpsert],
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await event_svc.get_event(db, event_id)
+    rows = await comp_svc.bulk_upsert_de_results(
+        db, event, [e.model_dump() for e in body], current_user.id
+    )
+    await _broadcast_ranking_update(event.id)
+    return rows
+
+
+@router.put("/events/{event_id}/de-results/{team_id}", response_model=DEResultResponse)
+async def upsert_event_de_result(
+    event_id: str,
+    team_id: str,
+    body: DEResultUpsert,
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await event_svc.get_event(db, event_id)
+    data = body.model_dump()
+    data["team_id"] = team_id
+    row = await comp_svc.upsert_de_result(db, event, data, current_user.id)
+    await _broadcast_ranking_update(event.id)
+    return row
 
 
 # ── Aerial ────────────────────────────────────────────────────────────────────
@@ -323,29 +420,35 @@ async def upsert_de_result(
 @router.get("/seasons/{season_id}/aerial-results", response_model=list[AerialResultResponse])
 async def list_aerial_results(
     season_id: str,
+    event_id: str | None = Query(None),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await comp_svc.get_aerial_results(db, season_id)
+    return await comp_svc.get_aerial_results(db, await _season_event(db, season_id, event_id))
 
 
 @router.get("/seasons/{season_id}/aerial-ranking")
 async def get_aerial_ranking(
     season_id: str,
+    event_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    return await comp_svc.get_aerial_ranking(db, season_id)
+    return await comp_svc.get_aerial_ranking(db, await _season_event(db, season_id, event_id))
 
 
 @router.put("/seasons/{season_id}/aerial-results", response_model=list[AerialResultResponse])
 async def bulk_upsert_aerial_results(
     season_id: str,
     body: list[AerialResultUpsert],
-    _=Depends(require_permission("scoring:admin")),
+    event_id: str | None = Query(None),
+    current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    event = await _season_event(db, season_id, event_id)
     entries = [e.model_dump() for e in body]
-    return await comp_svc.bulk_upsert_aerial_results(db, season_id, entries)
+    rows = await comp_svc.bulk_upsert_aerial_results(db, event, entries, current_user.id)
+    await _broadcast_ranking_update(event.id)
+    return rows
 
 
 @router.put("/seasons/{season_id}/aerial-results/{team_id}", response_model=AerialResultResponse)
@@ -353,12 +456,64 @@ async def upsert_aerial_result(
     season_id: str,
     team_id: str,
     body: AerialResultUpsert,
-    _=Depends(require_permission("scoring:admin")),
+    event_id: str | None = Query(None),
+    current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    event = await _season_event(db, season_id, event_id)
     data = body.model_dump()
     data["team_id"] = team_id
-    return await comp_svc.upsert_aerial_result(db, season_id, data)
+    row = await comp_svc.upsert_aerial_result(db, event, data, current_user.id)
+    await _broadcast_ranking_update(event.id)
+    return row
+
+
+@router.get("/events/{event_id}/aerial-results", response_model=list[AerialResultResponse])
+async def list_event_aerial_results(
+    event_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await comp_svc.get_aerial_results(db, await event_svc.get_event(db, event_id))
+
+
+@router.get("/events/{event_id}/aerial-ranking")
+async def get_event_aerial_ranking(
+    event_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await comp_svc.get_aerial_ranking(db, await event_svc.get_event(db, event_id))
+
+
+@router.put("/events/{event_id}/aerial-results", response_model=list[AerialResultResponse])
+async def bulk_upsert_event_aerial_results(
+    event_id: str,
+    body: list[AerialResultUpsert],
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await event_svc.get_event(db, event_id)
+    rows = await comp_svc.bulk_upsert_aerial_results(
+        db, event, [e.model_dump() for e in body], current_user.id
+    )
+    await _broadcast_ranking_update(event.id)
+    return rows
+
+
+@router.put("/events/{event_id}/aerial-results/{team_id}", response_model=AerialResultResponse)
+async def upsert_event_aerial_result(
+    event_id: str,
+    team_id: str,
+    body: AerialResultUpsert,
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await event_svc.get_event(db, event_id)
+    data = body.model_dump()
+    data["team_id"] = team_id
+    row = await comp_svc.upsert_aerial_result(db, event, data, current_user.id)
+    await _broadcast_ranking_update(event.id)
+    return row
 
 
 # ── Documentation Scoring ─────────────────────────────────────────────────────
@@ -367,21 +522,26 @@ async def upsert_aerial_result(
 @router.get("/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse])
 async def list_doc_scores(
     season_id: str,
+    event_id: str | None = Query(None),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await comp_svc.get_doc_scores(db, season_id)
+    return await comp_svc.get_doc_scores(db, await _season_event(db, season_id, event_id))
 
 
 @router.put("/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse])
 async def bulk_upsert_doc_scores(
     season_id: str,
     body: list[DocScoreUpsert],
-    _=Depends(require_permission("scoring:admin")),
+    event_id: str | None = Query(None),
+    current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    event = await _season_event(db, season_id, event_id)
     entries = [e.model_dump() for e in body]
-    return await comp_svc.bulk_upsert_doc_scores(db, season_id, entries)
+    rows = await comp_svc.bulk_upsert_doc_scores(db, event, entries, current_user.id)
+    await _broadcast_ranking_update(event.id)
+    return rows
 
 
 @router.put("/seasons/{season_id}/doc-scores/{team_id}", response_model=DocScoreResponse)
@@ -389,9 +549,53 @@ async def upsert_doc_score(
     season_id: str,
     team_id: str,
     body: DocScoreUpsert,
-    _=Depends(require_permission("scoring:admin")),
+    event_id: str | None = Query(None),
+    current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    event = await _season_event(db, season_id, event_id)
     data = body.model_dump()
     data["team_id"] = team_id
-    return await comp_svc.upsert_doc_score(db, season_id, data)
+    row = await comp_svc.upsert_doc_score(db, event, data, current_user.id)
+    await _broadcast_ranking_update(event.id)
+    return row
+
+
+@router.get("/events/{event_id}/doc-scores", response_model=list[DocScoreResponse])
+async def list_event_doc_scores(
+    event_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await comp_svc.get_doc_scores(db, await event_svc.get_event(db, event_id))
+
+
+@router.put("/events/{event_id}/doc-scores", response_model=list[DocScoreResponse])
+async def bulk_upsert_event_doc_scores(
+    event_id: str,
+    body: list[DocScoreUpsert],
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await event_svc.get_event(db, event_id)
+    rows = await comp_svc.bulk_upsert_doc_scores(
+        db, event, [e.model_dump() for e in body], current_user.id
+    )
+    await _broadcast_ranking_update(event.id)
+    return rows
+
+
+@router.put("/events/{event_id}/doc-scores/{team_id}", response_model=DocScoreResponse)
+async def upsert_event_doc_score(
+    event_id: str,
+    team_id: str,
+    body: DocScoreUpsert,
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await event_svc.get_event(db, event_id)
+    data = body.model_dump()
+    data["team_id"] = team_id
+    row = await comp_svc.upsert_doc_score(db, event, data, current_user.id)
+    await _broadcast_ranking_update(event.id)
+    return row

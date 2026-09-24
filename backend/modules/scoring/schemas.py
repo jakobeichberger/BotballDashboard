@@ -74,9 +74,12 @@ class MatchResponse(BaseModel):
 class RankingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
-    rank: int
+    # None for a team disqualified by a red card.
+    rank: int | None
     event_id: str
     team_id: str
+    category: str | None = None
+    disqualified: bool = False
     seed_score: float
     best_score: float
     average_score: float
@@ -98,7 +101,10 @@ class ScoreRevisionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     id: str
-    match_id: str
+    # None once the match was deleted; match_ref keeps the original id.
+    match_id: str | None
+    match_ref: str | None = None
+    team_id: str | None = None
     event_id: str
     revision: int
     previous_value: dict | None

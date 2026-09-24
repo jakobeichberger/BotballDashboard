@@ -2,8 +2,12 @@
 
 import pytest
 
-from modules.scoring.competition_service import _avg_best_n
-from modules.scoring.service import compute_match_total, compute_seed_score
+from modules.scoring.competition_service import aerial_score, documentation_score
+from modules.scoring.service import (
+    compute_match_total,
+    compute_seed_score,
+    official_run_score,
+)
 
 
 class TestComputeSeedScore:
@@ -38,18 +42,40 @@ class TestComputeSeedScore:
 
 class TestCompetitionScores:
     def test_single_aerial_run_keeps_full_value(self):
-        assert _avg_best_n([80.0], n=2) == 80.0
+        assert aerial_score([80.0, None, None, None]) == 80.0
 
-    def test_aerial_uses_best_two_runs(self):
-        assert _avg_best_n([20.0, 100.0, 80.0], n=2) == 90.0
+    def test_aerial_is_the_mean_of_all_runs(self):
+        # ECER 2025 ranked aerial on the mean of every run, not the best two.
+        assert aerial_score([20.0, 100.0, 80.0, 0.0]) == 50.0
+
+    def test_aerial_without_runs_has_no_score(self):
+        assert aerial_score([None, None, None, None]) is None
+
+    def test_documentation_weights_and_missing_parts(self):
+        assert documentation_score(100, 100, 100, 100) == pytest.approx(1.0)
+        # 0.2 * 1 + 0.2 * 0.5 + 0 (missing) + 0.4 * 0.5
+        assert documentation_score(100, 50, None, 50) == pytest.approx(0.5)
+        assert documentation_score(None, None, None, None) is None
+
+
+class TestOfficialRunScore:
+    def test_disqualified_round_counts_zero(self):
+        assert official_run_score(250.0, True) == 0.0
+
+    def test_negative_score_counts_zero(self):
+        assert official_run_score(-30.0, False) == 0.0
+
+    def test_regular_score_unchanged(self):
+        assert official_run_score(123.0, False) == 123.0
 
     @pytest.mark.asyncio
     async def test_documentation_score_includes_onsite(self, db, season, team):
         from modules.scoring.competition_service import upsert_doc_score
+        from modules.scoring.service import get_default_event
 
         score = await upsert_doc_score(
             db,
-            season.id,
+            await get_default_event(db, season.id),
             {
                 "team_id": team.id,
                 "part1": 100,
@@ -58,7 +84,8 @@ class TestCompetitionScores:
                 "onsite": 0,
             },
         )
-        assert score.doc_score == 0.75
+        # 0.2 + 0.2 + 0.2 + 0.4 * 0 — the onsite part weighs 4/10.
+        assert score.doc_score == pytest.approx(0.6)
 
 
 class TestComputeMatchTotal:
@@ -189,7 +216,7 @@ class TestRankingLogic:
         assert ranking[1].rank == 2
 
     @pytest.mark.asyncio
-    async def test_disqualification_removes_match_from_ranking(self, db, season, event, team):
+    async def test_disqualified_round_counts_as_zero(self, db, season, event, team):
         from modules.scoring.models import Match
         from modules.scoring.service import _recompute_ranking, get_ranking, update_match
 
@@ -205,5 +232,9 @@ class TestRankingLogic:
         await _recompute_ranking(db, event.id, team.id, None)
         assert len(await get_ranking(db, season.id)) == 1
 
+        # A disqualified round is a round with 0 points, not a dropped round.
         await update_match(db, match.id, is_disqualified=True)
-        assert await get_ranking(db, season.id) == []
+        ranking = await get_ranking(db, season.id)
+        assert len(ranking) == 1
+        assert ranking[0].seed_score == 0.0
+        assert ranking[0].rounds_played == 1
