@@ -20,6 +20,9 @@ def poll_printers() -> None:
                 (await db.execute(select(Printer).where(Printer.is_active.is_(True)))).scalars()
             )
             for printer in printers:
+                # Generic printers are operated by hand and have no adapter.
+                if printer.printer_type == "generic":
+                    continue
                 if not printer.api_url or not printer.api_key_encrypted:
                     continue
                 try:
@@ -33,6 +36,7 @@ def poll_printers() -> None:
                     await apply_printer_status(db, printer, status)
                 except Exception:
                     printer.is_online = False
+                    printer.current_state = "offline"
             await db.commit()
 
     asyncio.run(run())
