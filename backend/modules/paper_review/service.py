@@ -115,6 +115,7 @@ async def deadline_info(
     now: datetime | None = None,
 ) -> dict:
     from modules.events.models import Event
+    from modules.paper_review import deadlines
     from modules.seasons.models import Season
 
     season = await db.get(Season, season_id)
@@ -122,9 +123,32 @@ async def deadline_info(
         raise NotFoundError("Season not found")
     event = await db.get(Event, event_id) if event_id else None
     tz_name = event.timezone if event and event.timezone else DEFAULT_TIMEZONE
-    deadline = season.paper_submission_deadline
+    now = now or datetime.now(UTC)
+    # A blocking official_submission deadline takes precedence over the
+    # season's plain date field.
+    deadline = (
+        await deadlines.hard_block_date(db, season_id, "official_submission")
+        or season.paper_submission_deadline
+    )
     cutoff = deadline_cutoff(deadline, tz_name) if deadline else None
-    passed = bool(cutoff and (now or datetime.now(UTC)) >= cutoff)
+    passed = bool(cutoff and now >= cutoff)
+    final = await deadlines.hard_block_date(db, season_id, "official_final")
+    final_cutoff = deadline_cutoff(final, tz_name) if final else None
+    final_passed = bool(final_cutoff and now >= final_cutoff)
+    all_deadlines = []
+    for row in await deadlines.list_deadlines(db, season_id):
+        row_cutoff = deadline_cutoff(row.due_date, tz_name)
+        all_deadlines.append(
+            {
+                "id": row.id,
+                "deadline_type": row.deadline_type,
+                "due_date": row.due_date,
+                "label": row.label,
+                "is_hard_block": row.is_hard_block,
+                "cutoff_at": row_cutoff,
+                "passed": now >= row_cutoff,
+            }
+        )
     return {
         "deadline_date": deadline,
         "timezone": tz_name,
@@ -132,6 +156,10 @@ async def deadline_info(
         "passed": passed,
         "locked": passed and not can_override,
         "can_override": can_override,
+        "final_deadline_date": final,
+        "final_cutoff_at": final_cutoff,
+        "final_locked": final_passed and not can_override,
+        "deadlines": all_deadlines,
     }
 
 
@@ -149,10 +177,20 @@ async def _assert_before_deadline(
 
 
 async def _assert_paper_deadline(db: AsyncSession, paper: Paper, override: bool) -> None:
-    """The season deadline governs the first submission. Revision rounds are
-    opened by the organizers after that deadline, so they are not blocked."""
+    """The submission deadline governs the first submission. Revision rounds
+    are opened by the organizers after that deadline; they are only blocked by
+    a blocking official_final deadline."""
     if paper.revision_number <= 1:
         await _assert_before_deadline(db, paper.season_id, paper.event_id, override)
+        return
+    if override:
+        return
+    info = await deadline_info(db, paper.season_id, paper.event_id, can_override=False)
+    if info["final_locked"]:
+        raise ForbiddenError(
+            "The official final submission deadline has passed "
+            f"({info['final_deadline_date'].isoformat()}, {info['timezone']})"
+        )
 
 
 # ── Papers ────────────────────────────────────────────────────────────────────

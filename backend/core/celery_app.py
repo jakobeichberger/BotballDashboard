@@ -35,6 +35,11 @@ celery_app.conf.beat_schedule = {
         # Daily at 07:00 UTC, before the morning of the event day in Europe.
         "schedule": crontab(hour=7, minute=0),
     },
+    "queue-paper-deadline-reminders": {
+        "task": "papers.deadline_reminders",
+        # Daily, right after the season deadline reminders.
+        "schedule": crontab(hour=7, minute=5),
+    },
     "process-paper-review-deadlines": {
         "task": "papers.process_review_deadlines",
         "schedule": 3600.0,
