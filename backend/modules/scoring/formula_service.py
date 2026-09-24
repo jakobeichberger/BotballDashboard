@@ -245,14 +245,16 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
         if doc_row.team_id in team_ids:
             doc_by_team[doc_row.team_id] = doc_row
 
-    # Papers are submitted and judged per season, not per event.
+    # Papers are submitted and judged per season, not per event. final_score is
+    # stored 0-1 (finalize_paper, PaperScoreUpdate); the formula input "paper"
+    # is documented as 0-100 like the documentation inputs, so rescale here.
     paper_by_team: dict[str, float] = {}
     paper_rows = await db.execute(
         select(Paper).where(Paper.season_id == season_id, Paper.final_score.isnot(None))
     )
     for p in paper_rows.scalars():
         if p.team_id in team_ids:
-            paper_by_team[p.team_id] = float(p.final_score or 0.0)
+            paper_by_team[p.team_id] = float(p.final_score or 0.0) * 100.0
 
     rows: list[dict[str, Any]] = []
     for t in teams:
