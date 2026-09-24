@@ -2,31 +2,137 @@
 
 ## Readiness and uptime
 
-- Liveness: `GET /api/system/health`
-- Readiness: `GET /api/system/readiness` checks PostgreSQL, Redis, and a Celery worker.
-- Metrics: `GET /api/system/metrics` exposes Prometheus text metrics.
-- Prometheus probes readiness through Blackbox Exporter. Alert externally when the probe fails for two minutes.
+- Liveness: `GET /api/system/health` returns `{"status": "ok", "version": …}`. It is the `backend` container healthcheck.
+- Readiness: `GET /api/system/readiness` checks PostgreSQL, Redis and a Celery worker. It returns 200 `{"status": "ready", …}` or 503 `{"status": "not_ready", "checks": {…}}`.
+- Metrics: `GET /api/system/metrics` exposes Prometheus text metrics on the internal network only (404 through Traefik).
+- `scripts/verify-deployment.sh` checks the whole installation: containers, TLS endpoints, headers, worker, beat, migrations, backups and monitoring. It prints PASS/WARN/FAIL per check and exits non-zero on any FAIL.
+
+## Monitoring and alerts
+
+Enable the `monitoring` compose profile (`COMPOSE_PROFILES=production,monitoring` in `.env`, then `docker compose up -d`). Prometheus scrapes three targets:
+
+- the API,
+- the readiness endpoint through the Blackbox exporter,
+- the backup service (`backup:9101`).
+
+It evaluates `monitoring/alerts.yml`:
+
+| Alert | Fires when |
+|---|---|
+| `ApiDown` | the API cannot be scraped for 2 min |
+| `ReadinessFailing` | readiness is not 200 for 2 min |
+| `HighServerErrorRate` | more than 5 % of requests return 5xx for 5 min |
+| `BackupFailed` | the last backup run failed |
+| `BackupStale` | the last successful backup is older than 26 h |
+| `BackupNeverSucceeded` | runs were recorded but none succeeded (1 h) |
+| `BackupMonitoringDown` | the backup service is unreachable for 15 min |
+
+Alertmanager delivers alerts to `ALERT_WEBHOOK_URL` (Alertmanager webhook JSON, e.g. an ntfy topic) and/or `ALERT_EMAIL_TO`. SMTP comes from `ALERT_SMTP_*` and falls back to `SMTP_*`. `monitoring/alertmanager/render-config.sh` renders the configuration at container start. Without a receiver, alerts are only visible in the UIs, and Alertmanager logs a warning.
+
+Prometheus and Alertmanager listen on `127.0.0.1` only:
+
+```sh
+ssh -L 9090:localhost:9090 -L 9093:localhost:9093 root@<server>
+# http://localhost:9090/alerts, http://localhost:9093
+```
+
+Run the rule unit tests after changing `alerts.yml`:
+
+```sh
+docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool prom/prometheus:v2.54.1 test rules alerts.test.yml
+```
 
 ## Encrypted backups
 
-Set `AGE_RECIPIENT` to the offline backup public key. The backup container runs `backend/scripts/backup.sh` daily and stores encrypted PostgreSQL plus upload archives in the `backups` volume. Copy that volume to separate storage.
+### Key
 
-Every month, mount the private identity as `AGE_IDENTITY` and run:
-
-```sh
-backend/scripts/restore-test.sh /backups/botball-YYYYMMDDTHHMMSSZ.tar.gz.age
-```
-
-The script restores to the isolated `${POSTGRES_DB}_restore_test` database and verifies the `events` table. It never overwrites the production database.
-
-Start scheduled encrypted backups only with the production profile:
+Backups are encrypted with [age](https://age-encryption.org). Create the key pair on a trusted machine. `scripts/proxmox-setup.sh` does this for you and stores the identity in `/root/botball-backup-identity.txt`.
 
 ```sh
-docker compose --profile production up -d backup prometheus blackbox
+age-keygen -o botball-backup-identity.txt   # prints "Public key: age1…"
 ```
+
+Put the public key into `.env` as `AGE_RECIPIENT`. Keep the identity file off the server, in a password manager or on an offline medium, with at least two copies. Without it no backup can be restored. The server never needs it, except temporarily for a restore.
+
+### Schedule and failure handling
+
+With the `production` profile the `backup` service runs `backend/scripts/backup_scheduler.py`:
+
+- Every `BACKUP_INTERVAL_SECONDS` (default 24 h) it runs `backend/scripts/backup.sh`. The script dumps PostgreSQL (`pg_dump -Fc`), archives the upload directory together with a checksum manifest (`uploads.sha256`) and encrypts the archive to `botball-<UTC>.tar.gz.age` plus a `.sha256` file. Archives older than `BACKUP_RETENTION_DAYS` (30) are deleted.
+- A failed run logs `BACKUP FAILED: <reason>`, removes the partial archive and is retried after `BACKUP_RETRY_SECONDS` (1 h).
+- The outcome is written to `/backups/status/last-run.json`. The container healthcheck turns **unhealthy** when the last run failed or the last success is older than `BACKUP_MAX_AGE_HOURS` (26 h). The same data is exported as `botball_backup_*` metrics, which drive the alerts above.
+
+```sh
+make backup-now      # run a backup now (exit code = result)
+make backup-status   # OK / UNHEALTHY: <reason>
+docker compose logs backup
+```
+
+### Off-site copy
+
+Archives are only useful when they survive the server. Set `BACKUP_HOST_DIR=/data/backups` (the Proxmox setup does) so that they are plain files on the host, and copy them elsewhere at least daily. They are encrypted, so any storage works. Example with a host cron job and rsync over SSH:
+
+```sh
+# /etc/cron.d/botball-offsite
+30 3 * * * root rsync -a --delete-after /data/backups/ backup@nas.example.org:/srv/botball-backups/
+```
+
+rclone to S3-compatible or cloud storage works the same way (`rclone sync /data/backups remote:botball-backups`). Also check the copy regularly: count the files and verify a checksum with `sha256sum -c`.
+
+Without `BACKUP_HOST_DIR` the archives live in the Docker volume `<project>_backups`. `docker volume inspect botballdashboard_backups --format '{{.Mountpoint}}'` shows the path.
+
+### Restore test (monthly)
+
+The restore test decrypts an archive, restores it into the isolated database `${POSTGRES_DB}_restore_test`, counts the events and verifies every upload file against the manifest. It never touches production data.
+
+```sh
+docker compose run --rm --no-deps \
+  -v /path/to/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
+  backup /app/scripts/restore-test.sh /backups/botball-YYYYMMDDTHHMMSSZ.tar.gz.age
+```
+
+Expected output ends with `Uploads verified: N files match the manifest` and `Restore test succeeded`. Afterwards drop the test database: `docker compose exec db dropdb -U botball botball_restore_test`.
+
+### Restore in production
+
+`backend/scripts/restore.sh` replaces the database **and** the upload directory with the archive content. It refuses to run while anything is still connected to the database.
+
+```sh
+cd /opt/botballdashboard
+make backup-now || true                               # safety copy of the current state
+docker compose stop backend worker beat backup        # nothing may write during the restore
+docker compose run --rm --no-deps \
+  -v /path/to/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
+  -v /data/backups:/backups:ro \
+  backend /app/scripts/restore.sh --yes /backups/botball-YYYYMMDDTHHMMSSZ.tar.gz.age
+docker compose up -d                                  # backend migrates the restored DB to the current code
+./scripts/verify-deployment.sh
+```
+
+Without `BACKUP_HOST_DIR`, use the named volume instead of `/data/backups`: `-v botballdashboard_backups:/backups:ro`. Archives copied back from off-site storage can be placed in any directory and mounted the same way.
+
+The restore:
+
+1. checks the archive checksum,
+2. decrypts the archive,
+3. verifies the upload manifest,
+4. drops and recreates the database and restores the dump,
+5. replaces the upload directory.
+
+If the archive is from an older release, the backend applies the newer migrations on start. For an archive from a newer release, first check out and build that release (see the update guide).
 
 ## Event rehearsal
 
-Before a real event, create test teams and perform the full Admin setup → schedule → juror score → ranking → public scoreboard → paper review → print job flow. Then run the k6 test in `tests/load/event_live.js` with 30 scoring clients and 200 viewers.
+Before a real event, create test teams and run through the full flow:
 
-The anonymized OCR reference photos are operational test data and must not be committed if they contain names, e-mail addresses or handwritten personal notes. Place the approved dataset in the protected CI fixture store and run the OCR acceptance suite before each real event; every empty, implausible or low-confidence value must remain in `review` until a human confirms it.
+1. Admin setup
+2. Schedule
+3. Juror score
+4. Ranking
+5. Public scoreboard
+6. Paper review
+7. Print job
+
+Then run the k6 test in `tests/load/event_live.js` with 30 scoring clients and 200 viewers.
+
+The anonymized OCR reference photos are operational test data. Do not commit them if they contain names, e-mail addresses or handwritten personal notes. Keep the approved dataset in the protected CI fixture store and run the OCR acceptance suite before each real event. Every empty, implausible or low-confidence value must stay in `review` until a human confirms it.

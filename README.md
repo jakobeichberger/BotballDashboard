@@ -51,14 +51,16 @@ bash <(curl -fsSL https://raw.githubusercontent.com/jakobeichberger/BotballDashb
 ```
 
 Das Script erledigt automatisch:
-- Docker-Installation
+- Docker-, Node.js- und pnpm-Installation
 - Repository klonen
-- Interaktive `.env`-Konfiguration (Domain, DB, SMTP optional, Secrets auto-generiert)
-- Datenverzeichnisse anlegen
-- Images bauen & Services starten
-- Health-Checks und Zusammenfassung
+- Interaktive `.env`-Konfiguration (Domain, DB, SMTP optional, Monitoring optional). Alle Secrets werden erzeugt, auch der Fernet-Schlüssel und das age-Schlüsselpaar für Backups.
+- Datenverzeichnisse `/data/db` und `/data/backups` anlegen
+- Images bauen und **alle** Dienste starten: Traefik, Backend, Worker, Beat, Frontend, DB, Redis, Backup, optional Prometheus/Alertmanager
+- VAPID-Schlüssel, erster Admin, `scripts/verify-deployment.sh`
 
 > SMTP-Konfiguration ist **optional** – bei Bedarf kann sie übersprungen werden.
+
+Updates: `./scripts/update.sh` (git pull → Images neu bauen → `up -d` → Prüfung). Details: [Proxmox-Setup](docs/documentation/installation/proxmox-setup.md), [Update](docs/documentation/installation/update.md).
 
 ---
 
@@ -72,20 +74,34 @@ Das Script erledigt automatisch:
 
 ```bash
 cp .env.example .env
-# .env anpassen (Passwörter, DOMAIN, SMTP optional, VAPID-Keys)
+# Pflicht: APP_SECRET_KEY, JWT_SECRET_KEY, POSTGRES_PASSWORD (je ≥ 24 Zeichen),
+# PRINTER_CREDENTIAL_ENCRYPTION_KEY (Fernet), DOMAIN, APP_BASE_URL, ALLOWED_ORIGINS,
+# TRAEFIK_EMAIL, AGE_RECIPIENT (Backups) – Befehle zum Erzeugen stehen in .env.example
 
-make up          # baut und startet alle Container inkl. Traefik
-make migrate     # ggf. Migrationen manuell anstoßen (läuft automatisch beim Start)
+make up          # baut und startet alle Container inkl. Traefik und Backup
+make verify      # scripts/verify-deployment.sh
+make update      # späteres Update: git pull + Images neu bauen + up -d
 ```
+
+Siehe [Quickstart](docs/documentation/installation/quickstart.md).
 
 #### Entwicklung
 
 ```bash
-cp .env.example .env
-# .env.example zeigt alle benötigten Variablen
-
 make dev         # Backend + DB + Redis + Frontend mit Hot-Reload
 ```
+
+Für die Entwicklung ist keine `.env` nötig (`docker-compose.dev.yml` setzt `APP_ENV=development` und Dev-Zugangsdaten). `.env.example` ist die Produktionsvorlage: Wer sie für die Entwicklung kopiert, setzt `COMPOSE_PROFILES=` leer, sonst startet auch der Backup-Dienst.
+
+#### Pre-commit-Hooks
+
+```bash
+pipx install pre-commit      # oder: pip install pre-commit
+pre-commit install           # ab jetzt vor jedem Commit
+pre-commit run --all-files   # einmalig alles prüfen
+```
+
+`.pre-commit-config.yaml` führt ruff (check + format) für `backend/`, eslint für `frontend/src` (vorher `pnpm install` in `frontend/`), shellcheck für die Shell-Skripte und einen YAML-Check aus. Das sind dieselben Prüfungen wie in der CI.
 
 Danach erreichbar:
 - Frontend: http://localhost:5173
@@ -114,6 +130,9 @@ Danach erreichbar:
 | `make shell-db` | psql in der Datenbank |
 | `make vapid-keys` | VAPID-Schlüsselpaar generieren |
 | `make fernet-key` | Fernet-Key für Drucker-Credentials |
+| `make update` | Update: git pull, Images neu bauen, neu starten, prüfen |
+| `make verify` | Installation prüfen (PASS/WARN/FAIL) |
+| `make backup-now` / `make backup-status` | Backup sofort erstellen / Backup-Status |
 
 ---
 
@@ -202,12 +221,14 @@ Alle Endpunkte unter `/api/`. Swagger UI unter `/api/docs` (nur im Dev-Modus).
 | [docs/documentation/installation/quickstart.md](docs/documentation/installation/quickstart.md) | Schnellstart-Anleitung |
 | [docs/documentation/installation/configuration.md](docs/documentation/installation/configuration.md) | Alle .env-Variablen |
 | [scripts/proxmox-setup.sh](scripts/proxmox-setup.sh) | One-Call Proxmox Installer |
-| [docs/documentation/installation/proxmox-setup.md](docs/documentation/installation/proxmox-setup.md) | Proxmox + Docker Setup (manuell) |
+| [docs/documentation/installation/proxmox-setup.md](docs/documentation/installation/proxmox-setup.md) | Proxmox-Setup: LXC, Skript, Test auf dem eigenen Server |
+| [docs/documentation/installation/update.md](docs/documentation/installation/update.md) | Update und Rollback |
+| [docs/documentation/technical/deployment.md](docs/documentation/technical/deployment.md) | Dienste, Health/Readiness, Deploy-Workflow, Monitoring |
 | [docs/documentation/technical/architecture.md](docs/documentation/technical/architecture.md) | Systemarchitektur |
 | [docs/documentation/technical/database.md](docs/documentation/technical/database.md) | Datenbankschema |
 | [docs/documentation/technical/api-reference.md](docs/documentation/technical/api-reference.md) | API-Referenz |
 | [docs/documentation/technical/plugins.md](docs/documentation/technical/plugins.md) | Statische Modul-Registry |
-| [docs/operations.md](docs/operations.md) | Readiness, Monitoring, Backup und Event-Probelauf |
+| [docs/operations.md](docs/operations.md) | Readiness, Alarme, Backups (außer Haus, Wiederherstellung) und Event-Probelauf |
 | [docs/documentation/user-manual/admin.md](docs/documentation/user-manual/admin.md) | Handbuch: Admin |
 | [docs/documentation/user-manual/juror.md](docs/documentation/user-manual/juror.md) | Handbuch: Juror |
 | [docs/documentation/user-manual/reviewer.md](docs/documentation/user-manual/reviewer.md) | Handbuch: Reviewer |
