@@ -35,7 +35,7 @@ export default function UserDashboard({ season, ranking, teams, announcements, s
       <StatGrid items={statItems} ariaLabel="Saison-Kennzahlen" />
 
       {summary?.juror && <JurorPanel juror={summary.juror} />}
-      {summary?.mentor && <MentorPanel teams={summary.mentor.teams} />}
+      {summary?.mentor && <MentorPanel teams={summary.mentor.teams} modules={summary.modules} />}
       {summary && <UpcomingDeadlines deadlines={summary.deadlines} />}
 
       <SectionCard title="Top-Ranking" id="user-ranking">
