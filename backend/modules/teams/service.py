@@ -1,12 +1,12 @@
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from modules.seasons.lifecycle import DRAFT, ensure_writable
-from modules.teams.models import Team, TeamMember, TeamSeasonRegistration
+from modules.teams.models import Team, TeamMember, TeamSeasonMember, TeamSeasonRegistration
 
 
 async def list_my_teams(db: AsyncSession, user_id: str) -> list[Team]:
@@ -20,18 +20,61 @@ async def list_my_teams(db: AsyncSession, user_id: str) -> list[Team]:
     return list(result.scalars().unique().all())
 
 
+def _like_pattern(text: str) -> str:
+    """Case-insensitive substring pattern with LIKE wildcards escaped."""
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped.lower()}%"
+
+
 async def list_teams(
     db: AsyncSession,
     season_id: str | None = None,
     competition_level_id: str | None = None,
+    *,
+    q: str | None = None,
+    country: str | None = None,
+    status: str | None = None,
+    category: str | None = None,
 ) -> list[Team]:
-    q = select(Team).options(selectinload(Team.members)).order_by(Team.name)
+    """Teams, optionally searched and filtered.
+
+    ``q`` matches name, team number, school and city (case-insensitive
+    substring). ``status`` is ``active`` or ``archived`` (is_active false);
+    ``category`` (the season's team type) needs ``season_id``.
+    """
+    query = select(Team).options(selectinload(Team.members)).order_by(Team.name)
     if season_id:
-        q = q.join(TeamSeasonRegistration).where(TeamSeasonRegistration.season_id == season_id)
+        query = query.join(TeamSeasonRegistration).where(
+            TeamSeasonRegistration.season_id == season_id
+        )
+        if category:
+            query = query.where(TeamSeasonRegistration.category == category)
     if competition_level_id:
-        q = q.where(Team.competition_level_id == competition_level_id)
-    result = await db.execute(q)
+        query = query.where(Team.competition_level_id == competition_level_id)
+    if q and q.strip():
+        pattern = _like_pattern(q.strip())
+        query = query.where(
+            or_(
+                *(
+                    func.lower(column).like(pattern, escape="\\")
+                    for column in (Team.name, Team.team_number, Team.school, Team.city)
+                )
+            )
+        )
+    if country and country.strip():
+        query = query.where(func.upper(Team.country) == country.strip().upper())
+    if status == "active":
+        query = query.where(Team.is_active == True)
+    elif status == "archived":
+        query = query.where(Team.is_active == False)
+    result = await db.execute(query)
     return list(result.scalars().unique().all())
+
+
+async def list_countries(db: AsyncSession) -> list[str]:
+    """Distinct team countries, for the country filter."""
+    result = await db.execute(select(Team.country).distinct().order_by(Team.country))
+    return [c for c in result.scalars().all() if c]
 
 
 async def get_team(db: AsyncSession, team_id: str) -> Team:
@@ -208,6 +251,113 @@ async def list_registrations(
         q = q.where(TeamSeasonRegistration.team_id == team_id)
     result = await db.execute(q)
     return list(result.scalars().all())
+
+
+# ── Season participation details ──────────────────────────────────────────────
+
+
+async def get_season_registration(
+    db: AsyncSession, team_id: str, season_id: str
+) -> TeamSeasonRegistration:
+    result = await db.execute(
+        select(TeamSeasonRegistration).where(
+            TeamSeasonRegistration.team_id == team_id,
+            TeamSeasonRegistration.season_id == season_id,
+        )
+    )
+    reg = result.scalar_one_or_none()
+    if not reg:
+        raise NotFoundError("Team is not registered for this season")
+    return reg
+
+
+async def update_season_registration(
+    db: AsyncSession, team_id: str, season_id: str, changes: dict
+) -> TeamSeasonRegistration:
+    """Apply `changes` (already limited to what the caller may edit)."""
+    reg = await get_season_registration(db, team_id, season_id)
+    await ensure_writable(db, season_id=season_id)
+    if changes.get("competition_level_id"):
+        from modules.seasons.models import CompetitionLevel
+
+        if not await db.get(CompetitionLevel, changes["competition_level_id"]):
+            raise ValidationError("Competition level not found")
+    for key, value in changes.items():
+        setattr(reg, key, value)
+    # Kit shipping only concerns botball teams; an open team has no kit.
+    if reg.category != "botball" and "kit_status" not in changes:
+        reg.kit_status = "not_sent"
+    await db.flush()
+    await db.refresh(reg)
+    return reg
+
+
+async def get_season_roster(db: AsyncSession, team_id: str, season_id: str) -> list[dict]:
+    reg = await get_season_registration(db, team_id, season_id)
+    result = await db.execute(
+        select(TeamSeasonMember, TeamMember)
+        .join(TeamMember, TeamMember.id == TeamSeasonMember.member_id)
+        .where(TeamSeasonMember.registration_id == reg.id)
+        .order_by(TeamMember.name)
+    )
+    return [
+        {
+            "id": entry.id,
+            "member_id": member.id,
+            "name": member.name,
+            "team_role": member.role,
+            "role": entry.role,
+        }
+        for entry, member in result.all()
+    ]
+
+
+async def set_season_roster(
+    db: AsyncSession, team_id: str, season_id: str, entries: list[dict]
+) -> list[dict]:
+    """Replace the season's roster with `entries` ({member_id, role}).
+
+    Every member must belong to the team; listing a member twice is an error.
+    """
+    reg = await get_season_registration(db, team_id, season_id)
+    await ensure_writable(db, season_id=season_id)
+    wanted: dict[str, str | None] = {}
+    for entry in entries:
+        if entry["member_id"] in wanted:
+            raise ValidationError("A member is listed more than once")
+        wanted[entry["member_id"]] = (entry.get("role") or "").strip() or None
+    if wanted:
+        known = set(
+            (
+                await db.execute(
+                    select(TeamMember.id).where(
+                        TeamMember.team_id == team_id, TeamMember.id.in_(list(wanted))
+                    )
+                )
+            ).scalars()
+        )
+        unknown = set(wanted) - known
+        if unknown:
+            raise ValidationError("Only members of this team can be on its season roster")
+
+    existing = {
+        entry.member_id: entry
+        for entry in (
+            await db.execute(
+                select(TeamSeasonMember).where(TeamSeasonMember.registration_id == reg.id)
+            )
+        ).scalars()
+    }
+    for member_id, current in existing.items():
+        if member_id not in wanted:
+            await db.delete(current)
+    for member_id, role in wanted.items():
+        if member_id in existing:
+            existing[member_id].role = role
+        else:
+            db.add(TeamSeasonMember(registration_id=reg.id, member_id=member_id, role=role))
+    await db.flush()
+    return await get_season_roster(db, team_id, season_id)
 
 
 async def get_team_history(db: AsyncSession, team_id: str) -> list[dict]:
