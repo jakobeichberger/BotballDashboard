@@ -61,6 +61,9 @@ coverage.xml
 *.crt
 secrets/
 
+# Written by scripts/update.sh (previous commit + Alembic revision for rollbacks)
+.deploy-state
+
 # Playwright
 frontend/test-results/
 frontend/playwright-report/

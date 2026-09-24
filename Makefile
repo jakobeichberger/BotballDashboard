@@ -1,4 +1,4 @@
-.PHONY: up down dev migrate logs shell-backend shell-db build test lint
+.PHONY: up down dev migrate logs shell-backend shell-db build test lint update verify backup-now backup-status vapid-keys fernet-key
 
 # ── Production ────────────────────────────────────────────────
 up:
@@ -63,7 +63,20 @@ lint-frontend:
 
 # ── Utilities ─────────────────────────────────────────────────
 vapid-keys:
-	docker compose exec backend sh -c "mkdir -p /app/vapid && cd /app/vapid && vapid --gen >/dev/null && printf 'VAPID_PRIVATE_KEY=/app/vapid/private_key.pem\nVAPID_PUBLIC_KEY=' && vapid --applicationServerKey"
+	docker compose exec backend sh -c "mkdir -p /app/vapid && cd /app/vapid && vapid --gen >/dev/null && printf 'VAPID_PRIVATE_KEY=/app/vapid/private_key.pem\nVAPID_PUBLIC_KEY=' && vapid --applicationServerKey | sed -n 's/^Application Server Key = *//p'"
 
 fernet-key:
 	docker compose exec backend python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# ── Operations ────────────────────────────────────────────────
+update:
+	./scripts/update.sh
+
+verify:
+	./scripts/verify-deployment.sh
+
+backup-now:
+	docker compose exec backup python scripts/backup_scheduler.py once
+
+backup-status:
+	docker compose exec backup python scripts/backup_scheduler.py check

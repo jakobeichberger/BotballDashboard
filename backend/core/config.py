@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from cryptography.fernet import Fernet
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
@@ -30,8 +31,9 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 30
 
-    # Email
-    smtp_host: str = "localhost"
+    # Email – an empty SMTP_HOST disables SMTP (SendGrid is still tried when
+    # SENDGRID_API_KEY is set).
+    smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
@@ -45,7 +47,7 @@ class Settings(BaseSettings):
     vapid_public_key: str = ""
     vapid_admin_email: str = "admin@example.com"
 
-    # 3D Print
+    # 3D Print – Fernet key (urlsafe base64 of 32 bytes). Required in production.
     printer_credential_encryption_key: str = ""
 
     # Files
@@ -70,9 +72,20 @@ class Settings(BaseSettings):
                 invalid.append(name)
         if "example.com" in self.app_base_url or "example.com" in self.allowed_origins:
             invalid.extend(["APP_BASE_URL", "ALLOWED_ORIGINS"])
+        if "PRINTER_CREDENTIAL_ENCRYPTION_KEY" not in invalid and not _is_fernet_key(
+            self.printer_credential_encryption_key
+        ):
+            invalid.append("PRINTER_CREDENTIAL_ENCRYPTION_KEY")
         if invalid:
             names = ", ".join(sorted(set(invalid)))
-            raise ValueError(f"Unsafe production configuration: replace {names}")
+            raise ValueError(
+                f"Unsafe production configuration: replace {names}. "
+                "Secrets need at least 24 random characters; generate one with "
+                "`python3 -c 'import secrets; print(secrets.token_urlsafe(32))'`. "
+                "PRINTER_CREDENTIAL_ENCRYPTION_KEY must be a Fernet key: "
+                "`python3 -c 'from cryptography.fernet import Fernet; "
+                "print(Fernet.generate_key().decode())'` (or `make fernet-key`)."
+            )
         return self
 
     @property
@@ -93,6 +106,14 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.app_env == "development"
+
+
+def _is_fernet_key(value: str) -> bool:
+    try:
+        Fernet(value.encode())
+    except (ValueError, TypeError):
+        return False
+    return True
 
 
 @lru_cache

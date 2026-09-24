@@ -1,0 +1,74 @@
+# Prometheus alert rules for BotballDashboard. Delivered through Alertmanager
+# (monitoring/alertmanager/render-config.sh, ALERT_* variables in .env).
+groups:
+  - name: botball-availability
+    rules:
+      - alert: ApiDown
+        expr: up{job="botball-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BotballDashboard API is not reachable"
+          description: "Prometheus cannot scrape backend:8000 for 2 minutes. Check `docker compose ps backend` and `docker compose logs backend`."
+
+      - alert: ReadinessFailing
+        expr: probe_success{job="botball-readiness"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BotballDashboard readiness check fails"
+          description: "/api/system/readiness has not returned 200 for 2 minutes: PostgreSQL, Redis or the Celery worker is unavailable (OCR, push and printer polling stop without the worker)."
+
+      - alert: HighServerErrorRate
+        expr: |
+          (
+            sum(rate(botball_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(botball_http_requests_total[5m]))
+          ) > 0.05
+          and sum(rate(botball_http_requests_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 5 % of API requests fail with 5xx"
+          description: "{{ $value | humanizePercentage }} of API requests returned a 5xx status over the last 5 minutes. Check `docker compose logs backend`."
+
+  - name: botball-backups
+    rules:
+      - alert: BackupFailed
+        expr: botball_backup_last_run_success == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "The last backup run failed"
+          description: "backup.sh failed; it is retried every BACKUP_RETRY_SECONDS (default 1 h). See `docker compose logs backup`."
+
+      - alert: BackupStale
+        expr: time() - botball_backup_last_success_timestamp_seconds > 26 * 3600
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No successful backup for more than 26 hours"
+          description: "The last successful backup is {{ $value | humanizeDuration }} old."
+
+      - alert: BackupNeverSucceeded
+        expr: botball_backup_status_known == 1 unless botball_backup_last_success_timestamp_seconds
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backups have run but none succeeded yet"
+          description: "The backup service has recorded runs but no successful backup. See `docker compose logs backup`."
+
+      - alert: BackupMonitoringDown
+        expr: up{job="botball-backup"} == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup service is not running or not scraped"
+          description: "backup:9101 is unreachable. Is the \"production\" compose profile enabled (COMPOSE_PROFILES=production,monitoring)?"

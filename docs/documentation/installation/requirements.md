@@ -23,21 +23,25 @@
 
 ### Netzwerk
 
-- Öffentlich erreichbare IP oder Domain (für externes Scoreboard)
-- Offene Ports: `80` (HTTP), `443` (HTTPS), optional `22` (SSH)
+- Domain mit DNS-Eintrag auf den Server; Let's Encrypt (TLS-Challenge) braucht Port `443` aus dem Internet
+- Offene Ports: `80` (HTTP → Umleitung), `443` (HTTPS), optional `22` (SSH, nur Verwaltungsnetz)
+- Prometheus (`9090`) und Alertmanager (`9093`) lauschen nur auf `127.0.0.1` (Zugriff per SSH-Tunnel)
 - Interner Zugriff auf Drucker-APIs (gleiche Netzwerk-Segment oder VPN)
 
 ---
 
-## Software-Abhängigkeiten (werden automatisch via Docker installiert)
+## Software-Abhängigkeiten
 
 | Komponente | Version | Zweck |
 |---|---|---|
-| Docker | 24.x+ | Container-Runtime |
-| Docker Compose | 2.x+ | Multi-Container-Orchestrierung |
-| PostgreSQL | 16 | Datenbank (läuft im Container) |
-| Python | 3.11+ | Backend (läuft im Container) |
-| Node.js | 20 LTS | Frontend-Build (läuft im Container) |
+| Docker | 24.x+ | Container-Runtime (Host) |
+| Docker Compose Plugin | 2.20+ | `docker compose`, Profile und `env_file`-Optionen (Host) |
+| PostgreSQL | 16 | Datenbank (Container) |
+| Redis | 7 | Celery-Broker, Rate-Limits (Container) |
+| Python | 3.11 | Backend, Worker, Beat, Backup (Container) |
+| Node.js + pnpm | 20 LTS + pnpm 10.x | Frontend-Build: im Container, auf Proxmox-LXC auf dem Host (das Setup-Skript installiert Node 20 und pnpm 10.29.3) |
+| age | 1.x | Backup-Schlüsselpaar erzeugen (Host, `apt install age`) |
+| Python 3 | 3.9+ | Hilfsskripte des Setups (Host) |
 
 ### Auf dem Host-System manuell installieren
 
@@ -57,7 +61,7 @@ docker compose version
 | Komponente | Version |
 |---|---|
 | Node.js | 20 LTS |
-| pnpm | 8.x+ |
+| pnpm | 10.x (`packageManager` in `frontend/package.json`: 10.29.3, per `corepack enable`) |
 | Python | 3.11+ |
 | Docker + Docker Compose | aktuell |
 | Git | 2.x+ |
@@ -66,6 +70,7 @@ docker compose version
 
 - `poppler-utils` – für OCR-Vorverarbeitung von PDF-Score-Sheets
 - `make` – für vereinfachte Build-Befehle (Makefile vorhanden)
+- `pre-commit` – führt ruff, eslint und shellcheck vor jedem Commit aus (siehe README)
 
 ---
 

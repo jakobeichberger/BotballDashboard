@@ -1,3 +1,18 @@
+# Profiles:
+#   (none)      traefik, db, redis, backend, worker, beat, frontend
+#   production  + backup      (encrypted daily backups, needs AGE_RECIPIENT)
+#   monitoring  + prometheus, blackbox, alertmanager
+# Enable them with COMPOSE_PROFILES in .env (e.g. COMPOSE_PROFILES=production,monitoring)
+# or --profile on the command line.
+
+# Every container logs to json-file with rotation, so a chatty service cannot
+# fill the disk during an event.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: ${LOG_MAX_SIZE:-10m}
+    max-file: "${LOG_MAX_FILE:-5}"
+
 services:
   # ── Reverse Proxy ─────────────────────────────────────────────
   traefik:
@@ -17,13 +32,20 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Certificates: /letsencrypt/acme.json inside the named volume
+      # "letsencrypt" (docker compose exec traefik cat /letsencrypt/acme.json).
       - letsencrypt:/letsencrypt
     restart: unless-stopped
+    logging: *default-logging
 
   # ── Database ──────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
-    command: postgres -c unix_socket_directories=''
+    # Proxmox LXC without nesting cannot create the Unix socket; proxmox-setup.sh
+    # sets POSTGRES_UNIX_SOCKET_DIRECTORIES= (empty = TCP only) and creates the
+    # role/database itself, because the image's init scripts need the socket.
+    # Everywhere else keep the default so a fresh volume is initialised normally.
+    command: postgres -c unix_socket_directories=${POSTGRES_UNIX_SOCKET_DIRECTORIES-/var/run/postgresql}
     env_file:
       - path: .env
         required: false   # optional so dev works without a .env file
@@ -36,6 +58,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-botball} -h localhost"]
       interval: 10s
@@ -48,6 +71,7 @@ services:
     volumes:
       - redisdata:/data
     restart: unless-stopped
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -79,12 +103,21 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`) && !Path(`/api/system/metrics`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=le"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
+    healthcheck:
+      # Liveness only; /api/system/readiness (DB, Redis, worker) is probed by
+      # Prometheus/Blackbox so a missing worker does not restart the API.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/system/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 3m
 
   # ── Background worker (local OCR + printer polling) ───────────
   worker:
@@ -108,6 +141,7 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "celery -A core.celery_app:celery_app inspect ping -d celery@$$HOSTNAME | grep -q pong"]
       interval: 30s
@@ -130,13 +164,19 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
+  # ── Encrypted backups (profile "production") ─────────────────
+  # backup_scheduler.py runs scripts/backup.sh every BACKUP_INTERVAL_SECONDS,
+  # retries a failed run after BACKUP_RETRY_SECONDS, turns the container
+  # unhealthy when the last run failed or is older than BACKUP_MAX_AGE_HOURS
+  # and exposes botball_backup_* metrics on :9101 for Prometheus.
   backup:
     profiles: ["production"]
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["/bin/sh", "-c", "while true; do /app/scripts/backup.sh; sleep 86400; done"]
+    command: ["python", "scripts/backup_scheduler.py", "run"]
     env_file:
       - path: .env
         required: false
@@ -144,6 +184,11 @@ services:
       BACKUP_DIR: /backups
       UPLOAD_DIR: /app/uploads
       AGE_RECIPIENT: ${AGE_RECIPIENT:-}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETRY_SECONDS: ${BACKUP_RETRY_SECONDS:-3600}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-26}
+      BACKUP_METRICS_PORT: 9101
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-botball}
@@ -151,27 +196,75 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-botball}
     volumes:
       - uploads:/app/uploads:ro
-      - backups:/backups
+      # BACKUP_HOST_DIR=/data/backups stores the archives on the host (easy
+      # off-site sync); by default they live in the named volume "backups".
+      - ${BACKUP_HOST_DIR:-backups}:/backups
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "python", "scripts/backup_scheduler.py", "check"]
+      interval: 5m
+      timeout: 30s
+      retries: 1
+      start_period: 30m
 
+  # ── Monitoring (profile "monitoring") ─────────────────────────
+  # Prometheus and Alertmanager listen on 127.0.0.1 only; reach them through
+  # an SSH tunnel (ssh -L 9090:localhost:9090 -L 9093:localhost:9093 host).
   prometheus:
+    profiles: ["monitoring"]
     image: prom/prometheus:v2.54.1
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=30d"]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    ports:
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheusdata:/prometheus
-    depends_on: [backend, blackbox]
+    depends_on: [backend, blackbox, alertmanager]
     restart: unless-stopped
+    logging: *default-logging
 
   blackbox:
+    profiles: ["monitoring"]
     image: prom/blackbox-exporter:v0.25.0
     restart: unless-stopped
+    logging: *default-logging
+
+  # Delivers Prometheus alerts. monitoring/alertmanager/render-config.sh builds
+  # the config from ALERT_WEBHOOK_URL and/or ALERT_EMAIL_TO (SMTP defaults to
+  # the application's SMTP_* settings).
+  alertmanager:
+    profiles: ["monitoring"]
+    image: prom/alertmanager:v0.27.0
+    entrypoint: ["/bin/sh", "/etc/alertmanager/render-config.sh"]
+    environment:
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-}
+      ALERT_EMAIL_FROM: ${ALERT_EMAIL_FROM:-${SMTP_FROM:-}}
+      ALERT_SMTP_SMARTHOST: ${ALERT_SMTP_SMARTHOST:-}
+      ALERT_SMTP_USER: ${ALERT_SMTP_USER:-${SMTP_USER:-}}
+      ALERT_SMTP_PASSWORD: ${ALERT_SMTP_PASSWORD:-${SMTP_PASSWORD:-}}
+      ALERT_SMTP_REQUIRE_TLS: ${ALERT_SMTP_REQUIRE_TLS:-${SMTP_TLS:-true}}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/render-config.sh:/etc/alertmanager/render-config.sh:ro
+      - alertmanagerdata:/alertmanager
+    restart: unless-stopped
+    logging: *default-logging
 
   # ── Frontend ──────────────────────────────────────────────────
-  # dist/ is pre-built on the host by scripts/proxmox-setup.sh before docker compose build
+  # `docker compose build frontend` builds dist/ inside Docker (Dockerfile).
+  # On Proxmox LXC scripts/proxmox-setup.sh and scripts/update.sh build dist/
+  # on the host instead and tag Dockerfile.prebuilt as the same image.
   frontend:
     image: botballdashboard-frontend:local
     build:
@@ -181,6 +274,7 @@ services:
         VITE_API_URL: /api
         VITE_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
     restart: unless-stopped
+    logging: *default-logging
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
@@ -207,3 +301,4 @@ volumes:
   vapid:
   backups:
   prometheusdata:
+  alertmanagerdata:
