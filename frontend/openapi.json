@@ -368,6 +368,76 @@
         }
       }
     },
+    "/api/auth/me/notification-preferences": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Notification Preferences",
+        "operationId": "get_notification_preferences_api_auth_me_notification_preferences_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update Notification Preferences",
+        "operationId": "update_notification_preferences_api_auth_me_notification_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferencesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/auth/me/push-subscriptions": {
       "post": {
         "tags": [
@@ -1922,6 +1992,54 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/{event_id}/modules": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Get Event Modules",
+        "description": "Which modules the event uses \u2014 drives the navigation and route guards.",
+        "operationId": "get_event_modules_api_v1_events__event_id__modules_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventModulesResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -12138,6 +12256,135 @@
         }
       }
     },
+    "/api/dashboard/notifications": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "List Notifications",
+        "description": "The caller's recent notifications (in-app fallback for push).",
+        "operationId": "list_notifications_api_dashboard_notifications_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "unread_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Unread Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/notifications/read": {
+      "post": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Mark Notifications Read",
+        "operationId": "mark_notifications_read_api_dashboard_notifications_read_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationReadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/dashboard/notifications/read-all": {
+      "post": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Mark All Notifications Read",
+        "operationId": "mark_all_notifications_read_api_dashboard_notifications_read_all_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/dashboard/summary": {
       "get": {
         "tags": [
@@ -16062,6 +16309,14 @@
             "type": "string",
             "title": "Event Id"
           },
+          "modules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Modules",
+            "default": []
+          },
           "juror": {
             "anyOf": [
               {
@@ -16513,10 +16768,17 @@
             "default": "draft"
           },
           "active_modules": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Active Modules"
           },
           "public_scoreboard": {
@@ -16565,6 +16827,52 @@
           "slug"
         ],
         "title": "EventCreate"
+      },
+      "EventModulesResponse": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "available_modules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Modules"
+          },
+          "active_modules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Active Modules"
+          },
+          "effective_modules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Effective Modules"
+          },
+          "season_flags": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Season Flags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "available_modules",
+          "active_modules",
+          "effective_modules",
+          "season_flags"
+        ],
+        "title": "EventModulesResponse",
+        "description": "Module switches of one event, resolved against its season."
       },
       "EventPhaseCreate": {
         "properties": {
@@ -18848,6 +19156,17 @@
             ],
             "title": "Confirmed At"
           },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -19309,6 +19628,225 @@
           "latest_scores"
         ],
         "title": "MentorTeam"
+      },
+      "NotificationItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "read": {
+            "type": "boolean",
+            "title": "Read"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "event_type",
+          "category",
+          "title",
+          "body",
+          "url",
+          "created_at",
+          "read"
+        ],
+        "title": "NotificationItem"
+      },
+      "NotificationList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "unread"
+        ],
+        "title": "NotificationList"
+      },
+      "NotificationPreferences": {
+        "properties": {
+          "match_soon": {
+            "type": "boolean",
+            "title": "Match Soon",
+            "default": true
+          },
+          "score_corrected": {
+            "type": "boolean",
+            "title": "Score Corrected",
+            "default": true
+          },
+          "deadlines": {
+            "type": "boolean",
+            "title": "Deadlines",
+            "default": true
+          },
+          "paper_status": {
+            "type": "boolean",
+            "title": "Paper Status",
+            "default": true
+          },
+          "print_status": {
+            "type": "boolean",
+            "title": "Print Status",
+            "default": true
+          },
+          "announcements": {
+            "type": "boolean",
+            "title": "Announcements",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "NotificationPreferences",
+        "description": "Push delivery per notification category (see modules.dashboard.notifications)."
+      },
+      "NotificationPreferencesUpdate": {
+        "properties": {
+          "match_soon": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Soon"
+          },
+          "score_corrected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Corrected"
+          },
+          "deadlines": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadlines"
+          },
+          "paper_status": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Status"
+          },
+          "print_status": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Print Status"
+          },
+          "announcements": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Announcements"
+          }
+        },
+        "type": "object",
+        "title": "NotificationPreferencesUpdate"
+      },
+      "NotificationReadRequest": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "title": "NotificationReadRequest"
       },
       "OcrAnchor": {
         "properties": {

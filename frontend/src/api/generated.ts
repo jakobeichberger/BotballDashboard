@@ -168,6 +168,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/me/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notification Preferences */
+        get: operations["get_notification_preferences_api_auth_me_notification_preferences_get"];
+        /** Update Notification Preferences */
+        put: operations["update_notification_preferences_api_auth_me_notification_preferences_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me/push-subscriptions": {
         parameters: {
             query?: never;
@@ -551,6 +569,26 @@ export interface paths {
         head?: never;
         /** Update Event */
         patch: operations["update_event_api_v1_events__event_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Event Modules
+         * @description Which modules the event uses — drives the navigation and route guards.
+         */
+        get: operations["get_event_modules_api_v1_events__event_id__modules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/events/{event_id}/registrations": {
@@ -2979,6 +3017,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notifications
+         * @description The caller's recent notifications (in-app fallback for push).
+         */
+        get: operations["list_notifications_api_dashboard_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Notifications Read */
+        post: operations["mark_notifications_read_api_dashboard_notifications_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark All Notifications Read */
+        post: operations["mark_all_notifications_read_api_dashboard_notifications_read_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/summary": {
         parameters: {
             query?: never;
@@ -4238,6 +4330,11 @@ export interface components {
         DashboardSummary: {
             /** Event Id */
             event_id: string;
+            /**
+             * Modules
+             * @default []
+             */
+            modules: string[];
             juror: components["schemas"]["JurorSection"] | null;
             mentor: components["schemas"]["MentorSection"] | null;
             admin: components["schemas"]["AdminSection"] | null;
@@ -4357,7 +4454,7 @@ export interface components {
              */
             status: "draft" | "published" | "live" | "completed" | "archived";
             /** Active Modules */
-            active_modules?: string[];
+            active_modules?: string[] | null;
             /**
              * Public Scoreboard
              * @default false
@@ -4385,6 +4482,24 @@ export interface components {
             table_count: number;
             /** Notes */
             notes?: string | null;
+        };
+        /**
+         * EventModulesResponse
+         * @description Module switches of one event, resolved against its season.
+         */
+        EventModulesResponse: {
+            /** Event Id */
+            event_id: string;
+            /** Available Modules */
+            available_modules: string[];
+            /** Active Modules */
+            active_modules: string[];
+            /** Effective Modules */
+            effective_modules: string[];
+            /** Season Flags */
+            season_flags: {
+                [key: string]: boolean;
+            };
         };
         /** EventPhaseCreate */
         EventPhaseCreate: {
@@ -5109,6 +5224,8 @@ export interface components {
             confirmed_by: string | null;
             /** Confirmed At */
             confirmed_at: string | null;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -5237,6 +5354,93 @@ export interface components {
             print_jobs: components["schemas"]["MentorPrintJobs"];
             /** Latest Scores */
             latest_scores: components["schemas"]["MentorScore"][];
+        };
+        /** NotificationItem */
+        NotificationItem: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string | null;
+            /** Event Type */
+            event_type: string;
+            /** Category */
+            category: string | null;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Url */
+            url: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Read */
+            read: boolean;
+        };
+        /** NotificationList */
+        NotificationList: {
+            /** Items */
+            items: components["schemas"]["NotificationItem"][];
+            /** Unread */
+            unread: number;
+        };
+        /**
+         * NotificationPreferences
+         * @description Push delivery per notification category (see modules.dashboard.notifications).
+         */
+        NotificationPreferences: {
+            /**
+             * Match Soon
+             * @default true
+             */
+            match_soon: boolean;
+            /**
+             * Score Corrected
+             * @default true
+             */
+            score_corrected: boolean;
+            /**
+             * Deadlines
+             * @default true
+             */
+            deadlines: boolean;
+            /**
+             * Paper Status
+             * @default true
+             */
+            paper_status: boolean;
+            /**
+             * Print Status
+             * @default true
+             */
+            print_status: boolean;
+            /**
+             * Announcements
+             * @default true
+             */
+            announcements: boolean;
+        };
+        /** NotificationPreferencesUpdate */
+        NotificationPreferencesUpdate: {
+            /** Match Soon */
+            match_soon?: boolean | null;
+            /** Score Corrected */
+            score_corrected?: boolean | null;
+            /** Deadlines */
+            deadlines?: boolean | null;
+            /** Paper Status */
+            paper_status?: boolean | null;
+            /** Print Status */
+            print_status?: boolean | null;
+            /** Announcements */
+            announcements?: boolean | null;
+        };
+        /** NotificationReadRequest */
+        NotificationReadRequest: {
+            /** Ids */
+            ids?: string[];
         };
         /** OcrAnchor */
         OcrAnchor: {
@@ -8363,6 +8567,59 @@ export interface operations {
             };
         };
     };
+    get_notification_preferences_api_auth_me_notification_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferences"];
+                };
+            };
+        };
+    };
+    update_notification_preferences_api_auth_me_notification_preferences_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationPreferencesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferences"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     subscribe_push_api_auth_me_push_subscriptions_post: {
         parameters: {
             query?: never;
@@ -9384,6 +9641,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_modules_api_v1_events__event_id__modules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventModulesResponse"];
                 };
             };
             /** @description Validation Error */
@@ -15085,6 +15373,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notifications_api_dashboard_notifications_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                unread_only?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_notifications_read_api_dashboard_notifications_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationReadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_all_notifications_read_api_dashboard_notifications_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
