@@ -9,24 +9,36 @@ from core.celery_app import celery_app
 from core.database import AsyncSessionLocal
 from core.live import publish_live_event
 from core.notifications import send_push_notification
-from modules.auth.models import PushSubscription
+from modules.auth.models import PushSubscription, User
 from modules.dashboard.models import NotificationEvent
+from modules.dashboard.notifications import category_of, recipients_of, wants_push
 
 
-def push_targets(payload: dict, subscriptions: list) -> list:
+def push_targets(
+    payload: dict,
+    subscriptions: list,
+    *,
+    event_type: str = "",
+    preferences: dict[str, dict] | None = None,
+) -> list:
     """Subscriptions a notification may be pushed to.
 
     Recipients are opt-in: `userId` / `userIds` address specific users, and only
     an explicit `broadcast` reaches every subscriber. An event without either
     (it used to go to everyone) is pushed to no one — paper decisions and other
     team-internal news must not reach all users of all events.
+
+    `preferences` maps user id → that user's notification preferences; users
+    who muted the event's category are skipped.
     """
     if payload.get("broadcast"):
-        return list(subscriptions)
-    user_ids = set(payload.get("userIds") or [])
-    if payload.get("userId"):
-        user_ids.add(payload["userId"])
-    return [s for s in subscriptions if s.user_id in user_ids]
+        addressed = list(subscriptions)
+    else:
+        user_ids = recipients_of(payload)
+        addressed = [s for s in subscriptions if s.user_id in user_ids]
+    category = category_of(event_type, payload)
+    prefs = preferences or {}
+    return [s for s in addressed if wants_push(prefs.get(s.user_id), category)]
 
 
 @celery_app.task(name="notifications.deliver_outbox")
@@ -44,6 +56,14 @@ def deliver_outbox() -> None:
                 ).scalars()
             )
             subscriptions = list((await db.execute(select(PushSubscription))).scalars())
+            preferences = {
+                user_id: prefs
+                for user_id, prefs in await db.execute(
+                    select(User.id, User.notification_preferences).where(
+                        User.id.in_({s.user_id for s in subscriptions})
+                    )
+                )
+            }
             for item in items:
                 item.attempts += 1
                 try:
@@ -51,7 +71,12 @@ def deliver_outbox() -> None:
                         await publish_live_event(item.event_id, item.event_type, item.payload)
                     title = item.payload.get("title") or item.event_type.replace("_", " ").title()
                     body = item.payload.get("message") or item.payload.get("body") or ""
-                    targets = push_targets(item.payload, subscriptions)
+                    targets = push_targets(
+                        item.payload,
+                        subscriptions,
+                        event_type=item.event_type,
+                        preferences=preferences,
+                    )
                     if body and targets:
                         await asyncio.gather(
                             *(

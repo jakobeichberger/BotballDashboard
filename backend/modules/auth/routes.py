@@ -12,6 +12,8 @@ from modules.auth.schemas import (
     CurrentUserResponse,
     LoginRequest,
     MeUpdate,
+    NotificationPreferences,
+    NotificationPreferencesUpdate,
     PermissionResponse,
     PushSubscriptionCreate,
     RoleCreate,
@@ -23,6 +25,7 @@ from modules.auth.schemas import (
     UserResponse,
     UserUpdate,
 )
+from modules.dashboard.notifications import normalize_preferences
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -155,6 +158,30 @@ async def change_password(
         max_age=settings.jwt_refresh_token_expire_days * 86400,
         path="/api/auth",
     )
+
+
+# ── Notification preferences ──────────────────────────────────────────────────
+
+
+@router.get("/me/notification-preferences", response_model=NotificationPreferences)
+async def get_notification_preferences(current_user=Depends(get_current_user)):
+    return normalize_preferences(current_user.notification_preferences)
+
+
+@router.put("/me/notification-preferences", response_model=NotificationPreferences)
+async def update_notification_preferences(
+    body: NotificationPreferencesUpdate,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    merged = {
+        **normalize_preferences(current_user.notification_preferences),
+        **body.model_dump(exclude_none=True),
+    }
+    # Reassign (not mutate) so SQLAlchemy notices the JSON change.
+    current_user.notification_preferences = merged
+    await db.flush()
+    return merged
 
 
 # ── Push subscriptions ────────────────────────────────────────────────────────
