@@ -37,7 +37,7 @@
   "logout": "Abmelden",
   "changeLanguage": "Sprache wechseln",
   "changeTheme": "Design wechseln",
-  "offlineReadOnly": "Keine Verbindung – Änderungen sind bis zur Wiederverbindung gesperrt.",
+  "offlineReadOnly": "Keine Verbindung – Wertungen werden lokal gespeichert, alle anderen Änderungen sind bis zur Wiederverbindung gesperrt.",
   "nav": {
     "dashboard": "Dashboard",
     "teams": "Teams",
@@ -48,5 +48,14 @@
     "users": "Benutzer",
     "seasons": "Saisons",
     "bots": "Bot-Galerie"
-  }
+  },
+  "pendingSync": "{{count}} Wertung(en) warten auf Synchronisierung",
+  "syncFailed": "{{count}} Wertung(en) konnten nicht synchronisiert werden",
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "empty": "Keine Benachrichtigungen",
+    "markAllRead": "Alle als gelesen markieren",
+    "open": "Benachrichtigungen öffnen ({{count}} ungelesen)"
+  },
+  "moduleDisabled": "Dieses Modul ist für dieses Event nicht aktiv."
 }

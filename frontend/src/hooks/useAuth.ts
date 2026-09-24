@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { clearApiCache } from "@/lib/offlineCache";
 import { api, restoreAccessToken } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import i18n from "@/i18n/config";
@@ -51,6 +52,8 @@ export function useLogout() {
       await api.post("/auth/logout");
     } finally {
       logout();
+      // Offline copies of API data belong to this user; don't leave them behind.
+      await clearApiCache();
     }
   };
 }
