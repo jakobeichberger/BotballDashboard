@@ -105,8 +105,11 @@ class ReviewFeedback(BaseModel):
 
 
 class ReviewResponse(ReviewFeedback):
+    """Full review: for organizers and the reviewer who wrote it."""
+
     paper_id: str
     reviewer_id: str
+    private_notes: str | None
     is_submitted: bool
     created_at: datetime
 

@@ -1,5 +1,6 @@
 import { FileText, Clock, CheckCircle2 } from "lucide-react";
 import { StatGrid, SectionCard, ReviewQueue, AnnouncementsList } from "./widgets";
+import { OPEN_REVIEW_STATUSES } from "@/modules/papers/paperMeta";
 
 interface Props {
   papers?: Array<any>;
@@ -7,13 +8,15 @@ interface Props {
   announcements?: Array<any>;
 }
 
-/** Statuses that still need reviewer attention. */
-const OPEN_STATUSES = new Set(["submitted", "under_review", "revision_requested"]);
+/** Final verdicts: nothing left for reviewers to do. */
+const DONE_STATUSES = new Set(["accepted", "rejected", "disqualified_ai"]);
 
 export default function ReviewerDashboard({ papers, season, announcements }: Props) {
   const all = papers ?? [];
-  const queue = all.filter((p) => OPEN_STATUSES.has(p.status));
-  const done = all.filter((p) => p.status === "accepted" || p.status === "rejected");
+  // A paper sent back for revision waits for the team, not the reviewer; it
+  // re-enters the queue as "resubmitted".
+  const queue = all.filter((p) => OPEN_REVIEW_STATUSES.has(p.status));
+  const done = all.filter((p) => DONE_STATUSES.has(p.status));
 
   const statItems = [
     { label: "Zu begutachten", value: queue.length, icon: Clock },
