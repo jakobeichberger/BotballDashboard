@@ -98,6 +98,19 @@ describe("BracketView", () => {
     expect(within(screen.getByTestId("bracket-match-2-L1-1")).queryAllByRole("button")).toHaveLength(0);
   });
 
+  it("names the tie-breaker that ordered a shared placement", () => {
+    const shared: BracketPhase = {
+      ...phase,
+      placements: [
+        { team_id: "c", team_name: "Team c", team_number: null, rank: 5, placement: 5, decided_by: "Most full cups" },
+        { team_id: "d", team_name: "Team d", team_number: null, rank: 5, placement: 6, decided_by: null },
+      ],
+    };
+    render(<BracketView phases={[shared]} />);
+    expect(screen.getAllByText("5.")).toHaveLength(2);
+    expect(screen.getByText("(Most full cups)")).toBeInTheDocument();
+  });
+
   it("renders nothing without elimination phases", () => {
     const { container } = render(<BracketView phases={[]} />);
     expect(container).toBeEmptyDOMElement();

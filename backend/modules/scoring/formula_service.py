@@ -276,7 +276,9 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
     seed_runs: dict[str, list[float]] = {t: [] for t in team_ids}
     double_seed_runs: dict[str, list[float]] = {t: [] for t in team_ids}
     matches = await db.execute(
-        select_matches_with_kind(Match.team_id, Match.total_score, Match.is_disqualified)
+        select_matches_with_kind(
+            Match.team_id, Match.total_score, Match.is_disqualified, Match.round_lost
+        )
         .where(
             Match.event_id == event_id,
             Match.team_id.in_(team_ids),
@@ -285,11 +287,13 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
         )
         .order_by(Match.round_number, Match.created_at)
     )
-    for team_id, total, disqualified, kind in matches.all():
+    # total_score already carries the end-contact bonus and is 0 for a lost
+    # round; official_run_score applies the DQ / lost-round = 0 rule on top.
+    for team_id, total, disqualified, round_lost, kind in matches.all():
         if kind == SEEDING:
-            seed_runs[team_id].append(official_run_score(total, disqualified))
+            seed_runs[team_id].append(official_run_score(total, disqualified, round_lost))
         elif kind == DOUBLE_SEEDING:
-            double_seed_runs[team_id].append(official_run_score(total, disqualified))
+            double_seed_runs[team_id].append(official_run_score(total, disqualified, round_lost))
     red_carded = await red_carded_teams(db, event_id)
 
     de_by_team: dict[str, DEResult] = {}

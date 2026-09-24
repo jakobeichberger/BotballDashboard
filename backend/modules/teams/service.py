@@ -201,6 +201,11 @@ async def register_for_season(
     await ensure_writable(db, season_id=season_id)
     if enforce_window and not registration_window_open(season):
         raise ConflictError("Registration for this season is closed")
+    if kwargs.get("competition_level_id"):
+        from modules.scoring.extras_service import assert_qualified
+
+        # A qualifying level (GCER) also needs the qualification, window or not.
+        await assert_qualified(db, season_id, team_id, kwargs["competition_level_id"])
 
     existing = await db.execute(
         select(TeamSeasonRegistration).where(
@@ -282,6 +287,10 @@ async def update_season_registration(
 
         if not await db.get(CompetitionLevel, changes["competition_level_id"]):
             raise ValidationError("Competition level not found")
+        if changes["competition_level_id"] != reg.competition_level_id:
+            from modules.scoring.extras_service import assert_qualified
+
+            await assert_qualified(db, season_id, team_id, changes["competition_level_id"])
     for key, value in changes.items():
         setattr(reg, key, value)
     # Kit shipping only concerns botball teams; an open team has no kit.

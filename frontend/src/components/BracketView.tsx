@@ -66,6 +66,8 @@ export default function BracketView({ phases, dark, onPickWinner, disabled }: Br
                   <li key={placement.team_id} className="flex gap-2">
                     <span className="w-8 font-bold">{placement.rank}.</span>
                     <span>{placement.team_name}</span>
+                    {/* Shared placements are listed in tie-breaker order; name what decided it. */}
+                    {placement.decided_by && <span className="text-xs opacity-60">({placement.decided_by})</span>}
                   </li>
                 ))}
               </ol>

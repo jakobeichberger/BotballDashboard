@@ -5,7 +5,10 @@ import { Plus, Settings } from "lucide-react";
 import { api } from "@/lib/api";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
-import type { EventPhase, EventRegistration, ScoringField, ScoringSchema } from "@/api/types";
+import type { EventPhase, EventRegistration, ScoringSchema } from "@/api/types";
+import SchemaEditor from "@/modules/scoring/sheet/SchemaEditor";
+import SeasonRulesEditor from "@/modules/scoring/extras/SeasonRulesEditor";
+import QualificationPanel from "@/modules/scoring/extras/QualificationPanel";
 
 export default function EventSetupPage() {
   const { eventId } = useParams();
@@ -24,16 +27,13 @@ export default function EventSetupPage() {
   const [phase, setPhase] = useState({ name: "", phase_type: "seeding", rounds: 3 });
   const [teamId, setTeamId] = useState("");
   const [teamCategory, setTeamCategory] = useState("botball");
-  const [schemaJson, setSchemaJson] = useState("[]");
   const [announcement, setAnnouncement] = useState({ title: "", body: "" });
   const [message, setMessage] = useState("");
   useEffect(() => { if (event) setForm((current) => ({ ...current, ...event, venue: event.venue ?? "" })); }, [event]);
-  useEffect(() => { if (schema.data) setSchemaJson(JSON.stringify(schema.data.fields, null, 2)); }, [schema.data]);
   const saveEvent = useMutation({ mutationFn: async () => eventId ? api.patch(`/v1/events/${eventId}`, form) : api.post("/v1/events", form), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["events"] }); setMessage("Event gespeichert."); if (!eventId) navigate(`/events/${data.id}/settings`, { replace: true }); }, onError: (error: any) => setMessage(error.response?.data?.detail ?? "Event konnte nicht gespeichert werden.") });
   const createSeason = useMutation({ mutationFn: async () => api.post("/seasons", { ...newSeason, is_active: true, create_default_event: false }), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["seasons"] }); setForm((current) => ({ ...current, season_id: data.id })); setMessage("Saison wurde angelegt und ausgewählt."); } });
   const addPhase = useMutation({ mutationFn: async () => api.post(`/v1/events/${eventId}/phases`, { ...phase, sort_order: phases.data?.length ?? 0 }), onSuccess: () => { setPhase({ name: "", phase_type: "seeding", rounds: 3 }); queryClient.invalidateQueries({ queryKey: ["event-phases", eventId] }); } });
   const addTeam = useMutation({ mutationFn: async () => api.post(`/v1/events/${eventId}/registrations`, { team_id: teamId, category: teamCategory }), onSuccess: () => { setTeamId(""); queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] }); } });
-  const saveSchema = useMutation({ mutationFn: async () => { const fields = JSON.parse(schemaJson) as ScoringField[]; return api.post(`/v1/events/${eventId}/scoring-schema/versions`, { fields, activate: true }); }, onSuccess: () => { setMessage("Neue Scoring-Schema-Version wurde aktiviert."); queryClient.invalidateQueries({ queryKey: ["event-schema", eventId] }); }, onError: (error: any) => setMessage(error instanceof SyntaxError ? "Schema-JSON ist ungültig." : error.response?.data?.detail ?? "Schema konnte nicht gespeichert werden.") });
   const publishAnnouncement = useMutation({ mutationFn: async () => { const created = await api.post("/dashboard/announcements", { ...announcement, season_id: event?.season_id, event_id: eventId, audience: "all" }); return api.put(`/dashboard/announcements/${created.data.id}/publish`); }, onSuccess: () => { setAnnouncement({ title: "", body: "" }); queryClient.invalidateQueries({ queryKey: ["announcements", eventId] }); } });
   return (
     <div className="mx-auto max-w-6xl p-4 md:p-6"><h1 className="mb-6 flex items-center gap-2 text-2xl font-bold"><Settings />{eventId ? "Event-Verwaltung" : "Erstes Event einrichten"}</h1>
@@ -54,7 +54,9 @@ export default function EventSetupPage() {
       {eventId && <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className="card p-5"><h2 className="mb-4 text-lg font-semibold">Phasen</h2><ul className="mb-4 space-y-2">{phases.data?.map((item) => <li key={item.id} className="rounded bg-gray-50 p-2 text-sm dark:bg-gray-800">{item.sort_order + 1}. {item.name} · {item.phase_type}</li>)}</ul><form className="grid gap-2 sm:grid-cols-[1fr_1fr_5rem_auto]" onSubmit={(e) => { e.preventDefault(); addPhase.mutate(); }}><input required className="input" placeholder="Phasenname" value={phase.name} onChange={(e) => setPhase({ ...phase, name: e.target.value })} /><select className="input" value={phase.phase_type} onChange={(e) => setPhase({ ...phase, phase_type: e.target.value })}>{["seeding", "double_seeding", "double_elimination", "alliance", "final"].map((type) => <option key={type}>{type}</option>)}</select><input className="input" type="number" min={1} value={phase.rounds} onChange={(e) => setPhase({ ...phase, rounds: Number(e.target.value) })} /><button className="btn-secondary" aria-label="Phase hinzufügen"><Plus /></button></form></section>
         <section className="card p-5"><h2 className="mb-4 text-lg font-semibold">Teams ({registrations.data?.length ?? 0})</h2><form className="grid gap-2 sm:grid-cols-[1fr_8rem_auto]" onSubmit={(e) => { e.preventDefault(); addTeam.mutate(); }}><select required className="input min-w-0" value={teamId} onChange={(e) => setTeamId(e.target.value)}><option value="">Team registrieren</option>{teams.data?.filter((team) => !registrations.data?.some((item) => item.team_id === team.id)).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select><select className="input" value={teamCategory} onChange={(e) => setTeamCategory(e.target.value)}>{["botball", "open", "aerial", "jbc"].map((category) => <option key={category}>{category}</option>)}</select><button className="btn-secondary" aria-label="Team registrieren"><Plus /></button></form><ul className="mt-4 max-h-52 space-y-1 overflow-auto text-sm">{registrations.data?.map((item) => <li key={item.id}>{item.team_name} · {item.category}</li>)}</ul></section>
-        <section className="card p-5 lg:col-span-2"><h2 className="mb-2 text-lg font-semibold">Versioniertes Scoring-Schema</h2><p className="mb-3 text-sm text-gray-500">Felder als JSON-Liste. Speichern erzeugt eine neue aktive Version; bestehende Matches behalten ihren Snapshot.</p><textarea className="input min-h-64 w-full font-mono text-xs" value={schemaJson} onChange={(e) => setSchemaJson(e.target.value)} /><button className="btn-primary mt-3" onClick={() => saveSchema.mutate()}>Neue Version aktivieren</button></section>
+        <SchemaEditor eventId={eventId} schema={schema.data} onMessage={setMessage} />
+        {event?.season_id && <SeasonRulesEditor seasonId={event.season_id} onMessage={setMessage} />}
+        {event?.season_id && <QualificationPanel eventId={eventId} seasonId={event.season_id} onMessage={setMessage} />}
         {canPublishAnnouncements && <section className="card p-5 lg:col-span-2"><h2 className="mb-3 text-lg font-semibold">Öffentliche Ankündigungen</h2><div className="mb-4 space-y-2">{announcements.data?.map((item) => <article key={item.id} className="rounded border p-3"><h3 className="font-semibold">{item.title}</h3><p className="text-sm text-gray-600 dark:text-gray-300">{item.body}</p></article>)}</div><form className="grid gap-2 md:grid-cols-[1fr_2fr_auto]" onSubmit={(e) => { e.preventDefault(); publishAnnouncement.mutate(); }}><input required className="input" placeholder="Titel" value={announcement.title} onChange={(e) => setAnnouncement({ ...announcement, title: e.target.value })} /><textarea required className="input" placeholder="Nachricht" value={announcement.body} onChange={(e) => setAnnouncement({ ...announcement, body: e.target.value })} /><button className="btn-primary" disabled={publishAnnouncement.isPending}>Veröffentlichen</button></form></section>}
       </div>}
     </div>

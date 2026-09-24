@@ -137,12 +137,16 @@ class CompetitionLevelResponse(BaseModel):
     code: str
     description: str | None
     is_active: bool
+    order: int = 0
+    qualifies_from_level_id: str | None = None
 
 
 class CompetitionLevelCreate(BaseModel):
     name: str
     code: str
     description: str | None = None
+    order: int = Field(default=0, ge=0, le=100)
+    qualifies_from_level_id: str | None = None
 
 
 class CompetitionLevelUpdate(BaseModel):
@@ -150,6 +154,9 @@ class CompetitionLevelUpdate(BaseModel):
     code: str | None = None
     description: str | None = None
     is_active: bool | None = None
+    order: int | None = Field(default=None, ge=0, le=100)
+    # Explicit null clears the qualification source.
+    qualifies_from_level_id: str | None = None
 
 
 class SeasonEventCreate(BaseModel):

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from modules.scoring.sheet_schemas import SheetDefinition
+
 EventStatus = Literal["draft", "published", "live", "completed", "archived"]
 PhaseType = Literal["seeding", "double_seeding", "double_elimination", "alliance", "final"]
 PhaseStatus = Literal["draft", "scheduled", "live", "completed"]
@@ -252,7 +254,11 @@ class BracketPlacement(BaseModel):
     team_id: str
     team_name: str
     team_number: str | None
+    # Bracket placement, shared by teams knocked out in the same round.
     rank: int
+    # The same order with ties broken by the season's tie-breakers / seeding rank.
+    placement: int | None = None
+    decided_by: str | None = None
 
 
 class BracketPhaseResponse(BaseModel):
@@ -310,6 +316,13 @@ class EventScoreCreate(BaseModel):
     round_number: int = Field(default=1, ge=1)
     table_number: int | None = Field(default=None, ge=1)
     raw_scores: dict = Field(default_factory=dict)
+    # Special round conditions (game review "Tie Breakers & Special Scoring
+    # Conditions"): lose the round → 0 points; end-of-game contact → the
+    # opponent of a head-to-head match receives 25 % of this team's score.
+    round_lost: bool = False
+    round_lost_reason: Literal["never_left_start_box", "motors_running", "other"] | None = None
+    end_contact: bool = False
+    tiebreak_values: dict[str, float | bool | None] = Field(default_factory=dict)
     notes: str | None = None
     idempotency_key: str = Field(min_length=8, max_length=100)
 
@@ -336,9 +349,20 @@ class ScoringFieldDefinition(BaseModel):
 
 
 class ScoringSchemaVersionCreate(BaseModel):
+    """A flat field list, or a structured sheet (`definition`, see scoring.sheet)."""
+
     competition_level_id: str | None = None
-    fields: list[ScoringFieldDefinition] = Field(min_length=1)
+    fields: list[ScoringFieldDefinition] = Field(default_factory=list)
+    definition: SheetDefinition | None = None
     activate: bool = True
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "ScoringSchemaVersionCreate":
+        if self.definition is None and not self.fields:
+            raise ValueError("Either fields or a structured definition is required")
+        if self.definition is not None and self.fields:
+            raise ValueError("Send either fields or a definition, not both")
+        return self
 
 
 class ScoringSchemaResponse(BaseModel):
@@ -349,6 +373,7 @@ class ScoringSchemaResponse(BaseModel):
     event_id: str | None
     competition_level_id: str | None
     fields: list[dict]
+    definition: dict | None = None
     version: int
     is_active: bool
     created_at: datetime

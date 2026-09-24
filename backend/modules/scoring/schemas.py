@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -14,6 +15,13 @@ class MatchCreate(BaseModel):
     round_number: int = 1
     table_number: int | None = None
     raw_scores: dict = Field(default_factory=dict)
+    # Special round conditions (game review "Tie Breakers & Special Scoring
+    # Conditions"): lose the round → 0 points; end-of-game contact → the
+    # opponent of a head-to-head match receives 25 % of this team's score.
+    round_lost: bool = False
+    round_lost_reason: Literal["never_left_start_box", "motors_running", "other"] | None = None
+    end_contact: bool = False
+    tiebreak_values: dict[str, float | bool | None] = Field(default_factory=dict)
     is_practice: bool = False
     notes: str | None = None
     idempotency_key: str | None = Field(default=None, min_length=8, max_length=100)
@@ -26,6 +34,10 @@ class MatchUpdate(BaseModel):
     # validate_raw_scores and write an arbitrary score into the ranking.
     raw_scores: dict | None = None
     is_disqualified: bool | None = None
+    round_lost: bool | None = None
+    round_lost_reason: Literal["never_left_start_box", "motors_running", "other"] | None = None
+    end_contact: bool | None = None
+    tiebreak_values: dict[str, float | bool | None] | None = None
     yellow_card: bool | None = None
     red_card: bool | None = None
     notes: str | None = None
@@ -38,8 +50,10 @@ class ScoringSchemaResponse(BaseModel):
 
     id: str
     season_id: str
+    event_id: str | None = None
     competition_level_id: str | None
     fields: list
+    definition: dict | None = None
     version: int
     is_active: bool
 
@@ -58,6 +72,13 @@ class MatchResponse(BaseModel):
     table_number: int | None
     raw_scores: dict
     total_score: float
+    sheet_score: float = 0.0
+    bonus_score: float = 0.0
+    round_lost: bool = False
+    round_lost_reason: str | None = None
+    end_contact: bool = False
+    tiebreak_values: dict = Field(default_factory=dict)
+    checklist: dict | None = None
     is_disqualified: bool
     is_practice: bool
     yellow_card: bool
@@ -84,7 +105,14 @@ class RankingResponse(BaseModel):
     best_score: float
     average_score: float
     rounds_played: int
+    tiebreaker: str | None = None
     updated_at: datetime
+
+
+class MatchConfirm(BaseModel):
+    """Referee checklist ticked by the juror, {item_key: checked}."""
+
+    checklist: dict[str, bool] = Field(default_factory=dict)
 
 
 class ScoreBulkEntry(BaseModel):

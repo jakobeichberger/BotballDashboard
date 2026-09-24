@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import { EventLink } from "@/components/EventLink";
 import { Medal, ArrowLeft, Save } from "lucide-react";
+import DEPlacementPanel from "@/modules/scoring/extras/DEPlacementPanel";
 
 interface DEEntry {
   id?: string;
@@ -23,7 +24,7 @@ interface Team {
 export default function DEPage() {
   const queryClient = useQueryClient();
   // Results belong to the event of the current route, not the season's first event.
-  const { base } = useScoringScope();
+  const { base, eventId } = useScoringScope();
 
   const { data: existing } = useQuery<DEEntry[]>({
     queryKey: ["de-results", base],
@@ -187,6 +188,7 @@ export default function DEPage() {
           </tbody>
         </table>
       </div>
+      {eventId && <DEPlacementPanel eventId={eventId} />}
     </div>
   );
 }
