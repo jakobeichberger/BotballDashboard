@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import get_current_user, permissions_of, require_permission
 from core.database import get_db
 from core.domain_events import emit_event
-from core.exceptions import ForbiddenError
+from core.exceptions import ForbiddenError, NotFoundError
+from core.live import publish_after_commit
 from modules.dashboard.models import Announcement
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -79,14 +80,15 @@ async def publish_announcement(
     _=Depends(require_permission("dashboard:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Announcement).where(Announcement.id == ann_id))
-    ann = result.scalar_one_or_none()
-    if not ann:
-        from core.exceptions import NotFoundError
-
-        raise NotFoundError("Announcement not found")
+    ann = await _get_announcement(db, ann_id)
     ann.is_published = True
     ann.published_at = datetime.now(UTC)
+    # Only announcements meant for everyone go to the public live stream and
+    # to every push subscriber; audience-restricted ones stay on the
+    # authenticated dashboard. The live update goes out right after the
+    # commit, the outbox row carries the push.
+    if ann.audience == "all":
+        publish_after_commit(db, ann.event_id, "announcement_published", {"announcementId": ann.id})
     await emit_event(
         db,
         "announcement_published",
@@ -95,13 +97,43 @@ async def publish_announcement(
             "title": ann.title,
             "body": ann.body,
             "announcementId": ann.id,
-            # Only announcements meant for everyone go to the public live
-            # stream and to every push subscriber; audience-restricted ones
-            # stay on the authenticated dashboard.
-            "publicLive": ann.audience == "all",
             "broadcast": ann.audience == "all",
         },
     )
+    return ann
+
+
+@router.put("/announcements/{ann_id}/unpublish", response_model=AnnouncementResponse)
+async def unpublish_announcement(
+    ann_id: str,
+    _=Depends(require_permission("dashboard:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    ann = await _get_announcement(db, ann_id)
+    was_public = ann.is_published and ann.audience == "all"
+    ann.is_published = False
+    if was_public:
+        publish_after_commit(db, ann.event_id, "announcement_removed", {"announcementId": ann.id})
+    return ann
+
+
+@router.delete("/announcements/{ann_id}", status_code=204)
+async def delete_announcement(
+    ann_id: str,
+    _=Depends(require_permission("dashboard:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    ann = await _get_announcement(db, ann_id)
+    if ann.is_published and ann.audience == "all":
+        publish_after_commit(db, ann.event_id, "announcement_removed", {"announcementId": ann.id})
+    await db.delete(ann)
+
+
+async def _get_announcement(db: AsyncSession, ann_id: str) -> Announcement:
+    result = await db.execute(select(Announcement).where(Announcement.id == ann_id))
+    ann = result.scalar_one_or_none()
+    if not ann:
+        raise NotFoundError("Announcement not found")
     return ann
 
 

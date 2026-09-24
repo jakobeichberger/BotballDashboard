@@ -56,8 +56,39 @@ export interface ScheduledMatch {
   duration_minutes: number;
   status: string;
   bracket: string | null;
+  next_winner_match_id?: string | null;
+  next_loser_match_id?: string | null;
+  /** Loser-bracket rounds alternate "minor" / "major". */
+  round_kind?: string | null;
   version: number;
-  participants: Array<{ id: string; team_id: string | null; team_name: string | null; team_number: string | null; position: number; side: string | null }>;
+  participants: Array<{
+    id: string;
+    team_id: string | null;
+    team_name: string | null;
+    team_number: string | null;
+    position: number;
+    side: string | null;
+    result?: string | null;
+    score?: number | null;
+  }>;
+}
+
+export interface BracketPlacement {
+  team_id: string;
+  team_name: string;
+  team_number: string | null;
+  rank: number;
+}
+
+/** One elimination phase as returned by /events/{id}/bracket (and the public variant). */
+export interface BracketPhase {
+  phase_id: string;
+  phase_name: string;
+  phase_type: string;
+  status: string;
+  bracket_label: string;
+  matches: ScheduledMatch[];
+  placements: BracketPlacement[];
 }
 
 export interface RankingEntry {
