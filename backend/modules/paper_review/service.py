@@ -284,7 +284,7 @@ async def finalize_paper(db: AsyncSession, paper_id: str) -> Paper:
         and r.total_score is not None
     ]
     if submitted:
-        avg = sum(r.total_score for r in submitted) / len(submitted)
+        avg = sum(r.total_score or 0.0 for r in submitted) / len(submitted)
         paper.final_score = round(avg / 10.0, 4)
     else:
         paper.final_score = None

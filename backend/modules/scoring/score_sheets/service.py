@@ -36,7 +36,7 @@ logger = get_logger("scoring.score_sheets")
 # ---------------------------------------------------------------------------
 
 
-async def save_upload(file: UploadFile, season_id: uuid.UUID) -> tuple[Path, int]:
+async def save_upload(file: UploadFile, season_id: str) -> tuple[Path, int]:
     """Save the uploaded PDF to disk and return (path, size_bytes)."""
     from core.files import ensure_within, safe_filename, validate_pdf
 

@@ -10,7 +10,9 @@ from modules.scoring.formula_engine import DEFAULT_FORMULA_SETS, KNOWN_INPUTS
 from modules.scoring.formula_schemas import (
     BracketWeightsUpdate,
     FormulaFunctionDoc,
+    FormulaIssueResponse,
     FormulaPreviewResponse,
+    FormulaPreviewRow,
     FormulaReferenceResponse,
     FormulaResponse,
     FormulaSetUpdate,
@@ -129,18 +131,21 @@ async def preview_formula_set(
     return FormulaPreviewResponse(
         ok=run.ok,
         order=run.order,
-        issues=[{"key": i.key, "team_id": i.team_id, "message": i.message} for i in run.issues],
+        issues=[
+            FormulaIssueResponse(key=i.key, team_id=i.team_id, message=i.message)
+            for i in run.issues
+        ],
         rows=[
-            {
-                "team_id": r.get("team_id", ""),
-                "team_name": r.get("team_name"),
-                "rank": r.get("rank"),
-                "values": {
+            FormulaPreviewRow(
+                team_id=r.get("team_id", ""),
+                team_name=r.get("team_name"),
+                rank=r.get("rank"),
+                values={
                     k: float(v)
                     for k, v in r.items()
                     if isinstance(v, int | float) and not isinstance(v, bool)
                 },
-            }
+            )
             for r in run.rows
         ],
     )

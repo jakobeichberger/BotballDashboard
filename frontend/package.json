@@ -37,7 +37,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
-    "@playwright/test": "1.54.1",
+    "@playwright/test": "^1.55.1",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^15.0.7",
     "@testing-library/user-event": "^14.5.2",
@@ -61,8 +61,7 @@
     "typescript": "^5.4.5",
     "vite": "^6.4.3",
     "vite-plugin-pwa": "^0.20.0",
-    "vitest": "^3.2.6",
-    "@playwright/test": "^1.49.0"
+    "vitest": "^3.2.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -79,7 +78,9 @@
       "js-yaml": ">=4.2.0",
       "esbuild": ">=0.25.0",
       "follow-redirects": ">=1.16.0",
-      "postcss": ">=8.5.10"
+      "postcss": ">=8.5.10",
+      "js-yaml@>=4.0.0 <4.3.2": "^4.3.2",
+      "browserslist@<4.28.7": "^4.28.7"
     }
   }
 }

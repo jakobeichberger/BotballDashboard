@@ -241,9 +241,9 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
     doc_rows = await db.execute(
         select(DocumentationScore).where(DocumentationScore.event_id == event_id)
     )
-    for d in doc_rows.scalars():
-        if d.team_id in team_ids:
-            doc_by_team[d.team_id] = d
+    for doc_row in doc_rows.scalars():
+        if doc_row.team_id in team_ids:
+            doc_by_team[doc_row.team_id] = doc_row
 
     # Papers are submitted and judged per season, not per event.
     paper_by_team: dict[str, float] = {}
