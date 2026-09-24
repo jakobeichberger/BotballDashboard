@@ -9,6 +9,7 @@ from core.auth import (
     require_permission,
 )
 from core.database import get_db
+from core.exceptions import ForbiddenError
 from modules.teams import service
 from modules.teams.schemas import (
     TeamCreate,
@@ -16,6 +17,7 @@ from modules.teams.schemas import (
     TeamListItem,
     TeamMemberCreate,
     TeamMemberResponse,
+    TeamMemberUpdate,
     TeamResponse,
     TeamSeasonRegistrationCreate,
     TeamSeasonRegistrationResponse,
@@ -166,7 +168,27 @@ async def add_member(
     db: AsyncSession = Depends(get_db),
 ):
     await assert_team_access(db, current_user, team_id, "teams:admin")
+    if body.user_id and not await has_elevated_access(db, current_user, "teams:admin"):
+        raise ForbiddenError("Only team administrators may link user accounts")
     return await service.add_member(db, team_id, body.model_dump())
+
+
+@router.patch("/{team_id}/members/{member_id}", response_model=TeamMemberResponse)
+async def update_member(
+    team_id: str,
+    member_id: str,
+    body: TeamMemberUpdate,
+    current_user=Depends(require_permission("teams:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Edit a member. Linking or unlinking a user account (user_id) decides
+    who acts for the team, so only teams:admin may change it; a mentor can
+    still correct name, e-mail and role of their own team's members."""
+    await assert_team_access(db, current_user, team_id, "teams:admin")
+    changes = body.model_dump(exclude_unset=True)
+    if "user_id" in changes and not await has_elevated_access(db, current_user, "teams:admin"):
+        raise ForbiddenError("Only team administrators may link user accounts")
+    return await service.update_member(db, team_id, member_id, changes)
 
 
 @router.delete("/{team_id}/members/{member_id}", status_code=204)

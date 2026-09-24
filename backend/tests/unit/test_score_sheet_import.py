@@ -57,7 +57,9 @@ async def test_paper_upload_sanitizes_filename(tmp_path, monkeypatch):
     stored_path, stored_name, size = await paper_service.save_file(upload, "paper-id")
 
     path = Path(stored_path)
-    assert path.parent == tmp_path / "papers" / "paper-id"
+    # Each upload lives in its own version directory: papers/<id>/v1-<random>/.
+    assert path.parent.parent == (tmp_path / "papers" / "paper-id").resolve()
+    assert path.parent.name.startswith("v1-")
     assert stored_name == "unsafe_paper.pdf"
     assert path.read_bytes().startswith(b"%PDF-")
     assert size == len(b"%PDF-1.4\nfixture")
@@ -75,4 +77,4 @@ async def test_paper_upload_rejects_fake_pdf(tmp_path, monkeypatch):
     with pytest.raises(HTTPException, match="not a PDF"):
         await paper_service.save_file(upload, "paper-id")
 
-    assert not list((tmp_path / "papers" / "paper-id").glob("*.upload"))
+    assert not list((tmp_path / "papers" / "paper-id").glob("*/*.upload"))

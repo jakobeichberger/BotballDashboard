@@ -60,6 +60,23 @@ describe("ReviewerDashboard", () => {
     expect(document.querySelector("time")).toHaveAttribute("dateTime", "2026-09-01");
   });
 
+  it("queues resubmitted papers but not ones waiting for the team", () => {
+    router(
+      <ReviewerDashboard
+        papers={[
+          { id: "r1", title: "Revised", status: "resubmitted" },
+          { id: "r2", title: "Waiting for team", status: "revision_requested" },
+          { id: "r3", title: "AI misuse", status: "disqualified_ai" },
+        ]}
+        season={season}
+        announcements={[]}
+      />
+    );
+    expect(screen.getByText("Revised")).toBeInTheDocument();
+    expect(screen.queryByText("Waiting for team")).not.toBeInTheDocument();
+    expect(screen.queryByText("AI misuse")).not.toBeInTheDocument();
+  });
+
   it("handles an empty paper list", () => {
     router(<ReviewerDashboard papers={[]} season={season} announcements={[]} />);
     expect(screen.getByText(/keine paper zur begutachtung/i)).toBeInTheDocument();

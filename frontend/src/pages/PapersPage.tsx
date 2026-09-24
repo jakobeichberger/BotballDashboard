@@ -5,41 +5,72 @@ import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import Modal from "@/components/Modal";
 import { EventLink } from "@/components/EventLink";
+import { ExportButton } from "@/components/ExportButtons";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration } from "@/api/types";
+import { DeadlineBanner } from "@/modules/papers/DeadlineBanner";
+import {
+  PAPER_STATUS_BADGE,
+  PAPER_STATUS_LABEL,
+  REVIEW_CRITERIA,
+  apiErrorMessage,
+  type PaperDeadline,
+  type PaperStats,
+} from "@/modules/papers/paperMeta";
 
-const STATUS_BADGE: Record<string, string> = {
-  draft: "badge-gray",
-  submitted: "badge-blue",
-  under_review: "badge-yellow",
-  accepted: "badge-green",
-  rejected: "badge-red",
-  revision_requested: "badge-yellow",
-};
+interface PaperRow {
+  id: string;
+  title: string;
+  status: string;
+  revision_number: number;
+  current_version?: number | null;
+  final_score?: number | null;
+  submitted_at: string | null;
+}
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Entwurf",
-  submitted: "Eingereicht",
-  under_review: "In Prüfung",
-  accepted: "Angenommen",
-  rejected: "Abgelehnt",
-  revision_requested: "Überarbeitung",
-};
+function pct(value: number | null | undefined) {
+  return value == null ? "—" : `${Math.round(value * 100)} %`;
+}
+
+function PaperStatsPanel({ stats }: { stats: PaperStats }) {
+  const tiles = [
+    ["Paper gesamt", String(stats.total)],
+    ["Annahmequote", pct(stats.acceptance_rate)],
+    ["Ø Endergebnis", pct(stats.average_final_score)],
+    ["Ø Review-Score", stats.average_review_score == null ? "—" : `${stats.average_review_score.toFixed(1)} / 10`],
+    ["Offene Reviews", String(stats.reviews_open)],
+  ];
+  return (
+    <section className="mb-6" aria-labelledby="paper-stats-heading">
+      <h2 id="paper-stats-heading" className="mb-2 text-lg font-semibold">Statistik</h2>
+      <dl className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {tiles.map(([label, value]) => (
+          <div key={label} className="card p-3">
+            <dt className="text-xs text-gray-500">{label}</dt>
+            <dd className="text-xl font-semibold text-gray-900 dark:text-white">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-2 text-xs text-gray-500">
+        {stats.accepted} angenommen · {stats.rejected} abgelehnt · {stats.disqualified} disqualifiziert ·
+        Ø je Kriterium:{" "}
+        {REVIEW_CRITERIA.map((c) => `${c.label} ${stats.criterion_averages?.[c.key]?.toFixed(1) ?? "—"}`).join(" · ")}
+      </p>
+    </section>
+  );
+}
 
 export default function PapersPage() {
   const { eventId = "" } = useParams();
   const { data: event } = useEvent(eventId);
   const canWrite = useAuthStore((state) => state.hasPermission("papers:write"));
   const canAdmin = useAuthStore((state) => state.hasPermission("papers:admin"));
-  const canReview = useAuthStore((state) => state.hasPermission("papers:review"));
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ team_id: "", title: "", abstract: "" });
   const [file, setFile] = useState<File | null>(null);
-  const [selectedPaperId, setSelectedPaperId] = useState("");
-  const [assignment, setAssignment] = useState({ reviewer_id: "", due_at: "" });
-  const [review, setReview] = useState({ score_content: "", score_methodology: "", score_presentation: "", score_originality: "", comments: "" });
+  const seasonId = event?.season_id;
   // Mentors may only file for teams they belong to; the backend enforces this
   // too (assert_team_access), this just keeps the choice list honest.
   const { data: myTeams } = useQuery<{ id: string }[]>({
@@ -52,27 +83,35 @@ export default function PapersPage() {
     queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data,
     enabled: !!eventId,
   });
-  const { data: papers, isLoading } = useQuery({
+  const { data: papers, isLoading } = useQuery<PaperRow[]>({
     queryKey: ["papers", eventId],
-    queryFn: async () => {
-      const { data } = await api.get("/papers", { params: { event_id: eventId } });
-      return data;
-    },
+    queryFn: async () => (await api.get("/papers", { params: { event_id: eventId } })).data,
+  });
+  const { data: deadline } = useQuery<PaperDeadline>({
+    queryKey: ["paper-deadline", seasonId, eventId],
+    queryFn: async () =>
+      (await api.get("/papers/deadline", { params: { season_id: seasonId, event_id: eventId || undefined } })).data,
+    enabled: !!seasonId,
+  });
+  const { data: stats } = useQuery<PaperStats>({
+    queryKey: ["paper-stats", eventId],
+    queryFn: async () => (await api.get("/papers/stats", { params: { event_id: eventId || undefined } })).data,
+    enabled: canAdmin,
   });
   const { data: workload } = useQuery<any[]>({ queryKey: ["paper-workload", eventId], queryFn: async () => (await api.get("/papers/reviewers/workload", { params: { event_id: eventId } })).data, enabled: canAdmin });
   const { data: users } = useQuery<any[]>({ queryKey: ["users"], queryFn: async () => (await api.get("/auth/users")).data, enabled: canAdmin });
-  const paperDetail = useQuery<any>({ queryKey: ["paper", selectedPaperId], queryFn: async () => (await api.get(`/papers/${selectedPaperId}`)).data, enabled: !!selectedPaperId });
-  const paperHistory = useQuery<any[]>({ queryKey: ["paper-history", selectedPaperId], queryFn: async () => (await api.get(`/papers/${selectedPaperId}/history`)).data, enabled: !!selectedPaperId });
 
+  const locked = !!deadline?.locked;
   const createPaper = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post("/papers", { ...form, season_id: event?.season_id, event_id: eventId });
+      const { data } = await api.post("/papers", { ...form, season_id: seasonId, event_id: eventId });
+      // Without a PDF the paper stays a draft; submitting needs an uploaded version.
       if (file) {
         const body = new FormData();
         body.append("file", file);
         await api.post(`/papers/${data.id}/upload`, body);
+        await api.put(`/papers/${data.id}/submit`);
       }
-      await api.put(`/papers/${data.id}/submit`);
       return data;
     },
     onSuccess: () => {
@@ -82,10 +121,6 @@ export default function PapersPage() {
       setOpen(false);
     },
   });
-  const assignReviewer = useMutation({ mutationFn: () => api.post(`/papers/${selectedPaperId}/assignments`, { reviewer_id: assignment.reviewer_id, due_at: assignment.due_at ? new Date(assignment.due_at).toISOString() : null }), onSuccess: () => { setAssignment({ reviewer_id: "", due_at: "" }); queryClient.invalidateQueries({ queryKey: ["paper", selectedPaperId] }); queryClient.invalidateQueries({ queryKey: ["paper-workload", eventId] }); } });
-  const remindReviewer = useMutation({ mutationFn: (assignmentId: string) => api.post(`/papers/${selectedPaperId}/assignments/${assignmentId}/remind`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["paper", selectedPaperId] }) });
-  const setStatus = useMutation({ mutationFn: (status: string) => api.put(`/papers/${selectedPaperId}/status`, null, { params: { status } }), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["paper", selectedPaperId] }); queryClient.invalidateQueries({ queryKey: ["paper-history", selectedPaperId] }); queryClient.invalidateQueries({ queryKey: ["papers", eventId] }); } });
-  const submitReview = useMutation({ mutationFn: () => api.put(`/papers/${selectedPaperId}/reviews`, Object.fromEntries(Object.entries(review).map(([key, value]) => [key, key === "comments" ? value : value === "" ? null : Number(value)])), { params: { submit: true } }), onSuccess: () => { setReview({ score_content: "", score_methodology: "", score_presentation: "", score_originality: "", comments: "" }); queryClient.invalidateQueries({ queryKey: ["paper", selectedPaperId] }); } });
 
   return (
     <div className="p-6">
@@ -94,10 +129,26 @@ export default function PapersPage() {
           <FileText className="w-6 h-6" />
           Paper Review
         </h1>
-        {canWrite && <button onClick={() => setOpen(true)} className="btn-primary">+ Paper einreichen</button>}
+        <div className="flex flex-wrap items-center gap-2">
+          {canAdmin && seasonId && (
+            <>
+              <ExportButton url={`/exports/seasons/${seasonId}/reviews.csv`} filename="paper-reviews.csv" label="Reviews CSV" variant="csv" />
+              <ExportButton url={`/exports/seasons/${seasonId}/papers.pdf`} filename="paper-review.pdf" label="Übersicht PDF" />
+            </>
+          )}
+          {canWrite && (
+            <button onClick={() => setOpen(true)} className="btn-primary" disabled={locked} title={locked ? "Einreichungsfrist abgelaufen" : undefined}>
+              + Paper einreichen
+            </button>
+          )}
+        </div>
       </div>
 
+      {deadline && <div className="mb-6"><DeadlineBanner deadline={deadline} /></div>}
+
       {isLoading && <p className="text-gray-500">Laden...</p>}
+
+      {canAdmin && stats && <PaperStatsPanel stats={stats} />}
 
       {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">Reviewer-Auslastung</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-gray-500">{item.open} offen · {item.overdue} überfällig · {item.completed} erledigt</p></div>)}</div></section>}
 
@@ -107,20 +158,24 @@ export default function PapersPage() {
             <tr>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Titel</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Rev.</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Runde</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Version</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Eingereicht</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
-            {papers?.map((paper: any) => (
+            {papers?.map((paper) => (
               <tr key={paper.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white"><button className="text-left text-primary-700 hover:underline dark:text-primary-300" onClick={() => setSelectedPaperId(paper.id)}>{paper.title}</button> <EventLink to={`/papers/${paper.id}`} className="ml-2 text-xs text-gray-500 hover:underline">Details</EventLink></td>
+                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                  <EventLink to={`/papers/${paper.id}`} className="text-primary-700 hover:underline dark:text-primary-300">{paper.title}</EventLink>
+                </td>
                 <td className="px-4 py-3">
-                  <span className={STATUS_BADGE[paper.status] ?? "badge-gray"}>
-                    {STATUS_LABEL[paper.status] ?? paper.status}
+                  <span className={PAPER_STATUS_BADGE[paper.status] ?? "badge-gray"}>
+                    {PAPER_STATUS_LABEL[paper.status] ?? paper.status}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-500">#{paper.revision_number}</td>
+                <td className="px-4 py-3 text-gray-500">{paper.current_version ? `v${paper.current_version}` : "—"}</td>
                 <td className="px-4 py-3 text-gray-500">
                   {paper.submitted_at
                     ? new Date(paper.submitted_at).toLocaleDateString("de-DE")
@@ -130,7 +185,7 @@ export default function PapersPage() {
             ))}
             {papers?.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                   Noch keine Paper eingereicht
                 </td>
               </tr>
@@ -140,6 +195,7 @@ export default function PapersPage() {
       </div>
       <Modal open={open} title="Paper einreichen" onClose={() => setOpen(false)}>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); createPaper.mutate(); }}>
+          <p className="text-xs text-gray-500">Pro Team und Saison gibt es ein Paper. Überarbeitungen werden später als neue Version hochgeladen.</p>
           <label className="block text-sm font-medium">Team *
             <select className="input mt-1 w-full" required value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
               <option value="">Bitte wählen</option>
@@ -154,23 +210,15 @@ export default function PapersPage() {
           <label className="block text-sm font-medium">Kurzfassung
             <textarea className="input mt-1 min-h-24 w-full" value={form.abstract} onChange={(event) => setForm((current) => ({ ...current, abstract: event.target.value }))} />
           </label>
-          <label className="block text-sm font-medium">PDF
+          <label className="block text-sm font-medium">PDF (ohne PDF bleibt das Paper ein Entwurf)
             <input className="mt-1 block w-full text-sm" type="file" accept="application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
           </label>
-          {createPaper.isError && <p className="text-sm text-red-600">Paper konnte nicht angelegt werden.</p>}
+          {createPaper.isError && <p className="text-sm text-red-600">{apiErrorMessage(createPaper.error, "Paper konnte nicht angelegt werden.")}</p>}
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Abbrechen</button>
-            <button type="submit" className="btn-primary" disabled={!event || !form.team_id || !form.title || createPaper.isPending}>Einreichen</button>
+            <button type="submit" className="btn-primary" disabled={!event || !form.team_id || !form.title || createPaper.isPending}>{file ? "Einreichen" : "Als Entwurf anlegen"}</button>
           </div>
         </form>
-      </Modal>
-      <Modal open={!!selectedPaperId} title={paperDetail.data?.title ?? "Paper-Workflow"} onClose={() => setSelectedPaperId("")}>
-        {paperDetail.isLoading ? <p>Laden…</p> : <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-2"><span className={STATUS_BADGE[paperDetail.data?.status] ?? "badge-gray"}>{STATUS_LABEL[paperDetail.data?.status] ?? paperDetail.data?.status}</span><span className="text-sm text-gray-500">Revision {paperDetail.data?.revision_number}</span>{canAdmin && <select aria-label="Paperstatus ändern" className="input ml-auto" value={paperDetail.data?.status ?? "draft"} onChange={(event) => setStatus.mutate(event.target.value)}>{Object.keys(STATUS_LABEL).map((status) => <option key={status}>{status}</option>)}</select>}</div>
-          {canAdmin && <section><h3 className="mb-2 font-semibold">Reviewer-Zuweisungen</h3><div className="space-y-2">{paperDetail.data?.assignments?.map((item: any) => <div key={item.id} className="flex items-center justify-between rounded border p-2 text-sm"><span>{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id} · {item.status}{item.due_at ? ` · fällig ${new Date(item.due_at).toLocaleString()}` : ""}</span>{item.status !== "completed" && <button className="btn-secondary" onClick={() => remindReviewer.mutate(item.id)}>Erinnern</button>}</div>)}</div><form className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => { event.preventDefault(); assignReviewer.mutate(); }}><select required className="input" value={assignment.reviewer_id} onChange={(event) => setAssignment({ ...assignment, reviewer_id: event.target.value })}><option value="">Reviewer wählen</option>{users?.map((user) => <option key={user.id} value={user.id}>{user.display_name}</option>)}</select><input className="input" type="datetime-local" value={assignment.due_at} onChange={(event) => setAssignment({ ...assignment, due_at: event.target.value })} /><button className="btn-primary">Zuweisen</button></form></section>}
-          {canReview && <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); submitReview.mutate(); }}><h3 className="font-semibold">Review abschließen</h3><div className="grid grid-cols-2 gap-2">{(["score_content", "score_methodology", "score_presentation", "score_originality"] as const).map((key) => <label key={key} className="text-sm">{key.replace("score_", "")}<input required className="input mt-1 w-full" type="number" min={0} max={10} step={0.5} value={review[key]} onChange={(event) => setReview({ ...review, [key]: event.target.value })} /></label>)}</div><textarea className="input w-full" placeholder="Kommentare" value={review.comments} onChange={(event) => setReview({ ...review, comments: event.target.value })} /><button className="btn-primary" disabled={submitReview.isPending}>Review verbindlich abgeben</button></form>}
-          <section><h3 className="mb-2 font-semibold">Statushistorie</h3><ol className="space-y-1 text-sm text-gray-600 dark:text-gray-300">{paperHistory.data?.map((item) => <li key={item.id}>{new Date(item.changed_at).toLocaleString()} · {item.from_status ?? "Start"} → {item.to_status}</li>)}</ol></section>
-        </div>}
       </Modal>
     </div>
   );

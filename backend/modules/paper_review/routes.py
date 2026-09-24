@@ -1,6 +1,3 @@
-from pathlib import Path
-from typing import Literal
-
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,15 +13,20 @@ from core.rate_limit import rate_limit
 from modules.paper_review import service
 from modules.paper_review.schemas import (
     PaperCreate,
+    PaperDeadlineInfo,
     PaperListItem,
     PaperResponse,
     PaperScoreUpdate,
+    PaperStatsResponse,
+    PaperStatus,
     PaperStatusHistoryResponse,
     PaperUpdate,
+    PaperVersionResponse,
     ReviewCreateUpdate,
     ReviewerAssignmentCreate,
     ReviewerAssignmentResponse,
     ReviewerWorkloadResponse,
+    ReviewFeedback,
     ReviewResponse,
 )
 
@@ -37,6 +39,29 @@ _ALL_PAPERS = ("papers:admin", "papers:review")
 
 async def _assert_paper_read(db: AsyncSession, user, paper) -> None:
     await assert_team_access(db, user, paper.team_id, _ALL_PAPERS)
+
+
+async def _is_paper_admin(db: AsyncSession, user) -> bool:
+    return await has_elevated_access(db, user, "papers:admin")
+
+
+async def _paper_response(db: AsyncSession, user, paper) -> PaperResponse:
+    """Serialize a paper for `user`.
+
+    Organizers see every review. A reviewer only gets their own review back
+    (for editing). The paper's own team gets `feedback`: the submitted reviews
+    of decided rounds, without reviewer identity or drafts.
+    """
+    is_admin = await _is_paper_admin(db, user)
+    resp = PaperResponse.model_validate(paper)
+    if not is_admin:
+        resp.reviews = [r for r in resp.reviews if r.reviewer_id == user.id]
+    if is_admin or paper.team_id in await own_team_ids(db, user):
+        resp.feedback = [ReviewFeedback.model_validate(r) for r in service.team_feedback(paper)]
+    resp.deadline = PaperDeadlineInfo.model_validate(
+        await service.deadline_info(db, paper.season_id, paper.event_id, is_admin)
+    )
+    return resp
 
 
 @router.get("", response_model=list[PaperListItem])
@@ -54,15 +79,43 @@ async def list_papers(
     return await service.list_papers(db, season_id, team_id, status, event_id, team_ids)
 
 
+@router.get("/deadline", response_model=PaperDeadlineInfo)
+async def get_paper_deadline(
+    season_id: str = Query(...),
+    event_id: str | None = Query(None),
+    current_user=Depends(require_permission("papers:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """The season's paper deadline, resolved to the event's timezone."""
+    return await service.deadline_info(
+        db, season_id, event_id, await _is_paper_admin(db, current_user)
+    )
+
+
+@router.get("/stats", response_model=PaperStatsResponse)
+async def get_paper_stats(
+    season_id: str | None = Query(None),
+    event_id: str | None = Query(None),
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Averages, acceptance rate and review progress for organizers."""
+    return await service.paper_stats(db, season_id, event_id)
+
+
 @router.post("", response_model=PaperResponse, status_code=201)
 async def create_paper(
     body: PaperCreate,
     current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    # Organizers (papers:admin) may file for any team; mentors only their own.
+    # Organizers (papers:admin) may file for any team and past the deadline;
+    # mentors only for their own team and in time.
     await assert_team_access(db, current_user, body.team_id, "papers:admin")
-    return await service.create_paper(db, body.model_dump())
+    paper = await service.create_paper(
+        db, body.model_dump(), override_deadline=await _is_paper_admin(db, current_user)
+    )
+    return await _paper_response(db, current_user, paper)
 
 
 @router.get("/{paper_id}", response_model=PaperResponse)
@@ -73,13 +126,19 @@ async def get_paper(
 ):
     paper = await service.get_paper(db, paper_id)
     await _assert_paper_read(db, current_user, paper)
-    resp = PaperResponse.model_validate(paper)
-    # GET /{id}/reviews is papers:admin-gated; don't let this endpoint hand the
-    # same scores/comments (incl. unsubmitted drafts) to everyone with
-    # papers:read. Reviewers still get their own review back for editing.
-    if not await has_elevated_access(db, current_user, "papers:admin"):
-        resp.reviews = [r for r in resp.reviews if r.reviewer_id == current_user.id]
-    return resp
+    return await _paper_response(db, current_user, paper)
+
+
+@router.get("/{paper_id}/feedback", response_model=list[ReviewFeedback])
+async def get_paper_feedback(
+    paper_id: str,
+    current_user=Depends(require_permission("papers:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reviewer feedback released to the paper's team (decided rounds only)."""
+    paper = await service.get_paper(db, paper_id)
+    await assert_team_access(db, current_user, paper.team_id, "papers:admin")
+    return service.team_feedback(paper)
 
 
 @router.patch("/{paper_id}", response_model=PaperResponse)
@@ -91,7 +150,8 @@ async def update_paper(
 ):
     paper = await service.get_paper(db, paper_id)
     await assert_team_access(db, current_user, paper.team_id, "papers:admin")
-    return await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
+    paper = await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
+    return await _paper_response(db, current_user, paper)
 
 
 @router.post(
@@ -105,41 +165,45 @@ async def upload_paper_file(
     current_user=Depends(require_permission("papers:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Upload the PDF as a new version (drafts and requested revisions only)."""
     # Validate the record and the caller's access before writing anything to disk.
     paper = await service.get_paper(db, paper_id)
     await assert_team_access(db, current_user, paper.team_id, "papers:admin")
-    await service.ensure_paper_writable(db, paper)
-    _file_path, file_name, file_size = await service.save_file(file, paper_id)
-    return await service.update_paper(
+    paper = await service.add_version(
         db,
         paper_id,
-        file_url=f"/api/papers/{paper_id}/download",
-        file_name=file_name,
-        file_size_bytes=file_size,
+        file,
+        current_user.id,
+        override_deadline=await _is_paper_admin(db, current_user),
     )
+    return await _paper_response(db, current_user, paper)
 
 
-@router.get("/{paper_id}/download")
-async def download_paper(
+@router.get("/{paper_id}/versions", response_model=list[PaperVersionResponse])
+async def list_paper_versions(
     paper_id: str,
     current_user=Depends(require_permission("papers:read")),
     db: AsyncSession = Depends(get_db),
 ):
     paper = await service.get_paper(db, paper_id)
     await _assert_paper_read(db, current_user, paper)
-    if not paper.file_name:
-        from core.exceptions import NotFoundError
+    return paper.versions
 
-        raise NotFoundError("No file uploaded")
-    from core.config import get_settings as _gs
-    from core.files import ensure_within, safe_filename
 
-    upload_dir = Path(_gs().upload_dir) / "papers" / paper_id
-    safe_name = safe_filename(paper.file_name, "paper.pdf")
-    file_path = ensure_within(upload_dir, upload_dir / safe_name)
+@router.get("/{paper_id}/download")
+async def download_paper(
+    paper_id: str,
+    version: int | None = Query(None, ge=1),
+    current_user=Depends(require_permission("papers:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Download one version of the PDF (default: the latest)."""
+    paper = await service.get_paper(db, paper_id)
+    await _assert_paper_read(db, current_user, paper)
+    file_path, file_name = service.resolve_version_file(paper, version)
     return FileResponse(
         str(file_path),
-        filename=safe_name,
+        filename=file_name,
         media_type="application/pdf",
         content_disposition_type="attachment",
     )
@@ -153,29 +217,38 @@ async def submit_paper(
 ):
     paper = await service.get_paper(db, paper_id)
     await assert_team_access(db, current_user, paper.team_id, "papers:admin")
-    return await service.submit_paper(db, paper_id, current_user.id)
+    paper = await service.submit_paper(
+        db,
+        paper_id,
+        current_user.id,
+        override_deadline=await _is_paper_admin(db, current_user),
+    )
+    return await _paper_response(db, current_user, paper)
 
 
-@router.put("/{paper_id}/status")
+@router.put("/{paper_id}/status", response_model=PaperResponse)
 async def set_paper_status(
     paper_id: str,
-    status: Literal[
-        "draft", "submitted", "under_review", "accepted", "rejected", "revision_requested"
-    ] = Query(...),
+    status: PaperStatus = Query(...),
+    reason: str | None = Query(None, max_length=2000),
     current_user=Depends(require_permission("papers:admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.set_paper_status(db, paper_id, status, current_user.id)
+    """Set the status. disqualified_ai records AI misuse: score 0, no revision."""
+    paper = await service.set_paper_status(db, paper_id, status, current_user.id, reason)
+    return await _paper_response(db, current_user, paper)
 
 
 @router.post("/{paper_id}/finalize", response_model=PaperResponse)
 async def finalize_paper(
     paper_id: str,
-    _=Depends(require_permission("papers:admin")),
+    current_user=Depends(require_permission("papers:admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Aggregate submitted reviews into final_score and recompute paper ranks."""
-    return await service.finalize_paper(db, paper_id)
+    """Aggregate submitted reviews (minus format deductions) into final_score,
+    lock the round's reviews and recompute paper ranks."""
+    paper = await service.finalize_paper(db, paper_id)
+    return await _paper_response(db, current_user, paper)
 
 
 # ── Reviewer assignments ──────────────────────────────────────────────────────
@@ -210,12 +283,14 @@ async def remind_reviewer(
 async def set_paper_score(
     paper_id: str,
     body: PaperScoreUpdate,
-    _=Depends(require_permission("papers:admin")),
+    current_user=Depends(require_permission("papers:admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Record the review outcome. Separate from PATCH /{paper_id} because
-    final_score feeds the overall ranking and papers:write reaches mentors."""
-    return await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
+    """Record the review outcome or a format deduction. Separate from
+    PATCH /{paper_id} because final_score feeds the overall ranking and
+    papers:write reaches mentors. Deductions take effect on finalize."""
+    paper = await service.update_paper(db, paper_id, **body.model_dump(exclude_none=True))
+    return await _paper_response(db, current_user, paper)
 
 
 @router.get("/reviewers/workload", response_model=list[ReviewerWorkloadResponse])
@@ -238,9 +313,21 @@ async def save_review(
     current_user=Depends(require_permission("papers:review")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Save (or with ?submit=true, submit) the caller's review of the current
+    version. A submitted review is locked until an organizer reopens it."""
     return await service.save_review(
         db, paper_id, current_user.id, body.model_dump(exclude_none=True), submit=submit
     )
+
+
+@router.post("/{paper_id}/reviews/{review_id}/reopen", response_model=ReviewResponse)
+async def reopen_review(
+    paper_id: str,
+    review_id: str,
+    _=Depends(require_permission("papers:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.reopen_review(db, paper_id, review_id)
 
 
 @router.get("/{paper_id}/reviews", response_model=list[ReviewResponse])

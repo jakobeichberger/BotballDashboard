@@ -20,6 +20,7 @@ from modules.auth.models import Permission, Role, RolePermission, User, UserRole
 from modules.auth.service import hash_password
 from modules.scoring.models import ScoringSchema
 from modules.teams.models import Team, TeamMember
+from tests.paper_helpers import api_upload_and_submit
 
 GIF = b"GIF87a" + b"\x00" * 32
 
@@ -170,6 +171,7 @@ class TestReviewsAreNotLeakedByGetPaper:
             json={"season_id": season.id, "team_id": team.id, "title": "P"},
         )
         pid = paper.json()["id"]
+        await api_upload_and_submit(client, auth_headers, pid)
         reviewer = User(
             email="rev2@test.com",
             display_name="Rev",

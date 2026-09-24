@@ -6,15 +6,55 @@ import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { useEventNavigate } from "@/hooks/useEventPath";
 import { useAuthStore } from "@/store/authStore";
+import { PAPER_STATUS_BADGE, PAPER_STATUS_LABEL, apiErrorMessage } from "@/modules/papers/paperMeta";
 
-const PAPER_STATUS_BADGE: Record<string, string> = {
-  draft: "badge-gray", submitted: "badge-blue", under_review: "badge-yellow",
-  accepted: "badge-green", rejected: "badge-red", revision_requested: "badge-yellow",
-};
-const PAPER_STATUS_LABEL: Record<string, string> = {
-  draft: "Entwurf", submitted: "Eingereicht", under_review: "In Prüfung",
-  accepted: "Angenommen", rejected: "Abgelehnt", revision_requested: "Überarbeitung",
-};
+interface UserOption {
+  id: string;
+  email: string;
+  display_name: string;
+  is_active: boolean;
+}
+
+/**
+ * Links a team member to a user account (TeamMember.user_id). That link is
+ * what lets a mentor act for the team, so only teams:admin gets the picker.
+ */
+export function MemberAccountCell({
+  member,
+  users,
+  canLink,
+  pending,
+  onLink,
+}: {
+  member: { id: string; name: string; user_id: string | null };
+  users?: UserOption[];
+  canLink: boolean;
+  pending: boolean;
+  onLink: (userId: string | null) => void;
+}) {
+  const linked = users?.find((u) => u.id === member.user_id);
+  if (!canLink) {
+    return member.user_id ? <span className="badge-blue">Konto verknüpft</span> : <span className="text-gray-400">—</span>;
+  }
+  return (
+    <select
+      className="input py-1 text-xs"
+      aria-label={`Benutzerkonto für ${member.name}`}
+      value={member.user_id ?? ""}
+      disabled={pending}
+      onChange={(e) => onLink(e.target.value || null)}
+    >
+      <option value="">— kein Konto —</option>
+      {member.user_id && !linked && <option value={member.user_id}>Verknüpftes Konto</option>}
+      {users
+        ?.filter((u) => u.is_active || u.id === member.user_id)
+        .map((u) => (
+          <option key={u.id} value={u.id}>{u.display_name} ({u.email})</option>
+        ))}
+    </select>
+  );
+}
+
 const JOB_STATUS_BADGE: Record<string, string> = {
   pending: "badge-gray", approved: "badge-blue", queued: "badge-blue", printing: "badge-yellow",
   completed: "badge-green", failed: "badge-red", cancelled: "badge-gray",
@@ -30,6 +70,7 @@ export default function TeamDetailPage() {
   const navigate = useEventNavigate();
   const isAdmin = useAuthStore((s) => s.hasRole("admin"));
   const isMentor = useAuthStore((s) => s.hasRole("mentor"));
+  const canLinkAccounts = useAuthStore((s) => s.hasPermission("teams:admin"));
 
   const { data: team, isLoading, isError } = useQuery({
     queryKey: ["team", id],
@@ -75,6 +116,15 @@ export default function TeamDetailPage() {
     retry: false,
   });
 
+  // The account picker lists users; /auth/users needs users:read, which
+  // organizers with teams:admin normally hold.
+  const { data: users } = useQuery<UserOption[]>({
+    queryKey: ["users"],
+    queryFn: async () => (await api.get("/auth/users")).data,
+    enabled: canLinkAccounts,
+    retry: false,
+  });
+
   const isMyTeam = !!myTeams?.some((t: any) => t.id === id);
   const canManage = isAdmin || (isMentor && isMyTeam);
 
@@ -92,7 +142,7 @@ export default function TeamDetailPage() {
     setEditing(true);
   };
   const refresh = () => { qc.invalidateQueries({ queryKey: ["team", id] }); qc.invalidateQueries({ queryKey: ["teams"] }); };
-  const onError = (e: any) => alert(e?.response?.data?.detail ?? "Aktion fehlgeschlagen.");
+  const onError = (e: unknown) => alert(apiErrorMessage(e));
 
   const updateM = useMutation({
     mutationFn: () => api.patch(`/teams/${id}`, form),
@@ -116,6 +166,11 @@ export default function TeamDetailPage() {
   });
   const removeMemberM = useMutation({
     mutationFn: (memberId: string) => api.delete(`/teams/${id}/members/${memberId}`),
+    onSuccess: refresh, onError,
+  });
+  const linkMemberM = useMutation({
+    mutationFn: ({ memberId, userId }: { memberId: string; userId: string | null }) =>
+      api.patch(`/teams/${id}/members/${memberId}`, { user_id: userId }),
     onSuccess: refresh, onError,
   });
 
@@ -212,6 +267,7 @@ export default function TeamDetailPage() {
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Name</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Rolle</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">E-Mail</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Benutzerkonto</th>
               {canManage && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400"><span className="sr-only">Aktionen</span></th>}
             </tr>
           </thead>
@@ -221,6 +277,15 @@ export default function TeamDetailPage() {
                 <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{m.name}</td>
                 <td className="px-4 py-3"><span className={m.role === "mentor" ? "badge-blue" : "badge-gray"}>{m.role === "mentor" ? "Mentor" : "Mitglied"}</span></td>
                 <td className="px-4 py-3 text-gray-500">{m.email ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <MemberAccountCell
+                    member={m}
+                    users={users}
+                    canLink={canLinkAccounts}
+                    pending={linkMemberM.isPending}
+                    onLink={(userId) => linkMemberM.mutate({ memberId: m.id, userId })}
+                  />
+                </td>
                 {canManage && (
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => removeMemberM.mutate(m.id)} disabled={removeMemberM.isPending}
@@ -232,7 +297,7 @@ export default function TeamDetailPage() {
               </tr>
             ))}
             {(!team.members || team.members.length === 0) && (
-              <tr><td colSpan={canManage ? 4 : 3} className="px-4 py-8 text-center text-gray-400">Keine Mitglieder</td></tr>
+              <tr><td colSpan={canManage ? 5 : 4} className="px-4 py-8 text-center text-gray-400">Keine Mitglieder</td></tr>
             )}
           </tbody>
         </table>
