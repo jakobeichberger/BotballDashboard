@@ -8,8 +8,8 @@ Complements (does not duplicate) tests/integration/test_auth_routes.py.
 import hashlib
 from datetime import UTC, datetime, timedelta
 
+import jwt
 import pytest
-from jose import jwt
 
 from core.auth import ALGORITHM, create_access_token
 from core.config import get_settings

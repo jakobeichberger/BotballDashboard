@@ -8,8 +8,8 @@ service layer. Complements (does not duplicate) tests/unit/test_auth.py.
 import hashlib
 from datetime import UTC, datetime, timedelta
 
+import jwt
 import pytest
-from jose import jwt
 from sqlalchemy import select
 
 from core.auth import (

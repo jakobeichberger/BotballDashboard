@@ -49,7 +49,7 @@
 - **ORM:** SQLAlchemy 2.0 (async)
 - **Migrations:** Alembic
 - **Validierung:** Pydantic v2
-- **Auth:** JWT (python-jose), Passwort-Hashing mit bcrypt
+- **Auth:** JWT (PyJWT, HS256), Passwort-Hashing mit bcrypt, Sperrliste abgemeldeter Access-Tokens in Redis
 - **WebSocket:** FastAPI WebSocket + Redis Pub/Sub für horizontales Scaling
 - **Task Queue:** Celery + Redis (für E-Mail-Versand, OCR-Jobs)
 - **Push Notifications:** pywebpush (Web Push API)

@@ -2,14 +2,15 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 from uuid import uuid4
 
+import jwt
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from core import token_denylist
 from core.config import get_settings
 from core.database import get_db
 from core.exceptions import ForbiddenError, UnauthorizedError
@@ -25,7 +26,15 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
-    payload = {"sub": subject, "exp": expire, "type": "access", **(extra or {})}
+    # jti identifies this one token, so logout can deny it (core.token_denylist)
+    # without touching the user's other sessions.
+    payload = {
+        "sub": subject,
+        "exp": expire,
+        "type": "access",
+        "jti": str(uuid4()),
+        **(extra or {}),
+    }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
@@ -38,9 +47,16 @@ def create_refresh_token(subject: str) -> str:
 
 
 def decode_token(token: str, expected_type: str = "access") -> dict[str, Any]:
+    # The algorithm list is pinned: no "none", no RS/HS confusion. "exp" is
+    # required, so a token without an expiry is never accepted.
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[ALGORITHM])
-    except JWTError:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[ALGORITHM],
+            options={"require": ["exp", "sub"]},
+        )
+    except jwt.PyJWTError:
         raise UnauthorizedError("Invalid or expired token")
     if payload.get("type") != expected_type:
         raise UnauthorizedError("Wrong token type")
@@ -63,6 +79,11 @@ async def get_current_user(
 
     payload = decode_token(credentials.credentials)
     user_id: str = payload.get("sub", "")
+    # Tokens issued before the deny-list existed carry no jti; they expire
+    # within JWT_ACCESS_TOKEN_EXPIRE_MINUTES anyway.
+    jti = payload.get("jti")
+    if jti and await token_denylist.is_denied(str(jti)):
+        raise UnauthorizedError("Token has been revoked")
 
     result = await db.execute(
         select(User)

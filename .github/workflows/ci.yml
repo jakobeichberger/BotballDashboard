@@ -129,11 +129,7 @@ jobs:
       # lag behind security releases; bring them current first.
       - run: python -m pip install --upgrade pip setuptools
       - run: pip install pip-audit ./backend
-      # PYSEC-2026-1325 (ecdsa) has no fixed release. ecdsa is only pulled in
-      # by python-jose; tokens are HS256-only (core/auth.py pins
-      # algorithms=["HS256"]), so the vulnerable ECDSA code is never reached.
-      # Drop this ignore once python-jose is replaced or ecdsa ships a fix.
-      - run: pip-audit --ignore-vuln PYSEC-2026-1325
+      - run: pip-audit
       - uses: pnpm/action-setup@v4
         with:
           version: 10.29.3

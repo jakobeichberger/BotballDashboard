@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from core import token_denylist
 from core.audit import AuditLog
 from core.auth import create_access_token, create_refresh_token, decode_token
 from core.config import get_settings
@@ -122,6 +123,21 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> tuple[str, str
         raise UnauthorizedError("User not found")
 
     return await create_tokens(db, user)
+
+
+async def deny_access_token(token: str) -> None:
+    """Deny-list an access token until its expiry (logout of this session).
+
+    An invalid or expired token needs nothing: it is rejected anyway. So is
+    one without jti (issued before the deny-list existed; it expires soon).
+    """
+    try:
+        payload = decode_token(token, expected_type="access")
+    except UnauthorizedError:
+        return
+    jti = payload.get("jti")
+    if jti:
+        await token_denylist.deny(str(jti), payload.get("exp"))
 
 
 async def revoke_refresh_token(db: AsyncSession, token: str) -> None:

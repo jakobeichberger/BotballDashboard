@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me-jwt"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 30
+    # Where logged-out access tokens are remembered until they expire:
+    # "redis" (shared by all API instances) or "memory" (one process; tests).
+    token_denylist_backend: str = "redis"
 
     # Email – an empty SMTP_HOST disables SMTP (SendGrid is still tried when
     # SENDGRID_API_KEY is set).
@@ -53,6 +56,10 @@ class Settings(BaseSettings):
     # Files
     upload_dir: str = "/app/uploads"
     max_upload_size_mb: int = 20
+    # Print job files (STL/3MF/G-code) are much larger than papers or photos,
+    # so they have their own limit. A reverse proxy in front of the API must
+    # accept at least max(MAX_UPLOAD_SIZE_MB, PRINT_UPLOAD_MAX_MB) + 1 MB.
+    print_upload_max_mb: int = 100
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
