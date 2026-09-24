@@ -54,3 +54,25 @@ class NotificationEvent(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CalendarFeedToken(Base):
+    """A per-user secret for subscribing to the deadline iCal feed.
+
+    Calendar apps cannot send a bearer token, so the feed URL carries its own
+    credential. Only a SHA-256 hash is stored: the plain token is shown once
+    when it is created, and rotating or revoking it invalidates every URL that
+    was handed out before. The token grants nothing but the read-only feed.
+    """
+
+    __tablename__ = "calendar_feed_tokens"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

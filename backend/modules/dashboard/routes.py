@@ -9,6 +9,7 @@ from core.auth import get_current_user, permissions_of, require_permission
 from core.database import get_db
 from core.domain_events import emit_event
 from core.exceptions import ForbiddenError
+from modules.dashboard.insights_routes import router as insights_router
 from modules.dashboard.models import Announcement
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -174,3 +175,8 @@ async def get_stats(
         "print_jobs": print_count,
         "matches": match_count,
     }
+
+
+# Analytics, role summary and deadline calendar live in their own module but
+# share the /dashboard prefix. Included last so the routes above keep priority.
+router.include_router(insights_router)
