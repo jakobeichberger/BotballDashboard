@@ -9,6 +9,7 @@ from modules.paper_review.models import Paper
 from modules.scoring.competition_models import AerialResult, DEResult, DocumentationScore
 from modules.scoring.models import Ranking
 from modules.scoring.service import get_default_event
+from modules.seasons.lifecycle import ensure_writable
 from modules.teams.models import Team, TeamSeasonRegistration
 
 
@@ -54,6 +55,7 @@ async def get_de_results(db: AsyncSession, season_id: str) -> list[DEResult]:
 
 
 async def upsert_de_result(db: AsyncSession, season_id: str, data: dict) -> DEResult:
+    await ensure_writable(db, season_id=season_id)
     event = await get_default_event(db, season_id)
     existing = await db.execute(
         select(DEResult).where(
@@ -102,6 +104,7 @@ async def get_aerial_results(db: AsyncSession, season_id: str) -> list[AerialRes
 
 
 async def upsert_aerial_result(db: AsyncSession, season_id: str, data: dict) -> AerialResult:
+    await ensure_writable(db, season_id=season_id)
     event = await get_default_event(db, season_id)
     existing = await db.execute(
         select(AerialResult).where(
@@ -149,6 +152,7 @@ async def get_doc_scores(db: AsyncSession, season_id: str) -> list[Documentation
 
 
 async def upsert_doc_score(db: AsyncSession, season_id: str, data: dict) -> DocumentationScore:
+    await ensure_writable(db, season_id=season_id)
     event = await get_default_event(db, season_id)
     existing = await db.execute(
         select(DocumentationScore).where(

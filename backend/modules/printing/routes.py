@@ -86,6 +86,7 @@ async def update_print_job(
     _=Depends(require_permission("printing:admin")),
     db: AsyncSession = Depends(get_db),
 ):
+    await service.ensure_job_writable(db, await service.get_print_job(db, job_id))
     return await service.update_print_job(db, job_id, **body.model_dump(exclude_none=True))
 
 

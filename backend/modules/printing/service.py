@@ -9,6 +9,7 @@ from core.exceptions import ConflictError, NotFoundError
 from modules.printing.crypto import decrypt_credential, encrypt_credential
 from modules.printing.models import FilamentSpool, Printer, PrintJob, TeamSeasonPrintQuota
 from modules.scoring.service import get_default_event, resolve_event
+from modules.seasons.lifecycle import ensure_writable
 
 JOB_TRANSITIONS = {
     "pending": {"approved", "cancelled"},
@@ -103,7 +104,9 @@ async def get_print_job(db: AsyncSession, job_id: str) -> PrintJob:
 async def create_print_job(db: AsyncSession, data: dict, submitted_by: str) -> PrintJob:
     data = data.copy()
     requested_event_id = data.get("event_id")
+    await ensure_writable(db, season_id=data["season_id"])
     event = await resolve_event(db, data["season_id"], data.get("event_id"))
+    await ensure_writable(db, event_id=event.id)
     data["event_id"] = event.id
     from modules.events.models import EventRegistration
 
@@ -133,6 +136,15 @@ async def create_print_job(db: AsyncSession, data: dict, submitted_by: str) -> P
     await db.flush()
     await db.refresh(job)
     return job
+
+
+async def ensure_job_writable(db: AsyncSession, job: PrintJob) -> None:
+    """Print jobs of an archived season/event are read-only history.
+
+    Not part of update_print_job itself: the printer poller also goes through
+    it and must keep reconciling whatever a printer reports.
+    """
+    await ensure_writable(db, season_id=job.season_id, event_id=job.event_id)
 
 
 async def update_print_job(db: AsyncSession, job_id: str, **kwargs) -> PrintJob:
@@ -171,6 +183,7 @@ async def update_print_job(db: AsyncSession, job_id: str, **kwargs) -> PrintJob:
 
 async def approve_print_job(db: AsyncSession, job_id: str, approved_by: str) -> PrintJob:
     job = await get_print_job(db, job_id)
+    await ensure_job_writable(db, job)
     if "approved" not in JOB_TRANSITIONS[job.status]:
         raise ConflictError(f"Print job cannot be approved from {job.status}")
     await update_print_job(db, job.id, status="approved")
@@ -250,6 +263,7 @@ async def apply_printer_status(db: AsyncSession, printer: Printer, status) -> No
 async def set_quota(
     db: AsyncSession, team_id: str, season_id: str, **kwargs
 ) -> TeamSeasonPrintQuota:
+    await ensure_writable(db, season_id=season_id)
     quota = await _get_or_create_quota(db, team_id, season_id)
     for key, value in kwargs.items():
         if value is not None:

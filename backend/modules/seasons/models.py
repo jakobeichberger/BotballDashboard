@@ -15,6 +15,14 @@ def _uuid() -> str:
     return str(uuid.uuid4())
 
 
+SEASON_STATUSES = ("draft", "active", "finished", "archived")
+
+
+def _initial_status(context) -> str:
+    """A season created as active starts in the "active" state, others as drafts."""
+    return "active" if context.get_current_parameters().get("is_active") else "draft"
+
+
 class Season(Base):
     __tablename__ = "seasons"
 
@@ -23,6 +31,12 @@ class Season(Base):
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     game_theme: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Lifecycle: draft | active | finished | archived. "active" mirrors is_active
+    # (exactly one season); "archived" makes all of the season's data read-only
+    # (see modules.seasons.lifecycle).
+    status: Mapped[str] = mapped_column(
+        String(20), default=_initial_status, server_default="draft", nullable=False, index=True
+    )
     registration_open: Mapped[date | None] = mapped_column(Date, nullable=True)
     registration_close: Mapped[date | None] = mapped_column(Date, nullable=True)
     event_start: Mapped[date | None] = mapped_column(Date, nullable=True)

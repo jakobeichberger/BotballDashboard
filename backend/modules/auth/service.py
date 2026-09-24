@@ -1,15 +1,34 @@
 import hashlib
+import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import bcrypt
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from core.audit import AuditLog
 from core.auth import create_access_token, create_refresh_token, decode_token
 from core.config import get_settings
-from core.exceptions import BadRequestError, ConflictError, NotFoundError, UnauthorizedError
-from modules.auth.models import Permission, PushSubscription, RefreshToken, Role, User, UserRole
+from core.exceptions import (
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+    ValidationError,
+)
+from modules.auth.models import (
+    PasswordResetToken,
+    Permission,
+    PushSubscription,
+    RefreshToken,
+    Role,
+    User,
+    UserRole,
+)
+from modules.auth.password_policy import password_problem
 
 settings = get_settings()
 
@@ -66,7 +85,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
 
 
 async def create_tokens(db: AsyncSession, user: User) -> tuple[str, str]:
-    access_token = create_access_token(user.id)
+    access_token = create_access_token(user.id, {"tv": user.token_version or 0})
     refresh_token = create_refresh_token(user.id)
 
     db.add(
@@ -161,6 +180,11 @@ async def update_user(db: AsyncSession, user_id: str, **kwargs) -> User:
     user = await get_user(db, user_id)
     role_ids = kwargs.pop("role_ids", None)
 
+    if kwargs.get("is_active") is False and user.is_active:
+        # Deactivation must end every session right away, not after the
+        # access token's 15 minutes.
+        await revoke_all_sessions(db, user)
+
     for key, value in kwargs.items():
         if value is not None:
             setattr(user, key, value)
@@ -184,10 +208,228 @@ async def change_password(
     user = await get_user(db, user_id)
     if not verify_password(current_password, user.hashed_password):
         raise BadRequestError("Current password is incorrect")
+    await set_password(db, user, new_password)
+
+
+def ensure_password_policy(user: User, password: str) -> None:
+    problem = password_problem(password, user.email)
+    if problem:
+        raise ValidationError(problem)
+
+
+async def revoke_all_sessions(db: AsyncSession, user: User) -> None:
+    """End every session of ``user``: refresh tokens and issued access tokens."""
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
+    user.token_version = (user.token_version or 0) + 1
+    await db.flush()
+
+
+async def set_password(db: AsyncSession, user: User, new_password: str) -> None:
+    """Set a new password and end all sessions (change, reset and admin set).
+
+    A password change is how a user locks out whoever learned the old one;
+    every session opened with it (refresh tokens live 30 days, access tokens
+    15 minutes) must end.
+    """
+    ensure_password_policy(user, new_password)
     user.hashed_password = hash_password(new_password)
-    # A password change is how a user locks out whoever learned the old one;
-    # every session opened with it (refresh tokens live 30 days) must end.
-    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
+    await revoke_all_sessions(db, user)
+
+
+async def change_email(
+    db: AsyncSession, user_id: str, new_email: str, current_password: str
+) -> User:
+    user = await get_user(db, user_id)
+    if not verify_password(current_password, user.hashed_password):
+        raise BadRequestError("Current password is incorrect")
+    new_email = new_email.lower()
+    if new_email != user.email:
+        existing = await db.execute(select(User.id).where(User.email == new_email))
+        if existing.first():
+            raise ConflictError("Email already registered")
+        user.email = new_email
+    await db.flush()
+    await db.refresh(user, ["roles"])
+    return user
+
+
+# ── Password reset ────────────────────────────────────────────────────────────
+
+PASSWORD_RESET_TTL = timedelta(hours=1)
+# A new reset mail for the same account is sent at most this often.
+PASSWORD_RESET_RESEND_AFTER = timedelta(minutes=1)
+
+
+def _aware(value: datetime) -> datetime:
+    # SQLite hands back naive datetimes even for timezone=True columns.
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+async def request_password_reset(db: AsyncSession, email: str) -> tuple[User, str] | None:
+    """Issue a reset token for an active account.
+
+    Returns ``(user, token)`` for the caller to mail, or None when nothing is
+    to be sent (unknown/inactive address, or a token was issued moments ago).
+    The HTTP answer is the same either way, so addresses cannot be probed.
+    """
+    result = await db.execute(
+        select(User).where(User.email == email.strip().lower(), User.is_active == True)
+    )
+    user = result.scalar_one_or_none()
+    if not user or user.anonymized_at is not None:
+        return None
+    now = datetime.now(UTC)
+    recent = await db.execute(
+        select(PasswordResetToken.created_at)
+        .where(PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None))
+        .order_by(PasswordResetToken.created_at.desc())
+        .limit(1)
+    )
+    last = recent.scalar_one_or_none()
+    if last is not None and now - _aware(last) < PASSWORD_RESET_RESEND_AFTER:
+        return None
+    # Only the newest link is valid.
+    await db.execute(
+        delete(PasswordResetToken).where(
+            PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
+        )
+    )
+    token = secrets.token_urlsafe(32)
+    db.add(
+        PasswordResetToken(
+            user_id=user.id,
+            token_hash=_hash_token(token),
+            expires_at=now + PASSWORD_RESET_TTL,
+            created_at=now,
+        )
+    )
+    await db.flush()
+    return user, token
+
+
+async def confirm_password_reset(db: AsyncSession, token: str, new_password: str) -> User:
+    result = await db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token_hash == _hash_token(token))
+    )
+    stored = result.scalar_one_or_none()
+    now = datetime.now(UTC)
+    if stored is None or stored.used_at is not None or _aware(stored.expires_at) <= now:
+        raise BadRequestError("Invalid or expired reset link")
+    user = await get_user(db, stored.user_id)
+    if not user.is_active or user.anonymized_at is not None:
+        raise BadRequestError("Invalid or expired reset link")
+    await set_password(db, user, new_password)
+    stored.used_at = now
+    return user
+
+
+# ── Account deletion / export (DSGVO) ─────────────────────────────────────────
+
+
+async def anonymize_user(db: AsyncSession, user: User) -> None:
+    """Remove all personal data of ``user`` but keep the row.
+
+    Scores entered, reviews, status changes and print jobs reference users.id;
+    deleting the row would either fail or rewrite history. Instead the row is
+    turned into an anonymous account that can never log in again.
+    """
+    from modules.teams.models import TeamMember
+
+    if user.anonymized_at is not None:
+        return
+    old_email = user.email
+    # Team member records are the team's data; drop only the link to the
+    # account and the address of the person whose account this was.
+    members = await db.execute(select(TeamMember).where(TeamMember.user_id == user.id))
+    for member in members.scalars().all():
+        member.user_id = None
+        if member.email and member.email.lower() == old_email:
+            member.email = None
+
+    await db.execute(delete(PushSubscription).where(PushSubscription.user_id == user.id))
+    await db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
+    await db.execute(delete(UserRole).where(UserRole.user_id == user.id))
+    await revoke_all_sessions(db, user)
+
+    user.email = f"deleted-{user.id}@deleted.invalid"
+    user.display_name = "Gelöschter Benutzer"
+    # Random, never-disclosed secret: the account can no longer log in.
+    user.hashed_password = hash_password(secrets.token_urlsafe(32))
+    user.is_active = False
+    user.is_superuser = False
+    user.last_login = None
+    user.anonymized_at = datetime.now(UTC)
+    await db.flush()
+
+
+async def delete_own_account(db: AsyncSession, user_id: str, current_password: str) -> None:
+    user = await get_user(db, user_id)
+    if not verify_password(current_password, user.hashed_password):
+        raise BadRequestError("Current password is incorrect")
+    await anonymize_user(db, user)
+
+
+async def admin_delete_user(db: AsyncSession, acting_user_id: str, user_id: str) -> None:
+    if acting_user_id == user_id:
+        raise ConflictError("Use DELETE /auth/me to delete your own account")
+    await anonymize_user(db, await get_user(db, user_id))
+
+
+def _columns(obj: Any, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
+    return {
+        attr.key: getattr(obj, attr.key)
+        for attr in obj.__mapper__.column_attrs
+        if attr.key not in exclude
+    }
+
+
+async def export_user_data(db: AsyncSession, user_id: str) -> dict[str, Any]:
+    """Everything stored about the user (Art. 15/20 DSGVO), as plain data."""
+    from modules.bots.models import Bot
+    from modules.paper_review.models import Paper, PaperReview
+    from modules.printing.models import PrintJob
+    from modules.scoring.models import Match
+    from modules.teams.models import Team, TeamMember
+
+    user = await get_user(db, user_id)
+
+    async def rows(query, exclude: tuple[str, ...] = ()) -> list[dict[str, Any]]:
+        return [_columns(item, exclude) for item in (await db.execute(query)).scalars().all()]
+
+    memberships = await db.execute(
+        select(TeamMember, Team)
+        .join(Team, Team.id == TeamMember.team_id)
+        .where(TeamMember.user_id == user_id)
+    )
+    return {
+        "exported_at": datetime.now(UTC),
+        "profile": _columns(user, exclude=("hashed_password", "token_version")),
+        "roles": [role.name for role in user.roles],
+        "permissions": sorted(await get_user_permissions(db, user_id)),
+        "team_memberships": [
+            {**_columns(member), "team_name": team.name} for member, team in memberships.all()
+        ],
+        "sessions": await rows(
+            select(RefreshToken).where(RefreshToken.user_id == user_id),
+            exclude=("token_hash",),
+        ),
+        "push_subscriptions": await rows(
+            select(PushSubscription).where(PushSubscription.user_id == user_id),
+            exclude=("p256dh", "auth"),
+        ),
+        "matches_entered": await rows(select(Match).where(Match.entered_by == user_id)),
+        "papers_submitted": await rows(
+            select(Paper).where(Paper.submitted_by == user_id), exclude=("file_url",)
+        ),
+        "paper_reviews": await rows(select(PaperReview).where(PaperReview.reviewer_id == user_id)),
+        "print_jobs_submitted": await rows(
+            select(PrintJob).where(PrintJob.submitted_by == user_id), exclude=("file_url",)
+        ),
+        "bots_created": await rows(select(Bot).where(Bot.created_by == user_id)),
+        "audit_log": await rows(
+            select(AuditLog).where(AuditLog.user_id == user_id).order_by(AuditLog.created_at)
+        ),
+    }
 
 
 # ── Roles ─────────────────────────────────────────────────────────────────────
@@ -226,6 +468,49 @@ async def create_role(
     # doesn't trigger a lazy load (MissingGreenlet).
     result = await db.execute(
         select(Role).options(selectinload(Role.permissions)).where(Role.id == role.id)
+    )
+    return result.scalar_one()
+
+
+# Permissions the system "admin" role can never lose: without them nobody could
+# repair the user and role configuration any more.
+ADMIN_CRITICAL_PERMISSIONS = frozenset({"users:read", "users:write", "roles:read", "roles:write"})
+
+
+async def update_role_permissions(
+    db: AsyncSession,
+    role_id: str,
+    permission_names: list[str],
+    description: str | None = None,
+) -> Role:
+    result = await db.execute(
+        select(Role).options(selectinload(Role.permissions)).where(Role.id == role_id)
+    )
+    role = result.scalar_one_or_none()
+    if not role:
+        raise NotFoundError("Role not found")
+
+    wanted = set(permission_names)
+    perms = list(
+        (await db.execute(select(Permission).where(Permission.name.in_(wanted)))).scalars().all()
+    )
+    unknown = wanted - {perm.name for perm in perms}
+    if unknown:
+        raise ValidationError(f"Unknown permissions: {', '.join(sorted(unknown))}")
+    if role.is_system and role.name == "admin":
+        missing = ADMIN_CRITICAL_PERMISSIONS - wanted
+        if missing:
+            raise ForbiddenError(f"The admin role must keep: {', '.join(sorted(missing))}")
+
+    role.permissions = perms
+    if description is not None:
+        role.description = description
+    await db.flush()
+    result = await db.execute(
+        select(Role)
+        .options(selectinload(Role.permissions))
+        .where(Role.id == role.id)
+        .execution_options(populate_existing=True)
     )
     return result.scalar_one()
 

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from modules.events.models import Event, ScheduledMatch
 from modules.scoring.models import Match, Ranking, ScoreRevision, ScoringSchema
+from modules.seasons.lifecycle import ensure_writable
 
 
 def compute_seed_score(scores: list[float]) -> float:
@@ -148,6 +149,7 @@ async def create_schema_version(
     fields: list[dict],
     activate: bool = True,
 ) -> ScoringSchema:
+    await ensure_writable(db, event_id=event.id)
     scope = [
         ScoringSchema.season_id == event.season_id,
         ScoringSchema.event_id == event.id,
@@ -241,7 +243,9 @@ async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
     match_data = data.copy()
     provided_total = match_data.pop("total_score", None)
     season_id = match_data.pop("season_id")
+    await ensure_writable(db, season_id=season_id)
     event = await resolve_event(db, season_id, match_data.pop("event_id", None))
+    await ensure_writable(db, event_id=event.id)
     idempotency_key = match_data.get("idempotency_key")
     if idempotency_key:
         result = await db.execute(select(Match).where(Match.idempotency_key == idempotency_key))
@@ -309,6 +313,7 @@ async def update_match(
     **kwargs,
 ) -> Match:
     match = await get_match(db, match_id)
+    await ensure_writable(db, event_id=match.event_id)
     if expected_version is not None and expected_version != match.version:
         raise ConflictError(f"Score was changed by another user (current version: {match.version})")
     previous = _score_state(match)
@@ -345,6 +350,7 @@ async def list_revisions(db: AsyncSession, match_id: str) -> list[ScoreRevision]
 
 async def confirm_match(db: AsyncSession, match_id: str, confirmed_by: str) -> Match:
     match = await get_match(db, match_id)
+    await ensure_writable(db, event_id=match.event_id)
     match.confirmed_by = confirmed_by
     match.confirmed_at = datetime.now(UTC)
     return match
@@ -352,6 +358,7 @@ async def confirm_match(db: AsyncSession, match_id: str, confirmed_by: str) -> M
 
 async def delete_match(db: AsyncSession, match_id: str) -> None:
     match = await get_match(db, match_id)
+    await ensure_writable(db, event_id=match.event_id)
     event_id = match.event_id
     team_id = match.team_id
     level_id = match.competition_level_id
