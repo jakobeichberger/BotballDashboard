@@ -177,8 +177,10 @@ class TestDisqualificationUpdatesRanking:
         after = (
             await client.get(f"/api/scoring/seasons/{season.id}/ranking", headers=auth_headers)
         ).json()[0]
-        assert after["rounds_played"] == 1, "disqualified match still counted"
+        # Game review: a disqualified round is a 0, it still is a round played.
+        assert after["rounds_played"] == 2
         assert after["best_score"] == 10, "disqualified score still counted"
+        assert after["seed_score"] == 5, "seed = (10 + 0) / 2"
 
 
 class TestReviewScoreBounds:

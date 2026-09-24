@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { useScoringScope } from "@/hooks/useScoringScope";
+import { aerialMean } from "@/lib/scoring";
 import { EventLink } from "@/components/EventLink";
 import { Plane, ArrowLeft, Save } from "lucide-react";
 
@@ -21,20 +22,14 @@ interface Team {
 }
 
 export default function AerialPage() {
-  const [searchParams] = useSearchParams();
-  const sid = searchParams.get("season_id") ?? "";
   const queryClient = useQueryClient();
-
-  const { data: season } = useQuery({
-    queryKey: ["seasons", "active"],
-    queryFn: async () => { const { data } = await api.get("/seasons/active"); return data; },
-  });
-  const seasonId = sid || season?.id;
+  // Results belong to the event of the current route, not the season's first event.
+  const { base } = useScoringScope();
 
   const { data: existing } = useQuery<AerialEntry[]>({
-    queryKey: ["aerial-results", seasonId],
-    queryFn: async () => { const { data } = await api.get(`/scoring/seasons/${seasonId}/aerial-results`); return data; },
-    enabled: !!seasonId,
+    queryKey: ["aerial-results", base],
+    queryFn: async () => { const { data } = await api.get(`${base}/aerial-results`); return data; },
+    enabled: !!base,
   });
 
   const { data: teams } = useQuery<Team[]>({
@@ -55,17 +50,17 @@ export default function AerialPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (entries: AerialEntry[]) => {
-      await api.put(`/scoring/seasons/${seasonId}/aerial-results`, entries);
+      await api.put(`${base}/aerial-results`, entries);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["aerial-results", seasonId] });
-      queryClient.invalidateQueries({ queryKey: ["aerial-ranking", seasonId] });
+      queryClient.invalidateQueries({ queryKey: ["aerial-results", base] });
+      queryClient.invalidateQueries({ queryKey: ["aerial-ranking", base] });
       setDraft({});
     },
   });
 
   const handleSave = () => {
-    if (!teams || !seasonId) return;
+    if (!teams || !base) return;
     const entries: AerialEntry[] = teams
       .filter((t) => {
         const e = effective(t.id);
@@ -84,11 +79,10 @@ export default function AerialPage() {
     saveMutation.mutate(entries);
   };
 
-  const avgBest2 = (e: Partial<AerialEntry>): string => {
-    const vals = [e.run1, e.run2, e.run3, e.run4].filter((v): v is number => v != null);
-    if (vals.length === 0) return "–";
-    const top2 = vals.sort((a, b) => b - a).slice(0, 2);
-    return (top2.reduce((a, b) => a + b, 0) / top2.length).toFixed(1);
+  // Same rule as the backend and the formula engine: mean of every run.
+  const meanOfRuns = (e: Partial<AerialEntry>): string => {
+    const mean = aerialMean([e.run1, e.run2, e.run3, e.run4]);
+    return mean == null ? "–" : mean.toFixed(1);
   };
 
   return (
@@ -118,7 +112,7 @@ export default function AerialPage() {
       )}
 
       <p className="text-sm text-gray-500 mb-4">
-        Score = Durchschnitt der 2 besten Läufe. Nur Felder mit Wert ≥ 0 werden gespeichert.
+        Score = Durchschnitt aller Läufe. Nur Felder mit Wert ≥ 0 werden gespeichert.
       </p>
 
       <div className="card overflow-hidden">
@@ -132,7 +126,7 @@ export default function AerialPage() {
                 </th>
               ))}
               <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">
-                Score (⌀ best 2)
+                Score (⌀ aller Läufe)
               </th>
             </tr>
           </thead>
@@ -162,7 +156,7 @@ export default function AerialPage() {
                     </td>
                   ))}
                   <td className="px-4 py-2 text-center font-bold text-gray-700 dark:text-gray-300">
-                    {avgBest2(e)}
+                    {meanOfRuns(e)}
                   </td>
                 </tr>
               );

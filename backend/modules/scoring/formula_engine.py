@@ -212,9 +212,9 @@ DEFAULT_FORMULA_SETS: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
-# GCER runs the full documentation formula including the onsite presentation,
-# and adds a double-seeding score, so the overall score there is 0..4.
-GCER_BOTBALL_FORMULA_SET: list[tuple[str, str]] = [
+# Regional tournaments 2025/2026: the game review formulas unchanged —
+# DocScore = 2/10·P1 + 2/10·P2 + 2/10·P3 + 4/10·Onsite, overall 0..3.
+REGIONAL_2026_BOTBALL_FORMULA_SET: list[tuple[str, str]] = [
     _SEED_TOTAL,
     _SEED_SCORE,
     _DE_BRACKET_SCORE,
@@ -223,7 +223,19 @@ GCER_BOTBALL_FORMULA_SET: list[tuple[str, str]] = [
         "doc_score",
         "0.2 * (doc_p1/100) + 0.2 * (doc_p2/100) + 0.2 * (doc_p3/100) + 0.4 * (onsite/100)",
     ),
-    _PAPER_SCORE,
+    ("overall", "seed_score + de_score + doc_score"),
+]
+
+# GCER 2026: "Documentation scores at GCER will only include the Onsite
+# Documentation score", plus the double-seeding score, so overall is 0..4.
+# Double seeding drops no run: double_seed_total (supplied by the input
+# builder) is the mean of all of a team's double-seeding runs.
+GCER_BOTBALL_FORMULA_SET: list[tuple[str, str]] = [
+    _SEED_TOTAL,
+    _SEED_SCORE,
+    _DE_BRACKET_SCORE,
+    _DE_SCORE,
+    ("doc_score", "onsite / 100"),
     (
         "double_seed_score",
         "2/3 * ((n - rank(double_seed_total) + 1) / n)"
@@ -233,10 +245,73 @@ GCER_BOTBALL_FORMULA_SET: list[tuple[str, str]] = [
 ]
 
 
+@dataclass(frozen=True)
+class FormulaPreset:
+    """A ready-made formula set an admin can load into a season's category."""
+
+    id: str
+    label: str
+    category: str
+    description: str
+    formulas: list[tuple[str, str]]
+
+
+FORMULA_PRESETS: dict[str, FormulaPreset] = {
+    p.id: p
+    for p in (
+        FormulaPreset(
+            "ecer_2025_botball",
+            "ECER 2025 – Botball",
+            "botball",
+            "Game review + ECER amendments: P1–P3 without onsite, paper halves the doc weight.",
+            DEFAULT_FORMULA_SETS["botball"],
+        ),
+        FormulaPreset(
+            "ecer_2025_open",
+            "ECER 2025 – PRIA Open",
+            "open",
+            "Seeding + DE + ½ paper score.",
+            DEFAULT_FORMULA_SETS["open"],
+        ),
+        FormulaPreset(
+            "regional_2026_botball",
+            "Regional 2025/2026 – Botball",
+            "botball",
+            "Game review: 0.2·P1 + 0.2·P2 + 0.2·P3 + 0.4·Onsite, overall 0–3.",
+            REGIONAL_2026_BOTBALL_FORMULA_SET,
+        ),
+        FormulaPreset(
+            "gcer_2026_botball",
+            "GCER 2026 – Botball",
+            "botball",
+            "Onsite documentation only, plus double seeding (no run dropped), overall 0–4.",
+            GCER_BOTBALL_FORMULA_SET,
+        ),
+        FormulaPreset(
+            "aerial",
+            "Aerial",
+            "aerial",
+            "Mean of all aerial runs.",
+            DEFAULT_FORMULA_SETS["aerial"],
+        ),
+        FormulaPreset(
+            "jbc",
+            "Junior Botball Challenge",
+            "jbc",
+            "Seeding only.",
+            DEFAULT_FORMULA_SETS["jbc"],
+        ),
+    )
+}
+
+
 # Inputs the engine and the UI know about, with the label shown in the editor.
 KNOWN_INPUTS: dict[str, str] = {
     "n": "Number of teams in the category (injected automatically)",
-    "seed_runs": "List of this team's seeding run scores",
+    "seed_runs": (
+        "List of this team's seeding round scores (seeding phases only; "
+        "a disqualified round is 0, negative scores count as 0)"
+    ),
     "seed_rank": "Seeding rank, if entered manually instead of computed",
     "de_rank": "Rank within the double-elimination bracket (0 = did not take part)",
     "de_score_recorded": "DE score as manually recorded, if one was entered",
@@ -249,5 +324,5 @@ KNOWN_INPUTS: dict[str, str] = {
     "onsite": "Onsite documentation, 0-100 (not used at ECER)",
     "aerial_runs": "List of this team's aerial run scores",
     "double_seed_runs": "List of double-seeding run scores (GCER only)",
-    "double_seed_total": "Double-seeding total (GCER only)",
+    "double_seed_total": "Mean of all double-seeding runs, none dropped (GCER only)",
 }

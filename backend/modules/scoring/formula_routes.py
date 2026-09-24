@@ -6,11 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import require_permission
 from core.database import get_db
 from modules.scoring import formula_service as svc
-from modules.scoring.formula_engine import DEFAULT_FORMULA_SETS, KNOWN_INPUTS
+from modules.scoring.formula_engine import DEFAULT_FORMULA_SETS, FORMULA_PRESETS, KNOWN_INPUTS
 from modules.scoring.formula_schemas import (
     BracketWeightsUpdate,
     FormulaFunctionDoc,
     FormulaIssueResponse,
+    FormulaPresetResponse,
     FormulaPreviewResponse,
     FormulaPreviewRow,
     FormulaReferenceResponse,
@@ -65,6 +66,16 @@ async def get_reference(_=Depends(require_permission("scoring:read"))):
             category: [{"key": k, "expression": e} for k, e in formulas]
             for category, formulas in DEFAULT_FORMULA_SETS.items()
         },
+        presets=[
+            FormulaPresetResponse(
+                id=p.id,
+                label=p.label,
+                category=p.category,
+                description=p.description,
+                formulas=[{"key": k, "expression": e} for k, e in p.formulas],
+            )
+            for p in FORMULA_PRESETS.values()
+        ],
     )
 
 
@@ -76,6 +87,18 @@ async def list_formulas(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.list_formulas(db, season_id, category)
+
+
+@router.post("/seasons/{season_id}/presets/{preset_id}", response_model=list[FormulaResponse])
+async def apply_formula_preset(
+    season_id: str,
+    preset_id: str,
+    category: str | None = None,
+    _=Depends(require_permission("scoring:formulas")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace a category's formulas with a shipped preset (ECER, regional, GCER, ...)."""
+    return await svc.apply_preset(db, season_id, preset_id, category)
 
 
 @router.get("/seasons/{season_id}/{category}/effective", response_model=list[dict])
@@ -140,6 +163,7 @@ async def preview_formula_set(
                 team_id=r.get("team_id", ""),
                 team_name=r.get("team_name"),
                 rank=r.get("rank"),
+                disqualified=bool(r.get("disqualified")),
                 values={
                     k: float(v)
                     for k, v in r.items()

@@ -191,8 +191,9 @@ DoubleSeedScore = (2/3) × (n − DoubleSeedRank + 1) / n
 
 | Saison | Formel |
 |---|---|
-| 2024 | `DocScore = 3/10·P1 + 3/10·P2 + 3/10·P3 + 1/10·Onsite` |
-| 2025/2026 | `DocScore = 2/10·P1 + 2/10·P2 + 2/10·P3 + 4/10·Onsite` |
+| 2024 | `DocScore = 3/10·P1 + 3/10·P2 + 1/10·P3 + 3/10·Onsite` |
+| 2025/2026 | `DocScore = 2/10·P1 + 2/10·P2 + 2/10·P3 + 4/10·Onsite` (Formel-Vorlage `regional_2026_botball`) |
+| GCER 2026 | `DocScore = Onsite` – „Documentation scores at GCER will only include the Onsite Documentation score“ (Vorlage `gcer_2026_botball`) |
 
 **Documentation Score – ECER-spezifisch (kein Onsite):**
 
@@ -222,6 +223,25 @@ Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore
 ```
 
 *(n = Anzahl Teams im Turnier/Bracket)*
+
+**Umsetzung in der Formel-Engine (verbindliche Regeln aus dem Game Review):**
+
+- `seed_runs` enthält nur Läufe aus Seeding-Phasen (Phase des Matches bzw. seines geplanten Matches;
+  frei erfasste Matches ohne Phase zählen als Seeding). DE-, Double-Seeding-, Alliance- und Finalmatches
+  zählen nie zum Seed Score.
+- Ein disqualifizierter Seeding-Lauf zählt als **0** (er wird nicht weggelassen), Scores unter 0 zählen als 0.
+  Der Seed Score ist der Schnitt der zwei besten gespielten Läufe inklusive dieser Nullen.
+- `double_seed_runs` kommen aus Double-Seeding-Phasen; `double_seed_total` ist der Schnitt **aller**
+  Läufe („No scores will be dropped in Double Seeding“).
+- `n` und das Teilnehmerfeld kommen aus dem Event (Event-Anmeldungen plus Teams mit Ergebnissen dort),
+  nicht aus der Saison-Anmeldung. Die Kategorie kommt aus der Event-Anmeldung, sonst aus der Saison-Anmeldung.
+- Seeding-Ränge werden pro Kategorie vergeben (Botball und Open getrennt); Gleichstand teilt sich einen
+  Rang (1, 2, 2, 4).
+- Eine **rote Karte** in irgendeinem offiziellen Match des Events disqualifiziert das Team für die
+  gesamte Wertung des Events: es erhält keinen Rang (`rank = null`, `disqualified = true`), zählt nicht
+  zu `n` und wird in Exporten/öffentlicher Rangliste nicht gelistet.
+- Formel-Vorlagen: `ecer_2025_botball` (Standard), `ecer_2025_open` (Standard), `regional_2026_botball`,
+  `gcer_2026_botball`, `aerial`, `jbc` – im Formel-Editor über „Vorlage laden“.
 
 ---
 
@@ -262,11 +282,11 @@ Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore
 | Serving Station | Red/Orange/Yellow Pom in Tray | ×5 | # Full Pom Sets in Trays |
 | Serving Station | One Side in Tray | ×15 | # Full Trays ×2 |
 | Serving Station | One Entree in Tray | ×15 | |
-| Beverage Station | Cups | ×5 | Full Cup ×2 |
-| Beverage Station | Water Bottles | ×10 | 2+ Cups ×2 |
-| Beverage Station | Ice | ×10 | 5 Water Bottles ×3 |
-| Beverage Station | Matching Drink Color | ×30 | 6 Water Bottles ×6 |
-| Beverage Station | Wrong Drink Color | ×10 | |
+| Cups | Ice | ×10 | Full Cup ×2 |
+| Cups | Wrong Drink Color | ×10 | 2+ Cups in Beverage Station ×2 |
+| Cups | Matching Drink Color | ×30 | |
+| Beverage Station | Cups | ×5 | 5 Water Bottles ×3 **oder** 6 Water Bottles ×6 |
+| Beverage Station | Water Bottles | ×10 | |
 | Fry Station | Potato | ×50 | No Fries on Game Surface ×2 |
 
 #### 2026 – Logistics/Warehouse Theme

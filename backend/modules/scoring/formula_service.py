@@ -9,20 +9,30 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import BadRequestError, NotFoundError
-from modules.events.models import Event
+from modules.events.models import Event, EventRegistration
 from modules.paper_review.models import Paper
 from modules.scoring.competition_models import AerialResult, DEResult, DocumentationScore
 from modules.scoring.formula import FormulaError, parse_formula, resolve_order
 from modules.scoring.formula_engine import (
     DEFAULT_FORMULA_SETS,
+    FORMULA_PRESETS,
     KNOWN_INPUTS,
     FormulaRunResult,
     run_formula_set,
 )
 from modules.scoring.formula_models import ScoringBracketWeight, ScoringFormula
 from modules.scoring.models import Match
+from modules.scoring.service import (
+    DEFAULT_CATEGORY,
+    DOUBLE_SEEDING,
+    SEEDING,
+    official_run_score,
+    red_carded_teams,
+    select_matches_with_kind,
+    team_categories,
+)
 from modules.seasons.lifecycle import ensure_writable
-from modules.teams.models import Team, TeamSeasonRegistration
+from modules.teams.models import Team
 
 CATEGORIES = ("botball", "open", "aerial", "jbc")
 
@@ -127,6 +137,25 @@ async def reset_to_defaults(
     )
 
 
+async def apply_preset(
+    db: AsyncSession, season_id: str, preset_id: str, category: str | None = None
+) -> list[ScoringFormula]:
+    """Replace a category's formulas with one of the shipped presets.
+
+    `category` defaults to the preset's own; passing another one lets e.g. the
+    GCER set be used for a differently named category.
+    """
+    preset = FORMULA_PRESETS.get(preset_id)
+    if preset is None:
+        raise NotFoundError(f"Unknown formula preset '{preset_id}'")
+    return await replace_formula_set(
+        db,
+        season_id,
+        category or preset.category,
+        [{"key": k, "expression": e, "sort_order": i} for i, (k, e) in enumerate(preset.formulas)],
+    )
+
+
 # ── Bracket weights ───────────────────────────────────────────────────────────
 
 
@@ -181,50 +210,87 @@ def formula_input_names() -> set[str]:
     return set(KNOWN_INPUTS) | {"n", "team_id", "team_name", "category", "de_bracket"}
 
 
+async def _event_participants(db: AsyncSession, event: Event) -> dict[str, str]:
+    """team_id -> category for every team taking part in this event.
+
+    The field is the event's own registrations plus any team that actually has
+    a result here (match, DE, aerial or documentation) — not the season
+    registration: a team registered for the season that never showed up at
+    this event must not count towards n, or it shifts every seeding score.
+    """
+    registered = await db.execute(
+        select(EventRegistration.team_id).where(EventRegistration.event_id == event.id)
+    )
+    team_ids: set[str] = set(registered.scalars().all())
+    result_queries = (
+        select(Match.team_id).where(Match.event_id == event.id, Match.is_practice.is_(False)),
+        select(DEResult.team_id).where(DEResult.event_id == event.id),
+        select(AerialResult.team_id).where(AerialResult.event_id == event.id),
+        select(DocumentationScore.team_id).where(DocumentationScore.event_id == event.id),
+    )
+    for query in result_queries:
+        team_ids.update((await db.execute(query.distinct())).scalars().all())
+    categories = await team_categories(db, event, team_ids)
+    return {t: categories.get(t, DEFAULT_CATEGORY) for t in team_ids}
+
+
 async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[dict[str, Any]]:
     """Collect one input row per team taking part in `category` at this event.
 
-    Results (matches, DE, aerial, documentation) are scoped to the event, while
-    the field of teams comes from the season registration the event belongs to —
-    teams register per season, but compete per event.
+    Results (matches, DE, aerial, documentation) are scoped to the event, and
+    so is the field of teams (see _event_participants); the category comes
+    from the event registration, falling back to the season registration.
+
+    Seeding inputs follow the game review: only matches of seeding phases feed
+    `seed_runs` (DE, alliance and final matches never do), a disqualified round
+    counts as 0 instead of being dropped, and negative scores count as 0.
+    Double-seeding matches feed `double_seed_runs`; `double_seed_total` is the
+    mean of all of them, since double seeding drops no run.
+
+    Every row carries `disqualified` (a red card anywhere at the event); the
+    ranking takes those teams out of the field.
 
     Every key is always present (missing results become 0 / an empty list), so
     a formula never has to guard against a team that skipped a discipline.
     """
-    event = await db.execute(select(Event).where(Event.id == event_id))
-    event_row = event.scalar_one_or_none()
+    event_row = await db.get(Event, event_id)
     if not event_row:
         raise NotFoundError("Event not found")
     season_id = event_row.season_id
 
-    teams_result = await db.execute(
-        select(Team.id, Team.name, TeamSeasonRegistration.category)
-        .join(TeamSeasonRegistration, TeamSeasonRegistration.team_id == Team.id)
-        .where(
-            TeamSeasonRegistration.season_id == season_id,
-            TeamSeasonRegistration.category == category,
-        )
-        .order_by(Team.name)
-    )
-    teams = [{"team_id": r.id, "team_name": r.name, "category": r.category} for r in teams_result]
-    if not teams:
+    participants = await _event_participants(db, event_row)
+    team_ids = {t for t, c in participants.items() if c == category}
+    if not team_ids:
         return []
-    team_ids = {t["team_id"] for t in teams}
+    names_result = await db.execute(select(Team.id, Team.name).where(Team.id.in_(team_ids)))
+    names = dict(names_result.tuples().all())
+    teams: list[dict[str, Any]] = sorted(
+        (
+            {"team_id": t, "team_name": names.get(t), "category": category}
+            for t in team_ids
+            if t in names
+        ),
+        key=lambda t: t["team_name"] or "",
+    )
 
     seed_runs: dict[str, list[float]] = {t: [] for t in team_ids}
+    double_seed_runs: dict[str, list[float]] = {t: [] for t in team_ids}
     matches = await db.execute(
-        select(Match)
+        select_matches_with_kind(Match.team_id, Match.total_score, Match.is_disqualified)
         .where(
             Match.event_id == event_id,
-            Match.is_disqualified.is_(False),
+            Match.team_id.in_(team_ids),
             # practice runs are preparation and never count toward the ranking
             Match.is_practice.is_(False),
         )
-        .order_by(Match.round_number)
+        .order_by(Match.round_number, Match.created_at)
     )
-    for m in matches.scalars():
-        if m.team_id in seed_runs:
-            seed_runs[m.team_id].append(float(m.total_score or 0.0))
+    for team_id, total, disqualified, kind in matches.all():
+        if kind == SEEDING:
+            seed_runs[team_id].append(official_run_score(total, disqualified))
+        elif kind == DOUBLE_SEEDING:
+            double_seed_runs[team_id].append(official_run_score(total, disqualified))
+    red_carded = await red_carded_teams(db, event_id)
 
     de_by_team: dict[str, DEResult] = {}
     de_rows = await db.execute(select(DEResult).where(DEResult.event_id == event_id))
@@ -232,7 +298,10 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
         if d.team_id in team_ids:
             de_by_team[d.team_id] = d
     bracket_sizes = Counter(d.bracket for d in de_by_team.values() if d.bracket)
-    weights = await get_bracket_weights(db, season_id, category)
+    # Per-event weights (announced per tournament) win over the season default.
+    from modules.events.service import get_bracket_weights as event_bracket_weights
+
+    weights = await event_bracket_weights(db, event_id, category)
 
     aerial_by_team: dict[str, AerialResult] = {}
     aerial_rows = await db.execute(select(AerialResult).where(AerialResult.event_id == event_id))
@@ -266,10 +335,14 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
         aerial = aerial_by_team.get(tid)
         doc = doc_by_team.get(tid)
         bracket = de.bracket if de and de.bracket else ""
+        double_runs = double_seed_runs.get(tid, [])
         rows.append(
             {
                 **t,
+                "disqualified": tid in red_carded,
                 "seed_runs": seed_runs.get(tid, []),
+                "double_seed_runs": double_runs,
+                "double_seed_total": sum(double_runs) / len(double_runs) if double_runs else 0.0,
                 "de_rank": float(de.de_rank) if de and de.de_rank else 0.0,
                 # The de_score column as recorded by an admin. The default
                 # formula derives DE from the rank as the game document does,
@@ -316,6 +389,23 @@ def _rank_rows(rows: list[dict[str, Any]], key: str = "overall") -> list[dict[st
     return ordered
 
 
+def _run_and_rank(
+    formulas: list[tuple[str, str]], rows: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], FormulaRunResult]:
+    """Run the formulas over the eligible field and rank it.
+
+    Red-carded teams are disqualified from the whole competition ranking: they
+    are taken out of the field before the formulas run (so they count neither
+    towards n nor towards any maximum) and are appended unranked, flagged
+    `disqualified`, so the scoreboard can still show them.
+    """
+    eligible = [r for r in rows if not r.get("disqualified")]
+    excluded = [{**r, "rank": None} for r in rows if r.get("disqualified")]
+    run = run_formula_set(formulas, eligible) if eligible else FormulaRunResult()
+    run.rows = _rank_rows(run.rows) + excluded
+    return run.rows, run
+
+
 async def compute_category_ranking(
     db: AsyncSession, event_id: str, category: str
 ) -> tuple[list[dict[str, Any]], FormulaRunResult]:
@@ -329,8 +419,7 @@ async def compute_category_ranking(
     formulas = await get_formula_set(db, season_id, category)
     if not rows or not formulas:
         return [], FormulaRunResult(rows=rows)
-    run = run_formula_set(formulas, rows)
-    return _rank_rows(run.rows), run
+    return _run_and_rank(formulas, rows)
 
 
 #: Formula keys that have a dedicated field on OverallRankingEntry.
@@ -352,23 +441,29 @@ _INPUT_KEYS = frozenset(
         "rank",
         "n",
         "seed_runs",
+        "double_seed_runs",
         "aerial_runs",
         "de_bracket",
+        "disqualified",
     }
 )
 
 
 def to_ranking_entry(row: dict[str, Any]) -> dict[str, Any]:
     """Shape one computed row for the ranking API."""
+    rank = row.get("rank")
     entry: dict[str, Any] = {
-        "rank": int(row.get("rank") or 0),
+        "rank": int(rank) if rank is not None else None,
+        "disqualified": bool(row.get("disqualified")),
         "team_id": row["team_id"],
         "team_name": row.get("team_name"),
         "category": row.get("category", ""),
     }
     for field, key in _ENTRY_FIELDS.items():
         value = row.get(key)
-        entry[field] = float(value) if isinstance(value, int | float) else None
+        entry[field] = (
+            float(value) if isinstance(value, int | float) and not isinstance(value, bool) else None
+        )
     entry["overall_score"] = entry["overall_score"] or 0.0
     entry["values"] = {
         k: float(v)
@@ -396,6 +491,5 @@ async def preview_formula_set(
     rows = await build_inputs(db, event_id, category)
     if not rows:
         return FormulaRunResult()
-    run = run_formula_set(formulas, rows)
-    run.rows = _rank_rows(run.rows)
+    _, run = _run_and_rank(formulas, rows)
     return run
