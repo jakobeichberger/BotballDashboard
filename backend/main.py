@@ -12,7 +12,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -22,6 +22,7 @@ from core.config import get_settings
 from core.logging import configure_logging
 from core.metrics import observe_request, render_metrics
 from core.modules import MODULES
+from modules.events.module_access import require_module
 
 settings = get_settings()
 configure_logging()
@@ -195,8 +196,11 @@ app.add_middleware(
 )
 
 # Register all modules from one explicit, static registry.
+# Feature modules carry a per-event switch; their guard answers 404 for events
+# that have the module disabled.
 for module in MODULES:
-    app.include_router(module.router, prefix="/api")
+    guards = [Depends(require_module(module.event_module))] if module.event_module else []
+    app.include_router(module.router, prefix="/api", dependencies=guards)
 
 
 @app.get("/api/system/health", tags=["system"])

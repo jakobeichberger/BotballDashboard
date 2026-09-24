@@ -14,6 +14,7 @@ from modules.events.models import (
     MatchParticipant,
     ScheduledMatch,
 )
+from modules.events.module_access import assert_phase_allowed, modules_for_season
 from modules.seasons.models import CompetitionLevel, Season
 from modules.teams.models import Team, TeamSeasonRegistration
 
@@ -57,8 +58,11 @@ async def get_public_event(db: AsyncSession, slug: str) -> Event:
 
 
 async def create_event(db: AsyncSession, data: dict) -> Event:
-    if not await db.get(Season, data["season_id"]):
+    season = await db.get(Season, data["season_id"])
+    if not season:
         raise NotFoundError("Season not found")
+    if data.get("active_modules") is None:
+        data = {**data, "active_modules": modules_for_season(season)}
     event = Event(**data)
     db.add(event)
     try:
@@ -208,7 +212,8 @@ async def list_phases(db: AsyncSession, event_id: str) -> list[EventPhase]:
 
 
 async def create_phase(db: AsyncSession, event_id: str, data: dict) -> EventPhase:
-    await get_event(db, event_id)
+    event = await get_event(db, event_id)
+    await assert_phase_allowed(db, event, data.get("phase_type", ""))
     phase = EventPhase(event_id=event_id, **data)
     db.add(phase)
     try:
@@ -352,6 +357,7 @@ async def generate_schedule(db: AsyncSession, event_id: str, data: dict) -> list
     phase = await db.get(EventPhase, data["phase_id"])
     if not phase or phase.event_id != event_id:
         raise NotFoundError("Event phase not found")
+    await assert_phase_allowed(db, event, phase.phase_type)
     existing = await db.execute(
         select(ScheduledMatch.id).where(ScheduledMatch.phase_id == phase.id).limit(1)
     )

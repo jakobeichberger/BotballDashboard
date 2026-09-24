@@ -18,6 +18,15 @@ BotballDashboard ist ein modularer Monolith. Module sind Teil des deployten Arte
 
 `App.tsx`, `Layout.tsx` und `DashboardPage.tsx` lesen dieselben Definitionen. Dadurch können Route, Navigation und Permission-Gate nicht unabhängig voneinander auseinanderlaufen.
 
+## Modul-Aktivierung pro Event
+
+Welche Fachmodule ein Event nutzt, entscheiden zwei Schalter gemeinsam (`backend/modules/events/module_access.py`):
+
+- `Event.active_modules` – vom Orga-Team in der Event-Verwaltung gesetzt (`seeding`, `double_elimination`, `paper`, `documentation`, `aerial`, `printing`, `bots`);
+- die Saison-Flags `use_seeding`, `use_double_elimination`, `use_documentation_scoring` und `use_aerial` – ein in der Saison abgeschaltetes Modul bleibt auch im Event inaktiv. `use_paper_scoring` steuert nur, ob der Paper-Score in die Gesamtwertung eingeht (und damit die Doku-/Paper-Erfassung).
+
+`GET /api/v1/events/{id}/modules` liefert die wirksamen Module. Das Frontend blendet damit Navigationseinträge aus und sperrt Routen (`module` in der Registry, `ModuleRoute`). Im Backend antworten die Router für Paper, Druck und Roboter (`event_module` in `core/modules.py`) sowie die DE-, Aerial- und Doku-Routen für ein Event mit abgeschaltetem Modul mit 404; eine DE-Phase lässt sich dann nicht anlegen (409).
+
 ## Neues Modul ergänzen
 
 1. Backend-Paket unter `backend/modules/<name>` anlegen, Modelle und Router implementieren.

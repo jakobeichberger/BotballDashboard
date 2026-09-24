@@ -39,6 +39,7 @@ async def get_active_season(db: AsyncSession) -> Season | None:
 
 async def create_season(db: AsyncSession, data: dict, phases: list[dict]) -> Season:
     from modules.events.models import Event, EventPhase
+    from modules.events.module_access import modules_for_season
 
     season = Season(**data)
     db.add(season)
@@ -49,7 +50,7 @@ async def create_season(db: AsyncSession, data: dict, phases: list[dict]) -> Sea
         name=f"{season.name} – Main Event",
         slug=f"season-{season.year}-{season.id[:8]}",
         status="draft",
-        active_modules=["seeding"],
+        active_modules=modules_for_season(season),
     )
     db.add(event)
     await db.flush()

@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ModuleRoute from "@/components/ModuleRoute";
 import EventIndexRedirect from "@/components/EventIndexRedirect";
 import LoginPage from "@/pages/LoginPage";
 import { eventRoutes } from "@/core/plugins";
@@ -27,8 +28,8 @@ function AppRoutes() {
         <Route path="settings/*" element={<ProtectedRoute requirePermission="users:read"><SettingsPage /></ProtectedRoute>} />
         <Route path="events/:eventId" element={<Layout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
-          {eventRoutes.map(({ path, permission, component: Component }) => (
-            <Route key={path} path={path} element={<ProtectedRoute requirePermission={permission}><Component /></ProtectedRoute>} />
+          {eventRoutes.map(({ path, permission, module, component: Component }) => (
+            <Route key={path} path={path} element={<ProtectedRoute requirePermission={permission}><ModuleRoute module={module}><Component /></ModuleRoute></ProtectedRoute>} />
           ))}
         </Route>
       </Route>

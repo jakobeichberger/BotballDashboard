@@ -4,14 +4,28 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Plus, Settings } from "lucide-react";
 import { api } from "@/lib/api";
 import { useEvent } from "@/hooks/useEvents";
+import { MODULE_LABELS, useEventModules, type ModuleKey } from "@/hooks/useEventModules";
 import { useAuthStore } from "@/store/authStore";
 import type { EventPhase, EventRegistration, ScoringField, ScoringSchema } from "@/api/types";
+
+const MODULE_ORDER = Object.keys(MODULE_LABELS) as ModuleKey[];
+const BASE_MODULES: ModuleKey[] = ["seeding", "paper", "printing", "bots"];
+
+/** Modules a new event of `season` starts with (mirrors backend modules_for_season). */
+function defaultModules(season?: Record<string, unknown>): string[] {
+  if (!season) return BASE_MODULES;
+  return MODULE_ORDER.filter((key) => {
+    const flag = MODULE_LABELS[key].seasonFlag;
+    return flag ? !!season[flag] : BASE_MODULES.includes(key);
+  });
+}
 
 export default function EventSetupPage() {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: event } = useEvent(eventId);
+  const modules = useEventModules(eventId);
   const canPublishAnnouncements = useAuthStore((state) => state.hasPermission("dashboard:write"));
   const seasons = useQuery<any[]>({ queryKey: ["seasons"], queryFn: async () => (await api.get("/seasons")).data });
   const teams = useQuery<any[]>({ queryKey: ["teams"], queryFn: async () => (await api.get("/teams")).data });
@@ -19,7 +33,7 @@ export default function EventSetupPage() {
   const registrations = useQuery<EventRegistration[]>({ queryKey: ["event-registrations", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data, enabled: !!eventId });
   const schema = useQuery<ScoringSchema>({ queryKey: ["event-schema", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/scoring-schema`)).data, enabled: !!eventId, retry: false });
   const announcements = useQuery<any[]>({ queryKey: ["announcements", eventId], queryFn: async () => (await api.get("/dashboard/announcements", { params: { season_id: event?.season_id } })).data.filter((item: any) => item.event_id === eventId), enabled: !!eventId && !!event });
-  const [form, setForm] = useState({ season_id: "", name: "", slug: "", timezone: "Europe/Vienna", venue: "", status: "draft", table_count: 1, active_modules: ["seeding"], public_scoreboard: false, public_schedule: false, public_results: false, public_announcements: false });
+  const [form, setForm] = useState({ season_id: "", name: "", slug: "", timezone: "Europe/Vienna", venue: "", status: "draft", table_count: 1, active_modules: BASE_MODULES as string[], public_scoreboard: false, public_schedule: false, public_results: false, public_announcements: false });
   const [newSeason, setNewSeason] = useState({ name: "", year: new Date().getFullYear() });
   const [phase, setPhase] = useState({ name: "", phase_type: "seeding", rounds: 3 });
   const [teamId, setTeamId] = useState("");
@@ -29,7 +43,7 @@ export default function EventSetupPage() {
   const [message, setMessage] = useState("");
   useEffect(() => { if (event) setForm((current) => ({ ...current, ...event, venue: event.venue ?? "" })); }, [event]);
   useEffect(() => { if (schema.data) setSchemaJson(JSON.stringify(schema.data.fields, null, 2)); }, [schema.data]);
-  const saveEvent = useMutation({ mutationFn: async () => eventId ? api.patch(`/v1/events/${eventId}`, form) : api.post("/v1/events", form), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["events"] }); setMessage("Event gespeichert."); if (!eventId) navigate(`/events/${data.id}/settings`, { replace: true }); }, onError: (error: any) => setMessage(error.response?.data?.detail ?? "Event konnte nicht gespeichert werden.") });
+  const saveEvent = useMutation({ mutationFn: async () => eventId ? api.patch(`/v1/events/${eventId}`, form) : api.post("/v1/events", form), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["events"] }); queryClient.invalidateQueries({ queryKey: ["event-modules"] }); setMessage("Event gespeichert."); if (!eventId) navigate(`/events/${data.id}/settings`, { replace: true }); }, onError: (error: any) => setMessage(error.response?.data?.detail ?? "Event konnte nicht gespeichert werden.") });
   const createSeason = useMutation({ mutationFn: async () => api.post("/seasons", { ...newSeason, is_active: true }), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["seasons"] }); setForm((current) => ({ ...current, season_id: data.id })); setMessage("Saison wurde angelegt und ausgewählt."); } });
   const addPhase = useMutation({ mutationFn: async () => api.post(`/v1/events/${eventId}/phases`, { ...phase, sort_order: phases.data?.length ?? 0 }), onSuccess: () => { setPhase({ name: "", phase_type: "seeding", rounds: 3 }); queryClient.invalidateQueries({ queryKey: ["event-phases", eventId] }); } });
   const addTeam = useMutation({ mutationFn: async () => api.post(`/v1/events/${eventId}/registrations`, { team_id: teamId, category: teamCategory }), onSuccess: () => { setTeamId(""); queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] }); } });
@@ -39,14 +53,18 @@ export default function EventSetupPage() {
     <div className="mx-auto max-w-6xl p-4 md:p-6"><h1 className="mb-6 flex items-center gap-2 text-2xl font-bold"><Settings />{eventId ? "Event-Verwaltung" : "Erstes Event einrichten"}</h1>
       <form className="card grid gap-4 p-5 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); saveEvent.mutate(); }}>
         {!eventId && seasons.data?.length === 0 && <fieldset className="grid gap-3 rounded-lg border p-4 md:col-span-2 md:grid-cols-[1fr_8rem_auto]"><legend className="px-2 font-semibold">Erste Saison anlegen</legend><input required className="input" placeholder="Saisonname" value={newSeason.name} onChange={(e) => setNewSeason({ ...newSeason, name: e.target.value })} /><input required className="input" type="number" min={2020} max={2100} value={newSeason.year} onChange={(e) => setNewSeason({ ...newSeason, year: Number(e.target.value) })} /><button type="button" className="btn-secondary" disabled={!newSeason.name || createSeason.isPending} onClick={() => createSeason.mutate()}>Saison anlegen</button></fieldset>}
-        {!eventId && <label className="text-sm font-medium">Saison<select required className="input mt-1 w-full" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value })}><option value="">Saison wählen</option>{seasons.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+        {!eventId && <label className="text-sm font-medium">Saison<select required className="input mt-1 w-full" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value, active_modules: defaultModules(seasons.data?.find((item) => item.id === e.target.value)) })}><option value="">Saison wählen</option>{seasons.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
         <label className="text-sm font-medium">Name<input required className="input mt-1 w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
         <label className="text-sm font-medium">Slug<input required className="input mt-1 w-full" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") })} /></label>
         <label className="text-sm font-medium">Zeitzone<input required className="input mt-1 w-full" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} /></label>
         <label className="text-sm font-medium">Ort<input className="input mt-1 w-full" value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} /></label>
         <label className="text-sm font-medium">Status<select className="input mt-1 w-full" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{["draft", "published", "live", "completed", "archived"].map((status) => <option key={status}>{status}</option>)}</select></label>
         <label className="text-sm font-medium">Tische<input type="number" min={1} className="input mt-1 w-full" value={form.table_count} onChange={(e) => setForm({ ...form, table_count: Number(e.target.value) })} /></label>
-        <fieldset className="md:col-span-2"><legend className="mb-2 font-medium">Aktive Module</legend><div className="flex flex-wrap gap-4">{["seeding", "double_elimination", "paper", "documentation", "aerial"].map((module) => <label key={module} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.active_modules.includes(module)} onChange={(e) => setForm({ ...form, active_modules: e.target.checked ? [...form.active_modules, module] : form.active_modules.filter((item) => item !== module) })} />{module}</label>)}</div></fieldset>
+        <ModuleToggles
+          value={form.active_modules}
+          seasonFlags={eventId ? modules.data?.season_flags : seasons.data?.find((item) => item.id === form.season_id)}
+          onChange={(active_modules) => setForm({ ...form, active_modules })}
+        />
         <fieldset className="md:col-span-2"><legend className="mb-2 font-medium">Öffentliche Freigaben</legend><div className="flex flex-wrap gap-4">{(["public_scoreboard", "public_schedule", "public_results", "public_announcements"] as const).map((key) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} />{key.replace("public_", "")}</label>)}</div></fieldset>
         <div className="md:col-span-2"><button className="btn-primary" disabled={saveEvent.isPending}>Event speichern</button></div>
       </form>
@@ -58,5 +76,38 @@ export default function EventSetupPage() {
         {canPublishAnnouncements && <section className="card p-5 lg:col-span-2"><h2 className="mb-3 text-lg font-semibold">Öffentliche Ankündigungen</h2><div className="mb-4 space-y-2">{announcements.data?.map((item) => <article key={item.id} className="rounded border p-3"><h3 className="font-semibold">{item.title}</h3><p className="text-sm text-gray-600 dark:text-gray-300">{item.body}</p></article>)}</div><form className="grid gap-2 md:grid-cols-[1fr_2fr_auto]" onSubmit={(e) => { e.preventDefault(); publishAnnouncement.mutate(); }}><input required className="input" placeholder="Titel" value={announcement.title} onChange={(e) => setAnnouncement({ ...announcement, title: e.target.value })} /><textarea required className="input" placeholder="Nachricht" value={announcement.body} onChange={(e) => setAnnouncement({ ...announcement, body: e.target.value })} /><button className="btn-primary" disabled={publishAnnouncement.isPending}>Veröffentlichen</button></form></section>}
       </div>}
     </div>
+  );
+}
+
+/**
+ * Per-event module switches. A module the season has switched off (Saison-
+ * Einstellungen) can be selected but stays inactive until the season allows it.
+ */
+function ModuleToggles({ value, seasonFlags, onChange }: { value: string[]; seasonFlags?: Record<string, unknown>; onChange: (modules: string[]) => void }) {
+  return (
+    <fieldset className="md:col-span-2">
+      <legend className="mb-2 font-medium">Aktive Module</legend>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {MODULE_ORDER.map((key) => {
+          const { de, seasonFlag } = MODULE_LABELS[key];
+          const blocked = !!seasonFlag && !!seasonFlags && !seasonFlags[seasonFlag];
+          const checked = value.includes(key);
+          return (
+            <label key={key} className="flex items-start gap-2 rounded-lg border p-2 text-sm dark:border-gray-700">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked ? MODULE_ORDER.filter((item) => item === key || value.includes(item)) : value.filter((item) => item !== key))}
+              />
+              <span>
+                <span className="font-medium">{de}</span>
+                {blocked && <span className="block text-xs text-amber-700 dark:text-amber-400">In der Saison deaktiviert{checked ? " – bleibt inaktiv" : ""}</span>}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

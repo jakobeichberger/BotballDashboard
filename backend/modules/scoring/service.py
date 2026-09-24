@@ -93,12 +93,15 @@ async def get_default_event(db: AsyncSession, season_id: str) -> Event:
 
     # Keeps seasons created through imports and old test helpers valid. Normal API
     # season creation already creates this event in the same transaction.
+    from modules.events.module_access import modules_for_season
+    from modules.seasons.models import Season
+
     event = Event(
         season_id=season_id,
         name="Main Event",
         slug=f"event-{season_id}",
         status="draft",
-        active_modules=["seeding"],
+        active_modules=modules_for_season(await db.get(Season, season_id)),
     )
     db.add(event)
     await db.flush()

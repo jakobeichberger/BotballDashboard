@@ -3,14 +3,15 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from modules.events.module_access import MODULE_KEYS
+
 EventStatus = Literal["draft", "published", "live", "completed", "archived"]
 PhaseType = Literal["seeding", "double_seeding", "double_elimination", "alliance", "final"]
 PhaseStatus = Literal["draft", "scheduled", "live", "completed"]
 
 
 def _validate_module_names(value: list[str]) -> list[str]:
-    allowed = {"seeding", "double_elimination", "paper", "documentation", "aerial"}
-    invalid = set(value) - allowed
+    invalid = set(value) - set(MODULE_KEYS)
     if invalid:
         raise ValueError(f"Unknown modules: {', '.join(sorted(invalid))}")
     return list(dict.fromkeys(value))
@@ -26,7 +27,8 @@ class EventCreate(BaseModel):
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     status: EventStatus = "draft"
-    active_modules: list[str] = Field(default_factory=lambda: ["seeding"])
+    # None: derive from the season's module flags (module_access.modules_for_season).
+    active_modules: list[str] | None = None
     public_scoreboard: bool = False
     public_schedule: bool = False
     public_results: bool = False
@@ -36,8 +38,8 @@ class EventCreate(BaseModel):
 
     @field_validator("active_modules")
     @classmethod
-    def validate_modules(cls, value: list[str]) -> list[str]:
-        return _validate_module_names(value)
+    def validate_modules(cls, value: list[str] | None) -> list[str] | None:
+        return None if value is None else _validate_module_names(value)
 
     @model_validator(mode="after")
     def validate_dates(self) -> "EventCreate":
@@ -95,6 +97,18 @@ class EventResponse(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class EventModulesResponse(BaseModel):
+    """Module switches of one event, resolved against its season."""
+
+    event_id: str
+    available_modules: list[str]
+    active_modules: list[str]
+    effective_modules: list[str]
+    # Season-level switches: use_seeding, use_double_elimination,
+    # use_documentation_scoring, use_aerial, use_paper_scoring.
+    season_flags: dict[str, bool]
 
 
 class EventPublicResponse(BaseModel):

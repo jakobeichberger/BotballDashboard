@@ -8,6 +8,7 @@ from core.auth import (
 from core.database import get_db
 from core.live import publish_live_event
 from modules.events import service as event_svc
+from modules.events.module_access import require_season_event_module
 from modules.scoring import competition_service as comp_svc
 from modules.scoring import formula_service as formula_svc
 from modules.scoring import service
@@ -33,6 +34,11 @@ from modules.scoring.schemas import (
 from modules.seasons import service as season_svc
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
+
+# Competition modules switched off for the addressed event answer 404.
+_DE = [Depends(require_season_event_module("double_elimination"))]
+_AERIAL = [Depends(require_season_event_module("aerial"))]
+_DOC = [Depends(require_season_event_module("documentation"))]
 
 
 # The former unauthenticated /scoreboard/ws streamed the global channel of
@@ -282,7 +288,9 @@ async def get_event_overall_ranking(
 # ── Double Elimination ────────────────────────────────────────────────────────
 
 
-@router.get("/seasons/{season_id}/de-results", response_model=list[DEResultResponse])
+@router.get(
+    "/seasons/{season_id}/de-results", response_model=list[DEResultResponse], dependencies=_DE
+)
 async def list_de_results(
     season_id: str,
     _=Depends(require_permission("scoring:read")),
@@ -291,7 +299,9 @@ async def list_de_results(
     return await comp_svc.get_de_results(db, season_id)
 
 
-@router.put("/seasons/{season_id}/de-results", response_model=list[DEResultResponse])
+@router.put(
+    "/seasons/{season_id}/de-results", response_model=list[DEResultResponse], dependencies=_DE
+)
 async def bulk_upsert_de_results(
     season_id: str,
     body: list[DEResultUpsert],
@@ -304,7 +314,9 @@ async def bulk_upsert_de_results(
     return rows
 
 
-@router.put("/seasons/{season_id}/de-results/{team_id}", response_model=DEResultResponse)
+@router.put(
+    "/seasons/{season_id}/de-results/{team_id}", response_model=DEResultResponse, dependencies=_DE
+)
 async def upsert_de_result(
     season_id: str,
     team_id: str,
@@ -320,7 +332,11 @@ async def upsert_de_result(
 # ── Aerial ────────────────────────────────────────────────────────────────────
 
 
-@router.get("/seasons/{season_id}/aerial-results", response_model=list[AerialResultResponse])
+@router.get(
+    "/seasons/{season_id}/aerial-results",
+    response_model=list[AerialResultResponse],
+    dependencies=_AERIAL,
+)
 async def list_aerial_results(
     season_id: str,
     _=Depends(require_permission("scoring:read")),
@@ -329,7 +345,7 @@ async def list_aerial_results(
     return await comp_svc.get_aerial_results(db, season_id)
 
 
-@router.get("/seasons/{season_id}/aerial-ranking")
+@router.get("/seasons/{season_id}/aerial-ranking", dependencies=_AERIAL)
 async def get_aerial_ranking(
     season_id: str,
     db: AsyncSession = Depends(get_db),
@@ -337,7 +353,11 @@ async def get_aerial_ranking(
     return await comp_svc.get_aerial_ranking(db, season_id)
 
 
-@router.put("/seasons/{season_id}/aerial-results", response_model=list[AerialResultResponse])
+@router.put(
+    "/seasons/{season_id}/aerial-results",
+    response_model=list[AerialResultResponse],
+    dependencies=_AERIAL,
+)
 async def bulk_upsert_aerial_results(
     season_id: str,
     body: list[AerialResultUpsert],
@@ -348,7 +368,11 @@ async def bulk_upsert_aerial_results(
     return await comp_svc.bulk_upsert_aerial_results(db, season_id, entries)
 
 
-@router.put("/seasons/{season_id}/aerial-results/{team_id}", response_model=AerialResultResponse)
+@router.put(
+    "/seasons/{season_id}/aerial-results/{team_id}",
+    response_model=AerialResultResponse,
+    dependencies=_AERIAL,
+)
 async def upsert_aerial_result(
     season_id: str,
     team_id: str,
@@ -364,7 +388,9 @@ async def upsert_aerial_result(
 # ── Documentation Scoring ─────────────────────────────────────────────────────
 
 
-@router.get("/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse])
+@router.get(
+    "/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse], dependencies=_DOC
+)
 async def list_doc_scores(
     season_id: str,
     _=Depends(require_permission("scoring:read")),
@@ -373,7 +399,9 @@ async def list_doc_scores(
     return await comp_svc.get_doc_scores(db, season_id)
 
 
-@router.put("/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse])
+@router.put(
+    "/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse], dependencies=_DOC
+)
 async def bulk_upsert_doc_scores(
     season_id: str,
     body: list[DocScoreUpsert],
@@ -384,7 +412,9 @@ async def bulk_upsert_doc_scores(
     return await comp_svc.bulk_upsert_doc_scores(db, season_id, entries)
 
 
-@router.put("/seasons/{season_id}/doc-scores/{team_id}", response_model=DocScoreResponse)
+@router.put(
+    "/seasons/{season_id}/doc-scores/{team_id}", response_model=DocScoreResponse, dependencies=_DOC
+)
 async def upsert_doc_score(
     season_id: str,
     team_id: str,
