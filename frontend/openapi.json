@@ -116,7 +116,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserUpdate"
+                "$ref": "#/components/schemas/MeUpdate"
               }
             }
           },
@@ -521,6 +521,36 @@
         ]
       }
     },
+    "/api/auth/permissions": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List Permissions",
+        "operationId": "list_permissions_api_auth_permissions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Permissions Api Auth Permissions Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/seasons": {
       "get": {
         "tags": [
@@ -877,17 +907,85 @@
         ],
         "summary": "List Competition Levels",
         "operationId": "list_competition_levels_api_seasons_competition_levels_all_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "include_inactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Inactive"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/CompetitionLevelResponse"
                   },
-                  "type": "array",
                   "title": "Response List Competition Levels Api Seasons Competition Levels All Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/seasons/competition-levels": {
+      "post": {
+        "tags": [
+          "seasons"
+        ],
+        "summary": "Create Competition Level",
+        "operationId": "create_competition_level_api_seasons_competition_levels_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompetitionLevelCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetitionLevelResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -898,6 +996,256 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/seasons/competition-levels/{level_id}": {
+      "patch": {
+        "tags": [
+          "seasons"
+        ],
+        "summary": "Update Competition Level",
+        "operationId": "update_competition_level_api_seasons_competition_levels__level_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "level_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Level Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompetitionLevelUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetitionLevelResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "seasons"
+        ],
+        "summary": "Delete Competition Level",
+        "operationId": "delete_competition_level_api_seasons_competition_levels__level_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "level_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Level Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/seasons/{season_id}/events": {
+      "get": {
+        "tags": [
+          "seasons"
+        ],
+        "summary": "List Season Events",
+        "operationId": "list_season_events_api_seasons__season_id__events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeasonEventResponse"
+                  },
+                  "title": "Response List Season Events Api Seasons  Season Id  Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "seasons"
+        ],
+        "summary": "Create Season Event",
+        "operationId": "create_season_event_api_seasons__season_id__events_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeasonEventCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeasonEventResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/seasons/{season_id}/events/{event_id}": {
+      "delete": {
+        "tags": [
+          "seasons"
+        ],
+        "summary": "Delete Season Event",
+        "operationId": "delete_season_event_api_seasons__season_id__events__event_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/events": {
@@ -2056,7 +2404,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScoringSchemaResponse"
+                  "$ref": "#/components/schemas/modules__events__schemas__ScoringSchemaResponse"
                 }
               }
             }
@@ -2113,7 +2461,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScoringSchemaResponse"
+                  "$ref": "#/components/schemas/modules__events__schemas__ScoringSchemaResponse"
                 }
               }
             }
@@ -2510,6 +2858,37 @@
         }
       }
     },
+    "/api/teams/mine": {
+      "get": {
+        "tags": [
+          "teams"
+        ],
+        "summary": "List My Teams",
+        "description": "Teams the current user belongs to \u2014 used for mentor self-service dropdowns.",
+        "operationId": "list_my_teams_api_teams_mine_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TeamListItem"
+                  },
+                  "type": "array",
+                  "title": "Response List My Teams Api Teams Mine Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/teams/registrations": {
       "get": {
         "tags": [
@@ -2661,6 +3040,46 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teams/registrations/{registration_id}": {
+      "delete": {
+        "tags": [
+          "teams"
+        ],
+        "summary": "Delete Registration",
+        "operationId": "delete_registration_api_teams_registrations__registration_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "registration_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Registration Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -2972,6 +3391,78 @@
         }
       }
     },
+    "/api/scoring/seasons/{season_id}/schema": {
+      "get": {
+        "tags": [
+          "scoring"
+        ],
+        "summary": "Get Scoring Schema",
+        "description": "The active scoring schema (scored fields + multipliers) for a season.",
+        "operationId": "get_scoring_schema_api_scoring_seasons__season_id__schema_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "competition_level_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Competition Level Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/modules__scoring__schemas__ScoringSchemaResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Scoring Schema Api Scoring Seasons  Season Id  Schema Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/scoring/seasons/{season_id}/matches": {
       "get": {
         "tags": [
@@ -3024,6 +3515,22 @@
                 }
               ],
               "title": "Phase Id"
+            }
+          },
+          {
+            "name": "is_practice",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Practice"
             }
           }
         ],
@@ -3415,7 +3922,7 @@
           "scoring"
         ],
         "summary": "Get Ranking",
-        "description": "Public endpoint \u2013 no auth required for scoreboard display.",
+        "description": "Public endpoint \u2013 no auth required for scoreboard display.\n\nNOTE: unlike GET /v1/public/events/{slug}/ranking this does not honour the\nevent's public_scoreboard / public_results flags.",
         "operationId": "get_ranking_api_scoring_seasons__season_id__ranking_get",
         "parameters": [
           {
@@ -3541,6 +4048,7 @@
           "scoring"
         ],
         "summary": "Get Overall Ranking",
+        "description": "Overall ranking computed from the season's configured formula set.\n\nResults are recorded per event, so this ranks one event: the one named by\n`event_id`, otherwise the season's most recent one.",
         "operationId": "get_overall_ranking_api_scoring_seasons__season_id__ranking_overall_get",
         "parameters": [
           {
@@ -3550,6 +4058,85 @@
             "schema": {
               "type": "string",
               "title": "Season Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OverallRankingEntry"
+                  },
+                  "title": "Response Get Overall Ranking Api Scoring Seasons  Season Id  Ranking Overall Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/ranking/overall": {
+      "get": {
+        "tags": [
+          "scoring"
+        ],
+        "summary": "Get Event Overall Ranking",
+        "description": "Overall ranking for one event, using its season's formula set.",
+        "operationId": "get_event_overall_ranking_api_scoring_events__event_id__ranking_overall_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
             }
           },
           {
@@ -3579,7 +4166,7 @@
                   "items": {
                     "$ref": "#/components/schemas/OverallRankingEntry"
                   },
-                  "title": "Response Get Overall Ranking Api Scoring Seasons  Season Id  Ranking Overall Get"
+                  "title": "Response Get Event Overall Ranking Api Scoring Events  Event Id  Ranking Overall Get"
                 }
               }
             }
@@ -4197,7 +4784,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Season Id"
             }
           }
@@ -4254,7 +4840,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Season Id"
             }
           },
@@ -4265,8 +4850,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string",
-                  "format": "uuid"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4324,7 +4908,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Sheet Id"
             }
           }
@@ -4371,7 +4954,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Sheet Id"
             }
           }
@@ -4413,7 +4995,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Sheet Id"
             }
           }
@@ -4460,7 +5041,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Sheet Id"
             }
           }
@@ -4519,7 +5099,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Sheet Id"
             }
           }
@@ -4561,7 +5140,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Sheet Id"
             }
           }
@@ -4583,6 +5161,495 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ScoreSheetTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/formulas/reference": {
+      "get": {
+        "tags": [
+          "scoring",
+          "formulas"
+        ],
+        "summary": "Get Reference",
+        "description": "Variables, functions and shipped defaults \u2014 drives the editor's help panel.",
+        "operationId": "get_reference_api_scoring_formulas_reference_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormulaReferenceResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/scoring/formulas/seasons/{season_id}": {
+      "get": {
+        "tags": [
+          "scoring",
+          "formulas"
+        ],
+        "summary": "List Formulas",
+        "operationId": "list_formulas_api_scoring_formulas_seasons__season_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormulaResponse"
+                  },
+                  "title": "Response List Formulas Api Scoring Formulas Seasons  Season Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/formulas/seasons/{season_id}/{category}/effective": {
+      "get": {
+        "tags": [
+          "scoring",
+          "formulas"
+        ],
+        "summary": "Get Effective Set",
+        "description": "The formulas actually in use, falling back to the documented defaults.",
+        "operationId": "get_effective_set_api_scoring_formulas_seasons__season_id___category__effective_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Get Effective Set Api Scoring Formulas Seasons  Season Id   Category  Effective Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/formulas/seasons/{season_id}/{category}": {
+      "put": {
+        "tags": [
+          "scoring",
+          "formulas"
+        ],
+        "summary": "Replace Formula Set",
+        "operationId": "replace_formula_set_api_scoring_formulas_seasons__season_id___category__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormulaSetUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormulaResponse"
+                  },
+                  "title": "Response Replace Formula Set Api Scoring Formulas Seasons  Season Id   Category  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/formulas/seasons/{season_id}/{category}/reset": {
+      "post": {
+        "tags": [
+          "scoring",
+          "formulas"
+        ],
+        "summary": "Reset Formula Set",
+        "operationId": "reset_formula_set_api_scoring_formulas_seasons__season_id___category__reset_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormulaResponse"
+                  },
+                  "title": "Response Reset Formula Set Api Scoring Formulas Seasons  Season Id   Category  Reset Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/formulas/events/{event_id}/{category}/preview": {
+      "post": {
+        "tags": [
+          "scoring",
+          "formulas"
+        ],
+        "summary": "Preview Formula Set",
+        "description": "Run a candidate formula set against this event's real results, without saving.",
+        "operationId": "preview_formula_set_api_scoring_formulas_events__event_id___category__preview_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormulaValidateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormulaPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/formulas/seasons/{season_id}/{category}/bracket-weights": {
+      "get": {
+        "tags": [
+          "scoring",
+          "formulas"
+        ],
+        "summary": "Get Bracket Weights",
+        "operationId": "get_bracket_weights_api_scoring_formulas_seasons__season_id___category__bracket_weights_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "title": "Response Get Bracket Weights Api Scoring Formulas Seasons  Season Id   Category  Bracket Weights Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "scoring",
+          "formulas"
+        ],
+        "summary": "Set Bracket Weights",
+        "operationId": "set_bracket_weights_api_scoring_formulas_seasons__season_id___category__bracket_weights_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BracketWeightsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "title": "Response Set Bracket Weights Api Scoring Formulas Seasons  Season Id   Category  Bracket Weights Put"
                 }
               }
             }
@@ -5436,6 +6503,54 @@
         }
       }
     },
+    "/api/papers/{paper_id}/finalize": {
+      "post": {
+        "tags": [
+          "papers"
+        ],
+        "summary": "Finalize Paper",
+        "description": "Aggregate submitted reviews into final_score and recompute paper ranks.",
+        "operationId": "finalize_paper_api_papers__paper_id__finalize_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paper_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Paper Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/papers/{paper_id}/assignments": {
       "post": {
         "tags": [
@@ -5532,6 +6647,64 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReviewerAssignmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/papers/{paper_id}/score": {
+      "put": {
+        "tags": [
+          "papers"
+        ],
+        "summary": "Set Paper Score",
+        "description": "Record the review outcome. Separate from PATCH /{paper_id} because\nfinal_score feeds the overall ranking and papers:write reaches mentors.",
+        "operationId": "set_paper_score_api_papers__paper_id__score_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paper_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Paper Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperScoreUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperResponse"
                 }
               }
             }
@@ -6229,6 +7402,50 @@
             }
           }
         }
+      },
+      "put": {
+        "tags": [
+          "printing"
+        ],
+        "summary": "Set Quota",
+        "operationId": "set_quota_api_printing_quotas_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaUpsert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/printing/spools": {
@@ -6361,7 +7578,7 @@
             "required": true,
             "schema": {
               "type": "number",
-              "exclusiveMinimum": 0.0,
+              "exclusiveMinimum": 0,
               "title": "Grams"
             }
           }
@@ -6417,6 +7634,32 @@
                 }
               ],
               "title": "Season Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "include_unpublished",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Unpublished"
             }
           }
         ],
@@ -7151,6 +8394,380 @@
         }
       }
     },
+    "/api/bots": {
+      "get": {
+        "tags": [
+          "bots"
+        ],
+        "summary": "List Bots",
+        "operationId": "list_bots_api_bots_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "team_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team Id"
+            }
+          },
+          {
+            "name": "external",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "External"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BotResponse"
+                  },
+                  "title": "Response List Bots Api Bots Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "bots"
+        ],
+        "summary": "Create Bot",
+        "operationId": "create_bot_api_bots_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BotCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bots/{bot_id}": {
+      "get": {
+        "tags": [
+          "bots"
+        ],
+        "summary": "Get Bot",
+        "operationId": "get_bot_api_bots__bot_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "bots"
+        ],
+        "summary": "Update Bot",
+        "operationId": "update_bot_api_bots__bot_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BotUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "bots"
+        ],
+        "summary": "Delete Bot",
+        "operationId": "delete_bot_api_bots__bot_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bot Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bots/{bot_id}/image": {
+      "post": {
+        "tags": [
+          "bots"
+        ],
+        "summary": "Upload Bot Image",
+        "operationId": "upload_bot_image_api_bots__bot_id__image_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_bot_image_api_bots__bot_id__image_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "bots"
+        ],
+        "summary": "Get Bot Image",
+        "operationId": "get_bot_image_api_bots__bot_id__image_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/system/health": {
       "get": {
         "tags": [
@@ -7330,7 +8947,14 @@
       "AerialResultUpsert": {
         "properties": {
           "team_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Team Id"
           },
           "run1": {
@@ -7394,9 +9018,6 @@
           }
         },
         "type": "object",
-        "required": [
-          "team_id"
-        ],
         "title": "AerialResultUpsert"
       },
       "AnnouncementCreate": {
@@ -7545,11 +9166,25 @@
         ],
         "title": "AnnouncementResponse"
       },
+      "Body_upload_bot_image_api_bots__bot_id__image_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_bot_image_api_bots__bot_id__image_post"
+      },
       "Body_upload_paper_file_api_papers__paper_id__upload_post": {
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -7585,7 +9220,7 @@
           },
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -7601,7 +9236,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File",
             "description": "PDF file of the official scoring sheet"
           },
@@ -7628,8 +9263,7 @@
           "competition_level_id": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "uuid"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7645,6 +9279,356 @@
           "year"
         ],
         "title": "Body_upload_score_sheet_api_scoring_seasons__season_id__score_sheets_post"
+      },
+      "BotCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "external_team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Team Name"
+          },
+          "season_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "functionality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functionality"
+          },
+          "drive_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drive Type"
+          },
+          "sensors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "BotCreate"
+      },
+      "BotResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "external_team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Team Name"
+          },
+          "season_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "functionality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functionality"
+          },
+          "drive_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drive Type"
+          },
+          "sensors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensors"
+          },
+          "is_published": {
+            "type": "boolean",
+            "title": "Is Published"
+          },
+          "image_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "team_id",
+          "external_team_name",
+          "season_id",
+          "description",
+          "functionality",
+          "drive_type",
+          "sensors",
+          "is_published",
+          "image_name",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BotResponse"
+      },
+      "BotUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "season_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "functionality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functionality"
+          },
+          "drive_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drive Type"
+          },
+          "sensors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensors"
+          },
+          "is_published": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Published"
+          }
+        },
+        "type": "object",
+        "title": "BotUpdate"
+      },
+      "BracketWeightsUpdate": {
+        "properties": {
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Weights"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weights"
+        ],
+        "title": "BracketWeightsUpdate",
+        "description": "Bracket -> weight, e.g. {\"A\": 1.0, \"B\": 0.5683760683760684}."
+      },
+      "CompetitionLevelCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "code"
+        ],
+        "title": "CompetitionLevelCreate"
       },
       "CompetitionLevelResponse": {
         "properties": {
@@ -7685,6 +9669,56 @@
           "is_active"
         ],
         "title": "CompetitionLevelResponse"
+      },
+      "CompetitionLevelUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "CompetitionLevelUpdate"
       },
       "ConfirmFieldsRequest": {
         "properties": {
@@ -7872,7 +9906,14 @@
       "DEResultUpsert": {
         "properties": {
           "team_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Team Id"
           },
           "bracket": {
@@ -7931,7 +9972,6 @@
         },
         "type": "object",
         "required": [
-          "team_id",
           "bracket"
         ],
         "title": "DEResultUpsert"
@@ -8052,7 +10092,14 @@
       "DocScoreUpsert": {
         "properties": {
           "team_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Team Id"
           },
           "part1": {
@@ -8120,9 +10167,6 @@
           }
         },
         "type": "object",
-        "required": [
-          "team_id"
-        ],
         "title": "DocScoreUpsert"
       },
       "EventCreate": {
@@ -8325,6 +10369,7 @@
             "title": "Ends At"
           },
           "settings": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Settings"
           }
@@ -8392,6 +10437,7 @@
             "title": "Ends At"
           },
           "settings": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Settings"
           }
@@ -8513,6 +10559,7 @@
           "settings": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -9037,6 +11084,7 @@
             "title": "Table Number"
           },
           "raw_scores": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Raw Scores"
           },
@@ -9447,6 +11495,346 @@
         ],
         "title": "FilamentSpoolResponse"
       },
+      "FormulaBase": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[a-z_][a-z0-9_]*$",
+            "title": "Key",
+            "description": "Identifier other formulas reference, e.g. seed_score"
+          },
+          "expression": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Expression",
+            "description": "e.g. 3/4 * ((n - rank(x) + 1) / n)"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order",
+            "default": 0
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "expression"
+        ],
+        "title": "FormulaBase"
+      },
+      "FormulaFunctionDoc": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "signature": {
+            "type": "string",
+            "title": "Signature"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "signature",
+          "description"
+        ],
+        "title": "FormulaFunctionDoc"
+      },
+      "FormulaIssueResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "message"
+        ],
+        "title": "FormulaIssueResponse"
+      },
+      "FormulaPreviewResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "order": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Order",
+            "default": []
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/FormulaIssueResponse"
+            },
+            "type": "array",
+            "title": "Issues",
+            "default": []
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/FormulaPreviewRow"
+            },
+            "type": "array",
+            "title": "Rows",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "FormulaPreviewResponse",
+        "description": "Result of running a candidate formula set against the season's real data."
+      },
+      "FormulaPreviewRow": {
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Values",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "team_id"
+        ],
+        "title": "FormulaPreviewRow"
+      },
+      "FormulaReferenceResponse": {
+        "properties": {
+          "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Inputs"
+          },
+          "row_functions": {
+            "items": {
+              "$ref": "#/components/schemas/FormulaFunctionDoc"
+            },
+            "type": "array",
+            "title": "Row Functions"
+          },
+          "scope_functions": {
+            "items": {
+              "$ref": "#/components/schemas/FormulaFunctionDoc"
+            },
+            "type": "array",
+            "title": "Scope Functions"
+          },
+          "defaults": {
+            "additionalProperties": {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Defaults"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inputs",
+          "row_functions",
+          "scope_functions",
+          "defaults"
+        ],
+        "title": "FormulaReferenceResponse",
+        "description": "Everything the editor needs to offer autocompletion and help."
+      },
+      "FormulaResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[a-z_][a-z0-9_]*$",
+            "title": "Key",
+            "description": "Identifier other formulas reference, e.g. seed_score"
+          },
+          "expression": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Expression",
+            "description": "e.g. 3/4 * ((n - rank(x) + 1) / n)"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order",
+            "default": 0
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "expression",
+          "id",
+          "season_id",
+          "category"
+        ],
+        "title": "FormulaResponse"
+      },
+      "FormulaSetUpdate": {
+        "properties": {
+          "formulas": {
+            "items": {
+              "$ref": "#/components/schemas/FormulaBase"
+            },
+            "type": "array",
+            "title": "Formulas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "formulas"
+        ],
+        "title": "FormulaSetUpdate",
+        "description": "Replaces every formula of one category at once."
+      },
+      "FormulaValidateRequest": {
+        "properties": {
+          "formulas": {
+            "items": {
+              "$ref": "#/components/schemas/FormulaBase"
+            },
+            "type": "array",
+            "title": "Formulas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "formulas"
+        ],
+        "title": "FormulaValidateRequest"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -9480,6 +11868,17 @@
       },
       "MatchCreate": {
         "properties": {
+          "season_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Id"
+          },
           "event_id": {
             "anyOf": [
               {
@@ -9545,8 +11944,14 @@
             "title": "Table Number"
           },
           "raw_scores": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Raw Scores"
+          },
+          "is_practice": {
+            "type": "boolean",
+            "title": "Is Practice",
+            "default": false
           },
           "notes": {
             "anyOf": [
@@ -9736,6 +12141,7 @@
             "title": "Table Number"
           },
           "raw_scores": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Raw Scores"
           },
@@ -9746,6 +12152,10 @@
           "is_disqualified": {
             "type": "boolean",
             "title": "Is Disqualified"
+          },
+          "is_practice": {
+            "type": "boolean",
+            "title": "Is Practice"
           },
           "yellow_card": {
             "type": "boolean",
@@ -9769,6 +12179,7 @@
           "schema_snapshot": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -9835,6 +12246,7 @@
           "raw_scores",
           "total_score",
           "is_disqualified",
+          "is_practice",
           "yellow_card",
           "red_card",
           "notes",
@@ -9852,6 +12264,7 @@
           "raw_scores": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -9859,17 +12272,6 @@
               }
             ],
             "title": "Raw Scores"
-          },
-          "total_score": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Total Score"
           },
           "is_disqualified": {
             "anyOf": [
@@ -9942,6 +12344,46 @@
         },
         "type": "object",
         "title": "MatchUpdate"
+      },
+      "MeUpdate": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "preferred_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Language"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          }
+        },
+        "type": "object",
+        "title": "MeUpdate",
+        "description": "Self-service profile update. Deliberately excludes privilege fields\n(is_active, role_ids) so a user can never escalate or lock themselves out."
       },
       "OcrAnchor": {
         "properties": {
@@ -10104,6 +12546,14 @@
               }
             ],
             "title": "Aerial Score"
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Values",
+            "default": {}
           }
         },
         "type": "object",
@@ -10468,6 +12918,38 @@
         ],
         "title": "PaperResponse"
       },
+      "PaperScoreUpdate": {
+        "properties": {
+          "final_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Score"
+          },
+          "paper_rank": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Rank"
+          }
+        },
+        "type": "object",
+        "title": "PaperScoreUpdate",
+        "description": "The review outcome, settable only by papers:admin."
+      },
       "PaperStatusHistoryResponse": {
         "properties": {
           "id": {
@@ -10567,35 +13049,41 @@
               }
             ],
             "title": "Notes"
-          },
-          "final_score": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Final Score"
-          },
-          "paper_rank": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Paper Rank"
           }
         },
         "type": "object",
-        "title": "PaperUpdate"
+        "title": "PaperUpdate",
+        "description": "What the submitting team may change about its own paper.\n\nfinal_score and paper_rank are deliberately absent: they are the review\noutcome, they feed the overall ranking, and papers:write is granted to\nmentors \u2014 so leaving them here let any mentor score every team's paper.\nThey live on PaperScoreUpdate behind papers:admin instead."
+      },
+      "PermissionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "PermissionResponse"
       },
       "PrintJobCreate": {
         "properties": {
@@ -11442,6 +13930,7 @@
             "title": "Table Number"
           },
           "raw_scores": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Raw Scores"
           },
@@ -11586,6 +14075,57 @@
           "notes"
         ],
         "title": "QuotaResponse"
+      },
+      "QuotaUpsert": {
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "max_parts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Parts"
+          },
+          "soft_limit_parts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soft Limit Parts"
+          },
+          "max_grams": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Grams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "team_id",
+          "season_id"
+        ],
+        "title": "QuotaUpsert"
       },
       "RankingResponse": {
         "properties": {
@@ -12385,6 +14925,7 @@
               "$ref": "#/components/schemas/MatchCreate"
             },
             "type": "array",
+            "maxItems": 200,
             "title": "Entries"
           }
         },
@@ -12393,7 +14934,7 @@
           "entries"
         ],
         "title": "ScoreBulkEntry",
-        "description": "Used for rapid multi-match entry (e.g., score table entry)."
+        "description": "Used for rapid multi-match entry (e.g., score table entry).\n\nBounded because each entry triggers a ranking recompute; an unbounded list\nwould hold a DB connection for minutes."
       },
       "ScoreRevisionResponse": {
         "properties": {
@@ -12416,6 +14957,7 @@
           "previous_value": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -12425,6 +14967,7 @@
             "title": "Previous Value"
           },
           "new_value": {
+            "additionalProperties": true,
             "type": "object",
             "title": "New Value"
           },
@@ -12558,6 +15101,7 @@
             "anyOf": [
               {
                 "items": {
+                  "additionalProperties": true,
                   "type": "object"
                 },
                 "type": "array"
@@ -12571,6 +15115,7 @@
           "reviewed_values": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -12701,6 +15246,7 @@
             "title": "Field Regions"
           },
           "validation_rules": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Validation Rules"
           }
@@ -12902,6 +15448,7 @@
             "anyOf": [
               {
                 "items": {
+                  "additionalProperties": true,
                   "type": "object"
                 },
                 "type": "array"
@@ -12916,6 +15463,7 @@
             "anyOf": [
               {
                 "items": {
+                  "additionalProperties": true,
                   "type": "object"
                 },
                 "type": "array"
@@ -12929,6 +15477,7 @@
           "validation_rules": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -13058,6 +15607,7 @@
           "region": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -13167,72 +15717,6 @@
           "label"
         ],
         "title": "ScoringFieldDefinition"
-      },
-      "ScoringSchemaResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "season_id": {
-            "type": "string",
-            "title": "Season Id"
-          },
-          "event_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Event Id"
-          },
-          "competition_level_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Competition Level Id"
-          },
-          "fields": {
-            "items": {
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Fields"
-          },
-          "version": {
-            "type": "integer",
-            "title": "Version"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "season_id",
-          "event_id",
-          "competition_level_id",
-          "fields",
-          "version",
-          "is_active",
-          "created_at"
-        ],
-        "title": "ScoringSchemaResponse"
       },
       "ScoringSchemaVersionCreate": {
         "properties": {
@@ -13421,6 +15905,87 @@
           "year"
         ],
         "title": "SeasonCreate"
+      },
+      "SeasonEventCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type",
+            "default": "deadline"
+          },
+          "event_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Event Date"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "event_date"
+        ],
+        "title": "SeasonEventCreate"
+      },
+      "SeasonEventResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "event_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Event Date"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "season_id",
+          "title",
+          "event_type",
+          "event_date",
+          "description"
+        ],
+        "title": "SeasonEventResponse"
       },
       "SeasonListItem": {
         "properties": {
@@ -14911,6 +17476,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",
@@ -14920,6 +17492,119 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "modules__events__schemas__ScoringSchemaResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "competition_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition Level Id"
+          },
+          "fields": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "season_id",
+          "event_id",
+          "competition_level_id",
+          "fields",
+          "version",
+          "is_active",
+          "created_at"
+        ],
+        "title": "ScoringSchemaResponse"
+      },
+      "modules__scoring__schemas__ScoringSchemaResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "competition_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition Level Id"
+          },
+          "fields": {
+            "items": {},
+            "type": "array",
+            "title": "Fields"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "season_id",
+          "competition_level_id",
+          "fields",
+          "version",
+          "is_active"
+        ],
+        "title": "ScoringSchemaResponse"
       }
     },
     "securitySchemes": {

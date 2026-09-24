@@ -125,6 +125,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # pip-audit also audits the runner's preinstalled pip/setuptools, which
+      # lag behind security releases; bring them current first.
+      - run: python -m pip install --upgrade pip setuptools
       - run: pip install pip-audit ./backend
       # PYSEC-2026-1325 (ecdsa) has no fixed release. ecdsa is only pulled in
       # by python-jose; tokens are HS256-only (core/auth.py pins
