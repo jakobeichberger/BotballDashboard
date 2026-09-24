@@ -25,7 +25,7 @@ def _uuid() -> str:
 class Printer(Base):
     __tablename__ = "printers"
     __table_args__ = (
-        CheckConstraint("printer_type IN ('octoprint','bambu')", name="ck_printer_type"),
+        CheckConstraint("printer_type IN ('octoprint','bambu','generic')", name="ck_printer_type"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -35,13 +35,17 @@ class Printer(Base):
     )  # e.g. "Bambu X1C", "Ender 3"
     printer_type: Mapped[str] = mapped_column(
         String(50), nullable=False, default="bambu"
-    )  # bambu | octoprint | generic
+    )  # bambu | octoprint | generic (manual printer, no adapter/polling)
     api_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     api_key_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)  # Fernet-encrypted
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_online: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Last state reported by the adapter (idle | printing | paused | completed |
+    # failed | offline) and its raw message, shown read-only to mentors.
+    current_state: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    status_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -52,8 +56,26 @@ class Printer(Base):
     )
 
 
+JOB_STATUSES = (
+    "pending",
+    "approved",
+    "queued",
+    "printing",
+    "completed",
+    "failed",
+    "cancelled",
+    "rejected",
+)
+
+
 class PrintJob(Base):
     __tablename__ = "print_jobs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ({})".format(",".join(f"'{s}'" for s in JOB_STATUSES)),
+            name="ck_print_job_status",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     printer_id: Mapped[str | None] = mapped_column(
@@ -73,6 +95,10 @@ class PrintJob(Base):
     )
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Uploaded model/slice file, relative to settings.upload_dir
+    # ("printing/<job_id>/<safe name>"); None until a file was uploaded.
+    file_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     material: Mapped[str] = mapped_column(String(50), default="PLA", nullable=False)  # PLA | PETG
     color: Mapped[str | None] = mapped_column(String(100), nullable=True)
     estimated_grams: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -80,10 +106,18 @@ class PrintJob(Base):
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     actual_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
-    # pending | approved | queued | printing | completed | failed | cancelled
+    # pending | approved | queued | printing | completed | failed | cancelled | rejected
     priority: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     progress: Mapped[float | None] = mapped_column(Float, nullable=True)
     status_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    remaining_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Set when an organizer submitted the job past the team's hard limit.
+    quota_override: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    spool_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("filament_spools.id", ondelete="SET NULL"), nullable=True
+    )
     external_job_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
