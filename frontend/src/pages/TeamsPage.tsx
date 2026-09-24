@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/api";
+import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
 import { useAuthStore } from "@/store/authStore";
 
@@ -162,7 +163,10 @@ export default function TeamsPage() {
           <Users className="h-6 w-6" />
           Teams
         </h1>
-        {canWrite && <button onClick={openCreate} className="btn-primary">+ Team hinzufügen</button>}
+        <div className="flex items-center gap-2">
+          <EventLink to="/teams/matrix" className="btn-secondary">Team-Saison-Matrix</EventLink>
+          {canWrite && <button onClick={openCreate} className="btn-primary">+ Team hinzufügen</button>}
+        </div>
       </div>
 
       {isLoading && <p className="text-gray-500">Laden...</p>}
@@ -172,7 +176,7 @@ export default function TeamsPage() {
           <article key={team.id} className="card p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="truncate font-semibold text-gray-900 dark:text-white">{team.name}</h3>
+                <h3 className="truncate font-semibold text-gray-900 dark:text-white"><EventLink to={`/teams/${team.id}`} className="hover:underline">{team.name}</EventLink></h3>
                 {team.team_number && <span className="text-xs text-gray-500">#{team.team_number}</span>}
               </div>
               <div className="flex items-center gap-2">

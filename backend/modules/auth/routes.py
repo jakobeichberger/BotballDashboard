@@ -12,6 +12,7 @@ from modules.auth.schemas import (
     CurrentUserResponse,
     LoginRequest,
     MeUpdate,
+    PermissionResponse,
     PushSubscriptionCreate,
     RoleCreate,
     RoleDetailResponse,
@@ -224,6 +225,13 @@ async def list_roles(
     _=Depends(require_permission("roles:read")), db: AsyncSession = Depends(get_db)
 ):
     return await service.list_roles(db)
+
+
+@router.get("/permissions", response_model=list[PermissionResponse])
+async def list_permissions(
+    _=Depends(require_permission("roles:read")), db: AsyncSession = Depends(get_db)
+):
+    return await service.list_permissions(db)
 
 
 @router.post("/roles", response_model=RoleDetailResponse, status_code=201)

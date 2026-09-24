@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.domain_events import emit_event
@@ -177,20 +178,29 @@ async def approve_print_job(db: AsyncSession, job_id: str, approved_by: str) -> 
 async def _get_or_create_quota(
     db: AsyncSession, team_id: str, season_id: str, event_id: str | None = None
 ) -> TeamSeasonPrintQuota:
-    result = await db.execute(
-        select(TeamSeasonPrintQuota).where(
+    def _existing():
+        return select(TeamSeasonPrintQuota).where(
             TeamSeasonPrintQuota.team_id == team_id,
             TeamSeasonPrintQuota.event_id == event_id
             if event_id
             else TeamSeasonPrintQuota.season_id == season_id,
         )
-    )
-    quota = result.scalar_one_or_none()
-    if not quota:
-        quota = TeamSeasonPrintQuota(team_id=team_id, season_id=season_id, event_id=event_id)
-        db.add(quota)
-        await db.flush()
-    return quota
+
+    quota = (await db.execute(_existing())).scalar_one_or_none()
+    if quota:
+        return quota
+
+    # Two requests can reach this point concurrently. Insert inside a savepoint
+    # so a lost race only rolls back the insert (not the caller's transaction),
+    # then read the winner's row — uq_print_quota_event_team makes the loser fail.
+    try:
+        async with db.begin_nested():
+            quota = TeamSeasonPrintQuota(team_id=team_id, season_id=season_id, event_id=event_id)
+            db.add(quota)
+            await db.flush()
+        return quota
+    except IntegrityError:
+        return (await db.execute(_existing())).scalar_one()
 
 
 async def _update_quota_usage(db: AsyncSession, job: PrintJob) -> None:
@@ -231,6 +241,17 @@ async def apply_printer_status(db: AsyncSession, printer: Printer, status) -> No
     target = status.state if status.state in ("printing", "completed", "failed") else None
     if target and target != job.status and target in JOB_TRANSITIONS[job.status]:
         await update_print_job(db, job.id, status=target)
+
+
+async def set_quota(
+    db: AsyncSession, team_id: str, season_id: str, **kwargs
+) -> TeamSeasonPrintQuota:
+    quota = await _get_or_create_quota(db, team_id, season_id)
+    for key, value in kwargs.items():
+        if value is not None:
+            setattr(quota, key, value)
+    await db.flush()
+    return quota
 
 
 # ── Filament spools ───────────────────────────────────────────────────────────

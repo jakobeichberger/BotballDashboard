@@ -5,9 +5,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission
+from core.auth import get_current_user, permissions_of, require_permission
 from core.database import get_db
 from core.domain_events import emit_event
+from core.exceptions import ForbiddenError
 from modules.dashboard.models import Announcement
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -41,14 +42,17 @@ class AnnouncementResponse(BaseModel):
 async def list_announcements(
     season_id: str | None = Query(None),
     event_id: str | None = Query(None),
-    _=Depends(get_current_user),
+    include_unpublished: bool = Query(False),
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    q = (
-        select(Announcement)
-        .where(Announcement.is_published == True)
-        .order_by(Announcement.created_at.desc())
-    )
+    q = select(Announcement).order_by(Announcement.created_at.desc())
+    if include_unpublished:
+        # Drafts are internal — only those who may publish may read them.
+        if not current_user.is_superuser and "dashboard:write" not in permissions_of(current_user):
+            raise ForbiddenError("Missing permissions: dashboard:write")
+    else:
+        q = q.where(Announcement.is_published.is_(True))
     if season_id:
         q = q.where(Announcement.season_id == season_id)
     if event_id:

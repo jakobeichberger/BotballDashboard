@@ -211,7 +211,12 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
     seed_runs: dict[str, list[float]] = {t: [] for t in team_ids}
     matches = await db.execute(
         select(Match)
-        .where(Match.event_id == event_id, Match.is_disqualified.is_(False))
+        .where(
+            Match.event_id == event_id,
+            Match.is_disqualified.is_(False),
+            # practice runs are preparation and never count toward the ranking
+            Match.is_practice.is_(False),
+        )
         .order_by(Match.round_number)
     )
     for m in matches.scalars():

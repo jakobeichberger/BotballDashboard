@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission
+from core.auth import assert_team_access, require_permission
 from core.config import get_settings
 from core.database import get_db
 from core.rate_limit import rate_limit
@@ -38,6 +38,8 @@ async def upload_scan(
     current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Checked before the upload is read, so an unauthorised request is not buffered.
+    await assert_team_access(db, current_user, str(team_id), "scoring:admin")
     if file.content_type not in ALLOWED_SCAN_TYPES:
         raise HTTPException(status_code=415, detail="PDF, JPEG, PNG or WebP required")
     content = await file.read()
@@ -93,10 +95,11 @@ async def get_scan(
 async def retry_scan(
     event_id: UUID,
     scan_id: UUID,
-    _=Depends(require_permission("scoring:write")),
+    current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
     scan = await scan_service.get_scan(db, str(event_id), str(scan_id))
+    await assert_team_access(db, current_user, scan.team_id, "scoring:admin")
     if scan.status not in ("failed", "queued"):
         raise HTTPException(status_code=409, detail="Only queued or failed scans can be retried")
     scan.status = "queued"
@@ -120,6 +123,8 @@ async def accept_scan(
     db: AsyncSession = Depends(get_db),
 ):
     scan = await scan_service.get_scan(db, str(event_id), str(scan_id))
+    # Accepting turns the scan into an official match score for scan.team_id.
+    await assert_team_access(db, current_user, scan.team_id, "scoring:admin")
     return await scan_service.accept_scan(
         db,
         scan,

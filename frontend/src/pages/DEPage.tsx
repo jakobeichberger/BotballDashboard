@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { EventLink } from "@/components/EventLink";
 import { Medal, ArrowLeft, Save } from "lucide-react";
 
 interface DEEntry {
@@ -90,9 +91,9 @@ export default function DEPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Link to="/scoring" aria-label="Zurück zur Rangliste" className="text-gray-400 hover:text-gray-600">
+          <EventLink to="/scoreboard" aria-label="Zurück zur Rangliste" className="text-gray-400 hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </EventLink>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Medal className="w-6 h-6 text-blue-500" />
             Double Elimination – Ergebnisse

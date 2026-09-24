@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   Bell,
   BellOff,
+  Bot,
   CalendarDays,
   FileText,
   Globe,
@@ -38,6 +39,7 @@ const ICONS = {
   scans: ScanLine,
   papers: FileText,
   printing: Printer,
+  bots: Bot,
   settings: Settings,
 };
 
@@ -171,7 +173,14 @@ export default function Layout() {
           <LogOut className="h-4 w-4" aria-hidden="true" />
           {t("logout")}
         </button>
-        <div className="truncate px-3 pt-2 text-xs text-gray-500">{user?.display_name}</div>
+        {user && (
+          <NavLink
+            to={`/events/${eventId}/profile`}
+            className="block truncate rounded-lg px-3 pt-2 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            {user.display_name} · Profil
+          </NavLink>
+        )}
       </div>
     </aside>
   );

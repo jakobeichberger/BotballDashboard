@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from fastapi import APIRouter
 
 from modules.auth.routes import router as auth_router
+from modules.bots.routes import router as bots_router
 from modules.dashboard.routes import router as dashboard_router
 from modules.events.routes import public_router as public_events_router
 from modules.events.routes import router as events_router
@@ -42,4 +43,5 @@ MODULES: tuple[ModuleDefinition, ...] = (
     ),
     ModuleDefinition("dashboard", dashboard_router, ("dashboard:read", "dashboard:write")),
     ModuleDefinition("exports", exports_router),
+    ModuleDefinition("bots", bots_router, ("teams:read", "teams:write")),
 )

@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -74,7 +75,7 @@ async def get_current_user(
     return user
 
 
-def _permissions_of(user) -> set[str]:
+def permissions_of(user) -> set[str]:
     """Permission names of an already-loaded user.
 
     get_current_user selectinloads roles and their permissions, so this needs no
@@ -82,6 +83,23 @@ def _permissions_of(user) -> set[str]:
     authenticated request.
     """
     return {perm.name for role in user.roles for perm in role.permissions}
+
+
+async def _permissions_for(db: AsyncSession, user) -> set[str]:
+    """Permissions of `user`, without a query when they are already loaded.
+
+    Users from get_current_user carry their roles and permissions; a user loaded
+    any other way would otherwise trigger a lazy load from async code
+    (MissingGreenlet), so fall back to querying for those.
+    """
+    state = sa_inspect(user)
+    if "roles" not in state.unloaded and all(
+        "permissions" not in sa_inspect(role).unloaded for role in user.roles
+    ):
+        return permissions_of(user)
+    from modules.auth.service import get_user_permissions
+
+    return await get_user_permissions(db, user.id)
 
 
 def require_permission(*permissions: str):
@@ -96,7 +114,7 @@ def require_permission(*permissions: str):
         if current_user.is_superuser:
             return current_user
 
-        user_perms = _permissions_of(current_user)
+        user_perms = permissions_of(current_user)
         missing = [p for p in permissions if p not in user_perms]
         if missing:
             raise ForbiddenError(f"Missing permissions: {', '.join(missing)}")
@@ -115,9 +133,34 @@ def require_any_permission(*permissions: str):
         if current_user.is_superuser:
             return current_user
 
-        user_perms = _permissions_of(current_user)
+        user_perms = permissions_of(current_user)
         if not any(p in user_perms for p in permissions):
             raise ForbiddenError("Insufficient permissions")
         return current_user
 
     return _check
+
+
+async def assert_team_access(db, user, team_id: str, elevated_permission: str) -> None:
+    """Authorize an action scoped to a single team.
+
+    Superusers and holders of ``elevated_permission`` (e.g. an organizer with
+    ``scoring:admin`` / ``papers:admin``) may act on any team. Everyone else –
+    typically a mentor doing self-service – must be a member of ``team_id``.
+    """
+    if user.is_superuser:
+        return
+
+    if elevated_permission in await _permissions_for(db, user):
+        return
+
+    from modules.teams.models import TeamMember
+
+    result = await db.execute(
+        select(TeamMember).where(
+            TeamMember.team_id == team_id,
+            TeamMember.user_id == user.id,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise ForbiddenError("You may only submit for your own team")
