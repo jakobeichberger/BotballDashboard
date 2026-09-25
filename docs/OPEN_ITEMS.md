@@ -59,5 +59,5 @@ Einige Endpunkte sind bewusst Alternativen zu bereits verdrahteten und werden de
   E2E_BASE_URL=http://localhost:5173 pnpm e2e
   ```
 
-  In der CI läuft nur `e2e/platform.spec.ts` gegen `backend/scripts/seed_e2e.py`.
-- **i18n:** Viele Seiten sind nur auf Deutsch (siehe todo.md).
+  Die CI (manuell gestartet) führt die ganze Playwright-Suite gegen `backend/scripts/seed_e2e.py` aus: alle Specs auf Desktop-Chromium, die `@mobile`-Flows zusätzlich auf einem Pixel-7-Profil.
+- **i18n:** Alle Seiten nutzen Übersetzungsschlüssel in `de` und `en` (geprüft von `frontend/src/__tests__/i18n/translationKeys.test.ts`).

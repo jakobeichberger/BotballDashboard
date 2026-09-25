@@ -60,9 +60,10 @@ volumes:
 - Datenbank-Volume wird nie automatisch gelöscht
 
 ### CI/CD (GitHub Actions)
-- Linting & Formatting bei jedem Push
-- Automatische Tests bei Pull Requests
-- Build-Prüfung bei Pull Requests; Deployment bleibt bewusst manuell
+- Die CI (`.github/workflows/ci.yml`) wird **bewusst manuell** gestartet (Actions → CI → „Run workflow“, beliebiger Branch); Pushes und Pull Requests lösen sie nicht aus. Ein neuer Lauf für denselben Branch bricht den laufenden ab.
+- Ein Lauf prüft Linting und Formatierung, Typen, Backend- und Frontend-Tests mit Coverage-Schwellen, Migrationen auf PostgreSQL, Abhängigkeits-Audit, Build, API-Vertrag, die Playwright-Suite und den kompletten Compose-Stack inklusive Backup und Restore-Test.
+- Deployment bleibt ebenfalls manuell (`deploy.yml`).
+- Abhängigkeiten: Dependabot schlägt wöchentlich gruppierte Updates vor (`.github/dependabot.yml`); vor dem Merge die CI auf dem Update-Branch starten.
 
 ### Mehrsprachigkeit (i18n)
 
