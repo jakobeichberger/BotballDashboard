@@ -48,7 +48,7 @@ services:
     labels: []
 
   frontend:
-    image: node:22-alpine
+    image: node:24-alpine
     build:
       # Override the production nginx Dockerfile (which needs a pre-built dist/).
       context: ./frontend

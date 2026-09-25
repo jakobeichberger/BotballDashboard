@@ -109,7 +109,7 @@ Eine `.env` ist nicht nötig, `docker-compose.dev.yml` setzt `APP_ENV=developmen
 - API und Swagger UI: http://localhost:8000/api/docs (nur im Dev-Modus)
 - Login: `admin@dev.local` / `admin1234` (wird beim Start angelegt)
 
-Ohne Docker: im Backend `pip install -r requirements-dev.txt` (die gepinnten Versionen aus `make lock-backend`), dann `alembic upgrade head` und `uvicorn main:app --reload`; im Frontend (Node.js 22) `pnpm install` und `pnpm dev`. Tests:
+Ohne Docker: im Backend `pip install -r requirements-dev.txt` (die gepinnten Versionen aus `make lock-backend`), dann `alembic upgrade head` und `uvicorn main:app --reload`; im Frontend (Node.js 24) `pnpm install` und `pnpm dev`. Tests:
 
 ```bash
 cd backend && pytest -q -n auto && ruff check . && ruff format --check . && mypy .

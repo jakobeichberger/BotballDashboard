@@ -117,6 +117,12 @@ fi
 
 if [[ "${mode}" == "host" ]]; then
   info "Building frontend on the host (pnpm)..."
+  # Installations set up before the switch to Node.js 24 still have Node 22;
+  # the build works for now, but re-run step 3 of proxmox-setup.sh to upgrade.
+  node_major=$(node --version 2>/dev/null | sed 's/^v//' | cut -d. -f1)
+  if [[ "${node_major:-0}" -lt 24 ]]; then
+    warn "Node.js ${node_major:-?} on the host – the project targets Node.js 24 LTS (see docs/documentation/installation/update.md)"
+  fi
   (
     cd frontend
     pnpm install --frozen-lockfile

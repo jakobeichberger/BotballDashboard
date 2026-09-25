@@ -161,7 +161,7 @@ jobs:
           package_json_file: frontend/package.json
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm --dir frontend install --frozen-lockfile
@@ -185,7 +185,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -215,7 +215,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -251,7 +251,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -321,7 +321,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with: { package_json_file: frontend/package.json }
       - uses: actions/setup-node@v7
-        with: { node-version: "22", cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+        with: { node-version: "24", cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
       - run: pip install -r backend/requirements.txt
       - run: cd backend && alembic upgrade head
       # Role logins, six teams, a live public event with scores, bots, a

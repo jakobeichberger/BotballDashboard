@@ -39,7 +39,7 @@
 | PostgreSQL | 16 | Datenbank (Container) |
 | Redis | 7 | Celery-Broker, Rate-Limits (Container) |
 | Python | 3.11 | Backend, Worker, Beat, Backup (Container) |
-| Node.js + pnpm | 22 LTS + pnpm 10.x | Frontend-Build: im Container, auf Proxmox-LXC auf dem Host (das Setup-Skript installiert Node 22 und pnpm 10.29.3) |
+| Node.js + pnpm | 24 LTS + pnpm 10.x | Frontend-Build: im Container, auf Proxmox-LXC auf dem Host (das Setup-Skript installiert Node 24 und pnpm 10.29.3) |
 | age | 1.x | Backup-Schlüsselpaar erzeugen (Host, `apt install age`) |
 | Python 3 | 3.9+ | Hilfsskripte des Setups (Host) |
 
@@ -60,7 +60,7 @@ docker compose version
 
 | Komponente | Version |
 |---|---|
-| Node.js | 20 LTS |
+| Node.js | 24 LTS |
 | pnpm | 10.x (`packageManager` in `frontend/package.json`: 10.29.3, per `corepack enable`) |
 | Python | 3.11+ |
 | Docker + Docker Compose | aktuell |
