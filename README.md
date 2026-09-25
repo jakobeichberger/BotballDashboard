@@ -2,7 +2,7 @@
 
 Webbasierte Plattform für die Organisation und Auswertung von Botball-Turnieren. Saisons, Events, Teams, Wertung am Spieltisch, Brackets, Paper-Review und 3D-Druck laufen in einem System. Das Backend ist FastAPI, das Frontend React (PWA). Betrieben wird es selbst gehostet mit Docker Compose.
 
-Stand: Migration `0029` · Änderungen: [CHANGELOG.md](CHANGELOG.md) · offene Aufgaben: [docs/todo.md](docs/todo.md)
+Stand: Migration `0034` · Änderungen: [CHANGELOG.md](CHANGELOG.md) · offene Aufgaben: [docs/todo.md](docs/todo.md)
 
 ---
 
@@ -158,7 +158,7 @@ Traefik ─┬─ /api → backend (FastAPI) ─┬─ PostgreSQL
 - Benachrichtigungen über eine transaktionale Outbox, die der Worker zustellt.
 - Einheitliches Fehlerformat `{code, message, fieldErrors, requestId}`.
 
-Details: [Architektur](docs/documentation/technical/architecture.md) · [Modul-Registry](docs/documentation/technical/plugins.md) · [Datenbank](docs/documentation/technical/database.md) (60 Tabellen, ERD, Migrationen `0001`–`0029`) · [API-Referenz](docs/documentation/technical/api-reference.md).
+Details: [Architektur](docs/documentation/technical/architecture.md) · [Modul-Registry](docs/documentation/technical/plugins.md) · [Datenbank](docs/documentation/technical/database.md) (68 Tabellen, ERD, Migrationen `0001`–`0034`) · [API-Referenz](docs/documentation/technical/api-reference.md).
 
 ---
 
@@ -188,6 +188,7 @@ Admins können Rechte ändern und eigene Rollen anlegen. Vollständige Matrix un
 | [Architektur](docs/documentation/technical/architecture.md) · [API](docs/documentation/technical/api-reference.md) · [Datenbank](docs/documentation/technical/database.md) · [Modul-Registry](docs/documentation/technical/plugins.md) | Technik |
 | [SECURITY.md](docs/SECURITY.md) · [todo.md](docs/todo.md) · [done.md](docs/done.md) · [OPEN_ITEMS.md](docs/OPEN_ITEMS.md) · [audit-2026-09.md](docs/audit-2026-09.md) | Sicherheit und Projektstand |
 | [docs/modules/](docs/modules/) | Ursprüngliche Modul-Spezifikationen (01–11) |
+| [docs/schulung/](docs/schulung/README.md) | Schulung „Von der Frage zum Auftrag“: Arbeiten mit KI-Agenten, 60 Minuten mit Live-Demo (Gamedoc 2027 in die App übernehmen) |
 
 ### Referenzdokumente
 

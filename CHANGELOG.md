@@ -4,6 +4,11 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### Schulung „Von der Frage zum Auftrag“
+
+- `docs/schulung/`: Unterlagen für eine 60-minütige Schulung zum Arbeiten mit KI-Agenten am Beispiel dieses Projekts. Enthalten sind ein Lehrerleitfaden mit Ablauf, LEDVV als Aufbau für Aufträge, ein Spickzettel mit Übung, Kurz-Demos und Fallbeispiele.
+- Drehbuch für die Live-Vorführung „Gamedoc 2027 analysieren und in der App hinterlegen“ (`demo-gamedoc-2027.md`) mit Prompts, Klickweg und Plan B. Dazu kommen der Bogen 2026 als JSON (`demo/botball-2026-sheet.json`) und die erwartete Analyse (`demo/analyse-2026-erwartet.md`). Beide sind aus der Vorlage `botball_2026` erzeugt, alle 13 offiziellen Scoring-Beispiele wurden dabei nachgerechnet.
+
 ### Botball 2026 und ECER 2026 (Migration `0034`)
 
 Abgleich mit den offiziellen Dokumenten (Game Review v1.4, Score-Sheet und Scoring Examples 2026, ECER Amendments 2026, Bewertungsbögen, Aerial Junior Rulebook, Call for Papers, Ergebnisse ECER 2026; Quellen in `docs/assets/README.md`).
