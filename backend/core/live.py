@@ -13,12 +13,14 @@ import json
 from collections import defaultdict
 from contextlib import suppress
 from datetime import UTC, datetime
+from typing import Protocol
 
 from fastapi import WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis
 from sqlalchemy import event as sa_event
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
+from starlette.websockets import WebSocketState
 
 from core.config import get_settings
 from core.logging import get_logger
@@ -261,9 +263,43 @@ def live_hub() -> LiveHub:
     return _hub
 
 
-async def stream_live_events(websocket: WebSocket, event_id: str | None) -> None:
-    """Forward an event's live channel to one WebSocket client."""
-    await websocket.accept()
+class LiveClose(Exception):
+    """Raised by a LiveGuard to end a stream with a WebSocket close code."""
+
+    def __init__(self, code: int, reason: str = "") -> None:
+        super().__init__(reason or str(code))
+        self.code = code
+        self.reason = reason
+
+
+class LiveGuard(Protocol):
+    """Access control of an authenticated stream (see modules.events.live_socket).
+
+    ``stream_live_events`` calls ``check`` whenever ``seconds_until_check``
+    has passed, and hands every client message to ``handle_message`` first.
+    Both may raise LiveClose to end the stream.
+    """
+
+    def seconds_until_check(self) -> float: ...
+
+    async def check(self) -> None: ...
+
+    async def handle_message(self, text: str) -> dict | None:
+        """The reply to a message it handled, or None for a keep-alive ping."""
+        ...
+
+
+async def stream_live_events(
+    websocket: WebSocket, event_id: str | None, guard: LiveGuard | None = None
+) -> None:
+    """Forward an event's live channel to one WebSocket client.
+
+    Accepts the socket unless the caller already did (an authenticated stream
+    accepts it to receive the credentials first). No database session is held
+    while streaming; a guard opens short ones of its own when it re-checks.
+    """
+    if websocket.application_state == WebSocketState.CONNECTING:
+        await websocket.accept()
     hub = live_hub()
     channel = _channel(event_id)
     queue: asyncio.Queue[str | None] | None = None
@@ -275,7 +311,13 @@ async def stream_live_events(websocket: WebSocket, event_id: str | None) -> None
         receiver = asyncio.ensure_future(websocket.receive_text())
         getter = asyncio.ensure_future(queue.get())
         while True:
-            done, _ = await asyncio.wait({receiver, getter}, return_when=asyncio.FIRST_COMPLETED)
+            timeout = max(0.0, guard.seconds_until_check()) if guard else None
+            done, _ = await asyncio.wait(
+                {receiver, getter}, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+            )
+            if guard and not done:
+                await guard.check()
+                continue
             if getter in done:
                 data = getter.result()
                 if data is _LOST:
@@ -283,12 +325,17 @@ async def stream_live_events(websocket: WebSocket, event_id: str | None) -> None
                 await websocket.send_text(data)
                 getter = asyncio.ensure_future(queue.get())
             if receiver in done:
-                # Any client message is a keep-alive ping. A disconnect raises here.
-                receiver.result()
-                await websocket.send_json({"event": "pong"})
+                # A disconnect raises here. Anything the guard does not handle
+                # (credentials) is a keep-alive ping.
+                text = receiver.result()
+                reply = await guard.handle_message(text) if guard else None
+                await websocket.send_json(reply or {"event": "pong"})
                 receiver = asyncio.ensure_future(websocket.receive_text())
     except WebSocketDisconnect:
         pass
+    except LiveClose as close:
+        with suppress(Exception):
+            await websocket.close(code=close.code, reason=close.reason)
     except Exception as exc:  # noqa: BLE001 - the client is told to reconnect, whatever broke
         logger.warning("live_stream_failed", event_id=event_id, error=str(exc))
         with suppress(Exception):

@@ -24,7 +24,7 @@ Stand: 2026-09-25, Migrationen `0001`–`0030`. Die Liste ist nach Modulen gegli
 - Einheitliches Fehlerformat `{code, message, fieldErrors, requestId}`, `X-Request-ID`, Größenlimit für Requests, Security-Header, Audit jeder erfolgreichen Änderung in `audit_logs`.
 - Redis-Rate-Limits im Backend für Login, Refresh, Passwort, E-Mail, Kontolöschung, Reset und Uploads.
 - Celery-Worker und -Beat: OCR, Drucker-Polling, Outbox, Match- und Deadline-Erinnerungen, Paper-Fristen.
-- Live-Stream über Redis Pub/Sub. Veröffentlicht wird erst nach dem Commit (`publish_after_commit`). Einziger WebSocket ist der öffentliche Event-Stream.
+- Live-Stream über Redis Pub/Sub. Veröffentlicht wird erst nach dem Commit (`publish_after_commit`). WebSockets: der öffentliche Event-Stream (`/api/v1/public/events/{slug}/ws`) und der angemeldete (`/api/v1/events/{event_id}/ws`, Token in der ersten Nachricht).
 - Transaktionale Outbox (`notification_events`) mit `FOR UPDATE SKIP LOCKED`, Backoff und maximal 5 Versuchen. Zugestellt gilt nur, was tatsächlich versendet wurde. Abgelaufene Push-Abos werden entfernt. Migrationen `0012`, `0024`.
 
 ## Auth und Konto (`0002`, `0021`, `0027`)

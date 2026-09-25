@@ -255,6 +255,8 @@ Nur Events mit Status `published`, `live` oder `completed`. Jede Teilansicht ver
 | GET | `/api/v1/public/events/{slug}/qr.svg` | öffentlich | QR-Code auf `APP_BASE_URL/public/{slug}` |
 | WS | `/api/v1/public/events/{slug}/ws` | mind. ein `public_*`-Flag | Live-Stream des Events (Redis Pub/Sub) |
 
+Den angemeldeten Live-Stream `WS /api/v1/events/{event_id}/ws` (`events:read`) beschreibt der Abschnitt „Live-Stream“.
+
 ### Teams (`/api/teams`)
 
 | Methode | Pfad | Recht | Zweck |
@@ -514,10 +516,35 @@ CSV-Dateien sind UTF-8 mit BOM. Zellen, die mit `=`, `+`, `-` oder `@` beginnen,
 
 ## Live-Stream
 
-`WS /api/v1/public/events/{slug}/ws` ist der einzige WebSocket-Endpunkt. Nach dem Verbindungsaufbau sendet der Server `{"event": "connection", "payload": {"status": "connected"}}`. Danach reicht er die Nachrichten des Redis-Kanals `botball:live:{event_id}` weiter:
+Es gibt zwei WebSocket-Endpunkte mit demselben Nachrichtenformat:
+
+- `WS /api/v1/public/events/{slug}/ws`: öffentlich, nur für Events mit mindestens einem `public_*`-Flag (Großbildschirme, öffentliche Seite).
+- `WS /api/v1/events/{event_id}/ws`: angemeldet, für jedes Event, das der Benutzer lesen darf (`events:read`; Entwürfe nur mit `events:write`). Die angemeldeten Seiten nutzen ihn; solange er getrennt ist, fragen sie alle 15 s ab.
+
+Nach dem Verbindungsaufbau sendet der Server `{"event": "connection", "payload": {"status": "connected"}}`. Danach reicht er die Nachrichten des Redis-Kanals `botball:live:{event_id}` weiter:
 
 ```json
 {"event": "ranking_updated", "eventId": "…", "payload": {…}, "sentAt": "2026-06-01T09:30:00+00:00"}
 ```
 
-Die Ereignisse `ranking_updated`, `schedule_updated`, `announcement_published` und `announcement_removed` werden erst nach dem Datenbank-Commit veröffentlicht (`core/live.py::publish_after_commit`). Clients laden daraufhin die betroffenen Daten neu. Außerdem veröffentlicht der Outbox-Worker Benachrichtigungen, die mit `publicLive` markiert sind, auf demselben Kanal.
+Die Ereignisse `ranking_updated`, `schedule_updated`, `announcement_published` und `announcement_removed` werden erst nach dem Datenbank-Commit veröffentlicht (`core/live.py::publish_after_commit`). Clients laden daraufhin die betroffenen Daten neu. Außerdem veröffentlicht der Outbox-Worker Benachrichtigungen, die mit `publicLive` markiert sind, auf demselben Kanal. Jede andere Nachricht des Clients ist ein Ping; der Server antwortet `{"event": "pong"}`.
+
+### Anmeldung am Event-Stream
+
+Das Token steht nie in der URL (sonst landete es in Proxy- und Zugriffslogs). Der Client sendet es als erste Nachricht, spätestens nach 10 s:
+
+```json
+{"type": "auth", "token": "<Access-Token>"}
+```
+
+Der Server prüft es wie jede API-Anfrage (Signatur, Ablauf, Logout-Sperrliste, `token_version`, aktiver Benutzer), dazu `events:read` und die Entwurfsregel. Erst dann folgt `connection`. Bekommt der Client ein neues Access-Token, sendet er dieselbe Nachricht erneut; der Server antwortet `{"event": "auth", "payload": {"status": "ok"}}`. Alle 60 s und beim Ablauf des Tokens prüft der Server erneut, jeweils in einer eigenen kurzen Datenbanksitzung. Während des Streamens hält er keine Sitzung.
+
+| Close-Code | Bedeutung | Client |
+|---|---|---|
+| 4400 | Erste Nachricht keine Anmeldung oder zu spät | verbindet neu (mit Backoff) |
+| 4401 | Token ungültig, abgelaufen oder widerrufen, Benutzer deaktiviert | erneuert die Sitzung, verbindet neu |
+| 4403 | Kein `events:read` (mehr) | hört auf, fragt ab |
+| 4404 | Event unbekannt oder Entwurf ohne `events:write` | hört auf, fragt ab |
+| 1013 | Redis-Abonnement verloren | verbindet neu (mit Backoff) |
+
+Traefik leitet beide Pfade über den Router `api-ws` ohne Puffer-Middleware.

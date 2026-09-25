@@ -9,7 +9,7 @@ from core.cache import Payload, cached_payload, conditional_response, dump_json
 from core.database import get_db, get_session_factory
 from core.domain_events import emit_event
 from core.live import publish_after_commit, stream_live_events
-from modules.events import service
+from modules.events import live_socket, service
 from modules.events.module_access import MODULE_KEYS, SEASON_FLAGS, effective_modules
 from modules.events.schemas import (
     AllianceStanding,
@@ -61,6 +61,20 @@ async def list_events(
         status,
         include_drafts=await has_elevated_access(db, current_user, "events:write"),
     )
+
+
+@router.websocket("/{event_id}/ws")
+async def event_ws(
+    event_id: str,
+    websocket: WebSocket,
+    session_factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+):
+    """Live updates of any event the user may read (see modules.events.live_socket).
+
+    The access token comes in the first message, not in the URL. Like the
+    public stream, no request session is held while the socket is open.
+    """
+    await live_socket.serve_event_stream(websocket, event_id, session_factory)
 
 
 @router.post("", response_model=EventResponse, status_code=201)

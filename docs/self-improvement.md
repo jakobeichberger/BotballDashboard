@@ -37,7 +37,7 @@ Dieses Dokument protokolliert was ich im Laufe des Projekts lerne, welche Fehler
 - **Eventzentriert:** Die Saison ist das Regelwerk (Module, Formeln, Tie-Breaker, Termine). Wertungen, Ranglisten, Kontingente und Ankündigungen hängen am **Event**. Die Oberfläche läuft unter `/events/:eventId/…`.
 - **Modul-Aktivierung pro Event:** `Event.active_modules` zusammen mit den Saison-Flags `use_*` (`modules/events/module_access.py`).
 - **Hintergrundarbeit:** Celery-Worker und -Beat übernehmen OCR, Drucker-Polling, Outbox-Zustellung und Erinnerungen. Einen separaten OCR-Dienst gibt es nicht.
-- **Live:** Redis Pub/Sub, veröffentlicht nach dem Commit. Einziger WebSocket ist `/api/v1/public/events/{slug}/ws`.
+- **Live:** Redis Pub/Sub, veröffentlicht nach dem Commit. WebSockets: `/api/v1/public/events/{slug}/ws` (öffentlich) und `/api/v1/events/{event_id}/ws` (angemeldet).
 - **Wertung:** strukturierte Score-Sheets (`scoring/sheet.py`, gespiegelt in `calculator.ts`) und die Formel-Engine (`formula.py`, `formula_engine.py`) für die Gesamtwertung.
 - **Lebenszyklus:** Archivierte Saisons und Events sind über `ensure_writable` schreibgeschützt.
 

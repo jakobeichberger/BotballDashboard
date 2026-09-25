@@ -6,6 +6,8 @@ backend reads must be documented, and the compose file must keep the services,
 profiles and log rotation the docs describe.
 """
 
+import re
+import uuid
 from pathlib import Path
 
 import pytest
@@ -264,5 +266,11 @@ def test_traefik_limits_api_request_bodies(compose):
     labels = compose["services"]["backend"]["labels"]
     assert any(".buffering.maxRequestBodyBytes=" in label for label in labels)
     assert "traefik.http.routers.api.middlewares=api-body-limit" in labels
-    # WebSockets bypass the buffering middleware on their own router.
-    assert any(label.startswith("traefik.http.routers.api-ws.rule=") for label in labels)
+    # WebSockets bypass the buffering middleware on their own router, which
+    # uses Traefik v3 syntax (Path() takes no regex placeholders any more).
+    [ws_rule] = [label for label in labels if label.startswith("traefik.http.routers.api-ws.rule=")]
+    pattern = re.search(r"PathRegexp\(`([^`]+)`\)", ws_rule).group(1)
+    for path in ("/api/v1/public/events/ecer-2026/ws", f"/api/v1/events/{uuid.uuid4()}/ws"):
+        assert re.fullmatch(pattern, path), path
+    for path in ("/api/v1/events/x/ws/extra", "/api/v1/events//ws", "/api/v1/teams/x/ws"):
+        assert not re.fullmatch(pattern, path), path

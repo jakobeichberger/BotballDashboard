@@ -11,6 +11,7 @@ from fastapi import HTTPException, WebSocketDisconnect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
+from starlette.websockets import WebSocketState
 
 import core.live as live
 from core import audit, database, rate_limit, redis_client
@@ -239,9 +240,10 @@ class _FakeWebSocket:
         self.sent: list = []
         self.incoming: asyncio.Queue = asyncio.Queue()
         self.closed_with: int | None = None
+        self.application_state = WebSocketState.CONNECTING
 
     async def accept(self) -> None:
-        pass
+        self.application_state = WebSocketState.CONNECTED
 
     async def send_json(self, data) -> None:
         self.sent.append(data)
@@ -255,7 +257,7 @@ class _FakeWebSocket:
             raise item
         return item
 
-    async def close(self, code: int = 1000) -> None:
+    async def close(self, code: int = 1000, reason: str = "") -> None:
         self.closed_with = code
 
 
