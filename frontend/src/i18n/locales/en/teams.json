@@ -132,7 +132,8 @@
     "empty": "No members yet.",
     "roleLabel": "Role",
     "addFailed": "The member could not be added.",
-    "add": "Add member"
+    "add": "Add member",
+    "confirmRemove": "Remove {{name}} from the team?"
   },
   "detail": {
     "accountLinked": "Account linked",

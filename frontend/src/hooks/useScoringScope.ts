@@ -26,6 +26,8 @@ export interface ScoringScope {
    * season's default event.
    */
   base?: string;
+  /** Event or season still loading: show a loading state, not "no season". */
+  isLoading: boolean;
 }
 
 /**
@@ -40,13 +42,13 @@ export function useScoringScope(): ScoringScope {
   const [searchParams] = useSearchParams();
   const seasonParam = searchParams.get("season_id") ?? "";
 
-  const { data: event } = useQuery<{ id: string; season_id: string }>({
+  const { data: event, isLoading: eventLoading } = useQuery<{ id: string; season_id: string }>({
     queryKey: ["events", eventId],
     queryFn: async () => (await api.get(`/v1/events/${eventId}`)).data,
     enabled: !!eventId,
   });
 
-  const { data: activeSeason } = useQuery<ScoringSeason | null>({
+  const { data: activeSeason, isLoading: activeLoading } = useQuery<ScoringSeason | null>({
     queryKey: ["seasons", "active"],
     queryFn: async () => (await api.get("/seasons/active")).data,
     enabled: !eventId,
@@ -54,7 +56,7 @@ export function useScoringScope(): ScoringScope {
 
   const seasonId = eventId ? event?.season_id : seasonParam || activeSeason?.id;
 
-  const { data: eventSeason } = useQuery<ScoringSeason>({
+  const { data: eventSeason, isLoading: eventSeasonLoading } = useQuery<ScoringSeason>({
     queryKey: ["seasons", seasonId],
     queryFn: async () => (await api.get(`/seasons/${seasonId}`)).data,
     enabled: !!eventId && !!seasonId,
@@ -66,5 +68,6 @@ export function useScoringScope(): ScoringScope {
     : seasonId
       ? `/scoring/seasons/${seasonId}`
       : undefined;
-  return { eventId, seasonId, season: season ?? undefined, base };
+  const isLoading = eventId ? eventLoading || eventSeasonLoading : activeLoading;
+  return { eventId, seasonId, season: season ?? undefined, base, isLoading };
 }

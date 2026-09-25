@@ -260,5 +260,7 @@
     "loadFailed": "Data could not be loaded."
   },
   "copied": "Copied",
-  "copyFailed": "Copying is not possible – please copy manually."
+  "copyFailed": "Copying is not possible – please copy manually.",
+  "dqShort": "DQ",
+  "disqualified": "Disqualified"
 }

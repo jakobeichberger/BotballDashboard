@@ -198,5 +198,10 @@
     "runs": "Läufe",
     "total": "Summe",
     "empty": "Noch keine Alliance-Läufe."
-  }
+  },
+  "discardEntries": "Die Eingaben für dieses Match wurden noch nicht gespeichert. Verwerfen und zum anderen Match wechseln?",
+  "discardEntriesConfirm": "Verwerfen",
+  "schemaLoadFailed": "Das Wertungsschema konnte nicht geladen werden.",
+  "publicLoadFailed": "Das Event konnte nicht geladen werden – bitte Verbindung prüfen.",
+  "liveTitle": "Botball Live"
 }

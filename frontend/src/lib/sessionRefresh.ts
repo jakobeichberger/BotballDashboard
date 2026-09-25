@@ -13,6 +13,7 @@
  */
 import axios, { type AxiosError } from "axios";
 import { useAuthStore } from "@/store/authStore";
+import { backoffDelay } from "@/lib/backoff";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 const CHANNEL_NAME = "botball-auth";
@@ -86,11 +87,7 @@ export function retryAfterMs(value: unknown, now = Date.now()): number | null {
   return Number.isNaN(date) ? null : Math.max(0, date - now);
 }
 
-/** Exponential backoff with full jitter: random in [base·2^n / 2, base·2^n]. */
-export function backoffDelay(attempt: number, base = BASE_DELAY_MS, max = MAX_DELAY_MS, random = Math.random): number {
-  const ceiling = Math.min(max, base * 2 ** attempt);
-  return Math.round(ceiling / 2 + random() * (ceiling / 2));
-}
+export { backoffDelay };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -114,7 +111,7 @@ async function postRefresh(): Promise<RefreshOutcome> {
       if (!isRetryable(error) || attempt === REFRESH_ATTEMPTS - 1) break;
       // Offline: retrying now is pointless, the caller tries again later.
       if (typeof navigator !== "undefined" && !navigator.onLine) break;
-      const wait = retryAfterMs(error.response?.headers?.["retry-after"]) ?? backoffDelay(attempt);
+      const wait = retryAfterMs(error.response?.headers?.["retry-after"]) ?? backoffDelay(attempt, BASE_DELAY_MS, MAX_DELAY_MS);
       await sleep(Math.min(wait, MAX_DELAY_MS * 3));
     }
   }
