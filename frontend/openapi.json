@@ -3062,6 +3062,7 @@
           "events"
         ],
         "summary": "List Event Scores",
+        "description": "Scores of an event (without schema snapshots); `limit`/`offset` page.",
         "operationId": "list_event_scores_api_v1_events__event_id__matches_get",
         "security": [
           {
@@ -3109,6 +3110,35 @@
               ],
               "title": "Phase Id"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 1000,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
           }
         ],
         "responses": {
@@ -3119,7 +3149,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MatchResponse"
+                    "$ref": "#/components/schemas/MatchListItem"
                   },
                   "title": "Response List Event Scores Api V1 Events  Event Id  Matches Get"
                 }
@@ -3455,6 +3485,47 @@
               "type": "string",
               "title": "Slug"
             }
+          },
+          {
+            "name": "upcoming",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only matches not completed or cancelled yet",
+              "default": false,
+              "title": "Upcoming"
+            },
+            "description": "Only matches not completed or cancelled yet"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 1000,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
           }
         ],
         "responses": {
@@ -3593,6 +3664,51 @@
               "type": "string",
               "title": "Slug"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 1000,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "description": "asc: by round, then entry time; desc: the newest first",
+              "default": "asc",
+              "title": "Order"
+            },
+            "description": "asc: by round, then entry time; desc: the newest first"
           }
         ],
         "responses": {
@@ -5746,6 +5862,7 @@
           "scoring"
         ],
         "summary": "List Matches",
+        "description": "Matches of a season in entry order; `limit`/`offset` page through them.\n\nWithout `limit` every match is returned. The schema snapshot of each run\nis left out (see GET /scoring/matches/{id}).",
         "operationId": "list_matches_api_scoring_seasons__season_id__matches_get",
         "security": [
           {
@@ -5825,6 +5942,35 @@
               ],
               "title": "Event Id"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 1000,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
           }
         ],
         "responses": {
@@ -5835,7 +5981,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MatchResponse"
+                    "$ref": "#/components/schemas/MatchListItem"
                   },
                   "title": "Response List Matches Api Scoring Seasons  Season Id  Matches Get"
                 }
@@ -6472,7 +6618,7 @@
           "scoring"
         ],
         "summary": "Get Ranking Extended",
-        "description": "Seeding ranking enriched with team name and category.\n\nRanks are per category (Botball and Open are separate competitions); a\nred-carded team is listed with `disqualified` and no rank.",
+        "description": "Seeding ranking enriched with team name and category.\n\nRanks are per category (Botball and Open are separate competitions); a\nred-carded team is listed with `disqualified` and no rank. Cached per\nevent and answered with an ETag (304 on If-None-Match).",
         "operationId": "get_ranking_extended_api_scoring_seasons__season_id__ranking_extended_get",
         "security": [
           {
@@ -6624,7 +6770,7 @@
           "scoring"
         ],
         "summary": "Get Overall Ranking",
-        "description": "Overall ranking computed from the season's configured formula set.\n\nResults are recorded per event, so this ranks one event: the one named by\n`event_id`, otherwise the season's default event \u2014 the same one the other\nseason routes read and write, so a result entered through them shows here.",
+        "description": "Overall ranking computed from the season's configured formula set.\n\nResults are recorded per event, so this ranks one event: the one named by\n`event_id`, otherwise the season's default event \u2014 the same one the other\nseason routes read and write, so a result entered through them shows here.\nCached per event and answered with an ETag (304 on If-None-Match).",
         "operationId": "get_overall_ranking_api_scoring_seasons__season_id__ranking_overall_get",
         "security": [
           {
@@ -21117,6 +21263,238 @@
         ],
         "title": "MatchCreate"
       },
+      "MatchListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "scheduled_match_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled Match Id"
+          },
+          "phase_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Id"
+          },
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "competition_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition Level Id"
+          },
+          "round_number": {
+            "type": "integer",
+            "title": "Round Number"
+          },
+          "table_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Number"
+          },
+          "raw_scores": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Raw Scores"
+          },
+          "total_score": {
+            "type": "number",
+            "title": "Total Score"
+          },
+          "sheet_score": {
+            "type": "number",
+            "title": "Sheet Score",
+            "default": 0.0
+          },
+          "bonus_score": {
+            "type": "number",
+            "title": "Bonus Score",
+            "default": 0.0
+          },
+          "round_lost": {
+            "type": "boolean",
+            "title": "Round Lost",
+            "default": false
+          },
+          "round_lost_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Lost Reason"
+          },
+          "end_contact": {
+            "type": "boolean",
+            "title": "End Contact",
+            "default": false
+          },
+          "tiebreak_values": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Tiebreak Values"
+          },
+          "checklist": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checklist"
+          },
+          "is_disqualified": {
+            "type": "boolean",
+            "title": "Is Disqualified"
+          },
+          "is_practice": {
+            "type": "boolean",
+            "title": "Is Practice"
+          },
+          "yellow_card": {
+            "type": "boolean",
+            "title": "Yellow Card"
+          },
+          "red_card": {
+            "type": "boolean",
+            "title": "Red Card"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "entered_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entered By"
+          },
+          "confirmed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed By"
+          },
+          "confirmed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed At"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "season_id",
+          "event_id",
+          "scheduled_match_id",
+          "phase_id",
+          "team_id",
+          "competition_level_id",
+          "round_number",
+          "table_number",
+          "raw_scores",
+          "total_score",
+          "is_disqualified",
+          "is_practice",
+          "yellow_card",
+          "red_card",
+          "notes",
+          "version",
+          "entered_by",
+          "confirmed_by",
+          "confirmed_at",
+          "created_at"
+        ],
+        "title": "MatchListItem",
+        "description": "A match as listed. Leaves out the schema snapshot, which only the\nsingle-match view needs and which made lists several times larger."
+      },
       "MatchParticipantResponse": {
         "properties": {
           "id": {
@@ -21357,18 +21735,6 @@
             ],
             "title": "Notes"
           },
-          "schema_snapshot": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Schema Snapshot"
-          },
           "version": {
             "type": "integer",
             "title": "Version"
@@ -21422,6 +21788,18 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "schema_snapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Snapshot"
           }
         },
         "type": "object",
@@ -21442,12 +21820,12 @@
           "yellow_card",
           "red_card",
           "notes",
-          "schema_snapshot",
           "version",
           "entered_by",
           "confirmed_by",
           "confirmed_at",
-          "created_at"
+          "created_at",
+          "schema_snapshot"
         ],
         "title": "MatchResponse"
       },
