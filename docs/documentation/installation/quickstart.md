@@ -67,14 +67,14 @@ age-keygen -o botball-backup-identity.txt
 docker compose up -d --build
 ```
 
-`.env.example` setzt `COMPOSE_PROFILES=production`. Damit startet neben `traefik`, `db`, `redis`, `backend`, `worker`, `beat` und `frontend` auch der Backup-Dienst `backup`. Monitoring (Prometheus, Blackbox, Alertmanager) kommt mit `COMPOSE_PROFILES=production,monitoring` dazu.
+`.env.example` setzt `COMPOSE_PROFILES=production`. Damit startet neben `traefik`, `db`, `redis`, `backend`, `worker`, `worker-ocr`, `beat` und `frontend` auch der Backup-Dienst `backup`. Monitoring (Prometheus, Blackbox, Alertmanager) kommt mit `COMPOSE_PROFILES=production,monitoring` dazu.
 
 Beim ersten Start spielt das Backend automatisch alle Datenbank-Migrationen ein (Alembic). Standardrollen und Berechtigungen werden dabei angelegt.
 
 Status prüfen:
 
 ```bash
-docker compose ps                  # alle Dienste "running", backend/worker/db/redis "healthy"
+docker compose ps                  # alle Dienste "running", backend/worker/worker-ocr/db/redis "healthy"
 ./scripts/verify-deployment.sh     # PASS/WARN/FAIL je Prüfung
 ```
 

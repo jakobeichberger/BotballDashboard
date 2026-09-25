@@ -4,7 +4,7 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
-Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0031`.
+Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0032`.
 
 ### Added
 
@@ -133,6 +133,16 @@ Sicherheitsreview 2026-09 (15 Befunde, jeweils mit Regressionstest; Restrisiken 
 - Entwurfs-Saisons und -Events sehen nur Organisatoren. Kontaktdaten anderer Teams sind ausgeblendet. Team-Dokumente sind nur für das eigene Team sichtbar.
 - Rate-Limits für Passwort-Reset, E-Mail-Änderung, Kontolöschung und alle Uploads.
 - Passwörter aus einer mitgelieferten Liste von rund 2.300 häufigen oder geleakten Passwörtern (SecLists, ab 10 Zeichen, plus deutsche Muster) werden beim Anlegen, Ändern, Zurücksetzen und Setzen durch Admins abgelehnt, ohne Groß-/Kleinschreibung.
+
+### Performance
+
+- Öffentlicher WebSocket hält keine Datenbankverbindung mehr; ein Redis-Abo pro API-Prozess verteilt Live-Ereignisse an alle WebSockets. Geteilte Redis-Clients mit kurzen Timeouts für Veröffentlichen, Rate-Limit (jetzt atomar per Lua) und Cache.
+- Ranglisten, Gesamtwertung und öffentliche Ergebnisse werden pro Event versioniert in Redis gecacht und mit `ETag`/`304` ausgeliefert. Die Gesamtwertung lädt ihre Eingaben einmal für alle Kategorien.
+- Celery: eigene Queues (`ocr`, `periodic`, `default`) mit neuem Dienst `worker-ocr`, Beat-Aufträge verfallen, Tasks ohne Connection-Pool pro Event-Loop, Drucker werden gleichzeitig mit Timeout abgefragt.
+- Outbox: Zeilen werden beansprucht (`sending` mit Lease) und ohne offene Sperren versendet; nur die Push-Abos der Empfänger werden geladen. Neue Tabelle `notification_recipients` für die Benachrichtigungszentrale, Aufräumen nach 30 Tagen (`0032`).
+- Weniger Abfragen: Mentor-Dashboard und Team-Historie ohne N+1, Sammel-Wertungen sortieren die Rangliste einmal pro Anfrage, Audit-Zeile in der Transaktion der Anfrage, fehlende Indizes (`0032`), Seitenweise Abfrage (`limit`/`offset`) für Wertungslisten, öffentliche Ergebnisse und Zeitplan; Listen ohne `schema_snapshot`.
+- PDF-Exporte laufen im Threadpool. SQL-Logging nur noch mit `DB_ECHO=true`; `pool_pre_ping` und `pool_recycle` für die API.
+- Zusammenspiel mit dem Sicherheitsreview: Seitenweise Match-Listen filtern fremde Übungsläufe schon in der Abfrage (volle Seiten, keine Lücken) und blenden fremde Notizen aus. Gecachte Ranglisten und Ergebnisse enthalten nie Übungsläufe; Saison-Ranglisten ohne `event_id` prüfen den Entwurfsstatus des Standard-Events vor dem Cache, und öffentliche Seiten liefern Events einer Entwurfs-Saison nicht mehr aus. `worker-ocr` ist wie `worker` gehärtet (UID 10001, `cap_drop: ALL`, schreibgeschützt, `OCR_WORKER_MEM_LIMIT`, `OPENCV_IO_MAX_IMAGE_PIXELS`); `worker` braucht ohne OCR nur noch 1 GB (`WORKER_MEM_LIMIT`). Die Vorlagen-Extraktion wird wie Scans erst nach dem Commit in die Queue `ocr` gestellt.
 
 ## PR #23 – Frontend-Ausbau (#21) im eventzentrierten `main` (2026-09-24)
 

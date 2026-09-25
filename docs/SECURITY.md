@@ -109,7 +109,7 @@ Regression tests: `backend/tests/integration/test_security_scoping.py`, `test_se
 
 ## Containers
 
-- `backend`, `worker`, `beat` and `backup` run as the unprivileged user `app` (uid/gid 10001) with `cap_drop: ALL`, `no-new-privileges` and memory limits. `backend`, `worker` and `beat` have a read-only root filesystem with `/tmp` as tmpfs; the application code is root-owned and not writable for the app.
+- `backend`, `worker`, `worker-ocr`, `beat` and `backup` run as the unprivileged user `app` (uid/gid 10001) with `cap_drop: ALL`, `no-new-privileges` and memory limits. `backend`, `worker`, `worker-ocr` and `beat` have a read-only root filesystem with `/tmp` as tmpfs; the application code is root-owned and not writable for the app.
 - The one-shot services `volume-permissions` and `backup-permissions` hand volumes of older (root) releases to uid 10001. They run as root with only `CHOWN` and `DAC_READ_SEARCH`, without network, and never follow symlinks.
 - Traefik keeps the Docker socket (read-only) and runs as root; `db` and `redis` use their images' own users.
 
@@ -123,7 +123,7 @@ The CI workflow (started manually) runs `pip-audit` (no ignores) and `pnpm audit
 2. **Password policy — Low.** No check against a live breach database, no lockout beyond the per-IP rate limit.
 3. **Audit depth — Low.** Every successful API mutation is logged as `"<METHOD> <path>"` with user and IP in `audit_logs`, without before/after values. Only scores and DE/aerial/documentation results have full revision history. There is no UI for the audit log.
 4. **Card and DQ changes** are only possible through `PATCH /api/scoring/matches/{id}` (`scoring:admin`). They are audited like every other match update (score revision).
-5. **Untrusted PDFs in the worker — Low/Medium.** Uploaded score-sheet scans are parsed by poppler (`pdftoppm`), templates by `pdftotext`. A parser vulnerability would run inside the worker; it is contained by the unprivileged user, no capabilities, the read-only root, the memory limit and the 60 s timeout, but it can reach the database and Redis.
+5. **Untrusted PDFs in the worker — Low/Medium.** Uploaded score-sheet scans are parsed by poppler (`pdftoppm`), templates by `pdftotext`. A parser vulnerability would run inside the OCR worker (`worker-ocr`, which has no VAPID key); it is contained by the unprivileged user, no capabilities, the read-only root, the memory limit and the 60 s timeout, but it can reach the database and Redis.
 6. **Memory pressure from uploads — Low.** The API spools multipart uploads to its tmpfs `/tmp`, which counts towards `BACKEND_MEM_LIMIT`. Several parallel print uploads close to `PRINT_UPLOAD_MAX_MB` (only users with `printing:write`, rate-limited to 20/min per IP) can make the container hit its limit and restart. Raise `BACKEND_MEM_LIMIT`/`BACKEND_TMP_SIZE` for events with many large print files.
 7. **Traefik buffering — Info.** The body-limit middleware buffers requests (on disk above 2 MB) and responses before forwarding them; large downloads reach the client only after Traefik has received them completely. The live WebSocket has its own router without it.
 8. **Push service allow-list — Info.** Only the push services of Chrome/Edge/Firefox/Safari (FCM, Mozilla, WNS, Apple) are accepted. A browser using another push service cannot subscribe until its host is added to `core/push_endpoints.py`. Host names are not re-resolved against private address ranges at send time.

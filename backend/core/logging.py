@@ -38,8 +38,15 @@ def configure_logging() -> None:
     )
 
     logging.basicConfig(level=log_level)
-    for noisy in ["uvicorn.access", "sqlalchemy.engine"]:
-        logging.getLogger(noisy).setLevel(logging.DEBUG if settings.is_dev else logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(
+        logging.DEBUG if settings.is_dev else logging.WARNING
+    )
+    # SQL statements (and the driver's chatter) only with DB_ECHO=true: logging
+    # every statement with its rows slowed development instances down a lot.
+    logging.getLogger("sqlalchemy.engine").setLevel(
+        logging.INFO if settings.db_echo else logging.WARNING
+    )
+    logging.getLogger("aiosqlite").setLevel(logging.WARNING)
 
 
 def get_logger(name: str = __name__) -> structlog.BoundLogger:

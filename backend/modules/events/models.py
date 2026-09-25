@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -131,7 +132,11 @@ class EventPhase(Base):
 
 class ScheduledMatch(Base):
     __tablename__ = "scheduled_matches"
-    __table_args__ = (UniqueConstraint("event_id", "code", name="uq_scheduled_match_event_code"),)
+    __table_args__ = (
+        UniqueConstraint("event_id", "code", name="uq_scheduled_match_event_code"),
+        # Upcoming matches (reminders, dashboards) are looked up by status and time.
+        Index("ix_scheduled_matches_status_scheduled_at", "status", "scheduled_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     event_id: Mapped[str] = mapped_column(

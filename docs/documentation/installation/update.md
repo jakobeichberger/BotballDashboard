@@ -11,7 +11,7 @@ Ein Update tauscht nur die Programmteile aus (Backend-, Worker- und Frontend-Ima
 ```
 1. Backup + Proxmox-Snapshot
 2. git pull (neuer Code)
-3. Images neu bauen (backend, worker, beat, backup, frontend)
+3. Images neu bauen (backend, worker, worker-ocr, beat, backup, frontend)
 4. docker compose up -d  → das Backend spielt beim Start ausstehende Migrationen ein
 5. Prüfen (scripts/verify-deployment.sh)
 ```
@@ -31,7 +31,7 @@ Das Skript:
 
 1. speichert den laufenden Commit und die Alembic-Revision in `.deploy-state` (für den Rollback),
 2. holt mit `git pull --ff-only` den neuen Stand (`--ref v1.4` für einen Tag/Branch, `--no-pull` baut nur neu),
-3. baut die Backend-Images (`backend`, `worker`, `beat`, `backup` und die Init-Dienste `volume-permissions`/`backup-permissions`) mit aktuellen Basis-Images neu,
+3. baut die Backend-Images (`backend`, `worker`, `worker-ocr`, `beat`, `backup` und die Init-Dienste `volume-permissions`/`backup-permissions`) mit aktuellen Basis-Images neu,
 4. baut das Frontend: mit `pnpm` auf dem Host (wie beim Proxmox-Setup, `frontend/Dockerfile.prebuilt`), ohne `pnpm` per `docker compose build frontend`. Die Wahl lässt sich mit `FRONTEND_BUILD=host|docker` erzwingen.
 5. startet mit `docker compose up -d --remove-orphans` neu und wartet auf das gesunde Backend,
 6. führt `scripts/verify-deployment.sh` aus und endet mit Fehlercode, wenn eine Prüfung fehlschlägt.
@@ -40,7 +40,7 @@ Manuell entspricht das:
 
 ```bash
 git pull --ff-only
-docker compose build --pull volume-permissions backup-permissions backend worker beat backup
+docker compose build --pull volume-permissions backup-permissions backend worker worker-ocr beat backup
 # Frontend: entweder im Container …
 docker compose build --pull frontend
 # … oder (Proxmox-LXC) auf dem Host:
@@ -56,7 +56,7 @@ Updates lassen sich auch aus GitHub starten: Actions → **Deploy** → *Run wor
 
 ## Versionshinweis: Container ohne Root-Rechte (Security-Update 2026-09)
 
-Ab diesem Stand laufen `backend`, `worker`, `beat` und `backup` als unprivilegierter Benutzer `app` (**UID/GID 10001**) statt als `root`, ohne Linux-Capabilities (`cap_drop: ALL`), mit `no-new-privileges` und mit Speicherlimits (`*_MEM_LIMIT` in `.env`). `backend`, `worker` und `beat` haben zusätzlich ein schreibgeschütztes Root-Dateisystem; beschreibbar sind nur ihre Volumes und `/tmp` (tmpfs).
+Ab diesem Stand laufen `backend`, `worker`, `worker-ocr`, `beat` und `backup` als unprivilegierter Benutzer `app` (**UID/GID 10001**) statt als `root`, ohne Linux-Capabilities (`cap_drop: ALL`), mit `no-new-privileges` und mit Speicherlimits (`*_MEM_LIMIT` in `.env`). `backend`, `worker`, `worker-ocr` und `beat` haben zusätzlich ein schreibgeschütztes Root-Dateisystem; beschreibbar sind nur ihre Volumes und `/tmp` (tmpfs).
 
 Dateien, die ältere Versionen als `root` angelegt haben (Uploads, VAPID-Schlüssel, Backup-Archive, Off-site-Zugangsdaten), gehören danach dem falschen Benutzer. **Das erledigt der Start automatisch:** zwei einmalig laufende Init-Container stellen vor dem Start der Anwendung die Eigentümer um und beenden sich wieder:
 
@@ -71,7 +71,7 @@ Wer lieber vorab und von Hand umstellt (z. B. vor dem ersten Start oder bei eine
 
 ```bash
 cd /opt/botballdashboard
-docker compose stop backend worker beat backup
+docker compose stop backend worker worker-ocr beat backup
 # Named Volumes (Projektname ggf. anpassen: docker volume ls)
 docker run --rm -v botballdashboard_uploads:/v alpine chown -R 10001:10001 /v
 docker run --rm -v botballdashboard_vapid:/v alpine chown -R 10001:10001 /v

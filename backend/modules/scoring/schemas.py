@@ -58,7 +58,10 @@ class ScoringSchemaResponse(BaseModel):
     is_active: bool
 
 
-class MatchResponse(BaseModel):
+class MatchListItem(BaseModel):
+    """A match as listed. Leaves out the schema snapshot, which only the
+    single-match view needs and which made lists several times larger."""
+
     model_config = {"from_attributes": True}
 
     id: str
@@ -84,7 +87,6 @@ class MatchResponse(BaseModel):
     yellow_card: bool
     red_card: bool
     notes: str | None
-    schema_snapshot: dict | None
     version: int
     entered_by: str | None
     confirmed_by: str | None
@@ -92,6 +94,10 @@ class MatchResponse(BaseModel):
     # Lets an offline client recognise its own, already synced entry.
     idempotency_key: str | None = None
     created_at: datetime
+
+
+class MatchResponse(MatchListItem):
+    schema_snapshot: dict | None
 
 
 class RankingResponse(BaseModel):

@@ -6,11 +6,13 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -46,10 +48,29 @@ class Announcement(Base):
     )
 
 
+#: Outbox rows the worker still has to deliver ("sending" = claimed, see
+#: modules.dashboard.tasks.deliver_pending). The partial index over them stays
+#: small however much delivered history the table holds.
+OPEN_OUTBOX_STATUSES = ("pending", "sending")
+_OPEN_OUTBOX = text("status IN ('pending', 'sending')")
+
+
 class NotificationEvent(Base):
-    """Transactional outbox consumed by the notification worker."""
+    """Transactional outbox consumed by the notification worker.
+
+    status: pending → sending (claimed by a worker, leased until
+    next_attempt_at) → delivered | pending (retry) | failed.
+    """
 
     __tablename__ = "notification_events"
+    __table_args__ = (
+        Index(
+            "ix_notification_events_due",
+            "next_attempt_at",
+            postgresql_where=_OPEN_OUTBOX,
+            sqlite_where=_OPEN_OUTBOX,
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     event_id: Mapped[str | None] = mapped_column(
@@ -65,12 +86,40 @@ class NotificationEvent(Base):
     dedupe_key: Mapped[str | None] = mapped_column(
         String(200), nullable=True, unique=True, index=True
     )
-    # Earliest time of the next delivery attempt after a failed one (backoff).
+    # Earliest time of the next delivery attempt after a failed one (backoff);
+    # while "sending", the end of the claiming worker's lease.
     next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class NotificationRecipient(Base):
+    """Who an outbox notification is addressed to (the notification center's index).
+
+    One row per addressed user, written with the outbox row (core.domain_events);
+    a broadcast has a single row with ``user_id`` NULL, meaning "every user".
+    The center reads a user's notifications through the (user_id, created_at)
+    index instead of scanning the newest outbox rows and filtering their JSON
+    payloads in Python. ``created_at`` repeats the notification's time for that
+    index.
+    """
+
+    __tablename__ = "notification_recipients"
+    __table_args__ = (Index("ix_notification_recipients_user_created", "user_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    notification_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("notification_events.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class CalendarFeedToken(Base):

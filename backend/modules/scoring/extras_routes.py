@@ -2,6 +2,7 @@
 scouting and GCER qualification."""
 
 from fastapi import APIRouter, Depends, Query, Response
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import has_elevated_access, require_permission
@@ -316,7 +317,7 @@ async def export_scouting_report(
     db: AsyncSession = Depends(get_db),
 ):
     report = await svc.scouting_report(db, event_id, current_user)
-    pdf = build_scouting_pdf(report)
+    pdf = await run_in_threadpool(build_scouting_pdf, report)
     # Never echo the raw path parameter into a header.
     file_name = safe_filename(f"scouting-{report['event'].slug}.pdf", "scouting.pdf")
     return Response(

@@ -13,7 +13,7 @@ from sqlalchemy import ColumnElement, false, or_
 from core.auth import has_elevated_access, own_team_ids
 from core.exceptions import NotFoundError
 from modules.scoring.models import Match, ScoreRevision
-from modules.scoring.schemas import MatchResponse, ScoreRevisionResponse
+from modules.scoring.schemas import MatchListItem, MatchResponse, ScoreRevisionResponse
 
 #: Permission that sees every team's practice runs and notes.
 PRACTICE_ELEVATED = "scoring:admin"
@@ -61,6 +61,14 @@ def assert_revisions_visible(revisions: list[ScoreRevision], scope: set[str] | N
 def match_view(match: Match, scope: set[str] | None) -> MatchResponse:
     """Response for `match` with the notes removed unless the caller may read them."""
     view = MatchResponse.model_validate(match)
+    if scope is not None and match.team_id not in scope:
+        view.notes = None
+    return view
+
+
+def match_list_item(match: Match, scope: set[str] | None) -> MatchListItem:
+    """Like match_view, for lists: without the schema snapshot (never copied)."""
+    view = MatchListItem.model_validate(match)
     if scope is not None and match.team_id not in scope:
         view.notes = None
     return view

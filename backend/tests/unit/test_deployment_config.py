@@ -138,7 +138,7 @@ def test_monitoring_files_referenced_by_compose_exist(compose):
 
 # ── Container hardening (security review 2026-09) ────────────────────────────
 DOCKERFILE = REPO / "backend" / "Dockerfile"
-APP_SERVICES = ("backend", "worker", "beat", "backup")
+APP_SERVICES = ("backend", "worker", "worker-ocr", "beat", "backup")
 APP_UID = "10001"
 
 
@@ -160,7 +160,7 @@ def test_application_containers_drop_privileges(compose):
 
 
 def test_stateless_containers_have_a_read_only_root(compose):
-    for name in ("backend", "worker", "beat"):
+    for name in ("backend", "worker", "worker-ocr", "beat"):
         service = compose["services"][name]
         assert service.get("read_only") is True, name
         assert any(entry.startswith("/tmp") for entry in service.get("tmpfs", [])), name
@@ -199,8 +199,33 @@ def test_volume_ownership_is_fixed_before_the_app_starts(compose):
 
 
 def test_worker_limits_image_decoding(compose):
-    worker = compose["services"]["worker"]
-    assert "OPENCV_IO_MAX_IMAGE_PIXELS" in worker["environment"]
+    # worker-ocr runs the OCR; the general worker keeps the cap as well in
+    # case an OCR task still sits in its queue from before the split.
+    for name in ("worker", "worker-ocr"):
+        worker = compose["services"][name]
+        assert worker["environment"]["OPENCV_IO_MAX_IMAGE_PIXELS"] == "40000000", name
+
+
+def test_every_backend_image_service_is_hardened_and_built_by_the_scripts(compose):
+    """A service running the backend image (e.g. a new worker) must not slip
+    past the hardening, the ownership init or the build/verify scripts."""
+    services = compose["services"]
+    backend_image = {
+        name
+        for name, service in services.items()
+        if (service.get("build") or {}).get("context") == "./backend"
+        and name not in ("volume-permissions", "backup-permissions")
+    }
+    assert backend_image == set(APP_SERVICES)
+    update = (REPO / "scripts" / "update.sh").read_text()
+    setup = (REPO / "scripts" / "proxmox-setup.sh").read_text()
+    verify = (REPO / "scripts" / "verify-deployment.sh").read_text()
+    built = next(li for li in update.splitlines() if li.startswith("BACKEND_SERVICES="))
+    checked = next(li for li in verify.splitlines() if li.startswith("for service in backend "))
+    for name in backend_image:
+        assert name in built.split("(", 1)[1].rstrip(")").split(), name
+        assert f"{name}|" in setup, name
+        assert name in checked.split(), name
 
 
 def test_traefik_limits_api_request_bodies(compose):

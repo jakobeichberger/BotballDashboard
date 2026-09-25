@@ -1083,6 +1083,17 @@ Unique: `(event_id, team_id)`
 
 Unique: `(user_id, notification_id)`
 
+### `notification_recipients`
+
+Empfänger einer Outbox-Zeile (Migration `0032`), geschrieben von `emit_event`. `user_id` `NULL` steht für `broadcast` (alle Nutzer). Die Benachrichtigungszentrale liest über den Index `(user_id, created_at)`.
+
+| Spalte | Typ | Eigenschaften | Referenz |
+|---|---|---|---|
+| `id` | VARCHAR(36) | PK |  |
+| `notification_id` | VARCHAR(36) | NOT NULL | → `notification_events.id` (CASCADE) |
+| `user_id` | VARCHAR(36) |  | → `users.id` (CASCADE) |
+| `created_at` | DATETIME | NOT NULL |  |
+
 ### `calendar_feed_tokens`
 
 | Spalte | Typ | Eigenschaften | Referenz |

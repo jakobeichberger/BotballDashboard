@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, Query, Response, WebSocket
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query, Request, Response, WebSocket
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from core.auth import assert_team_access, has_elevated_access, require_permission
-from core.database import get_db
+from core.cache import Payload, cached_payload, conditional_response, dump_json
+from core.database import get_db, get_session_factory
 from core.domain_events import emit_event
 from core.live import publish_after_commit, stream_live_events
 from modules.events import service
@@ -37,7 +40,7 @@ from modules.events.schemas import (
 )
 from modules.scoring import service as scoring_service
 from modules.scoring import visibility as scoring_visibility
-from modules.scoring.schemas import MatchResponse, RankingResponse
+from modules.scoring.schemas import MatchListItem, MatchResponse, RankingResponse
 from modules.seasons.models import Season
 from modules.teams.models import Team
 
@@ -341,19 +344,32 @@ async def update_scheduled_match(
     return match
 
 
-@router.get("/{event_id}/matches", response_model=list[MatchResponse])
+@router.get("/{event_id}/matches", response_model=list[MatchListItem])
 async def list_event_scores(
     event_id: str,
     team_id: str | None = Query(None),
     phase_id: str | None = Query(None),
+    limit: int | None = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Scores of an event (without schema snapshots); `limit`/`offset` page.
+
+    Foreign practice runs and notes are hidden unless the caller has
+    scoring:admin (modules.scoring.visibility).
+    """
     scope = await scoring_visibility.team_scope(db, current_user)
     matches = await scoring_service.list_matches(
-        db, event_id=event_id, team_id=team_id, phase_id=phase_id, team_scope=scope
+        db,
+        event_id=event_id,
+        team_id=team_id,
+        phase_id=phase_id,
+        team_scope=scope,
+        limit=limit,
+        offset=offset,
     )
-    return [scoring_visibility.match_view(match, scope) for match in matches]
+    return [scoring_visibility.match_list_item(match, scope) for match in matches]
 
 
 @router.post("/{event_id}/matches", response_model=MatchResponse, status_code=201)
@@ -442,13 +458,24 @@ async def get_public_event(slug: str, db: AsyncSession = Depends(get_db)):
 
 
 @public_router.get("/{slug}/schedule", response_model=list[ScheduledMatchResponse])
-async def get_public_schedule(slug: str, db: AsyncSession = Depends(get_db)):
+async def get_public_schedule(
+    slug: str,
+    request: Request,
+    upcoming: bool = Query(False, description="Only matches not completed or cancelled yet"),
+    limit: int | None = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
     event = await service.get_public_event(db, slug)
     if not event.public_schedule:
         from core.exceptions import NotFoundError
 
         raise NotFoundError("Public schedule is disabled")
-    return await service.list_scheduled_matches(db, event.id)
+    matches = await service.list_scheduled_matches(
+        db, event.id, upcoming=upcoming, limit=limit, offset=offset
+    )
+    body = dump_json(list[ScheduledMatchResponse], matches)
+    return conditional_response(request, Payload.of(body), public=True)
 
 
 @public_router.get("/{slug}/bracket", response_model=list[BracketPhaseResponse])
@@ -462,65 +489,96 @@ async def get_public_bracket(slug: str, db: AsyncSession = Depends(get_db)):
 
 
 @public_router.get("/{slug}/ranking", response_model=list[PublicRankingResponse])
-async def get_public_ranking(slug: str, db: AsyncSession = Depends(get_db)):
+async def get_public_ranking(slug: str, request: Request, db: AsyncSession = Depends(get_db)):
     event = await service.get_public_event(db, slug)
     if not event.public_scoreboard:
         from core.exceptions import NotFoundError
 
         raise NotFoundError("Public scoreboard is disabled")
-    ranking = await scoring_service.get_ranking(db, event_id=event.id)
-    team_ids = [entry.team_id for entry in ranking]
-    teams_result = await db.execute(select(Team).where(Team.id.in_(team_ids)))
-    teams = {team.id: team for team in teams_result.scalars().all()}
-    return [
-        {
-            "rank": entry.rank,
-            "team_id": entry.team_id,
-            "team_name": teams[entry.team_id].name,
-            "team_number": teams[entry.team_id].team_number,
-            "seed_score": entry.seed_score,
-            "best_score": entry.best_score,
-            "average_score": entry.average_score,
-            "rounds_played": entry.rounds_played,
-            "updated_at": entry.updated_at,
-        }
-        for entry in ranking
-        if entry.team_id in teams
-    ]
+
+    async def compute() -> bytes:
+        ranking = await scoring_service.get_ranking(db, event_id=event.id)
+        team_ids = [entry.team_id for entry in ranking]
+        teams_result = await db.execute(select(Team).where(Team.id.in_(team_ids)))
+        teams = {team.id: team for team in teams_result.scalars().all()}
+        rows = [
+            {
+                "rank": entry.rank,
+                "team_id": entry.team_id,
+                "team_name": teams[entry.team_id].name,
+                "team_number": teams[entry.team_id].team_number,
+                "seed_score": entry.seed_score,
+                "best_score": entry.best_score,
+                "average_score": entry.average_score,
+                "rounds_played": entry.rounds_played,
+                "updated_at": entry.updated_at,
+            }
+            for entry in ranking
+            if entry.team_id in teams
+        ]
+        return dump_json(list[PublicRankingResponse], rows)
+
+    payload = await cached_payload("public-ranking", event.id, "", compute)
+    return conditional_response(request, payload, public=True)
 
 
 @public_router.get("/{slug}/results", response_model=list[PublicResultResponse])
-async def get_public_results(slug: str, db: AsyncSession = Depends(get_db)):
+async def get_public_results(
+    slug: str,
+    request: Request,
+    limit: int | None = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    order: Literal["asc", "desc"] = Query(
+        "asc", description="asc: by round, then entry time; desc: the newest first"
+    ),
+    db: AsyncSession = Depends(get_db),
+):
     event = await service.get_public_event(db, slug)
     if not event.public_results:
         from core.exceptions import NotFoundError
 
         raise NotFoundError("Public detailed results are disabled")
-    # Practice runs are internal preparation, not tournament results.
-    matches = await scoring_service.list_matches(db, event_id=event.id, is_practice=False)
-    team_ids = [match.team_id for match in matches]
-    teams_result = await db.execute(select(Team).where(Team.id.in_(team_ids)))
-    teams = {team.id: team for team in teams_result.scalars().all()}
-    return [
-        {
-            "id": match.id,
-            "event_id": match.event_id,
-            "scheduled_match_id": match.scheduled_match_id,
-            "team_id": match.team_id,
-            "team_name": teams[match.team_id].name,
-            "team_number": teams[match.team_id].team_number,
-            "round_number": match.round_number,
-            "table_number": match.table_number,
-            "raw_scores": match.raw_scores,
-            "total_score": match.total_score,
-            "is_disqualified": match.is_disqualified,
-            "yellow_card": match.yellow_card,
-            "red_card": match.red_card,
-            "created_at": match.created_at,
-        }
-        for match in matches
-        if match.team_id in teams
-    ]
+
+    async def compute() -> bytes:
+        # Practice runs are internal preparation, not tournament results.
+        matches = await scoring_service.list_matches(
+            db,
+            event_id=event.id,
+            is_practice=False,
+            limit=limit,
+            offset=offset,
+            newest_first=order == "desc",
+        )
+        team_ids = [match.team_id for match in matches]
+        teams_result = await db.execute(
+            select(Team.id, Team.name, Team.team_number).where(Team.id.in_(team_ids))
+        )
+        teams = {row.id: row for row in teams_result}
+        rows = [
+            {
+                "id": match.id,
+                "event_id": match.event_id,
+                "scheduled_match_id": match.scheduled_match_id,
+                "team_id": match.team_id,
+                "team_name": teams[match.team_id].name,
+                "team_number": teams[match.team_id].team_number,
+                "round_number": match.round_number,
+                "table_number": match.table_number,
+                "raw_scores": match.raw_scores,
+                "total_score": match.total_score,
+                "is_disqualified": match.is_disqualified,
+                "yellow_card": match.yellow_card,
+                "red_card": match.red_card,
+                "created_at": match.created_at,
+            }
+            for match in matches
+            if match.team_id in teams
+        ]
+        return dump_json(list[PublicResultResponse], rows)
+
+    params = f"{limit}:{offset}:{order}"
+    payload = await cached_payload("public-results", event.id, params, compute)
+    return conditional_response(request, payload, public=True)
 
 
 @public_router.get("/{slug}/announcements", response_model=list[PublicAnnouncementResponse])
@@ -568,16 +626,23 @@ async def get_public_qr(slug: str, db: AsyncSession = Depends(get_db)):
 async def public_event_ws(
     slug: str,
     websocket: WebSocket,
-    db: AsyncSession = Depends(get_db),
+    session_factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
 ):
-    event = await service.get_public_event(db, slug)
-    if not (
-        event.public_scoreboard
-        or event.public_schedule
-        or event.public_results
-        or event.public_announcements
-    ):
+    # The stream stays open for as long as the screen shows it. A request
+    # session (Depends(get_db)) would hold its pool connection all that time,
+    # so a few dozen screens exhausted the pool; the event is loaded in a
+    # session of its own that is closed before streaming starts.
+    async with session_factory() as db:
+        event = await service.get_public_event(db, slug)
+        event_id = event.id
+        is_public = (
+            event.public_scoreboard
+            or event.public_schedule
+            or event.public_results
+            or event.public_announcements
+        )
+    if not is_public:
         # Nothing about this event is public, so neither is its live stream.
         await websocket.close(code=1008)
         return
-    await stream_live_events(websocket, event.id)
+    await stream_live_events(websocket, event_id)

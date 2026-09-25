@@ -1,5 +1,5 @@
 # Profiles:
-#   (none)      traefik, db, redis, backend, worker, beat, frontend
+#   (none)      traefik, db, redis, backend, worker, worker-ocr, beat, frontend
 #   production  + backup      (encrypted daily backups, needs AGE_RECIPIENT)
 #   monitoring  + prometheus, blackbox, alertmanager
 # Enable them with COMPOSE_PROFILES in .env (e.g. COMPOSE_PROFILES=production,monitoring)
@@ -15,8 +15,9 @@ x-logging: &default-logging
 
 # The application containers (backend image) run as the unprivileged user
 # "app" (uid 10001, see backend/Dockerfile) with every Linux capability
-# dropped and without privilege escalation. backend, worker and beat also get
-# a read-only root filesystem; they write only to their volumes and /tmp.
+# dropped and without privilege escalation. backend, worker, worker-ocr and
+# beat also get a read-only root filesystem; they write only to their volumes
+# and /tmp.
 x-hardening: &hardening
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
@@ -167,19 +168,21 @@ services:
       retries: 3
       start_period: 3m
 
-  # ── Background worker (local OCR + printer polling) ───────────
+  # ── Background workers (see core/celery_app.py for the queues) ─
+  # worker: notifications, printer polling and other periodic jobs.
+  # worker-ocr: score-sheet OCR only, so a pile of scans never delays them.
   worker:
     <<: *hardening
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A core.celery_app:celery_app worker --loglevel=INFO --concurrency=2
+    command: celery -A core.celery_app:celery_app worker -Q default,periodic --loglevel=INFO --concurrency=2
     read_only: true
     tmpfs:
       - /tmp:size=256m
-    # OCR of two score sheets at a time; a runaway decode is killed here
-    # instead of taking the whole host down.
-    mem_limit: ${WORKER_MEM_LIMIT:-2g}
+    # No OCR here any more (worker-ocr); notifications, printer polling and
+    # housekeeping need far less.
+    mem_limit: ${WORKER_MEM_LIMIT:-1g}
     env_file:
       - path: .env
         required: false
@@ -193,6 +196,44 @@ services:
     volumes:
       - uploads:/app/uploads
       - vapid:/app/vapid:ro
+    depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A core.celery_app:celery_app inspect ping -d celery@$$HOSTNAME | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker-ocr:
+    <<: *hardening
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A core.celery_app:celery_app worker -Q ocr --loglevel=INFO --concurrency=2
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    # OCR of two score sheets at a time; a runaway decode is killed here
+    # instead of taking the whole host down.
+    mem_limit: ${OCR_WORKER_MEM_LIMIT:-2g}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      # OpenCV refuses to decode larger images (decompression bombs); the OCR
+      # code checks the same 40 MP limit from the image header first.
+      OPENCV_IO_MAX_IMAGE_PIXELS: "40000000"
+    # Scans and templates only; no VAPID key (this worker sends no push).
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       volume-permissions:
         condition: service_completed_successfully

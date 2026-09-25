@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -52,6 +53,10 @@ class ScoringSchema(Base):
 
 class Match(Base):
     __tablename__ = "matches"
+    __table_args__ = (
+        # A team's runs at an event: ranking rebuilds, dashboards, history.
+        Index("ix_matches_event_team", "event_id", "team_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
@@ -61,7 +66,10 @@ class Match(Base):
         String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )
     scheduled_match_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("scheduled_matches.id", ondelete="SET NULL"), nullable=True
+        String(36),
+        ForeignKey("scheduled_matches.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     phase_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("season_phases.id", ondelete="SET NULL"), nullable=True, index=True
@@ -181,6 +189,8 @@ class ScoreRevision(Base):
     __tablename__ = "score_revisions"
     __table_args__ = (
         UniqueConstraint("match_id", "revision", name="uq_score_revision_match_revision"),
+        # The event's audit trail, newest first.
+        Index("ix_score_revisions_event_created", "event_id", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
