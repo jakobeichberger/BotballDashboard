@@ -214,6 +214,10 @@
     "reopen": "Wieder öffnen",
     "noReviews": "Noch keine Reviews",
     "assignedReviewers": "Zugewiesene Reviewer ({{count}})",
-    "noAssignments": "Keine Zuweisungen"
+    "noAssignments": "Keine Zuweisungen",
+    "remind": "Erinnern",
+    "remindReviewer": "{{name}} an das Review erinnern",
+    "remindedAt": "erinnert am {{date}}",
+    "statusHistory": "Statusverlauf"
   }
 }

@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { FileDown, Plus, Telescope, Trash2 } from "lucide-react";
+import { FileDown, Pencil, Plus, Telescope, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
@@ -27,12 +27,15 @@ export default function ScoutingPage() {
   const queryClient = useQueryClient();
   const canWrite = useAuthStore((state) => state.hasPermission("scoring:write"));
   const isOrganizer = useAuthStore((state) => state.hasPermission("scoring:admin"));
+  const userId = useAuthStore((state) => state.user?.id);
   const [selected, setSelected] = useState("");
   const [message, setMessage] = useState("");
   const [newTeam, setNewTeam] = useState({ name: "", number: "", country: "" });
   const [ownerTeamId, setOwnerTeamId] = useState("");
   const [note, setNote] = useState({ body: "", threat_level: "" });
   const [observation, setObservation] = useState({ score: "", round_number: "", phase: "seeding", notes: "" });
+  const [teamEdit, setTeamEdit] = useState<{ name: string; number: string; country: string; school: string; notes: string } | null>(null);
+  useEffect(() => setTeamEdit(null), [selected]);
 
   const teams = useQuery<ExternalTeam[]>({ queryKey: ["external-teams", seasonId], queryFn: async () => (await api.get(`/scoring/seasons/${seasonId}/external-teams`)).data, enabled: !!seasonId });
   const ranking = useQuery<OpponentRankingEntry[]>({ queryKey: ["opponent-ranking", eventId], queryFn: async () => (await api.get(`/scoring/events/${eventId}/opponent-ranking`)).data, enabled: !!eventId });
@@ -40,6 +43,8 @@ export default function ScoutingPage() {
   const observations = useQuery<ScoutingObservation[]>({ queryKey: ["scouting-observations", eventId, selected], queryFn: async () => (await api.get(`/scoring/events/${eventId}/scouting/observations`, { params: { external_team_id: selected } })).data, enabled: !!selected });
   const myTeams = useQuery<OwnTeam[]>({ queryKey: ["teams-mine"], queryFn: async () => (await api.get("/teams/mine")).data, enabled: canWrite && !isOrganizer });
   const selectedTeam = useMemo(() => teams.data?.find((team) => team.id === selected), [teams.data, selected]);
+  // The backend lets organizers and the team's creator edit; only organizers delete.
+  const canEditTeam = !!selectedTeam && canWrite && (isOrganizer || (!!userId && selectedTeam.created_by === userId));
   const owner = ownerTeamId || (myTeams.data?.length === 1 ? myTeams.data[0].id : "");
 
   const refresh = () => ["external-teams", "opponent-ranking", "scouting-notes", "scouting-observations"].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
@@ -49,6 +54,23 @@ export default function ScoutingPage() {
     onSuccess: (team) => { setNewTeam({ name: "", number: "", country: "" }); setSelected(team.id); refresh(); },
     onError: fail,
   });
+  const updateTeam = useMutation({
+    mutationFn: async () => api.patch(`/scoring/external-teams/${selected}`, {
+      name: teamEdit!.name,
+      number: teamEdit!.number || null,
+      country: teamEdit!.country || null,
+      school: teamEdit!.school || null,
+      notes: teamEdit!.notes || null,
+    }),
+    onSuccess: () => { setTeamEdit(null); setMessage(""); refresh(); },
+    onError: fail,
+  });
+  const deleteTeam = useMutation({
+    mutationFn: async () => api.delete(`/scoring/external-teams/${selected}`),
+    onSuccess: () => { setSelected(""); setTeamEdit(null); setMessage(""); refresh(); },
+    onError: fail,
+  });
+  const startTeamEdit = (team: ExternalTeam) => setTeamEdit({ name: team.name, number: team.number ?? "", country: team.country ?? "", school: team.school ?? "", notes: team.notes ?? "" });
   const addNote = useMutation({
     mutationFn: async () => api.post(`/scoring/events/${eventId}/scouting/notes`, { external_team_id: selected, owner_team_id: owner || null, body: note.body, threat_level: note.threat_level ? Number(note.threat_level) : null }),
     onSuccess: () => { setNote({ body: "", threat_level: "" }); refresh(); },
@@ -122,10 +144,31 @@ export default function ScoutingPage() {
         <section className="card p-4" aria-live="polite">
           {!selectedTeam ? <p className="text-gray-500">{t("scouting.selectTeam")}</p> : (
             <div className="space-y-5">
-              <div>
-                <h2 className="text-lg font-semibold">{selectedTeam.name}</h2>
-                <p className="text-sm text-gray-500">{[selectedTeam.number, selectedTeam.country, selectedTeam.school].filter(Boolean).join(" · ")}</p>
-              </div>
+              {teamEdit ? (
+                <form className="grid gap-2 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); updateTeam.mutate(); }}>
+                  <label className="text-sm font-medium sm:col-span-2">{t("scouting.teamName")}<input required maxLength={255} className="input mt-1 w-full" value={teamEdit.name} onChange={(e) => setTeamEdit({ ...teamEdit, name: e.target.value })} /></label>
+                  <label className="text-sm font-medium">{t("scouting.teamNumber")}<input maxLength={50} className="input mt-1 w-full" value={teamEdit.number} onChange={(e) => setTeamEdit({ ...teamEdit, number: e.target.value })} /></label>
+                  <label className="text-sm font-medium">{t("scouting.country")}<input maxLength={100} className="input mt-1 w-full" value={teamEdit.country} onChange={(e) => setTeamEdit({ ...teamEdit, country: e.target.value })} /></label>
+                  <label className="text-sm font-medium sm:col-span-2">{t("scouting.school")}<input maxLength={255} className="input mt-1 w-full" value={teamEdit.school} onChange={(e) => setTeamEdit({ ...teamEdit, school: e.target.value })} /></label>
+                  <label className="text-sm font-medium sm:col-span-2">{t("scouting.teamNotes")}<textarea maxLength={5000} className="input mt-1 w-full" value={teamEdit.notes} onChange={(e) => setTeamEdit({ ...teamEdit, notes: e.target.value })} /></label>
+                  <div className="flex gap-2 sm:col-span-2">
+                    <button className="btn-primary" disabled={!teamEdit.name.trim() || updateTeam.isPending}>{t("common:save")}</button>
+                    <button type="button" className="btn-secondary" onClick={() => setTeamEdit(null)}>{t("common:cancel")}</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold">{selectedTeam.name}</h2>
+                    <p className="text-sm text-gray-500">{[selectedTeam.number, selectedTeam.country, selectedTeam.school].filter(Boolean).join(" · ")}</p>
+                    {selectedTeam.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">{selectedTeam.notes}</p>}
+                  </div>
+                  <div className="flex gap-1">
+                    {canEditTeam && <button type="button" className="btn-secondary px-2" aria-label={t("scouting.editTeam", { name: selectedTeam.name })} onClick={() => startTeamEdit(selectedTeam)}><Pencil className="h-4 w-4" /></button>}
+                    {isOrganizer && <button type="button" className="btn-secondary px-2 text-red-600" aria-label={t("scouting.deleteTeam", { name: selectedTeam.name })} disabled={deleteTeam.isPending} onClick={() => { if (confirm(t("scouting.confirmDeleteTeam", { name: selectedTeam.name }))) deleteTeam.mutate(); }}><Trash2 className="h-4 w-4" /></button>}
+                  </div>
+                </div>
+              )}
               {canWrite && !isOrganizer && (myTeams.data?.length ?? 0) > 1 && <label className="block text-sm font-medium">{t("scouting.forTeam")}<select className="input mt-1" value={ownerTeamId} onChange={(e) => setOwnerTeamId(e.target.value)}><option value="">{t("scouting.chooseTeam")}</option>{myTeams.data?.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>}
               <div>
                 <h3 className="mb-2 font-medium">{t("scouting.observedScores")}</h3>

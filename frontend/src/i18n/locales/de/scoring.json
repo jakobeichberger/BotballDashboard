@@ -47,7 +47,12 @@
     "noNotes": "Keine Notizen.",
     "notePlaceholder": "Stärken, Schwächen, Strategie …",
     "threat": "Einschätzung",
-    "saveNote": "Notiz speichern"
+    "saveNote": "Notiz speichern",
+    "school": "Schule",
+    "teamNotes": "Notizen zum Team",
+    "editTeam": "{{name}} bearbeiten",
+    "deleteTeam": "{{name}} löschen",
+    "confirmDeleteTeam": "{{name}} mit allen Scouting-Notizen und beobachteten Punkten löschen?"
   },
   "scans": {
     "cropAlt": "Bildausschnitt für {{label}}",
@@ -66,7 +71,9 @@
       "review": "Prüfung",
       "accepted": "übernommen"
     },
-    "none": "Keine offenen Scans."
+    "none": "Keine offenen Scans.",
+    "retry": "Erneut verarbeiten",
+    "retryFor": "{{file}} erneut verarbeiten"
   },
   "backToScoreboard": "Zurück zur Rangliste",
   "saving": "Speichern…",
@@ -336,7 +343,9 @@
     "orderHint": "Formeln dürfen sich gegenseitig verwenden — die Reihenfolge wird automatisch aufgelöst.",
     "bracketWeights": "Bracket-Gewichtung",
     "bracketWeightsHint": "Wird laut Game Review pro Turnier bekanntgegeben. Steht in den Formeln als <code>bracket_weight</code> zur Verfügung.",
-    "saveWeights": "Gewichtung speichern"
+    "saveWeights": "Gewichtung speichern",
+    "bracketLabel": "Bracket {{index}}",
+    "bracketWeight": "Gewichtung {{index}}"
   },
   "scoreSheets": {
     "title": "Scoring-Sheets",
@@ -398,6 +407,72 @@
       "confirm": "{{count}} Felder bestätigen",
       "confirming": "Wird gespeichert …",
       "confirmError": "Fehler beim Speichern. Bitte erneut versuchen."
+    },
+    "layout": {
+      "title": "OCR-Layout",
+      "hint": "Lege für jedes bestätigte Feld fest, wo die OCR es auf dem Blatt liest: Feld wählen und auf der Seite ein Rechteck aufziehen, oder die Werte in Prozent der Seite eintragen. Ein Referenzbild (Scan oder Foto eines leeren Blatts) hilft beim Zeichnen; es bleibt im Browser und wird nicht hochgeladen.",
+      "noFields": "Erst die Felder bestätigen, dann das OCR-Layout festlegen.",
+      "referenceImage": "Referenzbild wählen",
+      "pageWidth": "Seitenbreite (px)",
+      "pageHeight": "Seitenhöhe (px)",
+      "drawField": "Rechteck zeichnen für",
+      "surface": "Seite – Rechteck für {{field}} aufziehen",
+      "field": "Feld",
+      "edge": {
+        "x": "Links %",
+        "y": "Oben %",
+        "width": "Breite %",
+        "height": "Höhe %"
+      },
+      "edgeOf": "{{edge}} für {{field}}",
+      "addBox": "Rechteck anlegen",
+      "removeBox": "Rechteck für {{field}} entfernen",
+      "coverage": "{{count}} von {{total}} Feldern haben ein Rechteck.",
+      "save": "Layout speichern",
+      "saved": "OCR-Layout gespeichert. Neue Scans verwenden es; fehlgeschlagene Scans lassen sich in der OCR-Prüfung erneut verarbeiten.",
+      "saveFailed": "Layout konnte nicht gespeichert werden."
     }
+  },
+  "penalty": {
+    "legend": "Strafen",
+    "yellow_card": "Gelbe Karte",
+    "yellow_cardHint": "Verwarnung, ohne Einfluss auf die Punkte.",
+    "red_card": "Rote Karte",
+    "red_cardHint": "Das Team wird im Event ohne Rang geführt.",
+    "is_disqualified": "Disqualifikation",
+    "is_disqualifiedHint": "Der Lauf zählt 0 Punkte, bleibt aber ein gespielter Lauf. Im Head-to-Head gewinnt der Gegner.",
+    "reason": "Begründung",
+    "reasonPlaceholder": "z. B. Roboter hat den Tisch verlassen",
+    "save": "Entscheidung speichern",
+    "open": "Karten & Disqualifikation",
+    "openFor": "Karten & Disqualifikation für {{team}}, Runde {{round}}",
+    "title": "Strafen · {{team}} · Runde {{round}}",
+    "yellowShort": "Gelb",
+    "redShort": "Rot",
+    "dqShort": "DQ"
+  },
+  "partsChallenge": {
+    "title": "Parts Challenges",
+    "hint": "Ein Team zweifelt an, dass der Roboter des Gegners nur zulässige Teile verwendet. Die Head Judge entscheidet: Wird der Challenge stattgegeben, wird das angefochtene Team für das Match disqualifiziert, sonst das anfechtende.",
+    "versus": "{{challenger}} fordert {{challenged}} heraus",
+    "open": "Offen",
+    "upheld": "Stattgegeben",
+    "rejected": "Abgewiesen",
+    "outcome": "Disqualifiziert: {{team}}",
+    "noMatchEffect": "(ohne Match – keine Wertung geändert)",
+    "rulingNote": "Begründung der Entscheidung",
+    "uphold": "Stattgeben",
+    "reject": "Abweisen",
+    "confirmUphold": "Challenge stattgeben? {{team}} wird für das Match disqualifiziert.",
+    "confirmReject": "Challenge abweisen? {{team}} wird für das Match disqualifiziert.",
+    "none": "Keine Parts Challenges.",
+    "match": "Match",
+    "noMatch": "— ohne Match —",
+    "challenger": "Anfechtendes Team",
+    "challenged": "Angefochtenes Team",
+    "chooseTeam": "— Team wählen —",
+    "description": "Beschreibung",
+    "descriptionPlaceholder": "z. B. Servo, das nicht aus dem Kit stammt",
+    "file": "Challenge erfassen"
   }
 }

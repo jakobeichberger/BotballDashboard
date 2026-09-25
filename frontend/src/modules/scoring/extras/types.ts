@@ -86,6 +86,21 @@ export interface DEPlacementEntry {
   decided_by: string | null;
 }
 
+export interface PartsChallenge {
+  id: string;
+  event_id: string;
+  scheduled_match_id: string | null;
+  challenger_team_id: string;
+  challenged_team_id: string;
+  description: string;
+  /** null while open; true = upheld (challenged team DQ'd), false = rejected (challenger DQ'd). */
+  upheld: boolean | null;
+  ruling_note: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+}
+
 export interface ExternalTeam {
   id: string;
   season_id: string;
@@ -95,6 +110,7 @@ export interface ExternalTeam {
   school: string | null;
   source: "observed" | "official";
   notes: string | null;
+  created_by?: string | null;
   created_at: string;
 }
 

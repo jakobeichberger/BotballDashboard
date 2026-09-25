@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { CATEGORY_LABEL } from "@/lib/teams";
 import { api } from "@/lib/api";
+import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
 import {
   Calculator,
   Plus,
@@ -415,7 +416,7 @@ export default function FormulasPage() {
           </div>
 
           {/* ── Bracket weights ────────────────────────────────────────────── */}
-          <BracketWeightsCard
+          <BracketWeightsEditor
             weights={bracketWeights ?? {}}
             onSave={(w) => weightsMutation.mutate(w)}
             saving={weightsMutation.isPending}
@@ -536,85 +537,6 @@ export default function FormulasPage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function BracketWeightsCard({
-  weights,
-  onSave,
-  saving,
-}: {
-  weights: Record<string, number>;
-  onSave: (w: Record<string, number>) => void;
-  saving: boolean;
-}) {
-  const { t } = useTranslation("scoring");
-  const [draft, setDraft] = useState<[string, string][]>([]);
-
-  useEffect(() => {
-    const entries = Object.entries(weights);
-    setDraft(entries.length > 0 ? entries.map(([k, v]) => [k, String(v)]) : [["A", "1"]]);
-  }, [weights]);
-
-  const commit = () => {
-    const out: Record<string, number> = {};
-    for (const [bracket, value] of draft) {
-      const key = bracket.trim();
-      const num = Number(value);
-      if (key && Number.isFinite(num)) out[key] = num;
-    }
-    onSave(out);
-  };
-
-  return (
-    <div className="card p-4 space-y-3">
-      <div>
-        <h2 className="font-medium">{t("formulas.bracketWeights")}</h2>
-        <p className="text-xs text-gray-500">
-          <Trans t={t} i18nKey="formulas.bracketWeightsHint" components={{ code: <code className="font-mono" /> }} />
-        </p>
-      </div>
-      <div className="space-y-2">
-        {draft.map(([bracket, value], i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              className="input font-mono max-w-[6rem]"
-              placeholder="A"
-              value={bracket}
-              onChange={(e) =>
-                setDraft((p) => p.map((row, idx) => (idx === i ? [e.target.value, row[1]] : row)))
-              }
-            />
-            <span className="text-gray-400">×</span>
-            <input
-              className="input font-mono max-w-[12rem]"
-              placeholder="1.0"
-              value={value}
-              onChange={(e) =>
-                setDraft((p) => p.map((row, idx) => (idx === i ? [row[0], e.target.value] : row)))
-              }
-            />
-            <button
-              className="btn-danger px-2"
-              title={t("formulas.remove")}
-              onClick={() => setDraft((p) => p.filter((_, idx) => idx !== i))}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <button className="btn-secondary" onClick={() => setDraft((p) => [...p, ["", "1"]])}>
-          <Plus className="w-4 h-4" />
-          {t("de.bracket")}
-        </button>
-        <button className="btn-primary" onClick={commit} disabled={saving}>
-          <Save className="w-4 h-4" />
-          {t("formulas.saveWeights")}
-        </button>
       </div>
     </div>
   );

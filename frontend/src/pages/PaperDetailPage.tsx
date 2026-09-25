@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FileText, ArrowLeft, Download, Upload, Users, Award, UserPlus, Send, CheckCircle2,
-  History, MessageSquare, Lock, Unlock,
+  History, MessageSquare, Lock, Unlock, BellRing, ListTree,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
@@ -27,6 +27,7 @@ import {
   type CriterionKey,
   type PaperDetail,
   type PaperReview,
+  type PaperStatusChange,
   type ReviewFeedback,
 } from "@/modules/papers/paperMeta";
 
@@ -116,6 +117,11 @@ export default function PaperDetailPage() {
     queryFn: async () => (await api.get(`/papers/${id}`)).data,
     enabled: !!id,
   });
+  const { data: history } = useQuery<PaperStatusChange[]>({
+    queryKey: ["paper-history", id],
+    queryFn: async () => (await api.get(`/papers/${id}/history`)).data,
+    enabled: !!id,
+  });
   const { data: teams } = useQuery({
     queryKey: ["teams"],
     queryFn: async () => (await api.get("/teams")).data,
@@ -170,6 +176,7 @@ export default function PaperDetailPage() {
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["paper", id] });
+    qc.invalidateQueries({ queryKey: ["paper-history", id] });
     qc.invalidateQueries({ queryKey: ["papers"] });
   };
   const onError = (e: unknown) => alert(apiErrorMessage(e));
@@ -206,6 +213,12 @@ export default function PaperDetailPage() {
   const assignM = useMutation({
     mutationFn: (reviewerId: string) => api.post(`/papers/${id}/assignments`, { reviewer_id: reviewerId }),
     onSuccess: () => { setAssignId(""); refresh(); },
+    onError,
+  });
+
+  const remindM = useMutation({
+    mutationFn: (assignmentId: string) => api.post(`/papers/${id}/assignments/${assignmentId}/remind`),
+    onSuccess: refresh,
     onError,
   });
 
@@ -646,6 +659,22 @@ export default function PaperDetailPage() {
                   <td className="px-4 py-3"><span className={a.status === "completed" ? "badge-green" : a.status === "overdue" ? "badge-red" : "badge-yellow"}>{ASSIGNMENT_LABEL[a.status] ?? a.status}</span></td>
                   <td className="px-4 py-3 text-gray-500">{a.version_number ? `v${a.version_number}` : "—"}</td>
                   <td className="px-4 py-3 text-right text-gray-500">{fmtDate(a.assigned_at)}</td>
+                  {isAdmin && (
+                    <td className="px-4 py-3 text-right">
+                      {a.reminder_sent_at && <span className="mr-2 text-xs text-gray-500">{t("detail.remindedAt", { date: fmtDate(a.reminder_sent_at) })}</span>}
+                      {a.status !== "completed" && (
+                        <button
+                          type="button"
+                          className="btn-secondary text-xs"
+                          disabled={remindM.isPending}
+                          aria-label={t("detail.remindReviewer", { name: userName(a.reviewer_id) })}
+                          onClick={() => remindM.mutate(a.id)}
+                        >
+                          <BellRing className="w-3.5 h-3.5" /> {t("detail.remind")}
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
               {(!paper.assignments || paper.assignments.length === 0) && (
@@ -653,6 +682,31 @@ export default function PaperDetailPage() {
               )}
             </tbody>
           </table>
+        </section>
+      )}
+
+      {/* Status history */}
+      {(history?.length ?? 0) > 0 && (
+        <section className="card overflow-hidden">
+          <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <ListTree className="w-4 h-4" /> {t("detail.statusHistory")}
+          </h2>
+          <ol className="divide-y text-sm dark:divide-gray-800">
+            {history!.map((entry) => (
+              <li key={entry.id} className="flex flex-wrap items-center gap-2 px-4 py-2">
+                <span className="text-gray-500 tabular-nums">{fmtDate(entry.changed_at)}</span>
+                {entry.from_status && (
+                  <>
+                    <span className={PAPER_STATUS_BADGE[entry.from_status] ?? "badge-gray"}>{PAPER_STATUS_LABEL[entry.from_status] ?? entry.from_status}</span>
+                    <span aria-hidden="true">→</span>
+                  </>
+                )}
+                <span className={PAPER_STATUS_BADGE[entry.to_status] ?? "badge-gray"}>{PAPER_STATUS_LABEL[entry.to_status] ?? entry.to_status}</span>
+                {entry.reason && <span className="text-gray-600 dark:text-gray-400">– {entry.reason}</span>}
+                {isAdmin && entry.changed_by && <span className="ml-auto text-xs text-gray-500">{userName(entry.changed_by)}</span>}
+              </li>
+            ))}
+          </ol>
         </section>
       )}
     </div>

@@ -47,7 +47,12 @@
     "noNotes": "No notes.",
     "notePlaceholder": "Strengths, weaknesses, strategy …",
     "threat": "Rating",
-    "saveNote": "Save note"
+    "saveNote": "Save note",
+    "school": "School",
+    "teamNotes": "Notes on the team",
+    "editTeam": "Edit {{name}}",
+    "deleteTeam": "Delete {{name}}",
+    "confirmDeleteTeam": "Delete {{name}} with all scouting notes and observed scores?"
   },
   "scans": {
     "cropAlt": "Image crop for {{label}}",
@@ -66,7 +71,9 @@
       "review": "review",
       "accepted": "accepted"
     },
-    "none": "No open scans."
+    "none": "No open scans.",
+    "retry": "Process again",
+    "retryFor": "Process {{file}} again"
   },
   "backToScoreboard": "Back to the rankings",
   "saving": "Saving…",
@@ -336,7 +343,9 @@
     "orderHint": "Formulas may use each other — the order is resolved automatically.",
     "bracketWeights": "Bracket weighting",
     "bracketWeightsHint": "Announced per tournament according to the game review. Available in the formulas as <code>bracket_weight</code>.",
-    "saveWeights": "Save weighting"
+    "saveWeights": "Save weighting",
+    "bracketLabel": "Bracket {{index}}",
+    "bracketWeight": "Weight {{index}}"
   },
   "scoreSheets": {
     "title": "Score Sheets",
@@ -398,6 +407,72 @@
       "confirm": "Confirm {{count}} fields",
       "confirming": "Saving …",
       "confirmError": "Failed to save. Please try again."
+    },
+    "layout": {
+      "title": "OCR layout",
+      "hint": "Set where the OCR reads each confirmed field on the sheet: pick a field and drag a rectangle on the page, or enter the values as a percentage of the page. A reference image (scan or photo of a blank sheet) helps with drawing; it stays in the browser and is not uploaded.",
+      "noFields": "Confirm the fields first, then set the OCR layout.",
+      "referenceImage": "Choose reference image",
+      "pageWidth": "Page width (px)",
+      "pageHeight": "Page height (px)",
+      "drawField": "Draw rectangle for",
+      "surface": "Page – drag a rectangle for {{field}}",
+      "field": "Field",
+      "edge": {
+        "x": "Left %",
+        "y": "Top %",
+        "width": "Width %",
+        "height": "Height %"
+      },
+      "edgeOf": "{{edge}} for {{field}}",
+      "addBox": "Add rectangle",
+      "removeBox": "Remove rectangle for {{field}}",
+      "coverage": "{{count}} of {{total}} fields have a rectangle.",
+      "save": "Save layout",
+      "saved": "OCR layout saved. New scans use it; failed scans can be processed again in the OCR review.",
+      "saveFailed": "The layout could not be saved."
     }
+  },
+  "penalty": {
+    "legend": "Penalties",
+    "yellow_card": "Yellow card",
+    "yellow_cardHint": "Warning without effect on the score.",
+    "red_card": "Red card",
+    "red_cardHint": "The team is listed without a rank in this event.",
+    "is_disqualified": "Disqualification",
+    "is_disqualifiedHint": "The run scores 0 points but still counts as played. In a head-to-head match the opponent wins.",
+    "reason": "Reason",
+    "reasonPlaceholder": "e.g. robot left the table",
+    "save": "Save decision",
+    "open": "Cards & disqualification",
+    "openFor": "Cards & disqualification for {{team}}, round {{round}}",
+    "title": "Penalties · {{team}} · round {{round}}",
+    "yellowShort": "Yellow",
+    "redShort": "Red",
+    "dqShort": "DQ"
+  },
+  "partsChallenge": {
+    "title": "Parts challenges",
+    "hint": "A team questions whether the opponent's robot uses legal parts only. The head judge rules: if the challenge is upheld the challenged team is disqualified for the match, otherwise the challenger.",
+    "versus": "{{challenger}} challenges {{challenged}}",
+    "open": "Open",
+    "upheld": "Upheld",
+    "rejected": "Rejected",
+    "outcome": "Disqualified: {{team}}",
+    "noMatchEffect": "(no match – no score changed)",
+    "rulingNote": "Reason for the ruling",
+    "uphold": "Uphold",
+    "reject": "Reject",
+    "confirmUphold": "Uphold the challenge? {{team}} will be disqualified for the match.",
+    "confirmReject": "Reject the challenge? {{team}} will be disqualified for the match.",
+    "none": "No parts challenges.",
+    "match": "Match",
+    "noMatch": "— no match —",
+    "challenger": "Challenging team",
+    "challenged": "Challenged team",
+    "chooseTeam": "— Choose team —",
+    "description": "Description",
+    "descriptionPlaceholder": "e.g. servo that is not part of the kit",
+    "file": "File challenge"
   }
 }

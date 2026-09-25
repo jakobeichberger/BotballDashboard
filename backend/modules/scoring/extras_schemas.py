@@ -197,6 +197,8 @@ class ExternalTeamResponse(BaseModel):
     school: str | None
     source: str
     notes: str | None
+    # Lets the UI offer editing to the creator (organizers may edit any team).
+    created_by: str | None = None
     created_at: datetime
 
 

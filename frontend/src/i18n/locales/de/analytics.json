@@ -208,5 +208,54 @@
     "details": "Details",
     "includePractice": "Übungsläufe in Stärken/Schwächen einbeziehen",
     "noAccess": "Keine Berechtigung für dieses Team oder keine Daten."
+  },
+  "audit": {
+    "title": "Änderungsprotokoll",
+    "hint": "Alle Änderungen an Wertungen dieses Events (auch gelöschte Läufe, Karten und Disqualifikationen) sowie an den DE-, Aerial- und Dokumentationsergebnissen, neueste zuerst.",
+    "tab": {
+      "scores": "Wertungen",
+      "results": "Ergebnisse"
+    },
+    "team": "Team",
+    "allTeams": "Alle Teams",
+    "kind": "Art",
+    "allKinds": "Alle Arten",
+    "kindLabel": {
+      "de": "Double Elimination",
+      "aerial": "Aerial",
+      "doc": "Dokumentation"
+    },
+    "col": {
+      "time": "Zeitpunkt",
+      "team": "Team",
+      "what": "Änderung",
+      "changes": "Werte",
+      "by": "Von"
+    },
+    "scoreKind": {
+      "created": "Erfasst",
+      "updated": "Geändert",
+      "deleted": "Gelöscht"
+    },
+    "revision": "Rev. {{revision}}",
+    "total": "Summe {{total}}",
+    "noChange": "keine Wertänderung",
+    "system": "System",
+    "yes": "ja",
+    "no": "nein",
+    "empty": "Keine Änderungen.",
+    "loadFailed": "Das Protokoll konnte nicht geladen werden.",
+    "field": {
+      "total_score": "Summe",
+      "sheet_score": "Score-Sheet",
+      "bonus_score": "Bonus",
+      "is_disqualified": "Disqualifiziert",
+      "yellow_card": "Gelbe Karte",
+      "red_card": "Rote Karte",
+      "round_lost": "Runde verloren",
+      "round_lost_reason": "Grund",
+      "end_contact": "Kontakt am Ende",
+      "notes": "Notiz"
+    }
   }
 }

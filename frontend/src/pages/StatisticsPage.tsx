@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { fmtNum, useEventStatistics, type Anomaly, type EventStatistics } from "@/api/analytics";
 import { BoxPlotList } from "@/components/analytics/BoxPlot";
 import MatchReviewModal from "@/components/analytics/MatchReviewModal";
+import EventAuditTrail from "@/components/analytics/EventAuditTrail";
 import { AXIS_TICK, GRID, SERIES, heatColor, heatTextClass } from "@/components/analytics/chartTheme";
 import { ExportButton } from "@/components/ExportButtons";
 import { StatGrid, SectionCard } from "./dashboard/widgets";
@@ -176,6 +177,12 @@ export default function StatisticsPage() {
             )}
           </SectionCard>
         </>
+      )}
+      {eventId && (
+        <SectionCard title={t("audit.title")} id="stats-audit">
+          <p className="mb-3 text-xs text-gray-500">{t("audit.hint")}</p>
+          <EventAuditTrail eventId={eventId} />
+        </SectionCard>
       )}
       <MatchReviewModal anomaly={selected} onClose={() => setSelected(null)} />
     </div>
