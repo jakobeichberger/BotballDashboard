@@ -365,7 +365,9 @@
     "bracketWeightsHint": "Wird laut Game Review pro Turnier bekanntgegeben. Steht in den Formeln als <code>bracket_weight</code> zur Verfügung.",
     "saveWeights": "Gewichtung speichern",
     "bracketLabel": "Bracket {{index}}",
-    "bracketWeight": "Gewichtung {{index}}"
+    "bracketWeight": "Gewichtung {{index}}",
+    "keyLabel": "Schlüssel der Formel {{number}}",
+    "expressionLabel": "Ausdruck für {{key}}"
   },
   "scoreSheets": {
     "title": "Scoring-Sheets",

@@ -365,7 +365,9 @@
     "bracketWeightsHint": "Announced per tournament according to the game review. Available in the formulas as <code>bracket_weight</code>.",
     "saveWeights": "Save weighting",
     "bracketLabel": "Bracket {{index}}",
-    "bracketWeight": "Weight {{index}}"
+    "bracketWeight": "Weight {{index}}",
+    "keyLabel": "Key of formula {{number}}",
+    "expressionLabel": "Expression for {{key}}"
   },
   "scoreSheets": {
     "title": "Score Sheets",

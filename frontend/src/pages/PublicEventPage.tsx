@@ -187,7 +187,7 @@ export default function PublicEventPage() {
           <h1 className="text-3xl font-black md:text-5xl">{event.data?.name}</h1>
           <p className="mt-1 text-slate-400">{event.data?.venue} · {event.data?.timezone}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span
             role="status"
             className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm ${connection === "connected" ? "bg-emerald-950 text-emerald-300" : "bg-red-950 text-red-300"}`}

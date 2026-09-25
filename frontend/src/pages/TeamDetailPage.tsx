@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -6,7 +6,9 @@ import { Users, ArrowLeft, FileText, Printer, MapPin, Pencil, Trash2, UserPlus, 
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { TeamReportExportButtons } from "@/components/ExportButtons";
-import TeamHistoryPanel from "@/components/analytics/TeamHistoryPanel";
+import ErrorBoundary from "@/components/ErrorBoundary";
+// Charts (recharts) load on demand: the team page works offline without them.
+const TeamHistoryPanel = lazy(() => import("@/components/analytics/TeamHistoryPanel"));
 import { useTeamHistory } from "@/api/analytics";
 import { useEventNavigate } from "@/hooks/useEventPath";
 import { useAuthStore } from "@/store/authStore";
@@ -287,7 +289,11 @@ export default function TeamDetailPage() {
         </div>
       )}
 
-      <TeamHistoryPanel rows={history} isLoading={historyLoading} />
+      <ErrorBoundary>
+        <Suspense fallback={<p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}>
+          <TeamHistoryPanel rows={history} isLoading={historyLoading} />
+        </Suspense>
+      </ErrorBoundary>
 
       {/* Members */}
       <section className="card overflow-hidden">

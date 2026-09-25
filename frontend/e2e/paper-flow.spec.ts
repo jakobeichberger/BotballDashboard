@@ -66,8 +66,9 @@ test("paper cycle: submit, review, finalize, feedback", async ({ page, sessions 
   for (let index = 0; index < 5; index++) await scores.nth(index).fill("8");
   await review.getByLabel(/empfehlung|recommendation/i).selectOption("accept");
   await review.getByLabel(/gesamtkommentar|overall comment/i).fill(COMMENT);
-  reviewer.once("dialog", (dialog) => dialog.accept());
   await review.getByRole("button", { name: /bewertung abgeben|submit review/i }).click();
+  // The app's own confirmation dialog (lib/confirm), not window.confirm.
+  await reviewer.getByRole("dialog").getByRole("button", { name: /^(bestätigen|confirm)$/i }).click();
   await expect(review.getByText(/^(abgegeben|submitted)$/i).first()).toBeVisible();
 
   // 4. The organizer accepts the paper and finalizes the score.

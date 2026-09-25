@@ -171,9 +171,9 @@ export default function BotDetailPage() {
             <div className="font-medium text-gray-900 dark:text-white">{bot.image_name ?? t("detail.noImage")}</div>
             <div className="text-gray-500 text-xs">{t("detail.imageTypes")}</div>
           </div>
-          <div className="flex items-center gap-2">
-            <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                   className="text-xs text-gray-500 file:mr-2 file:btn file:btn-secondary file:text-xs" />
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <input type="file" accept="image/*" aria-label={t("detail.chooseImage")} onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                   className="min-w-0 max-w-full text-xs text-gray-500 file:mr-2 file:btn file:btn-secondary file:text-xs" />
             <button disabled={!file || uploadM.isPending} onClick={() => uploadM.mutate()} className="btn-primary text-sm disabled:opacity-40">
               <Upload className="w-4 h-4" /> {t("detail.uploadImage")}
             </button>

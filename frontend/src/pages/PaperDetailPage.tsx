@@ -311,8 +311,8 @@ export default function PaperDetailPage() {
 
       {/* Header */}
       <div className="card p-6">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-start gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <h1 className="flex min-w-0 items-start gap-2 break-words text-2xl font-bold text-gray-900 dark:text-white">
             <FileText className="w-6 h-6 mt-1 shrink-0" />
             {paper.title}
           </h1>
@@ -355,7 +355,7 @@ export default function PaperDetailPage() {
               </div>
             )}
             {paper.final_score != null && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Award className="w-4 h-4 text-primary-500" />
                 <span className="text-gray-500">{t("detail.finalResult")}</span>
                 <span className="font-semibold text-gray-900 dark:text-white">{Math.round(paper.final_score * 100)}%</span>
@@ -626,7 +626,7 @@ export default function PaperDetailPage() {
                 <span className="text-sm text-gray-600 dark:text-gray-300">
                   {userName(r.reviewer_id)} · {t("detail.round", { round: r.revision_number })}{r.version_number ? ` · v${r.version_number}` : ""}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {r.recommendation && (<span className={RECOMMENDATION_BADGE[r.recommendation] ?? "badge-gray"}>{RECOMMENDATION_LABEL[r.recommendation] ?? r.recommendation}</span>)}
                   <span className={r.is_submitted ? "badge-green" : "badge-yellow"}>{r.is_submitted ? t("detail.reviewSubmitted") : t("detail.reviewDraft")}</span>
                   {isAdmin && r.is_submitted && reviewOpen && r.revision_number === paper.revision_number && (

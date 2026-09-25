@@ -174,13 +174,13 @@ export function SeasonTimelineView({ timeline }: { timeline?: SeasonTimeline }) 
               </span>
               <span className="text-xs">{statusLabel(e.status)}</span>
             </div>
-            <p className="mt-0.5 text-xs opacity-80">{fmtRange(e.starts_at, e.ends_at, t("timeline.noDate"))}</p>
+            <p className="mt-0.5 text-xs">{fmtRange(e.starts_at, e.ends_at, t("timeline.noDate"))}</p>
             {e.phases.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {e.phases.map((p) => (
                   <li key={p.id} className="flex items-center justify-between gap-2 text-xs">
                     <span className={clsx(p.status === "active" && "font-semibold")}>{p.name}</span>
-                    <span className="opacity-70">{statusLabel(p.status)}</span>
+                    <span className="italic">{statusLabel(p.status)}</span>
                   </li>
                 ))}
               </ul>
