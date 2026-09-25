@@ -1,132 +1,185 @@
 # BotballDashboard – Benutzerhandbuch
 
-Willkommen im BotballDashboard. Dieses Handbuch erklärt die Bedienung aller Module für alle Benutzerrollen.
+Das BotballDashboard verwaltet Botball-Turniere, von der Saisonplanung über die Wertung am Spieltisch bis zu Paper-Review und 3D-Druck. Dieses Kapitel gilt für alle Rollen. Die Details stehen in den Rollen-Handbüchern.
+
+| Handbuch | Für |
+|---|---|
+| [Admin](admin.md) | Organisation: Benutzer, Saisons, Events, Wertungsregeln, Paper- und Druckprozess |
+| [Juror](juror.md) | Wertung am Spieltisch, Bestätigung, Brackets |
+| [Reviewer](reviewer.md) | Begutachtung der Papers |
+| [Mentor](mentor.md) | Team-Betreuung: eigenes Team, Wertungen, Paper, 3D-Druck, Scouting |
+| [Gast](guest.md) | Lesender Zugang und öffentliche Anzeige |
+| [FAQ](faq.md) | Häufige Fragen |
 
 ---
 
 ## Inhaltsverzeichnis
 
-- [Rollen im System](#rollen)
-- [Erster Login](#erster-login)
-- [Navigation](#navigation)
-- [Sprache & Design](#sprache--design)
-- [Benachrichtigungen & PWA](#benachrichtigungen)
-- [PDF- und CSV-Export](#export)
-- [Profilverwaltung](#profil)
-- [Module im Überblick](#module)
-- [FAQ](faq.md)
+1. [Grundprinzip: alles hängt am Event](#grundprinzip-alles-hängt-am-event)
+2. [Rollen](#rollen)
+3. [Anmelden und Passwort vergessen](#anmelden-und-passwort-vergessen)
+4. [Navigation](#navigation)
+5. [Profil](#profil)
+6. [Benachrichtigungen](#benachrichtigungen)
+7. [Offline und Handy (PWA)](#offline-und-handy-pwa)
+8. [Exporte](#exporte)
+9. [Öffentliche Anzeige](#öffentliche-anzeige)
 
 ---
 
-## Rollen {#rollen}
+## Grundprinzip: alles hängt am Event
 
-| Rolle | Beschreibung | Handbuch |
+Eine **Saison** enthält das Regelwerk eines Jahres: aktive Module, Kategorien, Formeln, Tie-Breaker, Score-Sheet-Vorlagen und Termine. Ein **Event** ist ein konkretes Turnier dieser Saison, z. B. ein Regionalturnier, ECER oder GCER.
+
+Die Oberfläche ist eventzentriert. Alle Arbeitsseiten liegen unter `/events/<Event-ID>/…`, etwa `/events/…/scoring` oder `/events/…/papers`. Oben in der Seitenleiste wählst du das Event. Nach dem Login öffnet sich automatisch das laufende Event (Status `live`) oder, wenn keines läuft, das erste. Gibt es noch gar kein Event, landen Organisatoren im Einrichtungsassistenten (`/setup`).
+
+Welche Bereiche ein Event hat, legt die Organisation pro Event fest. Mögliche Module sind Seeding, Double Elimination, Paper, Dokumentation, Aerial, 3D-Druck und Bot-Galerie. Ein abgeschaltetes Modul verschwindet aus der Navigation. Wer die Seite direkt aufruft, sieht „Dieses Modul ist für dieses Event nicht aktiv".
+
+---
+
+## Rollen
+
+Die Rechte der fünf Standardrollen werden bei der Installation angelegt (Migrationen `0002`–`0017`). Admins können sie ändern und eigene Rollen anlegen.
+
+| Recht | admin | juror | reviewer | mentor | guest |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Dashboard ansehen (`dashboard:read`) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Saisons und Termine ansehen (`seasons:read`) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Events ansehen (`events:read`) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Event verwalten: Phasen, Teams, Zeiten (`events:write`) | ✅ | ✅ | – | – | – |
+| Zeitplan erzeugen, Setzliste, Event löschen (`events:admin`) | ✅ | – | – | – | – |
+| Teams ansehen (`teams:read`) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Eigenes Team pflegen (`teams:write`) | ✅ | – | – | ✅ | – |
+| Teams anlegen/löschen, Konten verknüpfen (`teams:admin`) | ✅ | – | – | – | – |
+| Wertungen ansehen (`scoring:read`) | ✅ | ✅ | – | ✅ | ✅ |
+| Wertungen erfassen (`scoring:write`) | ✅ | ✅ | – | ✅ ¹ | – |
+| Bestätigen, korrigieren, DE/Aerial/Doku, Statistik (`scoring:admin`) | ✅ | ✅ | – | – | – |
+| Punkteformeln (`scoring:formulas`) | ✅ | – | – | – | – |
+| Papers lesen (`papers:read`) | ✅ | – | ✅ | ✅ ¹ | – |
+| Paper einreichen (`papers:write`) | ✅ | – | – | ✅ ¹ | – |
+| Papers begutachten (`papers:review`) | ✅ | – | ✅ | – | – |
+| Paper-Prozess steuern (`papers:admin`) | ✅ | – | – | – | – |
+| Druckjobs ansehen/einreichen (`printing:read/write`) | ✅ | – | – | ✅ ¹ | – |
+| Drucker, Kontingente, Freigaben (`printing:admin`) | ✅ | – | – | – | – |
+| Ankündigungen (`dashboard:write`) | ✅ | – | – | – | – |
+| Benutzer und Rollen (`users:*`, `roles:*`) | ✅ | – | – | – | – |
+
+¹ Nur für das eigene Team. Das eigene Team ist jedes Team, in dem dein Benutzerkonto als Mitglied verknüpft ist. Die Verknüpfung setzt die Organisation.
+
+---
+
+## Anmelden und Passwort vergessen
+
+Konten legt die Organisation an. Eine Selbstregistrierung gibt es nicht. Bei eingerichtetem Mailserver bekommst du eine Hinweis-Mail. Das Passwort teilt dir die Organisation mit.
+
+**Passwort vergessen:**
+
+1. Auf der Login-Seite **„Passwort vergessen?"** wählen.
+2. E-Mail-Adresse eingeben. Du bekommst einen Link, der **eine Stunde gültig** und nur einmal verwendbar ist. Aus Datenschutzgründen sagt die Seite nicht, ob die Adresse existiert.
+3. Über den Link ein neues Passwort setzen. Danach sind alle bisherigen Sitzungen beendet.
+
+Ohne eingerichteten Mailserver kommt keine E-Mail an. Dann setzt ein Admin das Passwort unter **Einstellungen → Benutzer**.
+
+**Passwort-Regeln:** mindestens 10 Zeichen, nicht nur ein wiederholtes Zeichen, nicht die eigene E-Mail-Adresse.
+
+Das Zugangs-Token läuft nach 15 Minuten ab und wird automatisch erneuert, solange die Anmeldung gültig ist (bis zu 30 Tage). **Abmelden** beendet nur die Sitzung auf diesem Gerät.
+
+---
+
+## Navigation
+
+- **Seitenleiste:** Event-Auswahl, darunter die Bereiche, für die du Rechte hast und die im Event aktiv sind. Auf dem Handy öffnet das Menü-Symbol die Leiste.
+- **Kopfzeile:**
+  - Glocke mit der Benachrichtigungszentrale;
+  - Push aktivieren;
+  - Sprache (Deutsch/English);
+  - Design (hell/dunkel/System);
+  - Abmelden;
+  - Link zum Profil.
+- Links auf Teams, Papers oder Druckjobs öffnen die Detailseite im aktuellen Event.
+
+Übliche Bereiche:
+
+- Dashboard, Deadlines;
+- Teams, Bot-Galerie;
+- Zeitplan, Wertung, OCR-Prüfung, Scouting, Rangliste & Ergebnisse, Performance, Statistik & Anomalien, Punkteformeln;
+- Paper-Review, 3D-Druck;
+- Event-Verwaltung, Admin-Einstellungen.
+
+Du siehst nur, wofür deine Rolle Rechte hat.
+
+---
+
+## Profil
+
+Unter **Profil** (Link in der Kopfzeile, `/events/…/profile`):
+
+| Abschnitt | Inhalt |
+|---|---|
+| Profildaten | Anzeigename |
+| Darstellung | Theme hell / dunkel / System. Wird im Konto gespeichert und gilt auf allen Geräten. |
+| Sprache | Deutsch / English, ebenfalls im Konto gespeichert. Einige Seiten sind noch nur auf Deutsch. |
+| E-Mail-Adresse | Ändern, mit Passwort bestätigen |
+| Passwort | Ändern; alle anderen Sitzungen werden beendet |
+| Benachrichtigungen | Push pro Kategorie ein/aus (siehe unten), Push für dieses Gerät aktivieren |
+| Datenschutz | **Datenexport** (alle über dich gespeicherten Daten als JSON) und **Konto löschen**. Die Löschung anonymisiert das Konto und verlangt das Passwort. Historische Einträge wie Wertungen bleiben ohne Personenbezug erhalten. |
+
+---
+
+## Benachrichtigungen
+
+- **Benachrichtigungszentrale** (Glocke): die letzten Meldungen, die an dich oder an alle gingen. Du kannst einzelne oder alle als gelesen markieren.
+- **Push** (Web Push): pro Gerät aktivieren, im Profil oder in der Kopfzeile. Voraussetzung ist, dass die Installation VAPID-Schlüssel hat. Kategorien, jede einzeln abschaltbar:
+
+| Kategorie | Beispiele |
+|---|---|
+| Match beginnt bald | Aufruf und Zeitplanänderungen deiner Matches |
+| Score korrigiert | eine Wertung deines Teams wurde nachträglich geändert |
+| Deadlines & Erinnerungen | Saison- und Paper-Deadlines 7, 3 und 1 Tag vorher, Review-Erinnerungen |
+| Paper-Status | Einreichung, Zuweisung, Entscheidung |
+| Druckaufträge | genehmigt, gestartet, fertig, fehlgeschlagen |
+| Ankündigungen | veröffentlichte Ankündigungen der Organisation |
+
+- **E-Mail:** Deadline-Erinnerungen gehen auch per E-Mail an die Teammitglieder, wenn ein Mailserver eingerichtet ist. Ebenso die Hinweis-Mail bei Kontoanlage und der Passwort-Reset-Link.
+- **Kalender:** Unter **Deadlines** kannst du einen persönlichen iCal-Feed abonnieren (siehe [Mentor-Handbuch](mentor.md#deadlines-und-kalender)).
+
+---
+
+## Offline und Handy (PWA)
+
+Das Dashboard lässt sich als App installieren: im Browser „Zum Startbildschirm hinzufügen" bzw. „Installieren". Die Seiten sind für Handy und Tablet ausgelegt.
+
+**Ohne Verbindung:**
+
+- Ein Banner zeigt: „Keine Verbindung – Wertungen werden lokal gespeichert, alle anderen Änderungen sind bis zur Wiederverbindung gesperrt."
+- **Wertungen** (Event-Wertung, Wettbewerbs- und Übungsläufe) werden auf dem Gerät zwischengespeichert. Sie werden automatisch übertragen:
+  - beim Wiederverbinden;
+  - beim App-Start;
+  - jede Minute.
+- Nur dein eigenes Konto überträgt deine gespeicherten Wertungen. Doppelte Übertragungen sind ausgeschlossen, jede Wertung hat einen eindeutigen Schlüssel.
+- Die Kopfzeile zeigt, wie viele Wertungen warten oder fehlgeschlagen sind. Bei einem **Konflikt** (das Match wurde inzwischen anders gewertet) oder einem Fehler kannst du je Eintrag erneut senden, trotzdem speichern oder verwerfen.
+- Zuletzt geladene Seiten (Event, Teams, Zeitplan, Schema) bleiben lesbar. Alle anderen Änderungen sind offline gesperrt.
+
+---
+
+## Exporte
+
+Export-Buttons gibt es auf den jeweiligen Seiten:
+
+| Wo | Was | Recht |
 |---|---|---|
-| **Admin** | Vollzugriff – verwaltet Saisons, Teams, Benutzer, alle Module | [Admin-Handbuch](admin.md) |
-| **Juror** | Gibt Scores ein und korrigiert diese während des Turniers | [Juror-Handbuch](juror.md) |
-| **Reviewer** | Bewertet eingereichte Papers, fordert Revisionen an | [Reviewer-Handbuch](reviewer.md) |
-| **Mentor** | Betreut ein oder mehrere Teams, Lesezugriff auf Teamdaten | [Mentor-Handbuch](mentor.md) |
-| **Gast** | Nur Lesezugriff auf öffentliche Inhalte | [Gast-Ansicht](guest.md) |
+| Rangliste & Ergebnisse | Seeding-Rangliste CSV/PDF, Gesamtwertung CSV/PDF (mit allen Formelwerten), Wertungen CSV | `scoring:read` |
+| Paper-Review | Paper-Übersicht CSV/PDF, Reviews CSV | `papers:admin` |
+| 3D-Druck | Druckbericht PDF | `printing:admin` |
+| Teams | Teamliste CSV/PDF; Mehrjahresvergleich aller Teams CSV (nur mit `scoring:admin` oder `teams:admin`) | `teams:read` |
+| Team-Detail | Team-Bericht PDF, Historie CSV | `teams:read` |
+| Statistik | Läufe CSV | `scoring:admin` |
+| Scouting | Scouting-Bericht PDF | `scoring:read` |
 
-> Rollen können kombiniert werden: Eine Person kann gleichzeitig Mentor und Reviewer sein.
-
----
-
-## Erster Login {#erster-login}
-
-1. URL des BotballDashboard im Browser öffnen
-2. E-Mail-Adresse und Passwort eingeben
-3. Bei erstem Login: Passwort aus Einladungs-E-Mail verwenden und anschließend sofort ändern
-
-### Passwort vergessen
-
-Auf der Login-Seite „Passwort vergessen" klicken → E-Mail mit Reset-Link kommt binnen weniger Minuten.
+CSV-Dateien sind UTF-8 mit BOM und lassen sich direkt in Excel öffnen.
 
 ---
 
-## Navigation {#navigation}
+## Öffentliche Anzeige
 
-### Desktop (Laptop/PC)
-- **Sidebar links:** Hauptnavigation mit allen Modulen
-- **Topbar:** Sprachumschalter (DE | EN), Dark/Light Mode, Benachrichtigungen, Profil
-
-### Mobil (Handy/Tablet)
-- **Hamburger-Menü** (☰) oben links → öffnet Navigation
-- **Bottom-Navigation** für häufig genutzte Bereiche (Score eingeben, Matches)
-
----
-
-## Sprache & Design {#sprache--design}
-
-- **Sprache:** Topbar → Flagge/Sprachkürzel → `DE` oder `EN` auswählen
-- **Dark/Light Mode:** Topbar → Mond/Sonne-Icon
-- Beide Einstellungen werden gespeichert und bleiben nach dem Logout erhalten.
-
----
-
-## Benachrichtigungen & PWA {#benachrichtigungen}
-
-Das BotballDashboard kann Push-Benachrichtigungen auf dem Gerät senden:
-
-1. Beim ersten Login erscheint eine Anfrage: „Benachrichtigungen erlauben?"
-2. Diese bestätigen
-3. Ab sofort kommen Benachrichtigungen bei wichtigen Events (neues Match, Paper-Status, Druckjob fertig)
-
-**PWA installieren** für beste Erfahrung:
-- **Android/Chrome:** Menü → „Zum Startbildschirm hinzufügen"
-- **iOS/Safari:** Teilen-Symbol → „Zum Home-Bildschirm"
-
----
-
-## PDF- und CSV-Export {#export}
-
-Alle wichtigen Daten können als **PDF** (druckfertig, mit Logo und Tabellen) oder **CSV** (für Excel/Sheets) heruntergeladen werden.
-
-### Verfügbare Exporte
-
-| Modul | Formate | Berechtigung |
-|---|---|---|
-| Rangliste (Scoring) | PDF, CSV | `scoring:read` oder `dashboard:read` |
-| Wertungen (alle Matches) | CSV | `scoring:read` |
-| Paper-Review-Übersicht | PDF, CSV | `papers:admin` |
-| 3D-Druck-Report | PDF | `printing:admin` |
-| Team-Liste | PDF, CSV | `teams:read` |
-
-### So wird exportiert
-
-1. In das jeweilige Modul navigieren (z.B. **Scoring → Rangliste**)
-2. Auf den **PDF**- oder **CSV**-Button oben rechts klicken
-3. Der Download startet automatisch
-
-> CSV-Dateien sind UTF-8 (mit BOM) kodiert und öffnen sich direkt in Excel ohne Zeichensatz-Probleme.
-
----
-
-## Profilverwaltung {#profil}
-
-**Profil → Mein Konto:**
-- Name und E-Mail ändern
-- Passwort ändern
-- Benachrichtigungseinstellungen
-- Sprache und Dark/Light Mode-Präferenz
-- Geräteverwaltung (Push-Abonnements pro Gerät)
-
----
-
-## Module im Überblick {#module}
-
-| Modul | Beschreibung | Verfügbar für |
-|---|---|---|
-| **Dashboard** | Saison-Übersicht, Announcements, Stats | Alle eingeloggten Benutzer |
-| **Scoring** | Score-Eingabe, Rangliste, Live-Scoreboard | Juror, Admin |
-| **Paper-Review** | Paper einreichen, bewerten, Revisionen | Mentor (einreichen), Reviewer (bewerten), Admin |
-| **3D-Druck** | Druckjobs beantragen und verwalten | Mentor (beantragen), Admin (verwalten) |
-| **Teams** | Teamdaten einsehen und verwalten | Alle eingeloggten Benutzer (je nach Rolle) |
-| **Saisons** | Saison- und Phasenverwaltung | Admin |
-| **Benutzerverwaltung** | Benutzer einladen, Rollen vergeben | Admin |
-| **Exporte** | PDF- und CSV-Downloads für alle Module | Je nach Modul-Berechtigung |
-| **Öffentliches Scoreboard** | Live-Rangliste ohne Login | Öffentlich / Gast |
-
----
-
-Weiterführende Dokumentation: [FAQ](faq.md) | [Admin-Handbuch](admin.md) | [Juror-Handbuch](juror.md) | [Reviewer-Handbuch](reviewer.md) | [Mentor-Handbuch](mentor.md) | [Gast-Ansicht](guest.md)
+Für Zuschauer und Großbildschirme gibt es pro Event eine Seite ohne Login: `https://<domain>/public/<event-slug>`. Sie ist erreichbar, sobald das Event den Status `published`, `live` oder `completed` hat. Angezeigt wird nur, was die Organisation freigegeben hat: Rangliste, Zeitplan und Bracket, Detailergebnisse, Ankündigungen. Die Seite aktualisiert sich live und rotiert zwischen den Bereichen. Einen QR-Code auf die Seite zeigt sie selbst an. Details: [Gast-Handbuch](guest.md).
