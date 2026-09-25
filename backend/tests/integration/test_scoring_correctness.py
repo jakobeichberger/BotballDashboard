@@ -392,10 +392,13 @@ class TestEventScoping:
         await _match(db, event, alpha, 100.0)
         await db.commit()
 
-        resp = await client.get(f"/api/scoring/seasons/{season.id}/ranking/overall")
+        resp = await client.get(
+            f"/api/scoring/seasons/{season.id}/ranking/overall", headers=auth_headers
+        )
         assert [e["team_name"] for e in resp.json()] == ["Alpha"]
         resp = await client.get(
-            f"/api/scoring/seasons/{season.id}/ranking/overall?event_id={later.id}"
+            f"/api/scoring/seasons/{season.id}/ranking/overall?event_id={later.id}",
+            headers=auth_headers,
         )
         assert resp.json() == []
 

@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends, Query
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import (
     assert_team_access,
+    bearer_scheme,
+    get_current_user,
+    permissions_of,
     require_permission,
 )
 from core.database import get_db
+from core.exceptions import ForbiddenError, UnauthorizedError
 from core.live import publish_after_commit
 from modules.events import service as event_svc
 from modules.events.models import Event
@@ -36,6 +41,8 @@ from modules.scoring.schemas import (
     ScoringSchemaResponse,
 )
 from modules.seasons import service as season_svc
+from modules.seasons.lifecycle import DRAFT
+from modules.seasons.models import Season
 from modules.teams.models import Team
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
@@ -73,6 +80,67 @@ def _broadcast_schedule_update(db: AsyncSession, event_id: str, scheduled_match_
 
 async def _season_event(db: AsyncSession, season_id: str, event_id: str | None) -> Event:
     return await service.resolve_event(db, season_id, event_id)
+
+
+# ── Ranking access ────────────────────────────────────────────────────────────
+#
+# Rankings are readable without login only where the organizers published a
+# scoreboard (spec 08): the event is public (published/live/completed, in a
+# non-draft season) and has public_scoreboard switched on. Everything else
+# needs scoring:read, so rankings of draft events do not leak to anyone who
+# knows an id.
+
+_PUBLIC_EVENT_STATUSES = ("published", "live", "completed")
+
+
+async def _scoreboard_is_public(db: AsyncSession, event: Event) -> bool:
+    if not event.public_scoreboard or event.status not in _PUBLIC_EVENT_STATUSES:
+        return False
+    season_status = (
+        await db.execute(select(Season.status).where(Season.id == event.season_id))
+    ).scalar_one_or_none()
+    return season_status is not None and season_status != DRAFT
+
+
+async def _authorize_ranking(
+    db: AsyncSession,
+    credentials: HTTPAuthorizationCredentials | None,
+    event: Event | None,
+) -> None:
+    if event is not None and await _scoreboard_is_public(db, event):
+        return
+    if credentials is None:
+        raise UnauthorizedError()
+    user = await get_current_user(credentials, db)
+    if not user.is_superuser and "scoring:read" not in permissions_of(user):
+        raise ForbiddenError("Missing permissions: scoring:read")
+
+
+async def _season_ranking_event(
+    db: AsyncSession,
+    credentials: HTTPAuthorizationCredentials | None,
+    season_id: str,
+    event_id: str | None,
+) -> Event:
+    """Authorize a season ranking read and return the event it ranks.
+
+    The event is looked up read-only before the check, so an anonymous request
+    never creates the season's fallback event or learns whether an id exists.
+    """
+    if event_id:
+        found = await db.get(Event, event_id)
+        event = found if found is not None and found.season_id == season_id else None
+    else:
+        event = await service.find_default_event(db, season_id)
+    await _authorize_ranking(db, credentials, event)
+    return await _season_event(db, season_id, event_id)
+
+
+async def _event_for_ranking(
+    db: AsyncSession, credentials: HTTPAuthorizationCredentials | None, event_id: str
+) -> Event:
+    await _authorize_ranking(db, credentials, await db.get(Event, event_id))
+    return await event_svc.get_event(db, event_id)
 
 
 # ── Matches ───────────────────────────────────────────────────────────────────
@@ -262,14 +330,16 @@ async def list_result_revisions(
 async def get_ranking(
     season_id: str,
     competition_level_id: str | None = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
-    """Public endpoint – no auth required for scoreboard display.
+    """Seeding ranking of the season's default event.
 
-    NOTE: unlike GET /v1/public/events/{slug}/ranking this does not honour the
-    event's public_scoreboard / public_results flags.
+    Readable without login only when that event's scoreboard is public (see
+    _authorize_ranking); otherwise scoring:read is required.
     """
-    return await service.get_ranking(db, season_id, competition_level_id)
+    event = await _season_ranking_event(db, credentials, season_id, None)
+    return await service.get_ranking(db, season_id, competition_level_id, event_id=event.id)
 
 
 # ── Enhanced Ranking (with team names + category) ─────────────────────────────
@@ -307,6 +377,7 @@ async def get_ranking_extended(
     season_id: str,
     category: str | None = Query(None),
     event_id: str | None = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     """Seeding ranking enriched with team name and category.
@@ -314,7 +385,7 @@ async def get_ranking_extended(
     Ranks are per category (Botball and Open are separate competitions); a
     red-carded team is listed with `disqualified` and no rank.
     """
-    event = await _season_event(db, season_id, event_id)
+    event = await _season_ranking_event(db, credentials, season_id, event_id)
     return await _extended_ranking(db, event, category)
 
 
@@ -322,10 +393,11 @@ async def get_ranking_extended(
 async def get_event_ranking_extended(
     event_id: str,
     category: str | None = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     """Seeding ranking of one event, with team names and per-category ranks."""
-    event = await event_svc.get_event(db, event_id)
+    event = await _event_for_ranking(db, credentials, event_id)
     return await _extended_ranking(db, event, category)
 
 
@@ -337,6 +409,7 @@ async def get_overall_ranking(
     season_id: str,
     category: str | None = Query(None),
     event_id: str | None = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     """Overall ranking computed from the season's configured formula set.
@@ -345,8 +418,8 @@ async def get_overall_ranking(
     `event_id`, otherwise the season's default event — the same one the other
     season routes read and write, so a result entered through them shows here.
     """
+    event = await _season_ranking_event(db, credentials, season_id, event_id)
     season = await season_svc.get_season(db, season_id)
-    event = await _season_event(db, season_id, event_id)
     categories = [category] if category else list(season.active_categories or ["botball"])
     return await formula_svc.compute_overall_ranking(db, event.id, categories)
 
@@ -355,10 +428,11 @@ async def get_overall_ranking(
 async def get_event_overall_ranking(
     event_id: str,
     category: str | None = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     """Overall ranking for one event, using its season's formula set."""
-    event = await event_svc.get_event(db, event_id)
+    event = await _event_for_ranking(db, credentials, event_id)
     season = await season_svc.get_season(db, event.season_id)
     categories = [category] if category else list(season.active_categories or ["botball"])
     return await formula_svc.compute_overall_ranking(db, event_id, categories)
@@ -482,9 +556,11 @@ async def list_aerial_results(
 async def get_aerial_ranking(
     season_id: str,
     event_id: str | None = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
-    return await comp_svc.get_aerial_ranking(db, await _season_event(db, season_id, event_id))
+    event = await _season_ranking_event(db, credentials, season_id, event_id)
+    return await comp_svc.get_aerial_ranking(db, event)
 
 
 @router.put(
@@ -543,9 +619,12 @@ async def list_event_aerial_results(
 @router.get("/events/{event_id}/aerial-ranking", dependencies=_AERIAL)
 async def get_event_aerial_ranking(
     event_id: str,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
-    return await comp_svc.get_aerial_ranking(db, await event_svc.get_event(db, event_id))
+    return await comp_svc.get_aerial_ranking(
+        db, await _event_for_ranking(db, credentials, event_id)
+    )
 
 
 @router.put(

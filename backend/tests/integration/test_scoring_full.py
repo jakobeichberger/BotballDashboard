@@ -379,10 +379,84 @@ class TestDeleteRoute:
 
 class TestRankingRoutes:
     @pytest.mark.asyncio
-    async def test_ranking_public_no_auth(self, client, season):
-        resp = await client.get(f"/api/scoring/seasons/{season.id}/ranking")
+    async def test_ranking_public_no_auth(self, client, season, event):
+        # The fixture event is published with public_scoreboard on.
+        for path in (
+            f"/api/scoring/seasons/{season.id}/ranking",
+            f"/api/scoring/seasons/{season.id}/ranking/extended",
+            f"/api/scoring/seasons/{season.id}/ranking/overall",
+            f"/api/scoring/events/{event.id}/ranking/extended",
+            f"/api/scoring/events/{event.id}/ranking/overall",
+        ):
+            resp = await client.get(path)
+            assert resp.status_code == 200, (path, resp.text)
+            assert resp.json() == []
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "change",
+        [
+            {"public_scoreboard": False},
+            {"status": "draft"},
+            {"status": "archived"},
+        ],
+    )
+    async def test_ranking_private_event_needs_login(
+        self, client, db, season, event, limited_headers, auth_headers, change
+    ):
+        for key, value in change.items():
+            setattr(event, key, value)
+        await db.commit()
+        paths = (
+            f"/api/scoring/seasons/{season.id}/ranking",
+            f"/api/scoring/seasons/{season.id}/ranking/extended?event_id={event.id}",
+            f"/api/scoring/seasons/{season.id}/ranking/overall",
+            f"/api/scoring/events/{event.id}/ranking/extended",
+            f"/api/scoring/events/{event.id}/ranking/overall",
+        )
+        for path in paths:
+            assert (await client.get(path)).status_code == 401, path
+            assert (await client.get(path, headers=limited_headers)).status_code == 403, path
+            assert (await client.get(path, headers=auth_headers)).status_code == 200, path
+
+    @pytest.mark.asyncio
+    async def test_ranking_draft_season_needs_login(self, client, db, season, event):
+        season.status = "draft"
+        await db.commit()
+        resp = await client.get(f"/api/scoring/events/{event.id}/ranking/extended")
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_ranking_scoring_read_suffices(self, client, db, season, event, limited_user):
+        from modules.auth.models import Permission, Role, RolePermission, UserRole
+
+        event.public_scoreboard = False
+        perm = Permission(name="scoring:read")
+        role = Role(name="ranking-reader")
+        db.add_all([perm, role])
+        await db.flush()
+        db.add_all(
+            [
+                RolePermission(role_id=role.id, permission_id=perm.id),
+                UserRole(user_id=limited_user.id, role_id=role.id),
+            ]
+        )
+        await db.commit()
+        headers = {"Authorization": f"Bearer {create_access_token(limited_user.id)}"}
+        resp = await client.get(f"/api/scoring/events/{event.id}/ranking/extended", headers=headers)
         assert resp.status_code == 200
-        assert resp.json() == []
+
+    @pytest.mark.asyncio
+    async def test_ranking_unknown_ids_anonymous(self, client, db, season):
+        from sqlalchemy import select
+
+        from modules.events.models import Event
+
+        assert (await client.get("/api/scoring/events/nope/ranking/extended")).status_code == 401
+        resp = await client.get("/api/scoring/seasons/nope/ranking")
+        assert resp.status_code == 401
+        # No fallback event was created for the unknown season.
+        assert (await db.execute(select(Event).where(Event.season_id == "nope"))).first() is None
 
     @pytest.mark.asyncio
     async def test_ranking_orders_teams(

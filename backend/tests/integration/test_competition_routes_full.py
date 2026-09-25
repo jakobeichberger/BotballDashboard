@@ -181,12 +181,17 @@ class TestAerialRoutes:
                 {"team_id": t2.id, "run1": 10.0, "run2": 8.0},
             ],
         )
-        ranking = await client.get(f"/api/scoring/seasons/{comp_season.id}/aerial-ranking")
+        ranking = await client.get(
+            f"/api/scoring/seasons/{comp_season.id}/aerial-ranking", headers=auth_headers
+        )
         assert ranking.status_code == 200
         rows = ranking.json()
         assert rows[0]["team_id"] == t2.id
         assert rows[0]["rank"] == 1
         assert rows[0]["team_name"] == "High"
+        # The season's event is a draft: no anonymous access.
+        anonymous = await client.get(f"/api/scoring/seasons/{comp_season.id}/aerial-ranking")
+        assert anonymous.status_code == 401
 
     @pytest.mark.asyncio
     async def test_list_aerial_results(self, client, auth_headers, comp_season, team):
@@ -278,7 +283,9 @@ class TestOverallRankingRoute:
             headers=auth_headers,
             json={"part1": 10.0},
         )
-        resp = await client.get(f"/api/scoring/seasons/{comp_season.id}/ranking/overall")
+        resp = await client.get(
+            f"/api/scoring/seasons/{comp_season.id}/ranking/overall", headers=auth_headers
+        )
         assert resp.status_code == 200
         entries = resp.json()
         by_team = {e["team_id"]: e for e in entries}
@@ -299,6 +306,7 @@ class TestOverallRankingRoute:
         resp = await client.get(
             f"/api/scoring/seasons/{comp_season.id}/ranking/overall",
             params={"category": "open"},  # no team registered as 'open'
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json() == []

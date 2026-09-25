@@ -173,13 +173,18 @@ def validate_raw_scores(
     sheet.validate(raw_scores, schema_fields, definition)
 
 
-async def get_default_event(db: AsyncSession, season_id: str) -> Event:
+async def find_default_event(db: AsyncSession, season_id: str) -> Event | None:
+    """The season's default (earliest) event, without creating one."""
     result = await db.execute(
         select(Event)
         .where(Event.season_id == season_id)
         .order_by(Event.starts_at.asc().nullsfirst(), Event.created_at)
     )
-    event = result.scalars().first()
+    return result.scalars().first()
+
+
+async def get_default_event(db: AsyncSession, season_id: str) -> Event:
+    event = await find_default_event(db, season_id)
     if event:
         return event
 
