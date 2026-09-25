@@ -43,7 +43,7 @@ It evaluates `monitoring/alerts.yml`:
 | `PostgresDown` | postgres-exporter cannot connect to the database for 1 min |
 | `PostgresConnectionsHigh` | more than 80 % of `max_connections` are in use for 5 min |
 
-`monitoring/alerts.test.yml` holds unit tests for the rules: `docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v3.5.5 test rules /m/alerts.test.yml`.
+`monitoring/alerts.test.yml` holds unit tests for the rules: `docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v3.15.0 test rules /m/alerts.test.yml`.
 
 Alertmanager delivers alerts to `ALERT_WEBHOOK_URL` (Alertmanager webhook JSON, e.g. an ntfy topic) and/or `ALERT_EMAIL_TO`. SMTP comes from `ALERT_SMTP_*` and falls back to `SMTP_*`. `monitoring/alertmanager/render-config.sh` renders the configuration at container start. Without a receiver, alerts are only visible in the UIs, and Alertmanager logs a warning.
 
@@ -57,7 +57,7 @@ ssh -L 9090:localhost:9090 -L 9093:localhost:9093 root@<server>
 Run the rule unit tests after changing `alerts.yml`:
 
 ```sh
-docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool prom/prometheus:v2.54.1 test rules alerts.test.yml
+docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool prom/prometheus:v3.15.0 test rules alerts.test.yml
 ```
 
 ## Encrypted backups

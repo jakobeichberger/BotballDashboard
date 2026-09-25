@@ -8,6 +8,12 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 - Neue Formel-Vorlagen `ecer_2026_open_results` (Open ohne Paper, wie die veröffentlichten Ergebnisse) und `ecer_2026_botball_rubric` (Doku als Anteil am Bewertungsmaximum, wie die Amendments). Damit entscheidet der Veranstalter pro Saison, welche Lesart gilt; die bisherigen Vorlagen bleiben unverändert.
 
+### Node.js 24 und Monitoring-Images
+
+- **Node.js 24 LTS** statt 22 für den Frontend-Build: `frontend/Dockerfile`, `Dockerfile.dev` und `docker-compose.dev.yml` (`node:24-alpine`), alle `setup-node`-Schritte der CI und `scripts/proxmox-setup.sh` (NodeSource `setup_24.x`). `scripts/update.sh` warnt, wenn auf dem Host noch ein älteres Node das Frontend baut ([Update-Anleitung](docs/documentation/installation/update.md#versionshinweis-nodejs-24-und-neue-monitoring-images-2026-09)).
+- **Monitoring** (übernimmt Dependabot #29, Prometheus darüber hinaus): Prometheus v3.5.5 → v3.15.0, Alertmanager v0.27.0 → v0.34.1, Blackbox-Exporter v0.25.0 → v0.28.0. Die Konfiguration bleibt unverändert und ist mit den neuen Images geprüft (`promtool check config`, `promtool test rules`, `amtool check-config` für alle Varianten von `render-config.sh`).
+- Doku: Versionstabelle in `docs/documentation/technical/deployment.md` aktualisiert (Traefik v3.7, node-exporter und postgres-exporter ergänzt), promtool-Aufrufe auf v3.15.0.
+
 ### Schulung „Von der Frage zum Auftrag“
 
 - `docs/schulung/schueler-handbuch.md` und `schueler-handbuch.html`: Handbuch für Schülerinnen und Schüler mit LEDVV, Hebeln für bessere Ergebnisse, Prüfregeln, Übungen mit Lösungen und Glossar. Die HTML-Fassung enthält einen Prompt-Baukasten, der Aufträge nach LEDVV zusammensetzt, fehlende Teile anzeigt und vor Passwörtern im Text warnt.
