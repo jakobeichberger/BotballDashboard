@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=84.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -25,7 +25,7 @@ dependencies = [
 
     # ── Auth ──────────────────────────────────────────────────
     "PyJWT==2.15.0",
-    "bcrypt==4.3.0",
+    "bcrypt==5.0.0",
 
     # ── Redis / task queue ────────────────────────────────────
     "redis[hiredis]==8.1.0",
@@ -47,7 +47,7 @@ dependencies = [
     # ── OCR / file handling ───────────────────────────────────
     "aiofiles==25.1.0",
     "python-magic==0.4.27",
-    "opencv-python-headless==4.14.0.94",
+    "opencv-python-headless==5.0.0.93",
     "pytesseract==0.3.13",
     "Pillow==12.3.0",
     "qrcode==8.2",
@@ -59,7 +59,7 @@ dependencies = [
     "websockets==17.1",
 
     # ── PDF Export ────────────────────────────────────────────
-    "reportlab==4.5.1",
+    "reportlab==5.0.1",
     # Text extraction for the paper version diff.
     "pypdf==6.19.0",
 ]

@@ -105,11 +105,13 @@ if __name__ == "__main__":
     # The same policy as the API (length, repetition, e-mail, common
     # passwords). Only in development a weak password merely warns, so the dev
     # compose setup keeps working with its throwaway admin.
-    from modules.auth.password_policy import password_problem
+    # A password bcrypt cannot hash is refused in development, too.
+    from modules.auth.password_policy import password_problem, password_too_long
 
     problem = password_problem(password, args.email)
     if problem:
-        if os.environ.get("APP_ENV", "production").strip().lower() != "development":
+        development = os.environ.get("APP_ENV", "production").strip().lower() == "development"
+        if not development or password_too_long(password):
             print(f"[ERROR] {problem}", file=sys.stderr)
             sys.exit(1)
         print(f"[WARN] {problem} (accepted because APP_ENV is development)", file=sys.stderr)

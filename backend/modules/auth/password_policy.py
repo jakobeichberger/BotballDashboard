@@ -4,6 +4,10 @@ from functools import cache
 from pathlib import Path
 
 MIN_LENGTH = 10
+# bcrypt only uses the first 72 bytes of a password; bcrypt 5 refuses longer
+# ones instead of cutting them off. Bytes, not characters: in UTF-8 an umlaut
+# counts twice and an emoji four times.
+MAX_BYTES = 72
 COMMON_PASSWORDS_FILE = Path(__file__).with_name("common_passwords.txt")
 
 
@@ -18,10 +22,17 @@ def is_common_password(password: str) -> bool:
     return password.strip().lower() in common_passwords()
 
 
+def password_too_long(password: str) -> bool:
+    """More than bcrypt can hash (MAX_BYTES of UTF-8)."""
+    return len(password.encode("utf-8")) > MAX_BYTES
+
+
 def password_problem(password: str, email: str | None = None) -> str | None:
     """Return why ``password`` is not acceptable, or None when it is."""
     if len(password) < MIN_LENGTH:
         return f"Password must be at least {MIN_LENGTH} characters"
+    if password_too_long(password):
+        return f"Password must be at most {MAX_BYTES} bytes (umlauts count 2, emoji 4)"
     if len(set(password)) == 1:
         return "Password must not consist of a single repeated character"
     if email and password.strip().lower() == email.strip().lower():

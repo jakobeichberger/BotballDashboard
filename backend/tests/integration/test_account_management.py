@@ -113,6 +113,60 @@ class TestPasswordPolicy:
             assert resp.status_code == 422, resp.text
             assert "common or leaked" in resp.text
 
+    async def test_every_password_path_rejects_passwords_over_72_bytes(
+        self, client, user, auth_headers, sent_mails
+    ):
+        # 50 characters, but 75 bytes: more than bcrypt 5 accepts.
+        too_long = "Grüße-äöü-" * 5
+        headers = await _headers(client)
+        created = await client.post(
+            "/api/auth/users",
+            json={"email": "new@example.com", "display_name": "N", "password": too_long},
+            headers=auth_headers,
+        )
+        changed = await client.post(
+            "/api/auth/me/password",
+            json={"current_password": PASSWORD, "new_password": too_long},
+            headers=headers,
+        )
+        admin_set = await client.post(
+            f"/api/auth/users/{user.id}/password",
+            json={"new_password": too_long},
+            headers=auth_headers,
+        )
+        await client.post("/api/auth/password-reset/request", json={"email": "user@example.com"})
+        reset = await client.post(
+            "/api/auth/password-reset/confirm",
+            json={"token": sent_mails[0][1], "new_password": too_long},
+        )
+        for resp in (created, changed, admin_set, reset):
+            assert resp.status_code == 422, resp.text
+            assert "at most 72 bytes" in resp.text
+
+    async def test_long_password_from_bcrypt_4_still_logs_in(self, client, db):
+        # bcrypt 4.3.0 hashed only the first 72 of these 86 bytes.
+        legacy = (
+            "correct horse battery staple – Grüße aus dem Turniersaal, 2025 edition!!" + "x" * 10
+        )
+        db.add(
+            User(
+                email="legacy@example.com",
+                display_name="Legacy",
+                hashed_password="$2b$04$Tl3WvJeUPyput3IUyJnzR.oezRFSZHTFQokzClfYof.FNa351Pise",
+                is_active=True,
+            )
+        )
+        await db.commit()
+        headers = await _headers(client, email="legacy@example.com", password=legacy)
+        # Changing it works with the old password; the new one must fit.
+        resp = await client.post(
+            "/api/auth/me/password",
+            json={"current_password": legacy, "new_password": "a-new-secret-1"},
+            headers=headers,
+        )
+        assert resp.status_code == 204, resp.text
+        assert (await _login(client, "legacy@example.com", "a-new-secret-1")).status_code == 200
+
     async def test_create_user_rejects_email_as_password(self, client, auth_headers):
         resp = await client.post(
             "/api/auth/users",
