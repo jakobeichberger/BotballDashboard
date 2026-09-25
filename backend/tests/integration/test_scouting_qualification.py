@@ -208,6 +208,25 @@ async def test_external_team_edit_rights(client, db, auth_headers, team, externa
     assert [t["name"] for t in listing.json()] == ["Robo Masters"]
 
 
+@pytest.mark.asyncio
+async def test_external_team_reports_its_creator(client, db, season, team):
+    """created_by lets the UI offer editing only where the backend allows it."""
+    mentor = await _user(db, MENTOR, team)
+    created = await client.post(
+        "/api/scoring/external-teams",
+        headers=mentor,
+        json={"season_id": season.id, "name": "Observed"},
+    )
+    assert created.status_code == 201, created.text
+    creator = created.json()["created_by"]
+    assert creator
+    resp = await client.patch(
+        f"/api/scoring/external-teams/{created.json()['id']}", headers=mentor, json={"number": "7"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["created_by"] == creator
+
+
 # ── Qualification ─────────────────────────────────────────────────────────────
 
 

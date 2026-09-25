@@ -7,6 +7,7 @@ from core.auth import (
     assert_team_access,
     bearer_scheme,
     get_current_user,
+    has_elevated_access,
     permissions_of,
     require_permission,
 )
@@ -58,6 +59,9 @@ router = APIRouter(prefix="/scoring", tags=["scoring"])
 _DE = [Depends(require_season_event_module("double_elimination"))]
 _AERIAL = [Depends(require_season_event_module("aerial"))]
 _DOC = [Depends(require_season_event_module("documentation"))]
+
+# Match fields only jurors (scoring:admin) may change, see update_match.
+_PENALTY_FIELDS = frozenset({"is_disqualified", "yellow_card", "red_card"})
 
 
 # The former unauthenticated /scoreboard/ws streamed the global channel of
@@ -241,13 +245,15 @@ async def update_match(
     # Organizers may edit any match; mentors only their own team's.
     existing = await service.get_match(db, match_id)
     await assert_team_access(db, current_user, existing.team_id, "scoring:admin")
+    changes = body.model_dump(exclude_none=True)
+    # Cards and disqualifications are referee decisions: a mentor editing the
+    # own team's score must not be able to set or lift them.
+    if _PENALTY_FIELDS & changes.keys() and not await has_elevated_access(
+        db, current_user, "scoring:admin"
+    ):
+        raise ForbiddenError("Only jurors may set cards or disqualifications")
     version_before = existing.version
-    match = await service.update_match(
-        db,
-        match_id,
-        changed_by=current_user.id,
-        **body.model_dump(exclude_none=True),
-    )
+    match = await service.update_match(db, match_id, changed_by=current_user.id, **changes)
     _broadcast_schedule_update(db, match.event_id, match.scheduled_match_id)
     await _broadcast_ranking_update(db, match.event_id)
     if match.version != version_before:

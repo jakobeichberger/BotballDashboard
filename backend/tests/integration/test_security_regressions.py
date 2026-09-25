@@ -95,6 +95,54 @@ class TestMentorCannotTouchOtherTeams:
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("field", ["is_disqualified", "yellow_card", "red_card"])
+    async def test_cannot_set_penalties_on_own_match(
+        self, client, db, season, team, auth_headers, field
+    ):
+        created = await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"pts": 10}},
+        )
+        match_id = created.json()["id"]
+        await db.commit()
+
+        _, headers = await _mentor(db, team)
+        resp = await client.patch(
+            f"/api/scoring/matches/{match_id}", headers=headers, json={field: False}
+        )
+        assert resp.status_code == 403
+        # The own-team score itself stays editable for the mentor.
+        resp = await client.patch(
+            f"/api/scoring/matches/{match_id}", headers=headers, json={"notes": "fixed"}
+        )
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_juror_sets_cards_and_disqualification(self, client, season, team, auth_headers):
+        created = await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"pts": 10}},
+        )
+        match = created.json()
+        resp = await client.patch(
+            f"/api/scoring/matches/{match['id']}",
+            headers=auth_headers,
+            json={
+                "yellow_card": True,
+                "is_disqualified": True,
+                "expected_version": match["version"],
+                "correction_reason": "Robot left the board",
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["yellow_card"] is True and body["is_disqualified"] is True
+        # A penalty is a score change: it gets its own audit revision.
+        assert body["version"] == match["version"] + 1
+
+    @pytest.mark.asyncio
     async def test_cannot_patch_another_teams_paper(
         self, client, db, season, team, rival, auth_headers
     ):
