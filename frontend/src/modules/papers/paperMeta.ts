@@ -101,6 +101,16 @@ export interface ReviewerAssignment {
   completed_at: string | null;
 }
 
+export interface PaperStatusChange {
+  id: string;
+  paper_id: string;
+  from_status: string | null;
+  to_status: string;
+  reason: string | null;
+  changed_by: string | null;
+  changed_at: string;
+}
+
 export interface PaperVersion {
   id: string;
   version_number: number;

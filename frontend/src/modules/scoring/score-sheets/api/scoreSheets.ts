@@ -37,6 +37,27 @@ export interface ScoreSheetTemplateListItem {
   uploaded_at: string
 }
 
+/** An OCR box: normalized (0–1 of the page) or, for old layouts, pixels. */
+export interface OcrRegion {
+  key: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface OcrAnchor extends Omit<OcrRegion, 'key'> {
+  name: string
+}
+
+export interface ScoreSheetLayout {
+  page_width: number
+  page_height: number
+  anchors: OcrAnchor[]
+  field_regions: OcrRegion[]
+  validation_rules: Record<string, unknown>
+}
+
 export interface ScoreSheetTemplate extends ScoreSheetTemplateListItem {
   season_id: string
   competition_level_id: string | null
@@ -46,6 +67,11 @@ export interface ScoreSheetTemplate extends ScoreSheetTemplateListItem {
   uploaded_by: string
   confirmed_by: string | null
   confirmed_at: string | null
+  page_width?: number | null
+  page_height?: number | null
+  anchors?: OcrAnchor[] | null
+  field_regions?: OcrRegion[] | null
+  validation_rules?: Record<string, unknown> | null
 }
 
 export interface UploadScoreSheetParams {
@@ -99,6 +125,9 @@ export const scoreSheetApi = {
 
   setActive: (sheetId: string) =>
     api.put(`/scoring/score-sheets/${sheetId}/active`),
+
+  updateLayout: (sheetId: string, layout: ScoreSheetLayout) =>
+    api.patch<ScoreSheetTemplate>(`/scoring/score-sheets/${sheetId}/layout`, layout).then(r => r.data),
 
   delete: (sheetId: string) =>
     api.delete(`/scoring/score-sheets/${sheetId}`),

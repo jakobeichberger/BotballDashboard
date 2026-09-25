@@ -179,3 +179,52 @@ describe("PaperDetailPage", () => {
     expect(screen.getByLabelText("Formales (0–10)")).toHaveValue(10);
   });
 });
+
+describe("PaperDetailPage reviewer reminders and status history", () => {
+  const assignments = [
+    { id: "a1", reviewer_id: "rev1", assigned_at: "2026-03-02T10:00:00Z", due_at: null, status: "pending", version_number: 2, reminder_sent_at: "2026-03-05T08:00:00Z", completed_at: null },
+    { id: "a2", reviewer_id: "rev2", assigned_at: "2026-03-02T10:00:00Z", due_at: null, status: "completed", version_number: 2, reminder_sent_at: null, completed_at: "2026-03-04T10:00:00Z" },
+  ];
+  const history = [
+    { id: "h2", paper_id: "p1", from_status: "submitted", to_status: "under_review", reason: "Reviewer zugewiesen", changed_by: "org", changed_at: "2026-03-02T10:00:00Z" },
+    { id: "h1", paper_id: "p1", from_status: null, to_status: "draft", reason: null, changed_by: "org", changed_at: "2026-03-01T10:00:00Z" },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const paper = makePaper({ status: "under_review", assignments });
+    (api.get as any).mockImplementation((url: string) => {
+      if (url === "/papers/p1") return Promise.resolve({ data: paper });
+      if (url === "/papers/p1/history") return Promise.resolve({ data: history });
+      if (url === "/auth/users") return Promise.resolve({ data: [{ id: "rev1", display_name: "Rita Reviewer" }, { id: "rev2", display_name: "Rolf" }, { id: "org", display_name: "Orga" }] });
+      return Promise.resolve({ data: [] });
+    });
+    (api.post as any).mockResolvedValue({ data: {} });
+  });
+
+  function asOrganizer() {
+    useAuthStore.setState({
+      user: { id: "org", email: "o@x", display_name: "Orga", is_superuser: false, preferred_language: "de", theme: "light", roles: [], permissions: ["papers:read", "papers:admin", "users:read"] },
+    });
+  }
+
+  it("lets organizers remind reviewers with open reviews", async () => {
+    asOrganizer();
+    renderPage();
+    const remind = await screen.findByRole("button", { name: "Rita Reviewer an das Review erinnern" });
+    expect(screen.queryByRole("button", { name: "Rolf an das Review erinnern" })).not.toBeInTheDocument();
+    expect(remind.closest("tr")).toHaveTextContent("erinnert am");
+    await userEvent.click(remind);
+    expect(api.post).toHaveBeenCalledWith("/papers/p1/assignments/a1/remind");
+  });
+
+  it("shows the status history to everyone who can read the paper", async () => {
+    asMentor();
+    renderPage();
+    const section = (await screen.findByRole("heading", { name: "Statusverlauf" })).closest("section")!;
+    const items = within(section).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("Reviewer zugewiesen");
+    expect(screen.queryByRole("button", { name: /an das Review erinnern/ })).not.toBeInTheDocument();
+  });
+});

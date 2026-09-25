@@ -64,7 +64,7 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
             <ol className="mt-1 space-y-0.5 text-xs text-gray-500">
               {revisions.map((rev) => (
                 <li key={rev.id}>
-                  {t("review.revision", { revision: rev.revision })} {rev.previous_total_score ?? "—"} → {rev.new_total_score}
+                  {t("review.revision", { revision: rev.revision })} {rev.previous_value?.total_score ?? "—"} → {rev.new_value?.total_score ?? "—"}
                   {rev.reason ? ` (${rev.reason})` : ""} · {formatDateTime(rev.created_at)}
                 </li>
               ))}

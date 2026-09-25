@@ -131,7 +131,33 @@
     "publish": "Veröffentlichen",
     "modules": "Aktive Module",
     "moduleBlocked": "In der Saison deaktiviert",
-    "moduleStaysInactive": " – bleibt inaktiv"
+    "moduleStaysInactive": " – bleibt inaktiv",
+    "phaseType": "Phasentyp",
+    "phaseRounds": "Runden",
+    "roundsCount_one": "{{count}} Runde",
+    "roundsCount_other": "{{count}} Runden",
+    "phaseStatus": {
+      "draft": "Entwurf",
+      "scheduled": "Geplant",
+      "live": "Live",
+      "completed": "Abgeschlossen"
+    },
+    "editPhase": "Phase {{name}} bearbeiten",
+    "deletePhase": "Phase {{name}} löschen",
+    "confirmDeletePhase": "Phase „{{name}}“ löschen? Ihr Zeitplan wird mit gelöscht.",
+    "phaseLockedHint": "Die Phase läuft oder ist abgeschlossen: Der Typ ist gesperrt, löschen ist nicht möglich.",
+    "phaseLockedDelete": "Laufende oder abgeschlossene Phasen können nicht gelöscht werden.",
+    "category": "Kategorie",
+    "checkedInCount": "{{checkedIn}} von {{total}} eingecheckt",
+    "checkInTeam": "{{team}} eingecheckt",
+    "checkedInAt": "da seit {{time}}",
+    "removeRegistration": "Registrierung von {{team}} entfernen",
+    "confirmRemoveRegistration": "Registrierung von {{team}} entfernen?",
+    "bracketWeights": "Bracket-Gewichtung dieses Events",
+    "bracketWeightsHint": "Überschreibt für dieses Event die Saison-Gewichtung aus den Punkteformeln. Ohne eigene Werte gilt die Saison-Gewichtung.",
+    "useSeasonWeights": "Saison-Gewichtung verwenden",
+    "weightsSaved": "Bracket-Gewichtung gespeichert.",
+    "weightsReset": "Es gilt wieder die Saison-Gewichtung."
   },
   "schedulePage": {
     "seedsTaken": "Setzliste aus dem Seeding übernommen ({{count}} Teams).",
@@ -164,5 +190,13 @@
   },
   "seed": "Seed",
   "best": "Best",
-  "pointsShort": "{{points}} P."
+  "pointsShort": "{{points}} P.",
+  "alliances": {
+    "title": "Alliance-Wertung: {{phase}}",
+    "hint": "Zwei Teams spielen zusammen; ein Lauf zählt die Summe beider Teams. Rang nach bestem Lauf, dann nach der Summe aller Läufe.",
+    "alliance": "Alliance",
+    "runs": "Läufe",
+    "total": "Summe",
+    "empty": "Noch keine Alliance-Läufe."
+  }
 }

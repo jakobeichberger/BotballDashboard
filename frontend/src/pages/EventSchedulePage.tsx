@@ -6,6 +6,7 @@ import { CalendarDays, ListOrdered, WandSparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import BracketView from "@/components/BracketView";
+import AllianceStandings from "@/components/events/AllianceStandings";
 import type { BracketPhase, EventPhase, ScheduledMatch } from "@/api/types";
 import { phaseLabel } from "@/api/analytics";
 import { formatDateTime } from "@/i18n/format";
@@ -315,6 +316,10 @@ export default function EventSchedulePage() {
           <p className="p-8 text-center text-gray-500">{t("schedulePage.empty")}</p>
         )}
       </div>
+
+      {phases.data?.filter((phase) => phase.phase_type === "alliance").map((phase) => (
+        <AllianceStandings key={phase.id} eventId={eventId} phase={phase} />
+      ))}
 
       {!!bracket.data?.length && (
         <section className="card mt-6 p-4" aria-labelledby="bracket-heading">

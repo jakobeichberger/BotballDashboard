@@ -131,7 +131,33 @@
     "publish": "Publish",
     "modules": "Active modules",
     "moduleBlocked": "Disabled for the season",
-    "moduleStaysInactive": " – stays inactive"
+    "moduleStaysInactive": " – stays inactive",
+    "phaseType": "Phase type",
+    "phaseRounds": "Rounds",
+    "roundsCount_one": "{{count}} round",
+    "roundsCount_other": "{{count}} rounds",
+    "phaseStatus": {
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "live": "Live",
+      "completed": "Completed"
+    },
+    "editPhase": "Edit phase {{name}}",
+    "deletePhase": "Delete phase {{name}}",
+    "confirmDeletePhase": "Delete phase “{{name}}”? Its schedule is deleted with it.",
+    "phaseLockedHint": "The phase is live or completed: its type is locked and it cannot be deleted.",
+    "phaseLockedDelete": "Live or completed phases cannot be deleted.",
+    "category": "Category",
+    "checkedInCount": "{{checkedIn}} of {{total}} checked in",
+    "checkInTeam": "{{team}} checked in",
+    "checkedInAt": "here since {{time}}",
+    "removeRegistration": "Remove the registration of {{team}}",
+    "confirmRemoveRegistration": "Remove the registration of {{team}}?",
+    "bracketWeights": "Bracket weights of this event",
+    "bracketWeightsHint": "Overrides the season weights from the scoring formulas for this event. Without own values the season weights apply.",
+    "useSeasonWeights": "Use season weights",
+    "weightsSaved": "Bracket weights saved.",
+    "weightsReset": "The season weights apply again."
   },
   "schedulePage": {
     "seedsTaken": "Seed list taken from the seeding ({{count}} teams).",
@@ -164,5 +190,13 @@
   },
   "seed": "Seed",
   "best": "Best",
-  "pointsShort": "{{points}} pts"
+  "pointsShort": "{{points}} pts",
+  "alliances": {
+    "title": "Alliance ranking: {{phase}}",
+    "hint": "Two teams play together; a run counts the sum of both teams. Ranked by the best run, then by the total of all runs.",
+    "alliance": "Alliance",
+    "runs": "Runs",
+    "total": "Total",
+    "empty": "No alliance runs yet."
+  }
 }

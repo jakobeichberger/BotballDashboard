@@ -16,10 +16,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { useScoringScope } from '@/hooks/useScoringScope'
 import { scoreSheetApi, type ScoreSheetTemplateListItem } from '../api/scoreSheets'
 import ScoreSheetUploadForm from '../components/ScoreSheetUploadForm'
 import FieldCandidateEditor from '../components/FieldCandidateEditor'
+import OcrLayoutEditor from '../components/OcrLayoutEditor'
 
 const OCR_STATUS_BADGE: Record<string, string> = {
   pending:    'badge badge-gray',
@@ -30,10 +32,11 @@ const OCR_STATUS_BADGE: Record<string, string> = {
 
 export default function ScoreSheetsPage() {
   const { t } = useTranslation('scoring')
-  const { seasonId, competitionLevelId } = useParams<{
-    seasonId: string
-    competitionLevelId?: string
-  }>()
+  // The page lives under /events/:eventId: templates belong to that event's
+  // season; an optional ?competition_level_id= narrows the list.
+  const { seasonId } = useScoringScope()
+  const [searchParams] = useSearchParams()
+  const competitionLevelId = searchParams.get('competition_level_id') ?? undefined
   const queryClient = useQueryClient()
 
   const [showUpload, setShowUpload] = useState(false)
@@ -220,6 +223,14 @@ export default function ScoreSheetsPage() {
                   queryClient.invalidateQueries({ queryKey: ['score-sheets', 'detail', selectedId] })
                 }
               />
+              <div className="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
+                <OcrLayoutEditor
+                  template={selectedSheet}
+                  onSaved={() =>
+                    queryClient.invalidateQueries({ queryKey: ['score-sheets', 'detail', selectedId] })
+                  }
+                />
+              </div>
             </div>
           )}
         </div>

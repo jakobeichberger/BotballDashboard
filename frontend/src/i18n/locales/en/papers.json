@@ -214,6 +214,10 @@
     "reopen": "Reopen",
     "noReviews": "No reviews yet",
     "assignedReviewers": "Assigned reviewers ({{count}})",
-    "noAssignments": "No assignments"
+    "noAssignments": "No assignments",
+    "remind": "Remind",
+    "remindReviewer": "Remind {{name}} of the review",
+    "remindedAt": "reminded {{date}}",
+    "statusHistory": "Status history"
   }
 }

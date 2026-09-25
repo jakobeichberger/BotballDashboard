@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trans, useTranslation } from "react-i18next";
-import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy, Pencil, X } from "lucide-react";
+import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy, Pencil, X, Flag } from "lucide-react";
 import { api, isQueuedResponse } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import PendingScores from "@/components/PendingScores";
@@ -12,6 +12,7 @@ import { useScoringScope } from "@/hooks/useScoringScope";
 import clsx from "clsx";
 import { computeSheet, normalize } from "@/modules/scoring/sheet/calculator";
 import ChecklistConfirmDialog from "@/modules/scoring/extras/ChecklistConfirmDialog";
+import MatchPenaltyDialog, { PenaltyBadges, type PenaltyMatch } from "@/modules/scoring/extras/MatchPenaltyDialog";
 import type { RuleSet } from "@/modules/scoring/extras/types";
 import { formatNumber } from "@/i18n/format";
 
@@ -143,6 +144,8 @@ export default function ScoreEntryPage() {
   });
   // With a referee checklist configured the juror ticks it before confirming.
   const startConfirm = (mid: string) => (checklist.length ? setChecklistMatchId(mid) : confirmM.mutate({ mid }));
+  // Cards and DQ are referee decisions (scoring:admin), see MatchPenaltyDialog.
+  const [penaltyMatch, setPenaltyMatch] = useState<(PenaltyMatch & { team_id: string; round_number: number }) | null>(null);
   const deleteM = useMutation({
     mutationFn: (mid: string) => api.delete(`/scoring/matches/${mid}`),
     onSuccess: invalidate, onError,
@@ -329,6 +332,7 @@ export default function ScoreEntryPage() {
                     <span className={m.confirmed_by ? "badge-green" : "badge-yellow"}>
                       {m.confirmed_by ? t("entry.confirmed") : t("entry.open")}
                     </span>
+                    <PenaltyBadges match={m} />
                   </td>
                 )}
                 {canManageAll && (
@@ -337,6 +341,11 @@ export default function ScoreEntryPage() {
                       <button onClick={() => startEdit(m)} disabled={!online}
                               className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
                               title={t("common:edit")}><Pencil className="w-4 h-4" /></button>
+                      {!isPractice && (
+                        <button onClick={() => setPenaltyMatch(m)} disabled={!online}
+                                className="p-1 rounded text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 disabled:opacity-40"
+                                title={t("penalty.open")} aria-label={t("penalty.openFor", { team: teamName(m.team_id), round: m.round_number })}><Flag className="w-4 h-4" /></button>
+                      )}
                       {!isPractice && !m.confirmed_by && (
                         <button onClick={() => startConfirm(m.id)} disabled={confirmM.isPending}
                                 className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"
@@ -358,6 +367,12 @@ export default function ScoreEntryPage() {
           </tbody>
         </table>
       </section>
+      <MatchPenaltyDialog
+        match={penaltyMatch}
+        title={penaltyMatch ? t("penalty.title", { team: teamName(penaltyMatch.team_id), round: penaltyMatch.round_number }) : ""}
+        onClose={() => setPenaltyMatch(null)}
+        onSaved={invalidate}
+      />
       <ChecklistConfirmDialog
         open={!!checklistMatchId}
         items={checklist}
