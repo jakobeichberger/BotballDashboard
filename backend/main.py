@@ -19,9 +19,11 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy.exc import IntegrityError
 
 from core.config import get_settings
+from core.exceptions import RequestTooLargeError
 from core.logging import configure_logging
 from core.metrics import observe_request, render_metrics
 from core.modules import MODULES
+from core.request_limits import BodySizeLimitMiddleware, body_limit_bytes
 from modules.events.module_access import require_module
 
 settings = get_settings()
@@ -52,7 +54,10 @@ def _request_id(request: Request) -> str:
     return candidate if re.fullmatch(r"[A-Za-z0-9._-]{1,64}", candidate) else str(uuid.uuid4())
 
 
-_PRINT_UPLOAD_PATH = re.compile(r"/api/printing/jobs/[^/]+/file")
+# Counts the body bytes as they arrive (chunked requests carry no
+# Content-Length). Added first, so it is the innermost middleware: its 413 goes
+# through the regular error handler with request id and CORS headers.
+app.add_middleware(BodySizeLimitMiddleware)
 
 
 @app.middleware("http")
@@ -62,22 +67,10 @@ async def request_context_and_security(request: Request, call_next):
         content_length = int(request.headers.get("content-length", "0") or 0)
     except ValueError:
         content_length = 0
-    # Print job files have their own, larger limit (PRINT_UPLOAD_MAX_MB); the
-    # upload route enforces it exactly while streaming the file to disk.
-    limit_mb = (
-        settings.print_upload_max_mb
-        if _PRINT_UPLOAD_PATH.fullmatch(request.url.path)
-        else settings.max_upload_size_mb
-    )
-    if request.method in {"POST", "PUT", "PATCH"} and content_length > (limit_mb + 1) * 1024 * 1024:
+    # An honest Content-Length is refused up front, before anything is read.
+    if content_length > body_limit_bytes(request.url.path):
         return JSONResponse(
-            status_code=413,
-            content={
-                "code": "request_too_large",
-                "message": "Request exceeds the configured size limit.",
-                "fieldErrors": {},
-                "requestId": request.state.request_id,
-            },
+            status_code=413, content=RequestTooLargeError.body(request.state.request_id)
         )
     response = await observe_request(request, call_next)
     response.headers["X-Request-ID"] = request.state.request_id
