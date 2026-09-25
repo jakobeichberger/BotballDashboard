@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from core.config import get_settings
 from core.logging import get_logger
-from core.redis_client import shared_redis
+from core.redis_client import REDIS_ERRORS, shared_redis
 
 logger = get_logger("live")
 
@@ -58,7 +58,7 @@ async def publish_live_event(event_id: str, event: str, payload: dict | None = N
             pipe.publish(_channel(None), message)
             await pipe.execute()
         return True
-    except Exception as exc:
+    except REDIS_ERRORS as exc:
         logger.warning("live_publish_failed", event_id=event_id, error=str(exc))
         return False
 
@@ -235,7 +235,7 @@ class LiveHub:
                     self._dispatch(message["channel"], message["data"])
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - whatever ends the shared subscription, every subscriber must hear of it
             logger.warning("live_subscription_failed", error=str(exc))
             reader.error = exc
             reader.ready.set()
@@ -289,7 +289,7 @@ async def stream_live_events(websocket: WebSocket, event_id: str | None) -> None
                 receiver = asyncio.ensure_future(websocket.receive_text())
     except WebSocketDisconnect:
         pass
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - the client is told to reconnect, whatever broke
         logger.warning("live_stream_failed", event_id=event_id, error=str(exc))
         with suppress(Exception):
             await websocket.send_json(

@@ -98,12 +98,6 @@ ignore = [
 "modules/exports/pdf_builder.py" = ["E501"]
 "scripts/create_admin.py" = ["E501"]
 "tests/conftest.py" = ["E402"]
-# Fail-open Redis paths and the best-effort audit middleware catch everything
-# on purpose; they are reviewed together with the Redis client and audit code.
-"core/live.py" = ["BLE001"]
-"core/rate_limit.py" = ["BLE001"]
-"main.py" = ["BLE001"]
-"modules/scoring/score_sheets/scan_routes.py" = ["BLE001"]
 
 [tool.mypy]
 explicit_package_bases = true

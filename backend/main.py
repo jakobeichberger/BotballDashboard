@@ -17,7 +17,9 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
-from sqlalchemy.exc import IntegrityError
+from kombu.exceptions import KombuError
+from redis.exceptions import RedisError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from core.audit import AuditMiddleware
 from core.config import get_settings
@@ -25,6 +27,7 @@ from core.exceptions import RequestTooLargeError
 from core.logging import AccessLogMiddleware, configure_logging, get_logger
 from core.metrics import observe_request, render_metrics
 from core.modules import MODULES
+from core.redis_client import REDIS_ERRORS
 from core.request_limits import BodySizeLimitMiddleware, body_limit_bytes
 from modules.events.draft_access import hide_draft_events
 from modules.events.module_access import require_module
@@ -219,7 +222,7 @@ async def _worker_alive() -> bool:
             timeout=2,
         )
         alive = bool(replies)
-    except Exception as exc:  # noqa: BLE001 - any broker error means "not ready"
+    except (KombuError, RedisError, OSError, TimeoutError) as exc:  # broker unreachable
         logger.warning("readiness_worker_check_failed", error=str(exc))
         alive = False
     _worker_check = (time.monotonic(), alive)
@@ -238,12 +241,12 @@ async def readiness() -> JSONResponse:
         async with engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
         checks["postgresql"] = True
-    except Exception as exc:  # noqa: BLE001 - reported as a failed check
+    except (SQLAlchemyError, OSError, TimeoutError) as exc:
         logger.warning("readiness_postgresql_failed", error=str(exc))
     redis = Redis.from_url(settings.redis_url)
     try:
         checks["redis"] = bool(await redis.ping())
-    except Exception as exc:  # noqa: BLE001 - reported as a failed check
+    except REDIS_ERRORS as exc:
         logger.warning("readiness_redis_failed", error=str(exc))
     finally:
         await redis.aclose()

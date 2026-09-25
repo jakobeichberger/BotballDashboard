@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 
 from core.logging import get_logger
 from core.metrics import record_redis_fail_open
-from core.redis_client import shared_redis
+from core.redis_client import REDIS_ERRORS, shared_redis
 
 logger = get_logger("rate_limit")
 
@@ -45,7 +45,7 @@ def rate_limit(bucket: str, limit: int, window_seconds: int) -> Callable:
         key = f"botball:rate:{bucket}:{address}"
         try:
             count, ttl = await _count(key, window_seconds)
-        except Exception as exc:
+        except REDIS_ERRORS as exc:
             # The readiness check reports Redis failure. Auth remains available for recovery.
             logger.warning("rate_limit_unavailable", bucket=bucket, error=str(exc))
             record_redis_fail_open("rate_limit")
