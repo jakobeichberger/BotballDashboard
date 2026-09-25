@@ -111,7 +111,7 @@ Expected output ends with `Uploads verified: N files match the manifest` and `Re
 ```sh
 cd /opt/botballdashboard
 make backup-now || true                               # safety copy of the current state
-docker compose stop backend worker beat backup        # nothing may write during the restore
+docker compose stop backend worker worker-ocr beat backup   # nothing may write during the restore
 docker compose run --rm --no-deps \
   -v /path/to/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
   -v /data/backups:/backups:ro \

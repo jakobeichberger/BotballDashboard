@@ -55,7 +55,7 @@ Was das Skript macht:
 | 5 | Fragt Domain, Let's-Encrypt-Mail, DB-Name/-User, optional SMTP, Backup-Schlüssel, Monitoring und Admin-Konto ab und schreibt `.env` (Rechte 600). Erzeugt automatisch `APP_SECRET_KEY`, `JWT_SECRET_KEY`, ein 43-stelliges `POSTGRES_PASSWORD` (falls keines eingegeben), einen Fernet-Schlüssel für `PRINTER_CREDENTIAL_ENCRYPTION_KEY` und – ohne eigenen Schlüssel – ein age-Schlüsselpaar für Backups (`/root/botball-backup-identity.txt`). Setzt `COMPOSE_PROFILES` (`production`, optional `monitoring`). |
 | 6 | Legt `/data/db` (UID 70) und `/data/backups` an |
 | 7 | Baut das Frontend auf dem Host (`pnpm build`) |
-| 8 | Baut das Backend-Image für `backend`, `worker`, `beat`, `backup` und das nginx-Frontend-Image (`frontend/Dockerfile.prebuilt`) |
+| 8 | Baut das Backend-Image für `backend`, `worker`, `worker-ocr`, `beat`, `backup` und das nginx-Frontend-Image (`frontend/Dockerfile.prebuilt`) |
 | 9 | Startet `db` und `redis`, legt Rolle/Datenbank bei Bedarf über TCP an, gleicht das DB-Passwort mit `.env` ab und startet dann **alle** Dienste der aktiven Profile. Wartet auf den Healthcheck des Backends. |
 | 10 | Erzeugt VAPID-Schlüssel (bestehende bleiben erhalten), baut das Frontend damit neu |
 | 11 | Legt den ersten Admin an (`scripts/create_admin.py`) |

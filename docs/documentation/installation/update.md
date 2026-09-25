@@ -31,7 +31,7 @@ Das Skript:
 
 1. speichert den laufenden Commit und die Alembic-Revision in `.deploy-state` (für den Rollback),
 2. holt mit `git pull --ff-only` den neuen Stand (`--ref v1.4` für einen Tag/Branch, `--no-pull` baut nur neu),
-3. baut die Backend-Images (`backend`, `worker`, `beat`, `backup`) mit aktuellen Basis-Images neu,
+3. baut die Backend-Images (`backend`, `worker`, `worker-ocr`, `beat`, `backup`) mit aktuellen Basis-Images neu,
 4. baut das Frontend: mit `pnpm` auf dem Host (wie beim Proxmox-Setup, `frontend/Dockerfile.prebuilt`), ohne `pnpm` per `docker compose build frontend`. Die Wahl lässt sich mit `FRONTEND_BUILD=host|docker` erzwingen.
 5. startet mit `docker compose up -d --remove-orphans` neu und wartet auf das gesunde Backend,
 6. führt `scripts/verify-deployment.sh` aus und endet mit Fehlercode, wenn eine Prüfung fehlschlägt.
@@ -40,7 +40,7 @@ Manuell entspricht das:
 
 ```bash
 git pull --ff-only
-docker compose build --pull backend worker beat backup
+docker compose build --pull backend worker worker-ocr beat backup
 # Frontend: entweder im Container …
 docker compose build --pull frontend
 # … oder (Proxmox-LXC) auf dem Host:

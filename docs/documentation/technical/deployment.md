@@ -9,8 +9,9 @@
 | `traefik` | traefik:v2.11 | – | Reverse Proxy, HTTP→HTTPS, Let's Encrypt (TLS-Challenge) |
 | `frontend` | `botballdashboard-frontend:local` (lokal gebaut) | – | nginx mit dem React-Build; unbekannte `/api/*`-Pfade → 404 |
 | `backend` | lokal aus `backend/` | – | FastAPI; `migrate-then-start.sh` führt `alembic upgrade head` aus und startet Uvicorn |
-| `worker` | wie backend | – | Celery-Worker: OCR, Web-Push-Outbox, Drucker-Polling |
-| `beat` | wie backend | – | Celery-Beat: plant Outbox (10 s), Drucker (15 s), Paper-Fristen (1 h) |
+| `worker` | wie backend | – | Celery-Worker (Queues `default`, `periodic`): Web-Push-Outbox, Drucker-Polling, Erinnerungen |
+| `worker-ocr` | wie backend | – | Celery-Worker (Queue `ocr`): Score-Sheet-OCR |
+| `beat` | wie backend | – | Celery-Beat: plant Outbox (10 s), Drucker (15 s), Paper-Fristen (1 h), Outbox-Aufräumen (täglich); jeder Auftrag verfällt nach seinem Intervall |
 | `db` | postgres:16-alpine | – | Datenbank (Volume `pgdata`, optional Bind-Mount `/data/db`) |
 | `redis` | redis:7-alpine | – | Celery-Broker, Rate-Limits, Event-Streams |
 | `backup` | wie backend | `production` | `backup_scheduler.py`: tägliche verschlüsselte Backups, Healthcheck, Metriken auf :9101 |
@@ -39,7 +40,7 @@ curl https://dashboard.meineschule.at/api/system/health
 curl https://dashboard.meineschule.at/api/system/readiness
 ```
 
-Worker und Backup haben eigene Healthchecks: Der Worker muss auf `celery inspect ping` antworten. Der Backup-Dienst ist `unhealthy`, wenn der letzte Lauf fehlschlug oder älter als 26 h ist.
+Worker und Backup haben eigene Healthchecks: Beide Worker (`worker`, `worker-ocr`) müssen auf `celery inspect ping` antworten. Der Backup-Dienst ist `unhealthy`, wenn der letzte Lauf fehlschlug oder älter als 26 h ist.
 
 ---
 
@@ -136,7 +137,7 @@ make backup-status   # OK / UNHEALTHY: <Grund>
 Wiederherstellung (Test und Produktion) sowie Kopie außer Haus: [Betrieb](../../operations.md#encrypted-backups). Kurzfassung für die Produktion:
 
 ```bash
-docker compose stop backend worker beat backup
+docker compose stop backend worker worker-ocr beat backup
 docker compose run --rm --no-deps \
   -v /pfad/zu/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
   -v /data/backups:/backups:ro \

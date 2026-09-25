@@ -115,6 +115,15 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 - Rate-Limits für Passwort-Reset, E-Mail-Änderung, Kontolöschung und alle Uploads.
 - Passwörter aus einer mitgelieferten Liste von rund 2.300 häufigen oder geleakten Passwörtern (SecLists, ab 10 Zeichen, plus deutsche Muster) werden beim Anlegen, Ändern, Zurücksetzen und Setzen durch Admins abgelehnt, ohne Groß-/Kleinschreibung.
 
+### Performance
+
+- Öffentlicher WebSocket hält keine Datenbankverbindung mehr; ein Redis-Abo pro API-Prozess verteilt Live-Ereignisse an alle WebSockets. Geteilte Redis-Clients mit kurzen Timeouts für Veröffentlichen, Rate-Limit (jetzt atomar per Lua) und Cache.
+- Ranglisten, Gesamtwertung und öffentliche Ergebnisse werden pro Event versioniert in Redis gecacht und mit `ETag`/`304` ausgeliefert. Die Gesamtwertung lädt ihre Eingaben einmal für alle Kategorien.
+- Celery: eigene Queues (`ocr`, `periodic`, `default`) mit neuem Dienst `worker-ocr`, Beat-Aufträge verfallen, Tasks ohne Connection-Pool pro Event-Loop, Drucker werden gleichzeitig mit Timeout abgefragt.
+- Outbox: Zeilen werden beansprucht (`sending` mit Lease) und ohne offene Sperren versendet; nur die Push-Abos der Empfänger werden geladen. Neue Tabelle `notification_recipients` für die Benachrichtigungszentrale, Aufräumen nach 30 Tagen (`0032`).
+- Weniger Abfragen: Mentor-Dashboard und Team-Historie ohne N+1, Sammel-Wertungen sortieren die Rangliste einmal pro Anfrage, Audit-Zeile in der Transaktion der Anfrage, fehlende Indizes (`0032`), Seitenweise Abfrage (`limit`/`offset`) für Wertungslisten, öffentliche Ergebnisse und Zeitplan; Listen ohne `schema_snapshot`.
+- PDF-Exporte laufen im Threadpool. SQL-Logging nur noch mit `DB_ECHO=true`; `pool_pre_ping` und `pool_recycle` für die API.
+
 ## PR #23 – Frontend-Ausbau (#21) im eventzentrierten `main` (2026-09-24)
 
 ### Added

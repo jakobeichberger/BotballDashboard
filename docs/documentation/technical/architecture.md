@@ -30,7 +30,7 @@ BotballDashboard ist ein **modularer Monolith**. Es gibt ein FastAPI-Backend, ei
                    OctoPrint, Bambu Lab
 ```
 
-Dienste in `docker-compose.yml`: `traefik`, `db`, `redis`, `backend`, `worker`, `beat`, `frontend`. Dazu kommen im Profil `production` der Dienst `backup` und im Profil `monitoring` die Dienste `prometheus`, `blackbox` und `alertmanager`. Details stehen in [Deployment](deployment.md) und [docs/operations.md](../../operations.md).
+Dienste in `docker-compose.yml`: `traefik`, `db`, `redis`, `backend`, `worker`, `worker-ocr`, `beat`, `frontend`. Dazu kommen im Profil `production` der Dienst `backup` und im Profil `monitoring` die Dienste `prometheus`, `blackbox` und `alertmanager`. Details stehen in [Deployment](deployment.md) und [docs/operations.md](../../operations.md).
 
 ---
 
@@ -94,35 +94,61 @@ Das Rate-Limiting findet im Backend statt, nicht in Traefik (`core/rate_limit.py
 
 ### Worker und Beat
 
-`worker` und `beat` verwenden dasselbe Image wie das Backend (`celery -A core.celery_app:celery_app worker|beat`). Registrierte Tasks:
+`worker`, `worker-ocr` und `beat` verwenden dasselbe Image wie das Backend (`celery -A core.celery_app:celery_app worker|beat`). Die Tasks laufen in drei Queues (`core/celery_app.py`):
+
+- `ocr`: Score-Sheet-OCR. Nur der Dienst `worker-ocr` liest diese Queue. Ein Stapel hochgeladener Scans hält so weder Benachrichtigungen noch das Drucker-Polling auf.
+- `periodic`: alle Beat-Aufträge. Jeder Eintrag hat ein `expires` (etwa das eigene Intervall): Hängt der Worker hinterher, verfällt ein Lauf, den der nächste ohnehin ersetzt, statt sich aufzustauen.
+- `default`: alles andere. `worker` liest `default` und `periodic`.
+
+Jeder Task läuft in einer eigenen Event-Loop (`asyncio.run`, Helfer `run_task`). Deshalb nutzen die Tasks `WorkerSessionLocal` ohne Connection-Pool (`NullPool`): asyncpg-Verbindungen gehören zu der Loop, die sie geöffnet hat, und eine gepoolte Verbindung scheiterte im nächsten Task. `run_task` wartet außerdem auf Live-Events aus Commit-Hooks und schließt die Redis-Clients der Loop. Registrierte Tasks:
 
 | Task | Auslöser | Zweck |
 |---|---|---|
 | `score_sheets.extract_template` | Upload einer Score-Sheet-Vorlage | Text mit `pdftotext` extrahieren, Feldkandidaten erkennen |
 | `score_sheets.process_scan` | Upload/Retry eines Scans | Seite rastern, ausrichten (Anker der Vorlage, sonst Blattrand), Felder mit OpenCV/Tesseract lesen, Prüfregeln anwenden → Status `review` |
-| `printing.poll_printers` | Beat, alle 15 s | OctoPrint/Bambu abfragen, Job-Status und Fortschritt; `generic` (manuell) wird nicht abgefragt |
+| `printing.poll_printers` | Beat, alle 15 s | OctoPrint/Bambu gleichzeitig abfragen (je Drucker höchstens 10 s, keine offene Transaktion während des Wartens), Job-Status und Fortschritt; `generic` (manuell) wird nicht abgefragt |
 | `notifications.deliver_outbox` | Beat, alle 10 s | Outbox ausliefern (Push, E-Mail, optional Live-Kanal) |
+| `notifications.cleanup_outbox` | Beat, täglich 03:17 UTC | Zugestellte und fehlgeschlagene Outbox-Zeilen löschen, die älter als 30 Tage sind |
 | `notifications.match_reminders` | Beat, jede Minute | „Match beginnt bald"-Hinweise einreihen |
 | `notifications.deadline_reminders` | Beat, täglich 07:00 UTC | Erinnerungen an Saison-Deadlines 7/3/1 Tage vorher |
 | `papers.deadline_reminders` | Beat, täglich 07:05 UTC | Erinnerungen an Paper-Deadlines (Teams, Reviewer) |
 | `papers.process_review_deadlines` | Beat, stündlich | Überfällige Review-Zuweisungen markieren |
 
-Die OCR läuft **nur im Worker**. Einen eigenen OCR-Container oder -Dienst gibt es nicht, und es verlassen keine Bilddaten die Installation. `/api/system/readiness` meldet 503, solange kein Worker auf `ping` antwortet.
+Die OCR läuft **nur im Worker** (`worker-ocr`). Einen externen OCR-Dienst gibt es nicht, und es verlassen keine Bilddaten die Installation. `/api/system/readiness` meldet 503, solange kein Worker auf `ping` antwortet.
 
 ### Outbox und Benachrichtigungen
 
-Fachcode ruft `emit_event(db, event_type, payload=…)` in derselben Transaktion wie die fachliche Änderung auf. Die Zeile in `notification_events` wird also nur geschrieben, wenn die Änderung committet wird. `deliver_outbox` holt fällige Zeilen mit `SELECT … FOR UPDATE SKIP LOCKED`. Dadurch stellen parallele Worker nichts doppelt zu. Die Zustellung läuft so:
+Fachcode ruft `emit_event(db, event_type, payload=…)` in derselben Transaktion wie die fachliche Änderung auf. Die Zeile in `notification_events` wird also nur geschrieben, wenn die Änderung committet wird. Dabei hält `emit_event` die Empfänger in `notification_recipients` fest (eine Zeile pro Nutzer, bei `broadcast` eine Zeile ohne Nutzer). `deliver_outbox` arbeitet in drei Schritten, von denen keiner während des Versands eine Transaktion offen hält:
+
+1. Fällige Zeilen mit `SELECT … FOR UPDATE SKIP LOCKED` holen, als `sending` markieren (Lease: `next_attempt_at` = jetzt + 10 min), Versuch zählen, committen. Parallele Worker überspringen diese Zeilen.
+2. Nur die Push-Abos der Empfänger laden (alle nur bei `broadcast`), dazu Vorlieben und Sprachen, dann versenden.
+3. Ergebnis eintragen und committen. Stirbt ein Worker mittendrin, sind seine Zeilen nach Ablauf der Lease wieder fällig. Die Lease ist länger als das Task-Zeitlimit (300 s).
+
+Die Zustellung läuft so:
 
 - Empfänger: `userId`/`userIds` oder ausdrücklich `broadcast`. Ohne Empfänger geht nichts raus.
 - Nutzer, die die Kategorie in ihrem Profil stummgeschaltet haben, werden übersprungen. Kategorien: `match_soon`, `score_corrected`, `deadlines`, `paper_status`, `print_status`, `announcements`.
 - Eine Zeile gilt als zugestellt, wenn mindestens ein Versand geklappt hat oder es keine Empfänger gab. Sonst folgt ein Retry mit Backoff, nach 5 Versuchen `failed`.
 - Abgelaufene Push-Abos (404/410) werden gelöscht.
 - E-Mail geht nur raus, wenn `SMTP_HOST` gesetzt ist.
-- Die Benachrichtigungszentrale (`/api/dashboard/notifications`) liest dieselben Zeilen mit Lesestatus (`notification_reads`).
+- Die Benachrichtigungszentrale (`/api/dashboard/notifications`) liest die Zeilen eines Nutzers über `notification_recipients` (Index `user_id, created_at`), mit Lesestatus aus `notification_reads`.
+- `cleanup_outbox` löscht abgeschlossene Zeilen nach 30 Tagen samt Empfänger- und Lesezeilen.
 
 ### Live-Stream
 
-`publish_after_commit(db, event_id, "ranking_updated")` merkt das Ereignis in der Session vor. Veröffentlicht wird es erst nach dem Commit auf dem Redis-Kanal `botball:live:{event_id}`, bei Rollback gar nicht. Einziger WebSocket-Endpunkt ist `WS /api/v1/public/events/{slug}/ws`. Er leitet den Kanal eines Events an Clients weiter, sofern mindestens ein `public_*`-Flag gesetzt ist. Nur die öffentliche Event-Seite (`/public/:eventSlug`) nutzt den Stream. Sie lädt bei `ranking_updated`, `schedule_updated` und `announcement_*` neu. Die internen Seiten fragen per Polling ab (TanStack Query `refetchInterval`): Wertung, Scoreboard, Zeitplan, Druck, OCR-Scans und Benachrichtigungen.
+`publish_after_commit(db, event_id, "ranking_updated")` merkt das Ereignis in der Session vor. Veröffentlicht wird es erst nach dem Commit auf dem Redis-Kanal `botball:live:{event_id}`, bei Rollback gar nicht. Einziger WebSocket-Endpunkt ist `WS /api/v1/public/events/{slug}/ws`. Er leitet den Kanal eines Events an Clients weiter, sofern mindestens ein `public_*`-Flag gesetzt ist. Das Event lädt er in einer kurzen eigenen Session, die vor dem Streamen geschlossen wird; ein offener Bildschirm belegt also keine Datenbankverbindung.
+
+Jeder API-Prozess hat genau ein Redis-Abo (`PSUBSCRIBE botball:live:*`, `LiveHub` in `core/live.py`) und verteilt die Nachrichten an seine WebSockets. Fällt Redis aus, schließen die WebSockets mit 1013 und die Clients verbinden sich neu. Veröffentlichen, Rate-Limit und Cache nutzen je einen geteilten Redis-Client mit kurzen Timeouts (`core/redis_client.py`).
+
+Nur die öffentliche Event-Seite (`/public/:eventSlug`) nutzt den Stream. Bei `ranking_updated`, `schedule_updated` und `announcement_*` lädt sie gebündelt (ein Abruf pro Schwall) nur den gerade sichtbaren Bereich neu; verborgene Bereiche werden als veraltet markiert und beim Einblenden geladen. Die internen Seiten fragen per Polling ab (TanStack Query `refetchInterval`): Wertung, Scoreboard, Zeitplan, Druck, OCR-Scans und Benachrichtigungen.
+
+### Ranglisten-Cache und ETags
+
+Seeding-Rangliste (öffentlich und `…/ranking/extended`), Gesamtwertung (`…/ranking/overall`) und öffentliche Ergebnisse werden pro Event in Redis zwischengespeichert (`core/cache.py`). Der Schlüssel enthält eine Versionsnummer pro Event. Jedes committete `ranking_updated` oder `schedule_updated` erhöht sie, bevor das Live-Ereignis rausgeht; ebenso Änderungen an Formeln, Bracket-Gewichten, Paper-Scores und Anmeldungen (`invalidate_after_commit`). Einträge laufen nach `RANKING_CACHE_TTL_SECONDS` ab. Das begrenzt, wie lange eine Änderung ohne Ereignis (z. B. ein umbenanntes Team) braucht.
+
+Die Antworten tragen ein `ETag` und `Cache-Control: no-cache` (öffentlich `public`, sonst `private`). Der Browser fragt mit `If-None-Match` nach und bekommt `304 Not Modified` ohne Inhalt. Ist Redis nicht erreichbar, rechnet der Server wie ohne Cache und lässt Redis ein paar Sekunden in Ruhe (`botball_redis_fail_open_total{component="cache"}`).
+
+Die Gesamtwertung lädt die Eingaben eines Events einmal für alle Kategorien (`formula_service.load_event_inputs`). Sammel-Eingaben von Wertungen sortieren jede Rangliste einmal pro Anfrage neu, nicht pro Eintrag. Große PDF-Exporte (reportlab) laufen im Threadpool und blockieren die Event-Loop nicht.
 
 ---
 
