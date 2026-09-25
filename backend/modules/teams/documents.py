@@ -41,7 +41,9 @@ def detect_media_type(content: bytes) -> str:
     try:
         return validate_image(content)
     except ValidationError:
-        raise ValidationError("Only PDF files and images (PNG, JPEG, GIF, WebP) are accepted")
+        raise ValidationError(
+            "Only PDF files and images (PNG, JPEG, GIF, WebP) are accepted"
+        ) from None
 
 
 async def _store(file: UploadFile, team_id: str, document_id: str, number: int):

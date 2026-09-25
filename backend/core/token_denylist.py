@@ -77,7 +77,7 @@ async def deny(jti: str, expires_at: datetime | int | float | None) -> None:
         return
     try:
         await _client().set(f"{_KEY_PREFIX}{jti}", "1", ex=ttl)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - fail open while Redis is unreachable
         logger.warning("token_denylist_unavailable", op="deny", error=str(exc))
 
 
@@ -87,7 +87,7 @@ async def is_denied(jti: str) -> bool:
         return until is not None and until > time.time()
     try:
         return bool(await _client().exists(f"{_KEY_PREFIX}{jti}"))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - fail open while Redis is unreachable
         logger.warning("token_denylist_unavailable", op="check", error=str(exc))
         record_redis_fail_open("token_denylist")
         return False

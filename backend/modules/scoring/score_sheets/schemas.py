@@ -52,13 +52,6 @@ class ExtractedFieldCandidate(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ScoreSheetTemplateCreate(BaseModel):
-    label: str
-    year: int
-    game_theme: str | None = None
-    competition_level_id: UUID | None = None
-
-
 class ScoreSheetTemplateResponse(BaseModel):
     id: UUID
     season_id: UUID
@@ -109,10 +102,6 @@ class ConfirmFieldsRequest(BaseModel):
         default=True,
         description="If true, immediately update the ScoringSchema for this season/level",
     )
-
-
-class SetActiveRequest(BaseModel):
-    sheet_id: UUID
 
 
 class _OcrBox(BaseModel):

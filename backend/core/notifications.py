@@ -54,7 +54,7 @@ async def _send_smtp(
         )
         logger.info("email_sent", to=recipients, subject=subject, via="smtp")
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - a failed mail must not fail the caller
         logger.warning("smtp_failed", error=str(exc))
         return False
 
@@ -83,7 +83,7 @@ async def _send_sendgrid(
             resp.raise_for_status()
         logger.info("email_sent", to=recipients, subject=subject, via="sendgrid")
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - a failed mail must not fail the caller
         logger.error("sendgrid_failed", error=str(exc))
         return False
 
@@ -143,6 +143,6 @@ async def send_push_notification(
             return "gone"
         logger.warning("push_failed", error=str(exc), endpoint=endpoint[:40])
         return "failed"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - reported to the outbox as "failed"
         logger.warning("push_failed", error=str(exc), endpoint=endpoint[:40])
         return "failed"

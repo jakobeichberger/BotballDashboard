@@ -2,8 +2,10 @@
 
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import setup_logging
 
 from core.config import get_settings
+from core.logging import configure_logging
 
 settings = get_settings()
 celery_app = Celery(
@@ -56,3 +58,13 @@ celery_app.conf.update(
     task_time_limit=300,
     broker_connection_retry_on_startup=True,
 )
+
+
+@setup_logging.connect
+def _configure_worker_logging(**_kwargs) -> None:
+    """Worker and beat log through structlog like the API (JSON in production).
+
+    Connecting this signal also stops Celery from installing its own root
+    handler, so every record is formatted once.
+    """
+    configure_logging()

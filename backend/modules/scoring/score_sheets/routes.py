@@ -13,17 +13,26 @@ Endpoints:
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, require_permission
 from core.database import get_db
+from core.exceptions import (
+    BadRequestError,
+    ConflictError,
+    NotFoundError,
+    PayloadTooLargeError,
+    ValidationError,
+)
+from core.logging import get_logger
 from core.rate_limit import rate_limit
 
 from . import schemas, service
 
 router = APIRouter(prefix="/scoring", tags=["scoring", "score-sheets"])
+logger = get_logger(__name__)
 
 MAX_PDF_SIZE = 20 * 1024 * 1024  # 20 MB
 
@@ -55,17 +64,15 @@ async def upload_score_sheet(
 ):
     # Validate content type
     if file.content_type not in ("application/pdf", "application/octet-stream"):
-        raise HTTPException(
-            status_code=400,
-            detail="Only PDF files are accepted. Received: " + (file.content_type or "unknown"),
+        raise BadRequestError(
+            "Only PDF files are accepted. Received: " + (file.content_type or "unknown")
         )
 
     # Check file size without reading everything into memory up front
     content = await file.read()
     if len(content) > MAX_PDF_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File too large. Maximum size is {MAX_PDF_SIZE // 1024 // 1024} MB.",
+        raise PayloadTooLargeError(
+            f"File too large. Maximum size is {MAX_PDF_SIZE // 1024 // 1024} MB."
         )
     await file.seek(0)
 
@@ -90,9 +97,9 @@ async def upload_score_sheet(
         from .tasks import extract_template
 
         extract_template.delay(template.id)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 - the upload itself succeeded
         # Readiness monitoring surfaces a missing broker; the record remains retryable.
-        pass
+        logger.warning("score_sheet_ocr_queue_failed", template_id=str(template.id), error=str(exc))
 
     return template
 
@@ -145,7 +152,7 @@ async def get_score_sheet(
 ):
     template = await service.get_template(db, str(sheet_id))
     if not template:
-        raise HTTPException(status_code=404, detail="Score sheet not found.")
+        raise NotFoundError("Score sheet not found.")
     return template
 
 
@@ -165,11 +172,11 @@ async def download_score_sheet_pdf(
 ):
     template = await service.get_template(db, str(sheet_id))
     if not template:
-        raise HTTPException(status_code=404, detail="Score sheet not found.")
+        raise NotFoundError("Score sheet not found.")
 
     pdf_path = Path(template.file_url)
     if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail="PDF file missing from storage.")
+        raise NotFoundError("PDF file missing from storage.")
 
     return FileResponse(
         path=str(pdf_path),
@@ -197,9 +204,9 @@ async def confirm_score_sheet_fields(
 ):
     template = await service.get_template(db, str(sheet_id))
     if not template:
-        raise HTTPException(status_code=404, detail="Score sheet not found.")
+        raise NotFoundError("Score sheet not found.")
     if not body.fields:
-        raise HTTPException(status_code=400, detail="fields list must not be empty.")
+        raise BadRequestError("fields list must not be empty.")
 
     return await service.confirm_fields(
         db=db,
@@ -227,7 +234,7 @@ async def set_active_score_sheet(
 ):
     template = await service.get_template(db, str(sheet_id))
     if not template:
-        raise HTTPException(status_code=404, detail="Score sheet not found.")
+        raise NotFoundError("Score sheet not found.")
 
     await service.set_active_template(
         db=db,
@@ -254,11 +261,10 @@ async def delete_score_sheet(
 ):
     template = await service.get_template(db, str(sheet_id))
     if not template:
-        raise HTTPException(status_code=404, detail="Score sheet not found.")
+        raise NotFoundError("Score sheet not found.")
     if template.is_active:
-        raise HTTPException(
-            status_code=409,
-            detail="Cannot delete the active score sheet. Set another sheet as active first.",
+        raise ConflictError(
+            "Cannot delete the active score sheet. Set another sheet as active first."
         )
     await service.delete_template(db, str(sheet_id))
 
@@ -276,4 +282,4 @@ async def update_score_sheet_layout(
     try:
         return await service.update_template_layout(db, str(sheet_id), body.model_dump())
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise ValidationError(str(exc)) from exc

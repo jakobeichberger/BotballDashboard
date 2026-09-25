@@ -51,10 +51,7 @@ async def save_upload(file: UploadFile, season_id: str) -> tuple[Path, int]:
 
     dest.write_bytes(content)
 
-    logger.info(
-        "score_sheet_uploaded",
-        extra={"season_id": str(season_id), "file": safe_name, "size": len(content)},
-    )
+    logger.info("score_sheet_uploaded", season_id=str(season_id), file=safe_name, size=len(content))
     return dest, len(content)
 
 
@@ -76,17 +73,14 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
             timeout=30,
         )
         if result.returncode != 0:
-            logger.warning(
-                "pdftotext_failed",
-                extra={"file": str(pdf_path), "stderr": result.stderr[:500]},
-            )
+            logger.warning("pdftotext_failed", file=str(pdf_path), stderr=result.stderr[:500])
             return ""
         return result.stdout
     except FileNotFoundError:
-        logger.error("pdftotext_not_found", extra={"hint": "install poppler-utils"})
+        logger.error("pdftotext_not_found", hint="install poppler-utils")
         return ""
     except subprocess.TimeoutExpired:
-        logger.error("pdftotext_timeout", extra={"file": str(pdf_path)})
+        logger.error("pdftotext_timeout", file=str(pdf_path))
         return ""
 
 
@@ -197,7 +191,8 @@ def detect_fields(raw_text: str) -> list[ExtractedFieldCandidate]:
 
     logger.info(
         "fields_detected",
-        extra={"total": len(candidates), "auto_accepted": sum(1 for c in candidates if c.accepted)},
+        total=len(candidates),
+        auto_accepted=sum(1 for c in candidates if c.accepted),
     )
     return candidates
 
@@ -247,7 +242,7 @@ async def run_ocr_pipeline(db: AsyncSession, template_id: str) -> None:
     )
     template = result.scalar_one_or_none()
     if not template:
-        logger.error("template_not_found", extra={"id": str(template_id)})
+        logger.error("template_not_found", template_id=str(template_id))
         return
 
     await db.execute(
@@ -270,11 +265,8 @@ async def run_ocr_pipeline(db: AsyncSession, template_id: str) -> None:
                 ocr_status="done",
             )
         )
-    except Exception as exc:
-        logger.error(
-            "ocr_pipeline_failed",
-            extra={"id": str(template_id), "error": str(exc)},
-        )
+    except Exception as exc:  # noqa: BLE001 - stored on the template as ocr_error
+        logger.error("ocr_pipeline_failed", template_id=str(template_id), error=str(exc))
         await db.execute(
             update(ScoreSheetTemplate)
             .where(ScoreSheetTemplate.id == template_id)
@@ -355,11 +347,9 @@ async def _apply_to_scoring_schema(
     await db.commit()
     logger.info(
         "scoring_schema_updated_from_sheet",
-        extra={
-            "season_id": str(template.season_id),
-            "level_id": str(template.competition_level_id),
-            "field_count": len(fields),
-        },
+        season_id=str(template.season_id),
+        level_id=str(template.competition_level_id),
+        field_count=len(fields),
     )
 
 

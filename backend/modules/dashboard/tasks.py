@@ -218,7 +218,13 @@ async def deliver_pending(db: AsyncSession, now: datetime | None = None) -> int:
         item.attempts += 1
         try:
             gone = await _deliver(db, item, subscriptions, preferences, languages)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - recorded on the item and retried
+            logger.warning(
+                "notification_delivery_failed",
+                outbox_id=str(item.id),
+                attempt=item.attempts,
+                error=str(exc),
+            )
             item.last_error = str(exc)[:2000]
             if item.attempts >= MAX_ATTEMPTS:
                 item.status = "failed"
