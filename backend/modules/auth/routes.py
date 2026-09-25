@@ -26,6 +26,7 @@ from modules.auth.schemas import (
     PasswordResetRequest,
     PermissionResponse,
     PushSubscriptionCreate,
+    PushSubscriptionDelete,
     RoleCreate,
     RoleDetailResponse,
     RolePermissionsUpdate,
@@ -337,7 +338,7 @@ async def subscribe_push(
 
 @router.delete("/me/push-subscriptions", status_code=204)
 async def unsubscribe_push(
-    body: PushSubscriptionCreate,
+    body: PushSubscriptionDelete,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

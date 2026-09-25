@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, has_elevated_access, require_permission
 from core.database import get_db
+from core.files import safe_filename
 from modules.seasons import portability, service
 from modules.seasons.schemas import (
     CompetitionLevelCreate,
@@ -80,11 +81,10 @@ async def export_season(
 ):
     """Complete JSON snapshot of the season (events, registrations, results, …)."""
     data = await portability.export_season(db, season_id)
+    file_name = safe_filename(f"season-{season_id}.json", "season.json")
     return JSONResponse(
         jsonable_encoder(data),
-        headers={
-            "Content-Disposition": f'attachment; filename="season-{season_id}.json"',
-        },
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
     )
 
 

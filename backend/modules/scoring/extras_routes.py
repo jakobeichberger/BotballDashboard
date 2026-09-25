@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import has_elevated_access, require_permission
 from core.database import get_db
+from core.files import safe_filename
 from core.live import publish_after_commit
 from modules.events.draft_access import DRAFT_READERS
 from modules.scoring import extras_service as svc
@@ -316,10 +317,12 @@ async def export_scouting_report(
 ):
     report = await svc.scouting_report(db, event_id, current_user)
     pdf = build_scouting_pdf(report)
+    # Never echo the raw path parameter into a header.
+    file_name = safe_filename(f"scouting-{report['event'].slug}.pdf", "scouting.pdf")
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="scouting-{event_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
     )
 
 
