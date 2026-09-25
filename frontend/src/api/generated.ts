@@ -4227,8 +4227,9 @@ export interface components {
             /**
              * Audience
              * @default all
+             * @enum {string}
              */
-            audience: string;
+            audience: "all" | "teams" | "reviewers" | "jurors" | "internal";
             /** Expires At */
             expires_at?: string | null;
         };
@@ -7315,6 +7316,15 @@ export interface components {
             /** User Agent */
             user_agent?: string | null;
         };
+        /**
+         * PushSubscriptionDelete
+         * @description Unsubscribing is always allowed, also for an endpoint saved before the
+         *     push-service check existed (the other fields a client sends are ignored).
+         */
+        PushSubscriptionDelete: {
+            /** Endpoint */
+            endpoint: string;
+        };
         /** QualificationResponse */
         QualificationResponse: {
             /** Id */
@@ -9869,7 +9879,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PushSubscriptionCreate"];
+                "application/json": components["schemas"]["PushSubscriptionDelete"];
             };
         };
         responses: {
