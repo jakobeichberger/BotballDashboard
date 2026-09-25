@@ -46,8 +46,34 @@ export interface OcrRegion {
   height: number
 }
 
+/** A printed reference mark (filled square) the OCR worker aligns scans by. */
 export interface OcrAnchor extends Omit<OcrRegion, 'key'> {
   name: string
+}
+
+/** Plausibility check for one field (backend OcrFieldRule). */
+export interface OcrFieldRule {
+  key: string
+  min_value: number | null
+  max_value: number | null
+  integer: boolean
+  /** 0–1; null uses the template-wide threshold. */
+  min_confidence: number | null
+}
+
+/** The read values of several fields must add up to a plausible total. */
+export interface OcrSumRule {
+  label: string
+  keys: string[]
+  min_value: number | null
+  max_value: number | null
+}
+
+/** Which OCR values are flagged for a closer look (backend OcrValidationRules). */
+export interface OcrValidationRules {
+  min_confidence: number
+  fields: OcrFieldRule[]
+  sums: OcrSumRule[]
 }
 
 export interface ScoreSheetLayout {
@@ -55,7 +81,7 @@ export interface ScoreSheetLayout {
   page_height: number
   anchors: OcrAnchor[]
   field_regions: OcrRegion[]
-  validation_rules: Record<string, unknown>
+  validation_rules: OcrValidationRules
 }
 
 export interface ScoreSheetTemplate extends ScoreSheetTemplateListItem {
@@ -71,7 +97,8 @@ export interface ScoreSheetTemplate extends ScoreSheetTemplateListItem {
   page_height?: number | null
   anchors?: OcrAnchor[] | null
   field_regions?: OcrRegion[] | null
-  validation_rules?: Record<string, unknown> | null
+  /** Older layouts may hold rules in another shape; see parseRules(). */
+  validation_rules?: Partial<OcrValidationRules> | Record<string, unknown> | null
 }
 
 export interface UploadScoreSheetParams {

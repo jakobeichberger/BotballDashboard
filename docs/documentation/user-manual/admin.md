@@ -136,7 +136,17 @@ Unter **Rangliste → Score-Sheets** (`/events/…/scoring/score-sheets`, `scori
 2. Feld wählen und auf der Seite ein Rechteck aufziehen. Danach springt die Auswahl zum nächsten Feld ohne Rechteck.
 3. Werte bei Bedarf in der Tabelle in Prozent der Seite nachjustieren, dann **Layout speichern**.
 
-Gespeichert wird relativ zur Seite (0–1). Anker und Prüfregeln haben noch keinen Editor; vorhandene Werte bleiben beim Speichern erhalten. Fehlgeschlagene Scans lassen sich danach in der OCR-Prüfung erneut verarbeiten.
+Gespeichert wird relativ zur Seite (0–1). Fehlgeschlagene Scans lassen sich danach in der OCR-Prüfung erneut verarbeiten.
+
+**Anker** sind gedruckte Passmarken, am besten vier ausgefüllte Quadrate nahe den Ecken. Unter **Zeichnen → Anker** ziehst du um jede Marke ein Rechteck auf (oder legst sie über „Anker hinzufügen“ an und trägst die Werte ein). Ab zwei gefundenen Ankern richtet der Worker jeden Scan an ihnen aus: zwei korrigieren Verschiebung, Drehung und Maßstab, drei zusätzlich Scherung, vier auch die Perspektive schräg fotografierter Blätter. Ohne Anker, oder wenn auf einem Scan zu wenige gefunden werden, dient wie bisher der Blattrand (größtes Viereck) als Bezug. Im zweiten Fall sind alle Werte des Scans mit „Anker nicht gefunden“ markiert.
+
+**Prüfregeln** entscheiden, welche gelesenen Werte die OCR-Prüfung hervorhebt:
+
+- Mindest-Konfidenz für die ganze Vorlage (Standard 85 %) und optional je Feld;
+- je Zahlenfeld Minimum, Maximum und „Ganzzahl“. Die Grenzen aus dem Schema gelten immer, es zählt die strengere;
+- Summenregeln: Die Werte mehrerer Felder müssen zusammen in einem Bereich liegen, z. B. „alle Würfel höchstens 12“. Bei Verstoß werden alle beteiligten Felder markiert.
+
+Die Regeln markieren nur. Jeder Scan wird trotzdem von Hand geprüft und übernommen.
 
 ### Tie-Breaker und Sonderregeln (pro Saison)
 
