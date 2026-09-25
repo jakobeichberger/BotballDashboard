@@ -57,6 +57,7 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
 - Setzliste aus der Seeding-Rangliste. Double Seeding als rotierende Paarungen. Alliance als Partnerpaare mit Summen-Score. Bracket-Labels über A/B hinaus. Bracket-Gewichte pro Event (`0024`).
 - Öffentliche Event-API mit Rangliste, Zeitplan, Bracket, Ergebnissen (ohne Übungsläufe), Ankündigungen, QR-Code und WebSocket. Jede Teilansicht verlangt ihr Freigabe-Flag. Auch `/api/scoring/…/ranking*` und `…/aerial-ranking` sind ohne Login nur bei öffentlichem Event mit `public_scoreboard` lesbar, sonst mit `scoring:read`.
 - Einrichtungsassistent (`/setup`) und Event-Verwaltung mit Modul-Schaltern, Phasen, Teams, Schema-Editor, Regeln, Qualifikation und Ankündigungen.
+- Event-Verwaltung: Phasen bearbeiten und löschen (Typ gesperrt, kein Löschen bei `live`/`completed`), Check-in und Entfernen von Registrierungen, Bracket-Gewichte pro Event und Kategorie mit Rückfall auf die Saison. Der Zeitplan zeigt die Alliance-Wertung jeder Alliance-Phase.
 
 ## Teams (`0004`, `0016`, `0029`)
 
@@ -78,7 +79,8 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
   - Zähl-, Zahl- und Ja/Nein-Felder mit Maximalwerten.
 
   Vorlagen 2024/2025 vollständig, 2026 als Struktur. Liste der Schemas und „Klonen von". Der Frontend-Rechner nutzt dieselben Fixtures (`0028`).
-- **Regeln pro Saison:** Tie-Breaker-Reihenfolge mit Presets 2024/2025/2026, Finals-Replay, Kontakt-Bonus (25 %), Schiedsrichter-Checkliste vor dem Bestätigen. „Runde verloren" (0 Punkte, keine DQ). Duell-Ergebnis und DE-Platzierung mit dem entscheidenden Tie-Breaker. Parts Challenges (nur API) (`0028`).
+- **Regeln pro Saison:** Tie-Breaker-Reihenfolge mit Presets 2024/2025/2026, Finals-Replay, Kontakt-Bonus (25 %), Schiedsrichter-Checkliste vor dem Bestätigen. „Runde verloren" (0 Punkte, keine DQ). Duell-Ergebnis und DE-Platzierung mit dem entscheidenden Tie-Breaker. Parts Challenges mit Oberfläche auf der Wertungsseite (erfassen, stattgeben/abweisen) (`0028`).
+- **Karten und DQ** in „Punkte eintragen": Dialog für gelbe/rote Karte und Disqualifikation mit Begründung und Versionsprüfung, nur `scoring:admin`. Das Backend lehnt diese Felder für Mentoren auch bei eigenen Wertungen ab.
 - **Seeding nach Game Review:**
   - nur Läufe aus Seeding-Phasen;
   - DQ und verlorene Runde zählen 0, negative Werte zählen 0;
@@ -97,8 +99,8 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
 - Übungsläufe (`is_practice`) zählen nirgends für Ranglisten (`0015`). Mentoren erfassen Wertungen fürs eigene Team (`0014`).
 - **Offline-Erfassung:** IndexedDB-Warteschlange mit `idempotency_key`, Abspielen beim Start, beim Wiederverbinden und minütlich; Konfliktanzeige. Service Worker mit NetworkFirst für ausgewählte GETs.
 - Mobile Wertung: Navigation durch die Matches, Wischen, Bestätigungsdialog.
-- Score-Sheet-PDF-Vorlagen (pdftotext im Worker) und lokale OCR von Fotos (OpenCV/Tesseract im Worker) mit Pflicht-Prüfung vor der Übernahme (`0001`, `0011`). Scans sehen nur die Organisation (`scoring:admin`) und das eigene Team.
-- Scouting: externe Teams, Notizen und Beobachtungen pro eigenem Team, Gegner-Rangliste, PDF-Bericht (`0028`).
+- Score-Sheet-PDF-Vorlagen (pdftotext im Worker) und lokale OCR von Fotos (OpenCV/Tesseract im Worker) mit Pflicht-Prüfung vor der Übernahme (`0001`, `0011`). Scans sehen nur die Organisation (`scoring:admin`) und das eigene Team. Fehlgeschlagene Scans lassen sich erneut verarbeiten. OCR-Layout-Editor je Vorlage: Rechtecke über einem lokalen Referenzbild aufziehen oder in Prozent eintragen, gespeichert normalisiert.
+- Scouting: externe Teams, Notizen und Beobachtungen pro eigenem Team, Gegner-Rangliste, PDF-Bericht (`0028`). Externe Teams bearbeiten (Ersteller und Organisation) und löschen (Organisation).
 - Qualifikation: Stufen-Reihenfolge, manuelle Qualifikation, Registrierung der Qualifizierten. Für qualifizierte Stufen ist eine Qualifikation Pflicht (`0028`).
 
 ## Paper-Review (`0006`, `0012`, `0014`, `0023`, `0029`)
@@ -110,7 +112,7 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
   - fünf Kriterien (0–10) mit Kommentaren, Revisionshinweise, private Notizen, Empfehlung;
   - nach der Abgabe gesperrt, wieder öffnen durch Admins;
   - Reviewer aus dem eigenen Team oder derselben Schule werden abgelehnt.
-- Automatische Zuweisung mit Vorschau, Reviewer-Auslastung, stündliche Prüfung überfälliger Zuweisungen.
+- Automatische Zuweisung mit Vorschau, Reviewer-Auslastung, stündliche Prüfung überfälliger Zuweisungen. Manuelle Erinnerung je Zuweisung und Statusverlauf auf der Paper-Detailseite.
 - Formalabzug und Finalisieren zu `final_score` (0–1). Score-Felder nur über `PUT /papers/{id}/score` (`papers:admin`).
 - Feedback für Teams ohne Identität der Reviewer. Statistik, Paper-Export CSV/PDF, Reviews CSV.
 - Mentoren sehen nur Papers des eigenen Teams.
@@ -135,7 +137,7 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
 
   Paper- und Druck-Angaben entfallen, wenn das Modul aus ist.
 - Performance: Teamvergleich, Verlauf mit Übungsläufen, Stärken und Schwächen je Aufgabe, Ranking-Vorschau, Phasen- und Event-Vergleich.
-- Statistik (`scoring:admin`): Boxplots, Heatmap, Trends, Anomalie-Erkennung mit Prüf-Dialog.
+- Statistik (`scoring:admin`): Boxplots, Heatmap, Trends, Anomalie-Erkennung mit Prüf-Dialog. Änderungsprotokoll des Events aus Score- und Ergebnis-Revisionen, filterbar nach Team und Art.
 - Deadline-Kalender, Saison-Zeitleiste, persönlicher iCal-Feed mit widerrufbarem, gehashtem Token (`0026`).
 - Exporte:
   - Seeding und Gesamtwertung pro Event als CSV/PDF;

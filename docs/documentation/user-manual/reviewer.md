@@ -87,7 +87,7 @@ Jede Review-Runde hat ihre eigene `revision_number`. Zu jedem Review wird gespei
 ## Fristen und Erinnerungen
 
 - Zuweisungen können ein Fälligkeitsdatum haben. Überfällige Zuweisungen werden als **Überfällig** markiert.
-- Stündlich prüft der Server fällige Zuweisungen, täglich die internen Review-Deadlines. Erinnerungen kommen per Push, wenn aktiviert (Profil → Benachrichtigungen → Deadlines & Erinnerungen).
+- Stündlich prüft der Server fällige Zuweisungen, täglich die internen Review-Deadlines. Die Organisation kann dich zusätzlich von Hand an ein offenes Review erinnern. Erinnerungen kommen per Push, wenn aktiviert (Profil → Benachrichtigungen → Deadlines & Erinnerungen).
 - Alle Deadlines der Saison stehen unter **Deadlines** (Kalender, iCal-Abo).
 
 ---

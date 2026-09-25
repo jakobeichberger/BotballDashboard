@@ -79,12 +79,12 @@ Von Mentoren selbst erfasste Wertungen erscheinen im Dashboard in der Juror-Wart
 
 ## Karten und Disqualifikation
 
-Gelbe und rote Karte sowie „disqualifiziert" sind Felder jeder Wertung. Ihre Wirkung:
+Gelbe und rote Karte sowie „disqualifiziert" sind Felder jeder Wertung. In **Punkte eintragen** öffnet das Fahnen-Symbol einer Wertung den Dialog **Karten & Disqualifikation** (nur mit `scoring:admin`). Häkchen setzen oder entfernen, eine **Begründung** angeben und **Entscheidung speichern**. Die Entscheidung wird wie eine Korrektur als Revision protokolliert. Die Liste zeigt „Gelb", „Rot" und „DQ" neben dem Status. Mentoren können diese Felder auch bei eigenen Wertungen nicht ändern. Ihre Wirkung:
 
 - Eine disqualifizierte Runde zählt im Seeding als 0.
 - Eine **rote Karte** irgendwo im Event disqualifiziert das Team: kein Rang, Anzeige „DQ", raus aus dem Formel-Feld.
 
-> Diese drei Felder haben in der Oberfläche derzeit keinen Schalter. Die Organisation setzt sie über die API (`PATCH /api/scoring/matches/{id}` mit `yellow_card`, `red_card`, `is_disqualified`). Siehe [todo.md](../../todo.md).
+**Parts Challenges** stehen unten auf der Seite **Wertung** (`/events/…/scoring`). Alle mit Leserecht sehen die Liste. Mit `scoring:admin` erfasst du eine Challenge (Match optional, anfechtendes und angefochtenes Team, Beschreibung) und entscheidest sie mit **Stattgeben** oder **Abweisen**, optional mit Begründung. Die unterlegene Seite wird für das Match disqualifiziert: bei „Stattgeben" das angefochtene Team, bei „Abweisen" das anfechtende. Ohne Match ändert die Entscheidung keine Wertung.
 
 ---
 
@@ -97,7 +97,7 @@ Gelbe und rote Karte sowie „disqualifiziert" sind Felder jeder Wertung. Ihre W
 3. Der Server liest die Felder im Hintergrund lokal aus. Es werden keine Bilder an externe Dienste geschickt. Der Scan wechselt auf **Review erforderlich**.
 4. Erkannte Werte mit den Bildausschnitten vergleichen, korrigieren und mit **Geprüft übernehmen** als Wertung speichern.
 
-Unsichere Werte sind gelb markiert, mit Konfidenz und Grund. Schlägt die Erkennung ganz fehl, lässt sie sich derzeit nur über die API erneut anstoßen (`POST …/score-sheet-scans/{id}/retry`).
+Unsichere Werte sind gelb markiert, mit Konfidenz und Grund. Schlägt die Erkennung ganz fehl (z. B. weil der Vorlage noch das OCR-Layout fehlte), schickt **Erneut verarbeiten** den Scan noch einmal an den Worker. Das geht bei fehlgeschlagenen und hängenden Scans in der Warteschlange.
 
 ---
 
@@ -107,6 +107,8 @@ Unsichere Werte sind gelb markiert, mit Konfidenz und Grund. Schlägt die Erkenn
 
 - Mit `events:write` Zeiten, Tische und Status einzelner Matches ändern. Die betroffenen Teams bekommen einen Push.
 - **Bracket:** Winner-Bracket, Loser-Bracket (Minor/Major), Grand Final, Reset-Finale, falls nötig, und Platzierungen. Mit `scoring:admin` trägst du per Button „*Team* gewinnt *Match*" den Sieger ein. Sieger und Verlierer rücken automatisch in ihre nächsten Matches. Korrekturen werden nachgezogen.
+
+Hat das Event eine **Alliance-Phase**, zeigt der Zeitplan darunter die Alliance-Wertung: je Alliance die Läufe (Summe beider Teams), den besten Lauf und die Summe aller Läufe.
 
 Zeitplan erzeugen und die Setzliste aus dem Seeding übernehmen braucht `events:admin`, liegt also bei der Organisation.
 
@@ -155,6 +157,8 @@ Unter **Auffällige Läufe** stehen Läufe, die man prüfen sollte:
 - unbestätigt.
 
 Ein Klick zeigt Rohwerte und Revisionen und erlaubt das Bestätigen. „Läufe CSV" exportiert alle Wertungen des Events.
+
+Das **Änderungsprotokoll** am Ende der Seite listet jede Änderung im Event, neueste zuerst: unter „Wertungen" Erfassungen, Korrekturen (geänderte Werte als „alt → neu"), Karten, DQs und gelöschte Läufe mit Begründung und Person; unter „Ergebnisse" die Änderungen an DE-, Aerial- und Dokumentationsergebnissen. Beides lässt sich nach Team filtern.
 
 ---
 

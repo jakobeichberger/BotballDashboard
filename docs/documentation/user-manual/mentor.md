@@ -95,6 +95,8 @@ Die offizielle Rangliste (Seeding je Kategorie, DE, Gesamtwertung) steht unter *
 - **Gegner-Rangliste:** deine Teams (offizielles Seeding) und die beobachteten externen Teams gemeinsam gereiht.
 - **Scouting-Bericht (PDF).**
 
+Externe Teams, die du selbst angelegt hast, kannst du über den Stift bearbeiten (Name, Nummer, Land, Schule, Notizen). Löschen kann nur die Organisation.
+
 Deine Notizen und Beobachtungen sehen nur dein Team und die Organisation.
 
 ---

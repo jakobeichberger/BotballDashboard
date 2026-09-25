@@ -102,8 +102,9 @@ Ein hier abgeschaltetes Modul bleibt in allen Events der Saison inaktiv.
   - `archived`: schreibgeschützt.
 - **Aktive Module:** Seeding, Double Elimination, Paper, Dokumentation, Aerial, 3D-Druck, Bot-Galerie. Ist ein Modul in der Saison abgeschaltet, steht „In der Saison deaktiviert – bleibt inaktiv" daneben.
 - **Öffentliche Freigaben:** Scoreboard, Zeitplan (inkl. Bracket), Ergebnisse, Ankündigungen.
-- **Phasen:** `seeding`, `double_seeding`, `double_elimination`, `alliance`, `final`, jeweils mit Rundenzahl. Eine Phase eines abgeschalteten Moduls wird abgelehnt.
-- **Teams:** Team mit Kategorie registrieren. Für qualifizierte Stufen ist eine Qualifikation nötig.
+- **Phasen:** `seeding`, `double_seeding`, `double_elimination`, `alliance`, `final`, jeweils mit Rundenzahl. Eine Phase eines abgeschalteten Moduls wird abgelehnt. Über den Stift lassen sich Name, Typ, Status (`draft`, `scheduled`, `live`, `completed`) und Rundenzahl ändern. Bei laufenden und abgeschlossenen Phasen ist der Typ gesperrt und Löschen nicht möglich. Löschen entfernt auch den Zeitplan der Phase.
+- **Teams:** Team mit Kategorie registrieren. Für qualifizierte Stufen ist eine Qualifikation nötig. Das Häkchen vor einem Team ist der **Check-in** vor Ort; die Liste zeigt „x von n eingecheckt" und die Uhrzeit. Das Papierkorb-Symbol entfernt eine Registrierung.
+- **Bracket-Gewichtung dieses Events** (`events:admin`): je Kategorie eigene Gewichte, die die Saison-Gewichtung aus den Punkteformeln überschreiben. „Saison-Gewichtung verwenden" löscht sie wieder.
 - **Score-Sheet-Schema:** siehe [Wertungsregeln](#wertungsregeln).
 - **Tie-Breaker & Sonderregeln (Saison)**, **Qualifikation**, **Öffentliche Ankündigungen**.
 
@@ -129,7 +130,13 @@ In der Event-Verwaltung unter **Score-Sheet**. Jede Speicherung ist eine neue, v
 
 ### Score-Sheet-PDFs und OCR-Layout
 
-Unter **Rangliste → Score-Sheets** (`/events/…/scoring/score-sheets`, `scoring:admin`) lädst du das offizielle PDF hoch. Der Worker extrahiert daraus Feldkandidaten. Diese kannst du bestätigen und ins Schema übernehmen. Die OCR von Fotos braucht zusätzlich das Layout der Vorlage: Anker, Feldbereiche und Prüfregeln. Das Layout wird derzeit über die API gesetzt (`PATCH /api/scoring/score-sheets/{id}/layout`), eine Oberfläche dafür fehlt.
+Unter **Rangliste → Score-Sheets** (`/events/…/scoring/score-sheets`, `scoring:admin`) lädst du das offizielle PDF hoch. Der Worker extrahiert daraus Feldkandidaten. Diese kannst du bestätigen und ins Schema übernehmen. Die OCR von Fotos braucht zusätzlich das **OCR-Layout** der Vorlage: wo auf dem Blatt jedes bestätigte Feld steht. Unter den bestätigten Feldern:
+
+1. Optional ein **Referenzbild** wählen (Scan oder Foto eines leeren Blatts). Es bleibt im Browser; seine Pixelgröße wird als Seitengröße übernommen.
+2. Feld wählen und auf der Seite ein Rechteck aufziehen. Danach springt die Auswahl zum nächsten Feld ohne Rechteck.
+3. Werte bei Bedarf in der Tabelle in Prozent der Seite nachjustieren, dann **Layout speichern**.
+
+Gespeichert wird relativ zur Seite (0–1). Anker und Prüfregeln haben noch keinen Editor; vorhandene Werte bleiben beim Speichern erhalten. Fehlgeschlagene Scans lassen sich danach in der OCR-Prüfung erneut verarbeiten.
 
 ### Tie-Breaker und Sonderregeln (pro Saison)
 
@@ -151,7 +158,7 @@ Abschnitt **Tie-Breaker & Sonderregeln (Saison)** in der Event-Verwaltung:
 - **Vorlage laden:** Presets ECER 2025 (Botball/Open), Regional 2026, GCER 2026, Aerial, JBC.
 - Die Seite zeigt Variablen und Funktionen als Hilfe, dazu die Auswertungsreihenfolge.
 - **Vorschau mit echten Daten:** rechnet den Entwurf gegen die Ergebnisse des Events, ohne zu speichern.
-- **Bracket-Gewichtung** je Kategorie für die Saison. Pro Event lassen sich eigene Gewichte setzen (API `PUT /api/v1/events/{id}/bracket-weights`).
+- **Bracket-Gewichtung** je Kategorie für die Saison. Pro Event lassen sich in der Event-Verwaltung eigene Gewichte setzen.
 - „Zurücksetzen" stellt die Standardformeln wieder her.
 
 ---
@@ -173,7 +180,9 @@ Abschnitt **Tie-Breaker & Sonderregeln (Saison)** in der Event-Verwaltung:
 - Aerial-Läufe (gewertet wird der Ø aller Läufe);
 - Doku-Teile 1–3 und Onsite, dazu der Paper-Score. Angezeigt wird zusätzlich der Wert aus dem Formel-Set.
 
-**Parts Challenges:** werden über die API erfasst und entschieden. Die unterlegene Seite verliert die Runde. Eine eigene Oberfläche gibt es dafür derzeit nicht.
+**Parts Challenges:** auf der Seite **Wertung** erfassen und entscheiden (`scoring:admin`), siehe [Juror-Handbuch](juror.md#karten-und-disqualifikation). Die unterlegene Seite wird für das Match disqualifiziert.
+
+**Alliance-Phasen:** Der Zeitplan zeigt je Alliance-Phase die Alliance-Wertung (bester Lauf, dann Summe).
 
 ---
 
@@ -216,12 +225,12 @@ Eine Qualifikation lässt sich wieder entfernen.
   - intern `internal_draft`, `internal_review`, `internal_revision`, `internal_final`, diese warnen nur.
 
   Ohne offizielle Einreichungs-Deadline gilt die Paper-Deadline der Saison. Eine Deadline gilt bis Tagesende in der Zeitzone des Events. Mit `papers:admin` darf man übersteuern.
-- **Reviewer zuweisen:** Einzeln auf der Paper-Detailseite, oder **automatisch** bis N Reviewer pro Paper, zuerst mit Vorschau. Reviewer aus dem Team selbst oder von derselben Schule werden abgelehnt. Die **Reviewer-Auslastung** zeigt offene Reviews je Person. Fällige Zuweisungen erinnert der Server automatisch. Eine zusätzliche manuelle Erinnerung geht derzeit nur über die API (`POST /api/papers/{id}/assignments/{assignment_id}/remind`).
+- **Reviewer zuweisen:** Einzeln auf der Paper-Detailseite, oder **automatisch** bis N Reviewer pro Paper, zuerst mit Vorschau. Reviewer aus dem Team selbst oder von derselben Schule werden abgelehnt. Die **Reviewer-Auslastung** zeigt offene Reviews je Person. Fällige Zuweisungen erinnert der Server automatisch. Zusätzlich hat jede offene Zuweisung auf der Paper-Detailseite den Button **Erinnern** (`papers:admin`); daneben steht, wann zuletzt erinnert wurde.
 - **Status:**
   - `draft` → `submitted` → `under_review` → `revision_requested` → `resubmitted` → `accepted`/`rejected`;
   - `disqualified_ai` für KI-Missbrauch (Score 0, keine Revision).
 
-  Jede Änderung wird mit Begründung in der Historie festgehalten.
+  Jede Änderung wird mit Begründung in der Historie festgehalten. Die Paper-Detailseite zeigt sie als **Statusverlauf**, auch dem Team.
 - **Reviews:** Abgegebene Reviews sind gesperrt, ein Admin kann sie wieder öffnen. Private Notizen der Reviewer sieht nur die Organisation.
 - **Formalabzug** (z. B. für eine Seite zu viel) und **Finalisieren**: verdichtet die Reviews abzüglich Formalabzug zum `final_score` (0–1). Das Ergebnis geht in die Doku- bzw. Gesamtwertung ein, wenn „Paper-Score in der Wertung" in der Saison aktiv ist.
 - **Statistik:** Paper gesamt, offene Reviews, Ø Review-Score, Ø Endergebnis, Annahmequote. Exporte: Paper CSV/PDF, Reviews CSV.
@@ -268,7 +277,7 @@ Teams sehen das Feedback entschiedener Runden ohne Namen der Reviewer.
   - Trends;
   - **auffällige Läufe**: unmögliche Werte, Summenfehler, Ausreißer gegenüber Team und Feld, Sprünge, unbestätigt.
 
-  Ein Klick zeigt Rohwerte und Revisionen und erlaubt das Bestätigen.
+  Ein Klick zeigt Rohwerte und Revisionen und erlaubt das Bestätigen. Darunter steht das **Änderungsprotokoll** des Events: alle Wertungs-Revisionen (auch gelöschte Läufe, Karten, DQs) und alle Änderungen an DE-, Aerial- und Doku-Ergebnissen, filterbar nach Team.
 - **Performance:** Teamvergleich, Verlauf inkl. Übungsläufen, Stärken und Schwächen je Aufgabe, Ranking-Vorschau.
 - **Dashboard:** Fortschritt der Organisation (X von N), nächste Deadlines, Juror-Warteschlange.
 - **Deadlines:** Kalender, Saison-Zeitleiste, iCal-Abo.
