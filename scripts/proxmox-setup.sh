@@ -563,9 +563,20 @@ configure_env() {
   prompt ADMIN_EMAIL    "Admin email address"    "admin@${DOMAIN}"
   prompt ADMIN_NAME     "Admin display name"     "Administrator"
   while true; do
-    prompt ADMIN_PASSWORD "Admin password (min. 8 chars)" "" "true"
-    if [[ ${#ADMIN_PASSWORD} -lt 8 ]]; then
-      warn "Password too short (min. 8 characters). Please try again."
+    # Same rules as the backend's password policy: at least 10 characters,
+    # not one repeated character, not the e-mail address. Common/leaked
+    # passwords are rejected when the admin account is created.
+    prompt ADMIN_PASSWORD "Admin password (min. 10 chars)" "" "true"
+    if [[ ${#ADMIN_PASSWORD} -lt 10 ]]; then
+      warn "Password too short (min. 10 characters). Please try again."
+      continue
+    fi
+    if [[ -z "${ADMIN_PASSWORD//"${ADMIN_PASSWORD:0:1}"/}" ]]; then
+      warn "Password must not consist of one repeated character. Please try again."
+      continue
+    fi
+    if [[ "${ADMIN_PASSWORD,,}" == "${ADMIN_EMAIL,,}" ]]; then
+      warn "Password must not be the e-mail address. Please try again."
       continue
     fi
     prompt ADMIN_PASSWORD_CONFIRM "Admin password (repeat)" "" "true"
