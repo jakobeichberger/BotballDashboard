@@ -92,8 +92,8 @@ export default function DEPage() {
           <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-leise hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
           </EventLink>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Medal className="w-6 h-6 text-blue-500" />
+          <h1 className="page-title flex items-center gap-2">
+            <Medal className="h-7 w-7 shrink-0 text-akzent" />
             {t("de.title")}
           </h1>
         </div>
@@ -108,7 +108,7 @@ export default function DEPage() {
       </div>
 
       {saveMutation.isSuccess && (
-        <div className="mb-4 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">
+        <div className="mb-4 px-4 py-2 bg-success/[0.07] text-success rounded-lg text-sm">
           {t("profile:saved")}
         </div>
       )}
@@ -121,11 +121,11 @@ export default function DEPage() {
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
-              <th className="px-4 py-3 text-center font-medium text-leise">{t("de.bracket")}</th>
-              <th className="px-4 py-3 text-center font-medium text-leise">{t("de.rank")}</th>
-              <th className="px-4 py-3 text-center font-medium text-leise">{t("de.bracketScore")}</th>
-              <th className="px-4 py-3 text-center font-medium text-leise">{t("de.deScore")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-center font-semibold">{t("de.bracket")}</th>
+              <th className="px-4 py-3 text-center font-semibold">{t("de.rank")}</th>
+              <th className="px-4 py-3 text-center font-semibold">{t("de.bracketScore")}</th>
+              <th className="px-4 py-3 text-center font-semibold">{t("de.deScore")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -133,7 +133,7 @@ export default function DEPage() {
               const e = effective(team.id);
               const dirty = !!draft[team.id];
               return (
-                <tr key={team.id} className={dirty ? "bg-yellow-50 dark:bg-yellow-900/10" : "hover:bg-flaeche-2"}>
+                <tr key={team.id} className={dirty ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
                   <td className="px-4 py-2">
                     <div className="font-medium">{team.name}</div>
                     <div className="text-xs text-leise font-mono">{team.team_number ?? team.id}</div>

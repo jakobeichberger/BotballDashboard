@@ -99,7 +99,7 @@ export default function ScoreSheetsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">{t('scoreSheets.title')}</h1>
+          <h1 className="page-title">{t('scoreSheets.title')}</h1>
           <p className="text-sm text-leise mt-0.5">{t('scoreSheets.subtitle')}</p>
         </div>
         <button
@@ -145,8 +145,8 @@ export default function ScoreSheetsPage() {
               className={[
                 'w-full rounded-lg border transition-colors',
                 selectedId === sheet.id
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-rand hover:border-blue-300',
+                  ? 'border-primary bg-info/[0.07]'
+                  : 'border-rand hover:border-primary/40',
               ].join(' ')}
             >
               {/* Selecting and the row actions are separate controls: a button must not contain links or buttons. */}
@@ -174,7 +174,7 @@ export default function ScoreSheetsPage() {
               </div>
 
               {sheet.confirmed_fields_count != null && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1.5">
+                <p className="text-xs text-success mt-1.5">
                   <span aria-hidden="true">✓ </span>{sheet.confirmed_fields_count} {t('scoreSheets.fields.confirmed')}
                 </p>
               )}
@@ -202,7 +202,7 @@ export default function ScoreSheetsPage() {
                     <button
                       type="button"
                       onClick={() => void handleDelete(sheet)}
-                      className="min-h-11 rounded px-2 text-xs text-red-600 hover:underline"
+                      className="min-h-11 rounded px-2 text-xs text-danger hover:underline"
                       aria-label={t('scoreSheets.deleteFor', { label: sheet.label })}
                     >
                       {t('common:delete')}
@@ -222,7 +222,7 @@ export default function ScoreSheetsPage() {
             </div>
           ) : selectedSheet.ocr_status === 'processing' || selectedSheet.ocr_status === 'pending' ? (
             <div className="flex flex-col items-center justify-center gap-3 h-full text-leise">
-              <div className="animate-spin h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent" />
+              <div className="animate-spin h-8 w-8 rounded-full border-2 border-primary border-t-transparent" />
               <p className="text-sm">{t('scoreSheets.ocr.processingHint')}</p>
             </div>
           ) : (

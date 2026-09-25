@@ -272,5 +272,6 @@
     "home": "Go to start page",
     "online": "Connected",
     "offline": "Offline"
-  }
+  },
+  "open": "Open"
 }

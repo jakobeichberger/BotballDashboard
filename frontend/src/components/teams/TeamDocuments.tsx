@@ -126,7 +126,7 @@ export function TeamDocuments({
                 )}
                 {canUpload && (
                   <button
-                    className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                    className="p-1 rounded text-danger hover:bg-danger/10"
                     title={t("common:delete")}
                     aria-label={t("documents.deleteLabel", { title: doc.title })}
                     onClick={() => void confirmAction({ message: t("documents.confirmDelete", { title: doc.title }), tone: "danger" }).then((ok) => ok && deleteM.mutate(doc.id))}
@@ -187,7 +187,7 @@ export function TeamDocuments({
           </button>
         </form>
       )}
-      {error && <p role="alert" className="px-4 pb-3 text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="px-4 pb-3 text-sm text-danger">{error}</p>}
     </section>
   );
 }

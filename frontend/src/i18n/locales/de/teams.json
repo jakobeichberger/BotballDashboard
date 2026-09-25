@@ -89,7 +89,7 @@
     "confirm": "Bestätigen",
     "removeAssignment": "Zuweisung entfernen"
   },
-  "add": "+ Team hinzufügen",
+  "add": "Team hinzufügen",
   "filter": {
     "search": "Suche",
     "searchPlaceholder": "Name, Nummer, Schule oder Ort",
@@ -163,5 +163,6 @@
     "maxParts": "max. Teile",
     "maxGrams": "max. g",
     "noPrintJobs": "Keine Druckaufträge"
-  }
+  },
+  "subtitle": "Teams, Mitglieder und Registrierungen verwalten."
 }

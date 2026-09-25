@@ -91,7 +91,7 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
                     t("history.col.bestRun"),
                     ...(showPractice ? [t("history.col.practiceAvg")] : []),
                   ].map((h) => (
-                    <th key={h} scope="col" className="px-4 py-2 text-left font-medium text-leise">{h}</th>
+                    <th key={h} scope="col" className="px-4 py-2 text-left font-semibold">{h}</th>
                   ))}
                 </tr>
               </thead>

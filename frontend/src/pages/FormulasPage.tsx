@@ -269,7 +269,7 @@ export default function FormulasPage() {
         <div className="flex items-center gap-3">
           <Calculator className="w-6 h-6 text-akzent" />
           <div>
-            <h1 className="text-xl font-semibold">{t("formulas.title")}</h1>
+            <h1 className="page-title">{t("formulas.title")}</h1>
             <p className="text-sm text-leise">
               {t("formulas.subtitle")}
             </p>
@@ -327,8 +327,8 @@ export default function FormulasPage() {
       </div>
 
       {saveError && (
-        <div className="card p-4 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-          <div className="flex items-start gap-2 text-red-700 dark:text-red-300">
+        <div className="card p-4 border-danger/40 bg-danger/[0.07]">
+          <div className="flex items-start gap-2 text-danger">
             <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
             <span className="text-sm">{saveError}</span>
           </div>
@@ -404,7 +404,7 @@ export default function FormulasPage() {
                     onChange={(e) => update(i, { expression: e.target.value })}
                   />
                   {issues.length > 0 && (
-                    <div className="text-sm text-red-600 dark:text-red-400 space-y-0.5">
+                    <div className="text-sm text-danger space-y-0.5">
                       {issues.slice(0, 3).map((issue, k) => (
                         <div key={k} className="flex items-start gap-1.5">
                           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -438,7 +438,7 @@ export default function FormulasPage() {
               {previewing ? (
                 <span className="text-sm text-leise">{t("formulas.calculating")}</span>
               ) : preview?.ok ? (
-                <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+                <span className="flex items-center gap-1.5 text-sm text-success">
                   <CheckCircle2 className="w-4 h-4" />
                   {t("formulas.calculated", { count: preview.rows.length })}
                 </span>
@@ -450,7 +450,7 @@ export default function FormulasPage() {
             {preview?.issues
               .filter((i) => !i.key)
               .map((issue, k) => (
-                <div key={k} className="text-sm text-red-600 dark:text-red-400">
+                <div key={k} className="text-sm text-danger">
                   {issue.message}
                 </div>
               ))}

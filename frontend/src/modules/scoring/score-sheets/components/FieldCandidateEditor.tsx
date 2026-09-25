@@ -77,10 +77,10 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
   }
 
   const OCR_STATUS_COLOR: Record<string, string> = {
-    done: 'text-green-600 dark:text-green-400',
-    processing: 'text-yellow-600 dark:text-yellow-400',
+    done: 'text-success',
+    processing: 'text-warning',
     pending: 'text-leise',
-    failed: 'text-red-600 dark:text-red-400',
+    failed: 'text-danger',
   }
 
   return (
@@ -141,10 +141,10 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                       <span
                         className={
                           c.confidence >= 0.8
-                            ? 'text-green-600'
+                            ? 'text-success'
                             : c.confidence >= 0.5
-                            ? 'text-yellow-600'
-                            : 'text-red-500'
+                            ? 'text-warning'
+                            : 'text-danger'
                         }
                       >
                         {Math.round(c.confidence * 100)}%
@@ -259,7 +259,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                     <button
                       type="button"
                       onClick={() => removeField(idx)}
-                      className="grid h-11 w-11 place-items-center rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                      className="grid h-11 w-11 place-items-center rounded text-danger hover:bg-danger/10"
                       aria-label={t('scoreSheets.fields.removeRow', { row: idx + 1, key: f.key || '–' })}
                     >
                       <span aria-hidden="true">✕</span>
@@ -305,7 +305,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
       </div>
 
       {confirm.isError && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="text-sm text-danger">
           {t('scoreSheets.fields.confirmError')}
         </p>
       )}

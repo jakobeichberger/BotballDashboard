@@ -51,7 +51,7 @@ export default function RegistrationManager({ eventId }: { eventId: string }) {
         <select aria-label={t("setup.category")} className="input" value={teamCategory} onChange={(e) => setTeamCategory(e.target.value)}>{["botball", "open", "aerial", "jbc"].map((category) => <option key={category} value={category}>{CATEGORY_LABEL[category]}</option>)}</select>
         <button className="btn-secondary" aria-label={t("setup.registerTeam")} disabled={addTeam.isPending}><Plus /></button>
       </form>
-      {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
       <ul className="mt-4 max-h-80 divide-y overflow-auto text-sm">
         {list.map((item) => (
           <li key={item.id} className="flex items-center justify-between gap-2 py-1.5">
@@ -69,7 +69,7 @@ export default function RegistrationManager({ eventId }: { eventId: string }) {
               {item.checked_in_at && <span className="badge-green">{t("setup.checkedInAt", { time: formatTime(item.checked_in_at) })}</span>}
               <button
                 type="button"
-                className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                className="rounded p-1 text-danger hover:bg-danger/10"
                 aria-label={t("setup.removeRegistration", { team: item.team_name })}
                 title={t("common:delete")}
                 disabled={remove.isPending}

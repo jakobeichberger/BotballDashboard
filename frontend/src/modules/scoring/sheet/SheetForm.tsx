@@ -56,7 +56,7 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
           </fieldset>
         );
       })}
-      {result.errors.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-100">{result.errors.map((error) => <li key={error}>{error}</li>)}</ul>}
+      {result.errors.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-danger/[0.07] p-3 text-sm text-danger">{result.errors.map((error) => <li key={error}>{error}</li>)}</ul>}
     </div>
   );
 }

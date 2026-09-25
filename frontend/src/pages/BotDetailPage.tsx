@@ -128,8 +128,8 @@ export default function BotDetailPage() {
           ) : (
             <>
               <div className="flex items-start justify-between gap-4">
-                <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-                  <BotIcon className="w-6 h-6" /> {bot.name}
+                <h1 className="page-title flex items-center gap-2">
+                  <BotIcon className="h-7 w-7 shrink-0 text-akzent" /> {bot.name}
                 </h1>
                 <span className={bot.team_id ? "badge-blue" : "badge-gray"}>{bot.team_id ? t("form.ownTeam") : t("form.externalTeam")}</span>
               </div>

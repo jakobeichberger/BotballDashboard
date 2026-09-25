@@ -51,7 +51,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     return (
       <div className={this.props.fullScreen ? "grid min-h-screen place-items-center bg-papier p-6" : "p-6"}>
         <div role="alert" className="card mx-auto max-w-lg p-6 text-center">
-          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-amber-500" aria-hidden="true" />
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-warning" aria-hidden="true" />
           <h1 className="text-lg font-semibold">{i18n.t(chunk ? "common:errorBoundary.chunkTitle" : "common:errorBoundary.title")}</h1>
           <p className="mt-2 text-sm text-leise">
             {i18n.t(chunk ? "common:errorBoundary.chunkText" : "common:errorBoundary.text")}

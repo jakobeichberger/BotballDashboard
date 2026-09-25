@@ -77,7 +77,7 @@ function UsersSettings() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div><label htmlFor="settingspage-f1" className="label">{t("common:name")}</label><input id="settingspage-f1" className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
             <div><label htmlFor="settingspage-f2" className="label">{t("common:email")}</label><input id="settingspage-f2" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-            <div><label htmlFor="settingspage-f3" className="label">{t("auth:login.password")}</label><input id="settingspage-f3" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><p className={clsx("mt-1 text-xs", createPwProblem ? "text-red-600" : "text-leise")}>{createPwProblem ?? passwordHint()}</p></div>
+            <div><label htmlFor="settingspage-f3" className="label">{t("auth:login.password")}</label><input id="settingspage-f3" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><p className={clsx("mt-1 text-xs", createPwProblem ? "text-danger" : "text-leise")}>{createPwProblem ?? passwordHint()}</p></div>
           </div>
           <div role="group" aria-labelledby="new-user-roles">
             <p id="new-user-roles" className="label">{t("users.roles")}</p>
@@ -104,7 +104,7 @@ function UsersSettings() {
         <div className="card p-4 mb-4 space-y-3">
           <h3 className="text-sm font-semibold">{t("users.newPasswordFor", { email: pwUser.email })}</h3>
           <input className="input" type="password" aria-label={t("auth:reset.newPassword")} value={pwUser.password} onChange={(e) => setPwUser({ ...pwUser, password: e.target.value })} />
-          <p className={clsx("text-xs", pwUserProblem ? "text-red-600" : "text-leise")}>{pwUserProblem ?? passwordHint()}</p>
+          <p className={clsx("text-xs", pwUserProblem ? "text-danger" : "text-leise")}>{pwUserProblem ?? passwordHint()}</p>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary text-sm" onClick={() => setPwUser(null)}>{t("common:cancel")}</button>
             <button className="btn-primary text-sm disabled:opacity-40" disabled={!pwUser.password || !!pwUserProblem || setPasswordM.isPending} onClick={() => setPasswordM.mutate()}>{t("auth:reset.submit")}</button>
@@ -116,11 +116,11 @@ function UsersSettings() {
       <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr>
-            <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("common:email")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("users.roles")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th>
-            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:name")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:email")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("users.roles")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th>
+            <th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y">
             {users?.map((user: any) => (
@@ -257,8 +257,8 @@ function SeasonsSettings() {
       <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr>
-            <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("seasons.year")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:name")}</th><th className="px-4 py-3 text-left font-semibold">{t("seasons.year")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th><th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y">
             {seasons?.map((s: any) => (
@@ -317,9 +317,9 @@ function SpoolsPanel() {
       <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr>
-            <th className="px-4 py-3 text-left font-medium">{t("spools.material")}</th><th className="px-4 py-3 text-left font-medium">{t("spools.color")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("spools.brand")}</th><th className="px-4 py-3 text-right font-medium">{t("spools.remaining")}</th>
-            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+            <th className="px-4 py-3 text-left font-semibold">{t("spools.material")}</th><th className="px-4 py-3 text-left font-semibold">{t("spools.color")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("spools.brand")}</th><th className="px-4 py-3 text-right font-semibold">{t("spools.remaining")}</th>
+            <th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y">
             {spools?.map((s: any) => {
@@ -377,7 +377,7 @@ function QuotaRow({ quota, seasonId }: { quota: PrintQuota; seasonId: string }) 
     <tr>
       <td className="px-4 py-3 font-medium">{quota.team_name ?? quota.team_id}</td>
       <td className="px-4 py-3 text-leise">
-        <span className={committed > quota.soft_limit_parts ? "text-yellow-600" : undefined}>{t("quotas.usedParts", { used: quota.used_parts, open: quota.open_parts })}</span>
+        <span className={committed > quota.soft_limit_parts ? "text-warning" : undefined}>{t("quotas.usedParts", { used: quota.used_parts, open: quota.open_parts })}</span>
         <span className="block text-xs">{Math.round(quota.used_grams)} g{quota.open_grams ? ` ${t("quotas.openGrams", { grams: Math.round(quota.open_grams) })}` : ""}</span>
       </td>
       <td className="px-4 py-3">{field("soft_limit_parts", t("quotas.softLimit"))}</td>
@@ -385,7 +385,7 @@ function QuotaRow({ quota, seasonId }: { quota: PrintQuota; seasonId: string }) 
       <td className="px-4 py-3">{field("max_grams", t("quotas.maxGrams"), 10)}</td>
       <td className="px-4 py-3 text-right">
         <button className="btn-secondary text-xs" disabled={saveM.isPending || draft.max_parts === "" || draft.soft_limit_parts === ""} onClick={() => saveM.mutate()}>{t("common:save")}</button>
-        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-1 text-xs text-danger">{error}</p>}
       </td>
     </tr>
   );
@@ -413,10 +413,10 @@ function QuotasPanel() {
       <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr>
-            <th className="px-4 py-3 text-left font-medium">{t("quotas.team")}</th><th className="px-4 py-3 text-left font-medium">{t("quotas.used")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("quotas.softLimitParts")}</th><th className="px-4 py-3 text-left font-medium">{t("quotas.hardLimitParts")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("quotas.maxGrams")}</th>
-            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+            <th className="px-4 py-3 text-left font-semibold">{t("quotas.team")}</th><th className="px-4 py-3 text-left font-semibold">{t("quotas.used")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("quotas.softLimitParts")}</th><th className="px-4 py-3 text-left font-semibold">{t("quotas.hardLimitParts")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("quotas.maxGrams")}</th>
+            <th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y">
             {selected && quotas?.map((q) => <QuotaRow key={`${q.id}-${q.max_parts}-${q.soft_limit_parts}-${q.max_grams}`} quota={q} seasonId={selected.season_id} />)}
@@ -484,9 +484,9 @@ function PrintersSettings() {
       <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr>
-            <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("printers.model")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("printers.type")}</th><th className="px-4 py-3 text-left font-medium">{t("common:status")}</th>
-            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:name")}</th><th className="px-4 py-3 text-left font-semibold">{t("printers.model")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("printers.type")}</th><th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th>
+            <th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y">
             {printers?.map((p: any) => (
@@ -548,8 +548,8 @@ function AnnouncementsSettings() {
       <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr>
-            <th className="px-4 py-3 text-left font-medium">{t("announcements.titleLabel")}</th><th className="px-4 py-3 text-left font-medium">{t("announcements.audience")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+            <th className="px-4 py-3 text-left font-semibold">{t("announcements.titleLabel")}</th><th className="px-4 py-3 text-left font-semibold">{t("announcements.audience")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th><th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y">
             {anns?.map((a: any) => (
@@ -653,7 +653,7 @@ function SeasonEditor() {
                 <span className={ev.event_type === "event" ? "badge-blue" : "badge-yellow"}>{ev.event_type === "event" ? t("seasonDetails.event") : t("seasonDetails.deadline")}</span>
                 <span className="text-fg">{ev.title}</span>
               </div>
-              <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => void confirmThen(t("seasonDetails.confirmDelete", { title: ev.title }), () => delEventM.mutate(ev.id))} title={t("common:delete")} aria-label={t("seasonDetails.deleteEntry", { title: ev.title })}><Trash2 className="w-4 h-4" aria-hidden="true" /></button>
+              <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10" onClick={() => void confirmThen(t("seasonDetails.confirmDelete", { title: ev.title }), () => delEventM.mutate(ev.id))} title={t("common:delete")} aria-label={t("seasonDetails.deleteEntry", { title: ev.title })}><Trash2 className="w-4 h-4" aria-hidden="true" /></button>
             </div>
           ))}
           {events?.length === 0 && <p className="py-3 text-leise">{t("seasonDetails.noExtra")}</p>}
@@ -709,9 +709,9 @@ function LevelsSettings() {
       <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr>
-            <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("levels.code")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("levels.order")}</th><th className="px-4 py-3 text-left font-medium">{t("levels.qualifiesFrom")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:name")}</th><th className="px-4 py-3 text-left font-semibold">{t("levels.code")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("levels.order")}</th><th className="px-4 py-3 text-left font-semibold">{t("levels.qualifiesFrom")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th><th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y">
             {levels?.map((l: any) => (
@@ -773,7 +773,7 @@ function SeasonModulesSettings() {
         <h2 className="text-lg font-semibold">{t("modules.title")}</h2>
         <button onClick={handleSave} disabled={!draft || saveMutation.isPending} className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t("common:save")}</button>
       </div>
-      {saveMutation.isSuccess && <div className="mb-4 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">{t("profile:saved")}</div>}
+      {saveMutation.isSuccess && <div className="mb-4 px-4 py-2 bg-success/[0.07] text-success rounded-lg text-sm">{t("profile:saved")}</div>}
       <div className="mb-6">
         <label htmlFor="season-select" className="block text-sm font-medium text-fg mb-1">{t("teams:season")}</label>
         <select id="season-select" value={selectedSeasonId || seasons?.[0]?.id || ""} onChange={(e) => { setSelectedSeasonId(e.target.value); setDraft(null); }} className="input text-sm w-64">
@@ -863,10 +863,10 @@ function RolesSettings() {
       <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr>
-            <th className="px-4 py-3 text-left font-medium">{t("roles.role")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("roles.description")}</th>
-            <th className="px-4 py-3 text-left font-medium">{t("roles.permissions")}</th>
-            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+            <th className="px-4 py-3 text-left font-semibold">{t("roles.role")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("roles.description")}</th>
+            <th className="px-4 py-3 text-left font-semibold">{t("roles.permissions")}</th>
+            <th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y">
             {roles?.map((r: any) => (
@@ -923,7 +923,7 @@ export default function SettingsPage() {
   const { t } = useTranslation("settings");
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><Settings className="w-6 h-6" />{t("title")}</h1>
+      <h1 className="page-title mb-6 flex items-center gap-2"><Settings className="h-7 w-7 shrink-0 text-akzent" />{t("title")}</h1>
       {/* Phones: the section navigation becomes a horizontally scrolling row above the content. */}
       <div className="flex flex-col gap-6 md:flex-row">
         <aside className="md:w-48 md:shrink-0">

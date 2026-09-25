@@ -41,9 +41,9 @@ export default function ScoreConfirmDialog({ open, title, context, fields, value
       <table className="mb-4 w-full text-sm">
         <thead>
           <tr className="border-b">
-            <th className="py-1 text-left font-medium">{t("scoreConfirm.field")}</th>
-            <th className="py-1 text-right font-medium">{t("scoreConfirm.value")}</th>
-            <th className="py-1 text-right font-medium">{t("scoreConfirm.points")}</th>
+            <th className="py-1 text-left font-semibold">{t("scoreConfirm.field")}</th>
+            <th className="py-1 text-right font-semibold">{t("scoreConfirm.value")}</th>
+            <th className="py-1 text-right font-semibold">{t("scoreConfirm.points")}</th>
           </tr>
         </thead>
         <tbody>
@@ -69,7 +69,7 @@ export default function ScoreConfirmDialog({ open, title, context, fields, value
       </table>
     </div>
       {offline && (
-        <p className="mb-4 rounded-lg bg-amber-100 p-2 text-sm text-amber-900">
+        <p className="mb-4 rounded-lg bg-warning/10 p-2 text-sm text-warning">
           {t("scoreConfirm.offline")}
         </p>
       )}

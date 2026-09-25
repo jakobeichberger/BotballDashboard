@@ -126,10 +126,10 @@ export default function Layout() {
   );
 
   const sidebar = (variant: "desktop" | "drawer") => (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-white/5 bg-sidebar text-sidebar-text">
+    <aside className={clsx("flex h-full shrink-0 flex-col border-r border-white/5 bg-sidebar text-sidebar-text", variant === "drawer" ? "w-full" : "w-72")}>
       <div className="flex items-center gap-3 px-4 pb-3 pt-5">
         <LogoBadge />
-        <Wordmark onDark className="min-w-0 flex-1 truncate text-[1.2rem]" />
+        <Wordmark onDark className={clsx("min-w-0 flex-1 truncate", variant === "drawer" ? "text-[1.05rem]" : "text-[1.2rem]")} />
         {variant === "drawer" && (
           <button
             type="button"
@@ -264,7 +264,7 @@ export default function Layout() {
             role="dialog"
             aria-modal="true"
             aria-label={t("mainNavigation")}
-            className="relative h-full w-72 max-w-[85vw] shadow-tief"
+            className="relative h-full w-80 max-w-[88vw] shadow-tief"
           >
             {sidebar("drawer")}
           </div>

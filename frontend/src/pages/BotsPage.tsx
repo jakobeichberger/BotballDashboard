@@ -82,8 +82,8 @@ export default function BotsPage() {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-          <BotIcon className="w-6 h-6" /> {t("title")}
+        <h1 className="page-title flex items-center gap-2">
+          <BotIcon className="h-7 w-7 shrink-0 text-akzent" /> {t("title")}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           <select aria-label={t("filter.season")} className="input text-sm w-44" value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}>

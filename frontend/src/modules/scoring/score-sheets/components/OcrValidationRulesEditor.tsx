@@ -60,12 +60,12 @@ export default function OcrValidationRulesEditor({
         <table className="w-full text-sm">
           <caption className="sr-only">{t('scoreSheets.rules.fieldRules')}</caption>
           <thead>
-            <tr className="text-left text-leise">
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.layout.field')}</th>
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.rules.min')}</th>
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.rules.max')}</th>
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.rules.integer')}</th>
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.rules.fieldConfidence')}</th>
+            <tr className="text-left text-fg">
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.layout.field')}</th>
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.rules.min')}</th>
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.rules.max')}</th>
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.rules.integer')}</th>
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.rules.fieldConfidence')}</th>
             </tr>
           </thead>
           <tbody>
@@ -157,7 +157,7 @@ export default function OcrValidationRulesEditor({
               </label>
               <button
                 type="button"
-                className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                className="rounded p-1 text-danger hover:bg-danger/10"
                 aria-label={t('scoreSheets.rules.removeSum', { number: index + 1 })}
                 onClick={() => removeSum(index)}
               >

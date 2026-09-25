@@ -121,11 +121,14 @@ export default function EventSchedulePage() {
 
   return (
     <div className="mx-auto max-w-7xl p-4 md:p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <CalendarDays />
-          {t("schedulePage.title")}
-        </h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <CalendarDays className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("schedulePage.title")}
+          </h1>
+          <p className="page-subtitle">{t("schedulePage.subtitle")}</p>
+        </div>
         {canManage && (
           <button
             type="button"
@@ -140,7 +143,7 @@ export default function EventSchedulePage() {
         )}
       </div>
       {notice && (
-        <p role="status" className="mb-4 text-sm text-emerald-600">
+        <p role="status" className="mb-4 text-sm text-success">
           {notice}
         </p>
       )}
@@ -183,7 +186,7 @@ export default function EventSchedulePage() {
             {t("schedulePage.generate")}
           </button>
           {error && (
-            <p role="alert" className="text-sm text-red-600 md:col-span-3">
+            <p role="alert" className="text-sm text-danger md:col-span-3">
               {error}
             </p>
           )}
@@ -332,7 +335,7 @@ export default function EventSchedulePage() {
             </p>
           )}
           {!canManage && error && (
-            <p role="alert" className="mb-3 text-sm text-red-600">
+            <p role="alert" className="mb-3 text-sm text-danger">
               {error}
             </p>
           )}

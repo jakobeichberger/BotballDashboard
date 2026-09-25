@@ -220,7 +220,7 @@ export default function OcrLayoutEditor({
           {regions.map((region) => (
             <div
               key={region.key}
-              className={`pointer-events-none absolute border-2 ${region.key === active ? 'border-blue-600 bg-blue-500/20' : 'border-emerald-600 bg-emerald-500/10'}`}
+              className={`pointer-events-none absolute border-2 ${region.key === active ? 'border-primary bg-primary/20' : 'border-success bg-emerald-500/10'}`}
               style={boxStyle(region)}
             >
               <span className="absolute -top-4 left-0 whitespace-nowrap rounded bg-gray-900/80 px-1 text-[10px] text-white">{region.key}</span>
@@ -229,21 +229,21 @@ export default function OcrLayoutEditor({
           {anchors.map((anchor, index) => (
             <div
               key={`anchor-${index}`}
-              className="pointer-events-none absolute border-2 border-amber-500 bg-amber-400/30"
+              className="pointer-events-none absolute border-2 border-warning bg-amber-400/30"
               style={boxStyle(anchor)}
             >
               <span className="absolute -bottom-4 left-0 whitespace-nowrap rounded bg-amber-700/90 px-1 text-[10px] text-white">{anchor.name}</span>
             </div>
           ))}
-          {preview && <div className={`pointer-events-none absolute border-2 border-dashed ${mode === 'anchors' ? 'border-amber-500' : 'border-blue-600'}`} style={boxStyle(preview)} />}
+          {preview && <div className={`pointer-events-none absolute border-2 border-dashed ${mode === 'anchors' ? 'border-warning' : 'border-primary'}`} style={boxStyle(preview)} />}
         </div>
 
         <div className="space-y-6 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-leise">
-                <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.layout.field')}</th>
-                {EDGES.map((edge) => <th key={edge} scope="col" className="py-1 pr-2 font-medium">{t(`scoreSheets.layout.edge.${edge}`)}</th>)}
+              <tr className="text-left text-fg">
+                <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.layout.field')}</th>
+                {EDGES.map((edge) => <th key={edge} scope="col" className="py-1 pr-2 font-semibold">{t(`scoreSheets.layout.edge.${edge}`)}</th>)}
                 <th scope="col" className="py-1"><span className="sr-only">{t('common:actions')}</span></th>
               </tr>
             </thead>
@@ -251,7 +251,7 @@ export default function OcrLayoutEditor({
               {fields.map((field) => {
                 const region = regionOf(field.key)
                 return (
-                  <tr key={field.key} className={`border-t border-rand ${field.key === active ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
+                  <tr key={field.key} className={`border-t border-rand ${field.key === active ? 'bg-primary/[0.06]' : ''}`}>
                     <td className="py-1 pr-2">
                       <button type="button" className="text-left hover:underline" onClick={() => setActive(field.key)}>
                         {field.label} <span className="font-mono text-xs text-leise">{field.key}</span>
@@ -279,7 +279,7 @@ export default function OcrLayoutEditor({
                     ))}
                     <td className="py-1 text-right">
                       {region && (
-                        <button type="button" className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" aria-label={t('scoreSheets.layout.removeBox', { field: field.key })} onClick={() => removeRegion(field.key)}>
+                        <button type="button" className="rounded p-1 text-danger hover:bg-danger/10" aria-label={t('scoreSheets.layout.removeBox', { field: field.key })} onClick={() => removeRegion(field.key)}>
                           <Trash2 className="h-4 w-4" />
                         </button>
                       )}
@@ -308,9 +308,9 @@ export default function OcrLayoutEditor({
               <div className="table-scroll">
               <table className="mt-2 w-full text-sm">
                 <thead>
-                  <tr className="text-left text-leise">
-                    <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.anchors.name')}</th>
-                    {EDGES.map((edge) => <th key={edge} scope="col" className="py-1 pr-2 font-medium">{t(`scoreSheets.layout.edge.${edge}`)}</th>)}
+                  <tr className="text-left text-fg">
+                    <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.anchors.name')}</th>
+                    {EDGES.map((edge) => <th key={edge} scope="col" className="py-1 pr-2 font-semibold">{t(`scoreSheets.layout.edge.${edge}`)}</th>)}
                     <th scope="col" className="py-1"><span className="sr-only">{t('common:actions')}</span></th>
                   </tr>
                 </thead>
@@ -341,7 +341,7 @@ export default function OcrLayoutEditor({
                         </td>
                       ))}
                       <td className="py-1 text-right">
-                        <button type="button" className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" aria-label={t('scoreSheets.anchors.remove', { name: anchor.name })} onClick={() => removeAnchor(index)}>
+                        <button type="button" className="rounded p-1 text-danger hover:bg-danger/10" aria-label={t('scoreSheets.anchors.remove', { name: anchor.name })} onClick={() => removeAnchor(index)}>
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
@@ -352,7 +352,7 @@ export default function OcrLayoutEditor({
             </div>
             )}
             {anchors.length > 0 && anchors.length < MIN_ANCHORS && (
-              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{t('scoreSheets.anchors.tooFew', { min: MIN_ANCHORS })}</p>
+              <p className="mt-1 text-xs text-warning">{t('scoreSheets.anchors.tooFew', { min: MIN_ANCHORS })}</p>
             )}
           </section>
         </div>
@@ -365,7 +365,7 @@ export default function OcrLayoutEditor({
           <Save className="h-4 w-4" />
           {t('scoreSheets.layout.save')}
         </button>
-        {problem && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{problem}</p>}
+        {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
         {message && <p role="status" className="text-sm text-leise">{message}</p>}
       </div>
     </section>

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Printer } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock, Loader, Plus, Printer, Timer } from "lucide-react";
+import clsx from "clsx";
+import { StatGrid } from "@/pages/dashboard/widgets";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -142,32 +144,51 @@ export default function PrintingPage() {
 
   return (
     <div className="p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-          <Printer className="w-6 h-6" />
-          {t("title")}
-        </h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <Printer className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("title")}
+          </h1>
+          <p className="page-subtitle">{t("subtitle")}</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {canAdmin && event?.season_id && <PrintingExportButtons seasonId={event.season_id} seasonYear={event.slug} />}
-          {canWrite && <button onClick={() => setOpen(true)} className="btn-primary">{t("newJob")}</button>}
+          {canWrite && <button onClick={() => setOpen(true)} className="btn-primary"><Plus className="h-5 w-5" aria-hidden="true" />{t("newJob")}</button>}
         </div>
       </div>
 
       {notice && (
-        <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-100">
+        <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-warning/45 bg-warning/[0.08] p-3 text-sm text-warning">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="flex-1">{notice}</span>
           <button className="text-xs underline" onClick={() => setNotice(null)}>{t("common:close")}</button>
         </div>
       )}
 
+      {!!jobs?.length && (
+        <StatGrid
+          ariaLabel={t("kpi.label")}
+          items={[
+            { label: t("kpi.open"), value: jobs.filter((job) => job.status === "pending").length, icon: Clock, tone: "warning" },
+            { label: t("kpi.queue"), value: jobs.filter((job) => job.status === "approved" || job.status === "queued").length, icon: Timer, tone: "info" },
+            { label: t("kpi.printing"), value: jobs.filter((job) => job.status === "printing").length, icon: Loader, tone: "primary" },
+            { label: t("kpi.done"), value: jobs.filter((job) => job.status === "completed").length, icon: CheckCircle2, tone: "success" },
+          ]}
+        />
+      )}
+
       {!!printers?.length && (
         <section className="mb-6" aria-label={t("printerStatus")}>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {printers.filter((printer) => printer.is_active).map((printer) => (
-              <div key={printer.id} className="card p-3 text-sm">
-                <p className="font-semibold text-fg">{printer.name}</p>
-                <p className={printer.is_online ? "text-green-600" : "text-leise"}>
+              <div key={printer.id} className={clsx("card flex items-start gap-3 p-3 text-sm", printer.is_online && "border-success/50")}>
+                <span className={clsx("stat-icon h-10 w-10", printer.is_online ? "bg-success/10 text-success" : "bg-flaeche-2 text-leise")}>
+                  <Printer className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                <p className="font-ui font-semibold text-fg">{printer.name}</p>
+                <p className={printer.is_online ? "text-success" : "text-leise"}>
                   {printer.printer_type === "generic"
                     ? t("manual")
                     : printer.is_online
@@ -175,7 +196,8 @@ export default function PrintingPage() {
                       : t("offline")}
                   {" · "}{PRINTER_TYPE_LABEL[printer.printer_type] ?? printer.printer_type}
                 </p>
-                {printer.status_message && printer.current_state === "failed" && <p className="text-xs text-red-600">{printer.status_message}</p>}
+                {printer.status_message && printer.current_state === "failed" && <p className="text-xs text-danger">{printer.status_message}</p>}
+                </div>
               </div>
             ))}
           </div>
@@ -188,27 +210,34 @@ export default function PrintingPage() {
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.file")}</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.team")}</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.material")}</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("common:status")}</th>
-              <th className="px-4 py-3 text-right font-medium text-leise">{t("col.grams")}</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.progress")}</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.action")}</th>
+              <th className="px-4 py-3 text-left font-semibold"><span className="sr-only">{t("col.open")}</span></th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.file")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.team")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.material")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("col.grams")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.progress")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.action")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {jobs?.map((job) => (
               <tr key={job.id} className="hover:bg-flaeche-2">
+                <td className="px-4 py-3">
+                  <EventLink to={`/printing/jobs/${job.id}`} className="row-action" aria-describedby={`print-job-${job.id}`} tabIndex={-1}>
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    {t("common:open")}
+                  </EventLink>
+                </td>
                 <td className="px-4 py-3 font-medium text-fg">
-                  <EventLink to={`/printing/jobs/${job.id}`} className="text-akzent hover:underline">{job.file_name}</EventLink>
+                  <EventLink id={`print-job-${job.id}`} to={`/printing/jobs/${job.id}`} className="text-akzent hover:underline">{job.file_name}</EventLink>
                   {!job.file_url && <span className="ml-2 badge-gray">{t("noFile")}</span>}
                 </td>
                 <td className="px-4 py-3 text-leise">{teamName(job.team_id)}</td>
                 <td className="px-4 py-3 text-leise">{job.material}</td>
                 <td className="px-4 py-3">
                   <span className={STATUS_BADGE[job.status] ?? "badge-gray"}>{STATUS_LABEL[job.status] ?? job.status}</span>
-                  {job.status === "rejected" && job.rejection_reason && <p className="mt-1 text-xs text-red-600">{job.rejection_reason}</p>}
+                  {job.status === "rejected" && job.rejection_reason && <p className="mt-1 text-xs text-danger">{job.rejection_reason}</p>}
                 </td>
                 <td className="px-4 py-3 text-right text-leise">
                   {job.actual_grams ?? job.estimated_grams ?? "—"}g
@@ -244,7 +273,7 @@ export default function PrintingPage() {
             ))}
             {jobs?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-leise">
+                <td colSpan={8} className="px-4 py-8 text-center text-leise">
                   {t("empty")}
                 </td>
               </tr>
@@ -306,12 +335,12 @@ export default function PrintingPage() {
             </label>
           )}
           {complianceWarning && (
-            <p role="status" className="flex items-start gap-2 rounded border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-100">
+            <p role="status" className="flex items-start gap-2 rounded border border-warning/45 bg-warning/[0.08] p-2 text-sm text-warning">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               {complianceWarning}
             </p>
           )}
-          {createJob.isError && <p className="text-sm text-red-600">{apiError(createJob.error, t("create.failed"))}</p>}
+          {createJob.isError && <p className="text-sm text-danger">{apiError(createJob.error, t("create.failed"))}</p>}
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>{t("common:cancel")}</button>
             <button type="submit" className="btn-primary" disabled={!event || !form.team_id || !file || createJob.isPending}>{t("common:create")}</button>

@@ -40,7 +40,7 @@ export default function ResetPasswordPage() {
         </h1>
         <div className="card p-6 space-y-4">
           {!token ? (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+            <p role="alert" className="text-sm text-danger">
               {t("reset.incompleteLink")}
             </p>
           ) : done ? (
@@ -73,7 +73,7 @@ export default function ResetPasswordPage() {
                 />
               </div>
               {error && (
-                <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
+                <div role="alert" className="rounded-lg bg-danger/[0.07] px-3 py-2 text-sm text-danger">
                   {error}
                 </div>
               )}

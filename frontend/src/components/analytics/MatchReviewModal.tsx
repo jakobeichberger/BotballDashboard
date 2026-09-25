@@ -40,7 +40,7 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
       <div className="space-y-4 text-sm">
         <ul className="space-y-1" aria-label={t("review.reasons")}>
           {anomaly.reasons.map((r, i) => (
-            <li key={i} className={r.severity === "error" ? "text-red-700 dark:text-red-400" : "text-yellow-700 dark:text-yellow-400"}>
+            <li key={i} className={r.severity === "error" ? "text-danger" : "text-warning"}>
               • {r.message}
             </li>
           ))}

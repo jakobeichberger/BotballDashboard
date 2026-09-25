@@ -102,7 +102,7 @@ export default function SchemaEditor({ eventId, schema, onMessage }: Props) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 id="schema-editor-title" className="text-lg font-semibold">{t("schema.title")}</h2>
         <div className="inline-flex overflow-hidden rounded-lg border" role="tablist">
-          {(["structured", "json"] as Mode[]).map((item) => <button key={item} type="button" role="tab" aria-selected={mode === item} className={`px-3 py-1.5 text-sm ${mode === item ? "bg-primary-600 text-white" : ""}`} onClick={() => switchMode(item)}>{item === "structured" ? t("schema.editor") : "JSON"}</button>)}
+          {(["structured", "json"] as Mode[]).map((item) => <button key={item} type="button" role="tab" aria-selected={mode === item} className={`px-3 py-1.5 text-sm ${mode === item ? "bg-primary text-white" : ""}`} onClick={() => switchMode(item)}>{item === "structured" ? t("schema.editor") : "JSON"}</button>)}
         </div>
       </div>
       <p className="mb-4 text-sm text-leise">{t("schema.hint")} {t("schema.current", { current: schema ? t(schema.definition ? "schema.versionStructured" : "schema.versionFlat", { version: schema.version }) : t("schema.none") })}</p>
@@ -122,7 +122,7 @@ export default function SchemaEditor({ eventId, schema, onMessage }: Props) {
             <SectionEditor key={index} section={section} index={index} count={draft.sections.length} onChange={(change) => updateSection(index, change)} onMove={(delta) => moveSection(index, delta)} onRemove={() => setDraft({ ...draft, sections: draft.sections.filter((_, i) => i !== index) })} />
           ))}
           <button type="button" className="btn-secondary" onClick={addSection}><Plus className="h-4 w-4" />{t("schema.section")}</button>
-          {problems.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
+          {problems.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-warning/[0.08] p-3 text-sm text-warning">{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
           {!problems.length && <p className="text-xs text-leise">{t(draft.sides.length ? "schema.inputsBothSides" : "schema.inputs", { count: inputs })}</p>}
         </div>
       )}

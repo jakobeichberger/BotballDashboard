@@ -37,8 +37,8 @@ export default function CalendarPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-          <CalendarClock className="w-6 h-6" /> {t("calendarPage.title")}
+        <h1 className="page-title flex items-center gap-2">
+          <CalendarClock className="h-7 w-7 shrink-0 text-akzent" /> {t("calendarPage.title")}
         </h1>
         <div className="flex items-center gap-2">
           <label htmlFor="calendar-season" className="text-sm text-leise">{t("calendarPage.season")}</label>

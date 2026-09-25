@@ -60,7 +60,7 @@ export default function EventAuditTrail({ eventId }: { eventId: string }) {
       <div className="flex flex-wrap items-center gap-3">
         <div role="tablist" aria-label={t("audit.title")} className="inline-flex overflow-hidden rounded-lg border border-rand">
           {(["scores", "results"] as Tab[]).map((key) => (
-            <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={`px-3 py-1.5 text-sm ${tab === key ? "bg-primary-600 text-white" : "bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800"}`}>
+            <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={`px-3 py-1.5 text-sm ${tab === key ? "bg-primary text-white" : "bg-flaeche hover:bg-flaeche-2"}`}>
               {t(`audit.tab.${key}`)}
             </button>
           ))}
@@ -76,16 +76,16 @@ export default function EventAuditTrail({ eventId }: { eventId: string }) {
           </select>
         )}
       </div>
-      {rows.isError && <p className="text-sm text-red-600">{t("audit.loadFailed")}</p>}
+      {rows.isError && <p className="text-sm text-danger">{t("audit.loadFailed")}</p>}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="text-left text-leise">
-              <th scope="col" className="py-1 pr-3 font-medium">{t("audit.col.time")}</th>
-              <th scope="col" className="py-1 pr-3 font-medium">{t("audit.col.team")}</th>
-              <th scope="col" className="py-1 pr-3 font-medium">{t("audit.col.what")}</th>
-              <th scope="col" className="py-1 pr-3 font-medium">{t("audit.col.changes")}</th>
-              <th scope="col" className="py-1 font-medium">{t("audit.col.by")}</th>
+            <tr className="text-left text-fg">
+              <th scope="col" className="py-1 pr-3 font-semibold">{t("audit.col.time")}</th>
+              <th scope="col" className="py-1 pr-3 font-semibold">{t("audit.col.team")}</th>
+              <th scope="col" className="py-1 pr-3 font-semibold">{t("audit.col.what")}</th>
+              <th scope="col" className="py-1 pr-3 font-semibold">{t("audit.col.changes")}</th>
+              <th scope="col" className="py-1 font-semibold">{t("audit.col.by")}</th>
             </tr>
           </thead>
           <tbody>

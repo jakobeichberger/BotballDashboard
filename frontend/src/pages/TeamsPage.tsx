@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Search, Trash2, Users } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
@@ -190,20 +190,23 @@ export default function TeamsPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-fg">
-          <Users className="h-6 w-6" />
-          {t("title")}
-        </h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <Users className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("title")}
+          </h1>
+          <p className="page-subtitle">{t("subtitle")}</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {event?.season_id && <TeamExportButtons seasonId={event.season_id} seasonYear={event.slug} />}
           {canExportHistory && <MultiYearExportButton />}
           <EventLink to="/teams/matrix" className="btn-secondary">{t("matrix.title")}</EventLink>
-          {canWrite && <button onClick={openCreate} className="btn-primary">{t("add")}</button>}
+          {canWrite && <button onClick={openCreate} className="btn-primary"><Plus className="h-5 w-5" aria-hidden="true" />{t("add")}</button>}
         </div>
       </div>
 
-      <form role="search" className="card mb-6 flex flex-wrap items-end gap-3 p-4" onSubmit={(e) => e.preventDefault()}>
+      <form role="search" className="filter-bar mb-6" onSubmit={(e) => e.preventDefault()}>
         <label className="flex-1 min-w-[12rem] text-sm font-medium">
           {t("filter.search")}
           <span className="relative mt-1 block">
@@ -350,7 +353,7 @@ export default function TeamsPage() {
               {t("form.isActive")}
             </label>
           )}
-          {saveError && <p role="alert" className="text-sm text-red-600">{t("form.saveFailed")}</p>}
+          {saveError && <p role="alert" className="text-sm text-danger">{t("form.saveFailed")}</p>}
           <div className="flex justify-end gap-3 border-b pb-5">
             <button type="button" className="btn-secondary" onClick={closeModal}>{t("common:cancel")}</button>
             <button
@@ -378,7 +381,7 @@ export default function TeamsPage() {
                     </div>
                     <button
                       type="button"
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10"
                       aria-label={t("members.remove", { name: member.name })}
                       disabled={removeMember.isPending}
                       onClick={() => void confirmAction({ message: t("members.confirmRemove", { name: member.name }), tone: "danger", confirmLabel: t("detail.remove") }).then((ok) => ok && removeMember.mutate(member.id))}
@@ -424,7 +427,7 @@ export default function TeamsPage() {
                 </select>
               </label>
               <div className="sm:col-span-3 flex items-center justify-between gap-3">
-                {addMember.isError && <p role="alert" className="text-sm text-red-600">{t("members.addFailed")}</p>}
+                {addMember.isError && <p role="alert" className="text-sm text-danger">{t("members.addFailed")}</p>}
                 <button
                   type="submit"
                   className="btn-secondary ml-auto"

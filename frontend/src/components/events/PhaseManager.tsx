@@ -64,7 +64,7 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
   return (
     <section className="card p-5">
       <h2 className="mb-4 text-lg font-semibold">{t("setup.phases")}</h2>
-      {error && <p role="alert" className="mb-3 text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
       <ul className="mb-4 space-y-2">
         {phases.data?.map((item) => editing === item.id ? (
           <li key={item.id} className="rounded bg-flaeche-2 p-2 text-sm">
@@ -77,7 +77,7 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
                 <select className="input mt-1 w-full" value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })}>{PHASE_STATUSES.map((status) => <option key={status} value={status}>{t(`setup.phaseStatus.${status}`)}</option>)}</select>
               </label>
               <label className="text-xs font-medium">{t("setup.phaseRounds")}<input type="number" min={1} max={100} className="input mt-1 w-full" value={draft.rounds} onChange={(e) => setDraft({ ...draft, rounds: Number(e.target.value) })} /></label>
-              {phaseLocked(item) && <p className="text-xs text-amber-700 dark:text-amber-400 sm:col-span-2">{t("setup.phaseLockedHint")}</p>}
+              {phaseLocked(item) && <p className="text-xs text-warning sm:col-span-2">{t("setup.phaseLockedHint")}</p>}
               <div className="flex gap-2 sm:col-span-2">
                 <button className="btn-primary" disabled={updatePhase.isPending}>{t("common:save")}</button>
                 <button type="button" className="btn-secondary" onClick={() => setEditing(null)}><X className="h-4 w-4" />{t("common:cancel")}</button>
@@ -93,7 +93,7 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
               <button type="button" className="rounded p-1 text-leise hover:bg-flaeche-2" aria-label={t("setup.editPhase", { name: item.name })} title={t("common:edit")} onClick={() => startEdit(item)}><Pencil className="h-4 w-4" /></button>
               <button
                 type="button"
-                className="rounded p-1 text-red-600 hover:bg-red-50 disabled:opacity-40 dark:hover:bg-red-900/30"
+                className="rounded p-1 text-danger hover:bg-danger/10 disabled:opacity-40"
                 aria-label={t("setup.deletePhase", { name: item.name })}
                 title={phaseLocked(item) ? t("setup.phaseLockedDelete") : t("common:delete")}
                 disabled={phaseLocked(item) || deletePhase.isPending}

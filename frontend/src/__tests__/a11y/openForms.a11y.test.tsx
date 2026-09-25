@@ -87,7 +87,7 @@ describe("open forms accessibility (axe)", () => {
 
   it("printing: new job dialog and printer form", async () => {
     renderAt("/printing", "/printing", <PrintingPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "+ Druckauftrag" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Druckauftrag" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(await axe(document.body, AXE_OPTS)).toHaveNoViolations();
   });

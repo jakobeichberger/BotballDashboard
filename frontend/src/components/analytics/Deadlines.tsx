@@ -43,7 +43,7 @@ export function DeadlineList({ entries, showSeason = false, now }: { entries: De
             <div className="min-w-0 flex-1">
               <p className={clsx("truncate text-sm font-medium text-fg", past && "line-through")}>
                 {e.title}
-                {e.done && <CheckCircle2 className="ml-1 inline h-3.5 w-3.5 text-green-600" aria-label={t("deadlines.done")} />}
+                {e.done && <CheckCircle2 className="ml-1 inline h-3.5 w-3.5 text-success" aria-label={t("deadlines.done")} />}
               </p>
               <p className="text-xs text-leise">
                 <time dateTime={e.start}>{fmtDay(e.start)}</time>
@@ -144,7 +144,7 @@ export function MonthCalendar({ entries, initial }: { entries: DeadlineEntry[]; 
 
 const STATUS_STYLE: Record<string, string> = {
   planned: "border-rand-stark/70 bg-flaeche text-fg",
-  active: "border-green-500 bg-green-50 text-green-800 ring-2 ring-green-500/30 dark:bg-green-900/30 dark:text-green-200",
+  active: "border-success bg-success/[0.07] text-success ring-2 ring-success/30",
   finished: "border-rand bg-flaeche-2 text-leise",
 };
 const TIMELINE_STATUSES = ["planned", "active", "finished"];
@@ -169,7 +169,7 @@ export function SeasonTimelineView({ timeline }: { timeline?: SeasonTimeline }) 
           <div className={clsx("flex-1 rounded-lg border p-3", STATUS_STYLE[e.status] ?? STATUS_STYLE.planned)}>
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5 font-medium">
-                <span className={clsx("h-2 w-2 rounded-full", DEADLINE_DOT[e.color] ?? "bg-blue-600")} aria-hidden="true" />
+                <span className={clsx("h-2 w-2 rounded-full", DEADLINE_DOT[e.color] ?? "bg-primary")} aria-hidden="true" />
                 {e.name}
               </span>
               <span className="text-xs">{statusLabel(e.status)}</span>

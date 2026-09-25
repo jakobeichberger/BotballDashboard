@@ -24,18 +24,18 @@ export function Heatmap({ heatmap }: { heatmap: EventStatistics["heatmap"] }) {
         <caption className="sr-only">{t("heatmap.caption")}</caption>
         <thead>
           <tr>
-            <th scope="col" className="px-2 py-1 text-left font-medium text-leise">{t("history.col.team")}</th>
-            {heatmap.fields.map((f) => <th key={f.key} scope="col" className="px-2 py-1 text-center font-medium text-leise">{f.label}</th>)}
+            <th scope="col" className="px-2 py-1 text-left font-semibold">{t("history.col.team")}</th>
+            {heatmap.fields.map((f) => <th key={f.key} scope="col" className="px-2 py-1 text-center font-semibold">{f.label}</th>)}
           </tr>
         </thead>
         <tbody>
           {heatmap.teams.map((team) => (
             <tr key={team.team_id}>
-              <th scope="row" className="whitespace-nowrap px-2 py-1 text-left font-medium">{team.team_name}</th>
+              <th scope="row" className="whitespace-nowrap px-2 py-1 text-left font-semibold">{team.team_name}</th>
               {team.values.map((cell) => (
                 <td
                   key={cell.key}
-                  className={clsx("min-w-[4.5rem] border border-white px-2 py-1 text-center tabular-nums dark:border-gray-900", heatTextClass(cell.ratio))}
+                  className={clsx("min-w-[4.5rem] border border-flaeche px-2 py-1 text-center tabular-nums", heatTextClass(cell.ratio))}
                   style={{ backgroundColor: heatColor(cell.ratio) }}
                   title={cell.ratio != null ? t("heatmap.ofBest", { percent: Math.round(cell.ratio * 100) }) : undefined}
                 >
@@ -54,13 +54,13 @@ export function Heatmap({ heatmap }: { heatmap: EventStatistics["heatmap"] }) {
 export function AnomalyList({ anomalies, onSelect }: { anomalies: Anomaly[]; onSelect: (a: Anomaly) => void }) {
   const { t } = useTranslation("analytics");
   if (!anomalies.length) {
-    return <p className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400"><CheckCircle2 className="h-4 w-4" /> {t("anomalies.none")}</p>;
+    return <p className="flex items-center gap-2 text-sm text-success"><CheckCircle2 className="h-4 w-4" /> {t("anomalies.none")}</p>;
   }
   return (
     <ul className="space-y-2" aria-label={t("anomalies.label")}>
       {anomalies.map((a) => (
         <li key={a.match_id} className="flex flex-wrap items-center gap-3 rounded-lg bg-flaeche-2 p-3">
-          <AlertTriangle className={clsx("h-4 w-4 shrink-0", a.severity === "error" ? "text-red-600" : "text-yellow-600")} aria-label={a.severity === "error" ? t("anomalies.error") : t("anomalies.warning")} />
+          <AlertTriangle className={clsx("h-4 w-4 shrink-0", a.severity === "error" ? "text-danger" : "text-warning")} aria-label={a.severity === "error" ? t("anomalies.error") : t("anomalies.warning")} />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-fg">
               {t("anomalies.summary", { team: a.team_name, round: a.round_number, points: fmtNum(a.total_score) })}
@@ -90,12 +90,15 @@ export default function StatisticsPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-          <BarChart3 className="w-6 h-6" /> {t("statistics.title")}
-        </h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <BarChart3 className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" /> {t("statistics.title")}
+          </h1>
+          <p className="page-subtitle">{t("statistics.subtitle")}</p>
+        </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-leise">
+          <label className="flex min-h-11 items-center gap-2 text-sm text-leise">
             <input type="checkbox" checked={includePractice} onChange={(e) => setIncludePractice(e.target.checked)} />
             {t("statistics.includePractice")}
           </label>
@@ -103,7 +106,7 @@ export default function StatisticsPage() {
         </div>
       </div>
       {isLoading && <p className="text-leise">{t("common:loadingEllipsis")}</p>}
-      {isError && <p className="card p-6 text-sm text-red-600">{t("statistics.loadFailed")}</p>}
+      {isError && <p className="card p-6 text-sm text-danger">{t("statistics.loadFailed")}</p>}
       {stats && (
         <>
           <StatGrid
@@ -156,11 +159,11 @@ export default function StatisticsPage() {
               <div className="table-scroll">
               <table className="mt-4 w-full text-sm">
                 <caption className="sr-only">{t("statistics.trendPerTeam")}</caption>
-                <thead><tr className="text-left text-leise">
-                  <th scope="col" className="py-1 font-medium">{t("history.col.team")}</th>
-                  <th scope="col" className="py-1 font-medium">{t("history.col.runs")}</th>
-                  <th scope="col" className="py-1 font-medium">{t("statistics.scores")}</th>
-                  <th scope="col" className="py-1 text-right font-medium">{t("statistics.trendPerRun")}</th>
+                <thead><tr className="text-left text-fg">
+                  <th scope="col" className="py-1 font-semibold">{t("history.col.team")}</th>
+                  <th scope="col" className="py-1 font-semibold">{t("history.col.runs")}</th>
+                  <th scope="col" className="py-1 font-semibold">{t("statistics.scores")}</th>
+                  <th scope="col" className="py-1 text-right font-semibold">{t("statistics.trendPerRun")}</th>
                 </tr></thead>
                 <tbody>
                   {stats.trend.teams.map((row) => (
@@ -168,7 +171,7 @@ export default function StatisticsPage() {
                       <td className="py-1">{row.team_name}</td>
                       <td className="py-1 tabular-nums">{row.points.length}</td>
                       <td className="py-1 tabular-nums text-leise">{row.points.map((p) => fmtNum(p.total_score, 0)).join(" → ")}</td>
-                      <td className={clsx("py-1 text-right tabular-nums", (row.slope ?? 0) > 0 ? "text-green-700 dark:text-green-400" : (row.slope ?? 0) < 0 ? "text-red-700 dark:text-red-400" : "")}>
+                      <td className={clsx("py-1 text-right tabular-nums", (row.slope ?? 0) > 0 ? "text-success" : (row.slope ?? 0) < 0 ? "text-danger" : "")}>
                         {row.slope != null && row.slope > 0 ? "+" : ""}{fmtNum(row.slope)}
                       </td>
                     </tr>

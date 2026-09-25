@@ -156,15 +156,15 @@ export default function PrintJobDetailPage() {
         <ArrowLeft className="w-4 h-4" /> {t("detail.back")}
       </EventLink>
 
-      {info && <p role="status" className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-100">{info}</p>}
-      {message && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">{message}</p>}
+      {info && <p role="status" className="rounded-lg border border-warning/45 bg-warning/[0.08] p-3 text-sm text-warning">{info}</p>}
+      {message && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/[0.07] p-3 text-sm text-danger">{message}</p>}
 
       {/* Header */}
       <div className="card p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-              <Printer className="w-6 h-6" />
+            <h1 className="page-title flex items-center gap-2">
+              <Printer className="h-7 w-7 shrink-0 text-akzent" />
               {job.file_name}
             </h1>
             {team && (
@@ -190,12 +190,12 @@ export default function PrintJobDetailPage() {
           </div>
         )}
         {job.error_message && (
-          <p className="mt-4 flex items-center gap-2 text-sm text-red-600"><AlertTriangle className="w-4 h-4" /> {job.error_message}</p>
+          <p className="mt-4 flex items-center gap-2 text-sm text-danger"><AlertTriangle className="w-4 h-4" /> {job.error_message}</p>
         )}
         {status === "rejected" && job.rejection_reason && (
-          <p className="mt-4 text-sm text-red-600"><strong>{t("detail.rejectionReasonLabel")}</strong> {job.rejection_reason}</p>
+          <p className="mt-4 text-sm text-danger"><strong>{t("detail.rejectionReasonLabel")}</strong> {job.rejection_reason}</p>
         )}
-        {job.quota_override && <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-300">{t("detail.quotaOverride")}</p>}
+        {job.quota_override && <p className="mt-2 text-xs text-warning">{t("detail.quotaOverride")}</p>}
 
         <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           {details.map(([label, val]) => (

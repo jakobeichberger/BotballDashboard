@@ -101,7 +101,7 @@ function RosterEditor({ teamId, seasonId, members, canEdit }: { teamId: string; 
         <button className="btn-primary text-xs" disabled={saveM.isPending} onClick={() => saveM.mutate(draft)}>{t("roster.save")}</button>
         <button className="btn-secondary text-xs" onClick={() => setDraft(null)}>{t("common:cancel")}</button>
       </div>
-      {saveM.isError && <p role="alert" className="text-red-600">{apiErrorMessage(saveM.error)}</p>}
+      {saveM.isError && <p role="alert" className="text-danger">{apiErrorMessage(saveM.error)}</p>}
     </div>
   );
 }
@@ -216,7 +216,7 @@ export function SeasonRegistrations({
                     <Save className="h-4 w-4" /> {t("common:save")}
                   </button>
                   <button className="btn-secondary text-sm" onClick={() => setEditing(null)}><X className="h-4 w-4" /> {t("common:cancel")}</button>
-                  {saveM.isError && <p role="alert" className="text-sm text-red-600">{apiErrorMessage(saveM.error)}</p>}
+                  {saveM.isError && <p role="alert" className="text-sm text-danger">{apiErrorMessage(saveM.error)}</p>}
                 </div>
               </div>
             )}

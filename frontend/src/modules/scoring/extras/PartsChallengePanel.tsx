@@ -78,7 +78,7 @@ export default function PartsChallengePanel({
         <h2 id="parts-challenges-title" className="flex items-center gap-2 text-lg font-semibold"><Gavel className="h-5 w-5" aria-hidden="true" />{t("partsChallenge.title")}</h2>
         <p className="text-xs text-leise">{t("partsChallenge.hint")}</p>
       </div>
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <ul className="space-y-3">
         {list.map((item) => {
           const open = item.upheld === null;

@@ -120,7 +120,7 @@ export function ComplianceChecklist({
               <p className="font-medium text-fg">{entry.item.label}</p>
               {entry.item.description && <p className="text-xs text-leise">{entry.item.description}</p>}
             </div>
-            {entry.verified_at && <CheckCircle2 className="h-4 w-4 text-green-600" aria-label={t("compliance.itemVerified")} />}
+            {entry.verified_at && <CheckCircle2 className="h-4 w-4 text-success" aria-label={t("compliance.itemVerified")} />}
           </li>
         ))}
       </ul>
@@ -140,7 +140,7 @@ export function ComplianceChecklist({
           <button className="btn-secondary text-sm" disabled={!newItem.trim() || addM.isPending}>{t("common:add")}</button>
         </form>
       )}
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     </div>
   );
 }

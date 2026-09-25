@@ -269,8 +269,8 @@ export default function TeamDetailPage() {
           <>
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-                  <Users className="w-6 h-6" /> {team.name}
+                <h1 className="page-title flex items-center gap-2">
+                  <Users className="h-7 w-7 shrink-0 text-akzent" /> {team.name}
                 </h1>
                 {team.team_number && <span className="text-sm text-leise font-mono">#{team.team_number}</span>}
               </div>
@@ -308,11 +308,11 @@ export default function TeamDetailPage() {
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("common:name")}</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("members.roleLabel")}</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("common:email")}</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("detail.account")}</th>
-              {canManage && <th className="px-4 py-3 text-right font-medium text-leise"><span className="sr-only">{t("common:actions")}</span></th>}
+              <th className="px-4 py-3 text-left font-semibold">{t("common:name")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("members.roleLabel")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("common:email")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("detail.account")}</th>
+              {canManage && <th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t("common:actions")}</span></th>}
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -333,7 +333,7 @@ export default function TeamDetailPage() {
                 {canManage && (
                   <td className="px-4 py-3 text-right">
                     <button type="button" onClick={() => void confirmAction({ message: t("members.confirmRemove", { name: m.name }), tone: "danger", confirmLabel: t("detail.remove") }).then((ok) => ok && removeMemberM.mutate(m.id))} disabled={removeMemberM.isPending}
-                            className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40" title={t("detail.remove")} aria-label={t("members.remove", { name: m.name })}>
+                            className="grid h-11 w-11 place-items-center rounded-lg text-danger hover:bg-danger/10 disabled:opacity-40" title={t("detail.remove")} aria-label={t("members.remove", { name: m.name })}>
                       <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </td>

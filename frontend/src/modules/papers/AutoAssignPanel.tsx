@@ -61,7 +61,7 @@ export function AutoAssignPanel({ seasonId, eventId }: { seasonId: string; event
           {t("autoAssign.assign")}
         </button>
       </div>
-      {runM.isError && <p role="alert" className="text-sm text-red-600">{apiErrorMessage(runM.error)}</p>}
+      {runM.isError && <p role="alert" className="text-sm text-danger">{apiErrorMessage(runM.error)}</p>}
       {result && (
         <div className="text-sm space-y-2">
           <p className="font-medium">
@@ -75,7 +75,7 @@ export function AutoAssignPanel({ seasonId, eventId }: { seasonId: string; event
             </ul>
           )}
           {result.unfilled.length > 0 && (
-            <p role="status" className="text-yellow-800 dark:text-yellow-200">
+            <p role="status" className="text-warning">
               {t("autoAssign.unfilled", {
                 papers: result.unfilled.map((u) => t("autoAssign.missing", { title: u.paper_title, count: u.missing })).join(", "),
               })}

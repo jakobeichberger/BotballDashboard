@@ -305,7 +305,8 @@
     "editFor": "Wertung von {{team}}, Runde {{round}} bearbeiten",
     "confirmFor": "Wertung von {{team}}, Runde {{round}} bestätigen",
     "deleteFor": "Wertung von {{team}}, Runde {{round}} löschen",
-    "schemaLoadFailed": "Das Wertungsschema konnte nicht geladen werden."
+    "schemaLoadFailed": "Das Wertungsschema konnte nicht geladen werden.",
+    "subtitle": "Wertungen erfassen, korrigieren und bestätigen."
   },
   "scoreboard": {
     "disqualified": "Disqualifiziert (rote Karte)",
@@ -338,7 +339,8 @@
       "overall": "Gesamtranking"
     },
     "noSeason": "Keine aktive Saison gefunden",
-    "unknownTeam": "Unbekanntes Team"
+    "unknownTeam": "Unbekanntes Team",
+    "subtitle": "Seeding und Gesamtwertung live – mit Exporten für Aushang und Archiv."
   },
   "formulas": {
     "saveFailed": "Speichern fehlgeschlagen",

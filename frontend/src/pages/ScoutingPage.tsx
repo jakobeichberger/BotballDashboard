@@ -100,7 +100,7 @@ export default function ScoutingPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-2xl font-bold"><Telescope />{t("scouting.title")}</h1>
+        <h1 className="page-title flex items-center gap-2"><Telescope className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{t("scouting.title")}</h1>
         <button type="button" className="btn-secondary" onClick={exportPdf}><FileDown className="h-4 w-4" />{t("scouting.report")}</button>
       </div>
       {message && <p role="status" className="rounded-lg bg-flaeche-2 p-3 text-sm">{message}</p>}
@@ -113,7 +113,7 @@ export default function ScoutingPage() {
           <thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("scouting.team")}</th><th className="p-3 text-left">{t("scouting.country")}</th><th className="p-3 text-left">{t("scouting.source")}</th><th className="p-3 text-right">{t("scouting.seed")}</th><th className="p-3 text-right">{t("scouting.best")}</th><th className="p-3 text-right">{t("scouting.runs")}</th></tr></thead>
           <tbody>
             {ranking.data?.map((entry) => (
-              <tr key={`${entry.kind}-${entry.team_id}`} className={`border-t ${entry.kind === "internal" ? "bg-primary-50/50 dark:bg-primary-900/20" : ""}`}>
+              <tr key={`${entry.kind}-${entry.team_id}`} className={`border-t ${entry.kind === "internal" ? "bg-primary/[0.06]" : ""}`}>
                 <td className="p-3 font-bold">{entry.rank}</td>
                 <td className="p-3">{entry.kind === "external" ? <button type="button" className="text-left underline-offset-2 hover:underline" onClick={() => setSelected(entry.team_id)}>{entry.team_name}</button> : entry.team_name}{entry.team_number && <span className="ml-1 text-xs text-leise">({entry.team_number})</span>}</td>
                 <td className="p-3">{entry.country ?? "–"}</td>
@@ -133,7 +133,7 @@ export default function ScoutingPage() {
         <section className="card p-4" aria-labelledby="external-teams-title">
           <h2 id="external-teams-title" className="mb-3 font-semibold">{t("scouting.externalTeams")}</h2>
           <ul className="mb-4 max-h-80 space-y-1 overflow-auto text-sm">
-            {teams.data?.map((team) => <li key={team.id}><button type="button" className={`w-full rounded px-2 py-1 text-left ${team.id === selected ? "bg-primary-600 text-white" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`} onClick={() => setSelected(team.id)}>{team.name}{team.number ? ` · ${team.number}` : ""}</button></li>)}
+            {teams.data?.map((team) => <li key={team.id}><button type="button" className={`w-full rounded px-2 py-1 text-left ${team.id === selected ? "bg-primary text-white" : "hover:bg-flaeche-2"}`} onClick={() => setSelected(team.id)}>{team.name}{team.number ? ` · ${team.number}` : ""}</button></li>)}
             {teams.data?.length === 0 && <li className="text-leise">{t("scouting.noExternalTeams")}</li>}
           </ul>
           {canWrite && (
@@ -169,7 +169,7 @@ export default function ScoutingPage() {
                   </div>
                   <div className="flex gap-1">
                     {canEditTeam && <button type="button" className="btn-secondary px-2" aria-label={t("scouting.editTeam", { name: selectedTeam.name })} onClick={() => startTeamEdit(selectedTeam)}><Pencil className="h-4 w-4" /></button>}
-                    {isOrganizer && <button type="button" className="btn-secondary px-2 text-red-600" aria-label={t("scouting.deleteTeam", { name: selectedTeam.name })} disabled={deleteTeam.isPending} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteTeam", { name: selectedTeam.name }), tone: "danger" }).then((ok) => ok && deleteTeam.mutate())}><Trash2 className="h-4 w-4" /></button>}
+                    {isOrganizer && <button type="button" className="btn-secondary px-2 text-danger" aria-label={t("scouting.deleteTeam", { name: selectedTeam.name })} disabled={deleteTeam.isPending} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteTeam", { name: selectedTeam.name }), tone: "danger" }).then((ok) => ok && deleteTeam.mutate())}><Trash2 className="h-4 w-4" /></button>}
                   </div>
                 </div>
               )}

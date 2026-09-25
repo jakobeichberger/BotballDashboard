@@ -102,7 +102,7 @@ export default function MatchPenaltyDialog({
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>{t("common:cancel")}</button>
           <button className="btn-primary" disabled={!changed || save.isPending}>{t("penalty.save")}</button>

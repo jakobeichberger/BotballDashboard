@@ -28,7 +28,7 @@
     "offline": "Offline"
   },
   "title": "3D-Druck",
-  "newJob": "+ Druckauftrag",
+  "newJob": "Druckauftrag",
   "rejectReason": "Begründung für die Ablehnung",
   "printerStatus": "Druckerstatus",
   "manual": "manuell",
@@ -40,7 +40,8 @@
     "material": "Material",
     "grams": "Gramm",
     "progress": "Fortschritt",
-    "action": "Aktion"
+    "action": "Aktion",
+    "open": "Öffnen"
   },
   "noFile": "ohne Datei",
   "progress": "{{progress}}% · noch {{remaining}}",
@@ -107,5 +108,13 @@
     "rejectionReason": "Ablehnungsgrund",
     "rejectionPlaceholder": "z.B. Modell zu groß für das Druckbett",
     "history": "Verlauf"
+  },
+  "subtitle": "Druckaufträge prüfen, freigeben und an die Drucker senden.",
+  "kpi": {
+    "label": "Druckaufträge nach Status",
+    "open": "Offene Aufträge",
+    "queue": "In der Warteschlange",
+    "printing": "Im Druck",
+    "done": "Fertig gedruckt"
   }
 }

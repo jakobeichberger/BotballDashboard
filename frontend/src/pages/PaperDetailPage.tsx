@@ -312,8 +312,8 @@ export default function PaperDetailPage() {
       {/* Header */}
       <div className="card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <h1 className="flex min-w-0 items-start gap-2 break-words text-2xl font-bold text-fg">
-            <FileText className="w-6 h-6 mt-1 shrink-0" />
+          <h1 className="page-title flex min-w-0 items-start gap-2 break-words">
+            <FileText className="h-7 w-7 mt-1 shrink-0 text-akzent" />
             {paper.title}
           </h1>
           <span className={PAPER_STATUS_BADGE[paper.status] ?? "badge-gray"}>
@@ -350,7 +350,7 @@ export default function PaperDetailPage() {
             {paper.format_deduction > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-leise">{t("detail.formatDeduction")}</span>
-                <span className="font-semibold text-red-600">{t("detail.deductionPoints", { points: paper.format_deduction })}</span>
+                <span className="font-semibold text-danger">{t("detail.deductionPoints", { points: paper.format_deduction })}</span>
                 {paper.format_deduction_reason && <span className="text-leise">({paper.format_deduction_reason})</span>}
               </div>
             )}
@@ -365,7 +365,7 @@ export default function PaperDetailPage() {
           </div>
         )}
         {paper.status === "disqualified_ai" && (
-          <p className="mt-4 rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
+          <p className="mt-4 rounded bg-danger/[0.07] p-3 text-sm text-danger">
             {t("detail.disqualifiedAi")}
           </p>
         )}

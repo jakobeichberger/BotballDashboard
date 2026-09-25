@@ -28,7 +28,7 @@
     "offline": "Offline"
   },
   "title": "3D printing",
-  "newJob": "+ Print job",
+  "newJob": "Print job",
   "rejectReason": "Reason for the rejection",
   "printerStatus": "Printer status",
   "manual": "manual",
@@ -40,7 +40,8 @@
     "material": "Material",
     "grams": "Grams",
     "progress": "Progress",
-    "action": "Action"
+    "action": "Action",
+    "open": "Open"
   },
   "noFile": "no file",
   "progress": "{{progress}}% · {{remaining}} left",
@@ -107,5 +108,13 @@
     "rejectionReason": "Reason for rejection",
     "rejectionPlaceholder": "e.g. model too large for the print bed",
     "history": "History"
+  },
+  "subtitle": "Check, approve and send print jobs to the printers.",
+  "kpi": {
+    "label": "Print jobs by status",
+    "open": "Open jobs",
+    "queue": "In the queue",
+    "printing": "Printing now",
+    "done": "Printed"
   }
 }

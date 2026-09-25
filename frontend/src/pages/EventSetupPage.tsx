@@ -53,7 +53,7 @@ export default function EventSetupPage() {
   const createSeason = useMutation({ mutationFn: async () => api.post("/seasons", { ...newSeason, is_active: true, create_default_event: false }), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["seasons"] }); setForm((current) => ({ ...current, season_id: data.id })); setMessage(t("setup.seasonCreated")); } });
   const publishAnnouncement = useMutation({ mutationFn: async () => { const created = await api.post("/dashboard/announcements", { ...announcement, season_id: event?.season_id, event_id: eventId, audience: "all" }); return api.put(`/dashboard/announcements/${created.data.id}/publish`); }, onSuccess: () => { setAnnouncement({ title: "", body: "" }); queryClient.invalidateQueries({ queryKey: ["announcements", eventId] }); } });
   return (
-    <div className="mx-auto max-w-6xl p-4 md:p-6"><h1 className="mb-6 flex items-center gap-2 text-2xl font-bold"><Settings />{eventId ? t("setup.title") : t("setup.firstEvent")}</h1>
+    <div className="mx-auto max-w-6xl p-4 md:p-6"><h1 className="page-title mb-6 flex items-center gap-2"><Settings className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{eventId ? t("setup.title") : t("setup.firstEvent")}</h1>
       <form className="card grid gap-4 p-5 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); saveEvent.mutate(); }}>
         {!eventId && seasons.data?.length === 0 && <fieldset className="grid gap-3 rounded-lg border p-4 md:col-span-2 md:grid-cols-[1fr_8rem_auto]"><legend className="px-2 font-semibold">{t("setup.firstSeason")}</legend><input required className="input" placeholder={t("setup.seasonName")} value={newSeason.name} onChange={(e) => setNewSeason({ ...newSeason, name: e.target.value })} /><input required className="input" type="number" min={2020} max={2100} value={newSeason.year} onChange={(e) => setNewSeason({ ...newSeason, year: Number(e.target.value) })} /><button type="button" className="btn-secondary" disabled={!newSeason.name || createSeason.isPending} onClick={() => createSeason.mutate()}>{t("setup.createSeason")}</button></fieldset>}
         {!eventId && <label className="text-sm font-medium">{t("setup.season")}<select required className="input mt-1 w-full" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value, active_modules: defaultModules(seasons.data?.find((item) => item.id === e.target.value)) })}><option value="">{t("setup.chooseSeason")}</option>{seasons.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
@@ -109,7 +109,7 @@ function ModuleToggles({ value, seasonFlags, onChange }: { value: string[]; seas
               />
               <span>
                 <span className="font-medium">{localized(MODULE_LABELS[key])}</span>
-                {blocked && <span className="block text-xs text-amber-700 dark:text-amber-400">{t("setup.moduleBlocked")}{checked ? t("setup.moduleStaysInactive") : ""}</span>}
+                {blocked && <span className="block text-xs text-warning">{t("setup.moduleBlocked")}{checked ? t("setup.moduleStaysInactive") : ""}</span>}
               </span>
             </label>
           );

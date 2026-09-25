@@ -159,7 +159,8 @@
     "median": "Median",
     "trendPerTeam": "Trend je Team",
     "scores": "Scores",
-    "trendPerRun": "Trend / Lauf"
+    "trendPerRun": "Trend / Lauf",
+    "subtitle": "Verteilungen, Trends und auffällige Läufe auf einen Blick."
   },
   "trend": {
     "flat": "gleichbleibend",

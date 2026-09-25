@@ -70,7 +70,7 @@ export function PaperDeadlinesPanel({ seasonId, canAdmin }: { seasonId: string; 
               {canAdmin && (
                 <button
                   type="button"
-                  className="ml-auto grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                  className="ml-auto grid h-11 w-11 place-items-center rounded-lg text-danger hover:bg-danger/10"
                   aria-label={t("deadlines.deleteLabel", { name: d.label ?? d.deadline_type })}
                   disabled={deleteM.isPending}
                   onClick={() => void confirmAction({ message: t("deadlines.confirmDelete", { name: d.label ?? DEADLINE_TYPE_LABEL[d.deadline_type] ?? d.deadline_type, date: formatDate(d.due_date) }), tone: "danger" }).then((ok) => ok && deleteM.mutate(d.id))}
@@ -106,7 +106,7 @@ export function PaperDeadlinesPanel({ seasonId, canAdmin }: { seasonId: string; 
             </label>
           )}
           <button className="btn-primary text-sm" disabled={!form.due_date || createM.isPending}>{t("deadlines.create")}</button>
-          {createM.isError && <p role="alert" className="w-full text-sm text-red-600">{apiErrorMessage(createM.error)}</p>}
+          {createM.isError && <p role="alert" className="w-full text-sm text-danger">{apiErrorMessage(createM.error)}</p>}
         </form>
       )}
     </section>

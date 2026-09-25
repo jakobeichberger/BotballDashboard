@@ -43,7 +43,7 @@ export function VersionDiff({ paperId, versions }: { paperId: string; versions: 
         {from === to && <span className="text-xs text-leise">{t("diff.pickTwo")}</span>}
       </div>
       {shown && isFetching && <p className="text-sm text-leise">{t("diff.comparing")}</p>}
-      {shown && error && <p role="alert" className="text-sm text-red-600">{apiErrorMessage(error)}</p>}
+      {shown && error && <p role="alert" className="text-sm text-danger">{apiErrorMessage(error)}</p>}
       {shown && data && (
         <div className="space-y-2 text-sm">
           <p className="text-leise">
@@ -69,7 +69,7 @@ export function VersionDiff({ paperId, versions }: { paperId: string; versions: 
               )}
             </>
           ) : (
-            <p role="status" className="text-yellow-800 dark:text-yellow-200">
+            <p role="status" className="text-warning">
               {t("diff.noText", { reason: data.reason })}
             </p>
           )}

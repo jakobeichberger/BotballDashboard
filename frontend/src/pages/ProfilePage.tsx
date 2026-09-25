@@ -106,8 +106,8 @@ export default function ProfilePage() {
 
   return (
     <div className="p-6 max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-        <UserCircle className="w-6 h-6" /> {t("title")}
+      <h1 className="page-title flex items-center gap-2">
+        <UserCircle className="h-7 w-7 shrink-0 text-akzent" /> {t("title")}
       </h1>
 
       {/* Profile */}
@@ -142,7 +142,7 @@ export default function ProfilePage() {
           <button className="btn-primary text-sm disabled:opacity-40" disabled={!name || saveM.isPending} onClick={() => saveM.mutate()}>
             <Save className="w-4 h-4" /> {t("common:save")}
           </button>
-          {saveM.isSuccess && <span className="text-sm text-green-600">{t("saved")}</span>}
+          {saveM.isSuccess && <span className="text-sm text-success">{t("saved")}</span>}
         </div>
       </section>
 
@@ -218,7 +218,7 @@ export default function ProfilePage() {
         <div>
           <label className="label" htmlFor="new-password">{t("auth:reset.newPassword")}</label>
           <input id="new-password" className="input" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-          <p className={newPwProblem ? "mt-1 text-xs text-red-600" : "mt-1 text-xs text-leise"}>{newPwProblem ?? passwordHint()}</p>
+          <p className={newPwProblem ? "mt-1 text-xs text-danger" : "mt-1 text-xs text-leise"}>{newPwProblem ?? passwordHint()}</p>
         </div>
         <div>
           <button className="btn-primary text-sm disabled:opacity-40"

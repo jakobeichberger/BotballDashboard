@@ -36,10 +36,10 @@ export function BoxPlotRow({
         <div className="absolute top-0.5 h-4 w-px bg-gray-500" style={{ left: pos(box.min) }} />
         <div className="absolute top-0.5 h-4 w-px bg-gray-500" style={{ left: pos(box.max) }} />
         <div
-          className="absolute top-0 h-5 rounded border border-blue-700 bg-blue-200/70 dark:border-blue-300 dark:bg-blue-800/60"
+          className="absolute top-0 h-5 rounded-[4px] border border-primary bg-primary/20"
           style={{ left: pos(box.q1), width: `max(2px, ${width(box.q1, box.q3)})` }}
         />
-        <div className="absolute top-0 h-5 w-0.5 bg-blue-900 dark:bg-blue-100" style={{ left: pos(box.median) }} />
+        <div className="absolute top-0 h-5 w-0.5 bg-fg" style={{ left: pos(box.median) }} />
       </div>
       <span className="text-right text-xs tabular-nums text-leise">n={box.n}</span>
     </div>

@@ -196,10 +196,13 @@ export default function ScoreEntryPage() {
         <ArrowLeft className="w-4 h-4" /> {t("backToScoreboard")}
       </EventLink>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-          <ClipboardList className="w-6 h-6" /> {t("entry.title")}
-        </h1>
+      <div className="page-header !mb-0">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <ClipboardList className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" /> {t("entry.title")}
+          </h1>
+          <p className="page-subtitle">{t("entry.subtitle")}</p>
+        </div>
         {/* Mode toggle */}
         <div className="inline-flex rounded-lg border border-rand overflow-hidden">
           {([
@@ -231,7 +234,7 @@ export default function ScoreEntryPage() {
       )}
 
       {!online && (
-        <p role="alert" className="rounded-lg bg-amber-100 p-3 text-sm text-amber-900">
+        <p role="alert" className="rounded-lg bg-warning/10 p-3 text-sm text-warning">
           {t("entry.offline")}
         </p>
       )}
@@ -239,16 +242,16 @@ export default function ScoreEntryPage() {
       {notice && <p role="status" className="rounded-lg bg-flaeche-2 p-3 text-sm">{notice}</p>}
 
       {!season && scopeLoading && <p role="status" className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
-      {!season && !scopeLoading && <p className="text-red-600 text-sm">{t("entry.noSeason")}</p>}
+      {!season && !scopeLoading && <p className="text-danger text-sm">{t("entry.noSeason")}</p>}
       {season && schemaQuery.isLoading && <p role="status" className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
       {season && schemaQuery.isError && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger/[0.07] p-3 text-sm text-danger">
           {apiErrorMessage(schemaQuery.error, t("entry.schemaLoadFailed"))}
           <button type="button" className="btn-secondary min-h-11" onClick={() => void schemaQuery.refetch()}>{t("common:retry")}</button>
         </div>
       )}
       {season && schemaQuery.isSuccess && !schema?.fields?.length && (
-        <p className="text-yellow-600 text-sm">{t("entry.noSchema")}</p>
+        <p className="text-warning text-sm">{t("entry.noSchema")}</p>
       )}
 
       {/* Entry form */}
@@ -271,7 +274,7 @@ export default function ScoreEntryPage() {
               <div className="text-sm">
                 <div className="text-leise">{t("entry.preview")}</div>
                 <div className="text-2xl font-bold text-akzent">{preview}</div>
-                {sheet.errors.length > 0 && <div role="alert" className="text-xs text-red-600">{sheet.errors[0]}</div>}
+                {sheet.errors.length > 0 && <div role="alert" className="text-xs text-danger">{sheet.errors[0]}</div>}
               </div>
             </div>
           </div>
@@ -345,11 +348,11 @@ export default function ScoreEntryPage() {
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
-              <th className="px-4 py-3 text-right font-medium text-leise">{isPractice ? t("entry.run") : t("scouting.roundLabel")}</th>
-              <th className="px-4 py-3 text-right font-medium text-leise">{t("scouting.points")}</th>
-              {!isPractice && <th className="px-4 py-3 text-left font-medium text-leise">{t("common:status")}</th>}
-              {canManageAll && <th className="px-4 py-3 text-right font-medium text-leise">{t("common:actions")}</th>}
+              <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{isPractice ? t("entry.run") : t("scouting.roundLabel")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("scouting.points")}</th>
+              {!isPractice && <th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th>}
+              {canManageAll && <th className="px-4 py-3 text-right font-semibold">{t("common:actions")}</th>}
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -375,17 +378,17 @@ export default function ScoreEntryPage() {
                               title={t("common:edit")} aria-label={t("entry.editFor", { team: teamName(m.team_id), round: m.round_number })}><Pencil className="w-4 h-4" aria-hidden="true" /></button>
                       {!isPractice && (
                         <button type="button" onClick={() => setPenaltyMatch(m)} disabled={!online}
-                                className="grid h-11 w-11 place-items-center rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 disabled:opacity-40"
+                                className="grid h-11 w-11 place-items-center rounded-lg text-warning hover:bg-warning/10 disabled:opacity-40"
                                 title={t("penalty.open")} aria-label={t("penalty.openFor", { team: teamName(m.team_id), round: m.round_number })}><Flag className="w-4 h-4" aria-hidden="true" /></button>
                       )}
                       {!isPractice && !m.confirmed_by && (
                         <button type="button" onClick={() => startConfirm(m.id)} disabled={confirmM.isPending}
-                                className="grid h-11 w-11 place-items-center rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"
+                                className="grid h-11 w-11 place-items-center rounded-lg text-success hover:bg-success/10 disabled:opacity-40"
                                 title={t("entry.confirm")} aria-label={t("entry.confirmFor", { team: teamName(m.team_id), round: m.round_number })}><Check className="w-4 h-4" aria-hidden="true" /></button>
                       )}
                       <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-gray-700" aria-hidden="true" />
                       <button type="button" onClick={() => void askDelete(m)} disabled={deleteM.isPending}
-                              className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40"
+                              className="grid h-11 w-11 place-items-center rounded-lg text-danger hover:bg-danger/10 disabled:opacity-40"
                               title={t("common:delete")} aria-label={t("entry.deleteFor", { team: teamName(m.team_id), round: m.round_number })}><Trash2 className="w-4 h-4" aria-hidden="true" /></button>
                     </div>
                   </td>

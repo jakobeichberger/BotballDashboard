@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
-import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
+import { Trophy, Plane, Medal, BarChart3, Plus } from "lucide-react";
 import { EventRankingExportButtons, RankingExportButtons } from "@/components/ExportButtons";
 import { useAuthStore } from "@/store/authStore";
 import { useScoringScope } from "@/hooks/useScoringScope";
@@ -83,7 +83,7 @@ function RankCell({ rank }: { rank: number | null }) {
   const { t } = useTranslation("scoring");
   if (rank == null) {
     return (
-      <td className="px-4 py-3 font-bold text-red-600">
+      <td className="px-4 py-3 font-bold text-danger">
         <abbr title={t("scoreboard.disqualified")} className="no-underline">{t("common:dqShort")}</abbr>
       </td>
     );
@@ -92,7 +92,7 @@ function RankCell({ rank }: { rank: number | null }) {
 }
 
 const RANK_COLOR = (r: number) =>
-  r === 1 ? "text-yellow-500" : r === 2 ? "text-leise" : r === 3 ? "text-amber-600" : "";
+  r === 1 ? "text-akzent" : r === 2 ? "text-leise" : r === 3 ? "text-warning" : "";
 
 function fmt(v: number | null | undefined, decimals = 4) {
   if (v == null) return "–";
@@ -120,8 +120,8 @@ function CategoryFilter({
         onClick={() => onChange(null)}
         className={`min-h-11 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
           active === null
-            ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
-            : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
+            ? "bg-primary/15 text-akzent"
+            : "bg-flaeche-2 text-leise hover:bg-gray-200"
         }`}
       >
         {t("scoreboard.all")}
@@ -134,8 +134,8 @@ function CategoryFilter({
           onClick={() => onChange(c)}
           className={`min-h-11 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
             active === c
-              ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
+              ? "bg-primary/15 text-akzent"
+              : "bg-flaeche-2 text-leise hover:bg-gray-200"
           }`}
         >
           {CATEGORY_LABELS[c] ?? c}
@@ -183,15 +183,15 @@ function SeedingTab({ base, seasonId, categories, live }: { base: string; season
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-leise">#</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-left font-semibold">#</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
               {categories.length > 1 && (
-                <th className="px-4 py-3 text-left font-medium text-leise">{t("scoreboard.category")}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t("scoreboard.category")}</th>
               )}
-              <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.seedScore")}</th>
-              <th className="px-4 py-3 text-right font-medium text-leise">{t("scouting.best")}</th>
-              <th className="px-4 py-3 text-right font-medium text-leise">⌀</th>
-              <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.rounds")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.seedScore")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("scouting.best")}</th>
+              <th className="px-4 py-3 text-right font-semibold">⌀</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.rounds")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -275,10 +275,10 @@ function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
             <table className="w-full text-sm">
               <thead className="bg-flaeche-2">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
-                  <th className="px-4 py-3 text-right font-medium text-leise">{t("de.rank")}</th>
-                  <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.bracketScore")}</th>
-                  <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.deScore")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t("de.rank")}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.bracketScore")}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.deScore")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -340,12 +340,12 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-leise">#</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-left font-semibold">#</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
               {[1, 2, 3, 4].map((n) => (
-                <th key={n} className="px-4 py-3 text-right font-medium text-leise">{t("aerial.run", { number: n })}</th>
+                <th key={n} className="px-4 py-3 text-right font-semibold">{t("aerial.run", { number: n })}</th>
               ))}
-              <th className="px-4 py-3 text-right font-medium text-leise">{t("aerial.score")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("aerial.score")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -421,16 +421,16 @@ function OverallTab({
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-leise">#</th>
-              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-left font-semibold">#</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
               {categories.length > 1 && (
-                <th className="px-4 py-3 text-left font-medium text-leise">{t("scoreboard.category")}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t("scoreboard.category")}</th>
               )}
-              {showSeeding && <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.seeding")}</th>}
-              {showDE && <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.de")}</th>}
-              {showPaper && <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.paper")}</th>}
-              {showDoc && <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.doc")}</th>}
-              <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.total")}</th>
+              {showSeeding && <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.seeding")}</th>}
+              {showDE && <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.de")}</th>}
+              {showPaper && <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.paper")}</th>}
+              {showDoc && <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.doc")}</th>}
+              <th className="px-4 py-3 text-right font-semibold">{t("scoreboard.total")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -499,19 +499,23 @@ export default function ScoreboardPage() {
 
   return (
     <div className="p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-yellow-500" aria-hidden="true" />
-          {t("scoreboard.title")}
-        </h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <Trophy className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("scoreboard.title")}
+          </h1>
+          <p className="page-subtitle">{t("scoreboard.subtitle")}</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {canEnterScores && (
-            <EventLink to="/scoring/entry" className="btn-primary text-sm">
+            <EventLink to="/scoring/entry" className="btn-primary">
+              <Plus className="h-5 w-5" aria-hidden="true" />
               {t("entry.title")}
             </EventLink>
           )}
           {isAdmin && (
-            <EventLink to="/scoring/score-sheets" className="btn-secondary text-sm">
+            <EventLink to="/scoring/score-sheets" className="btn-secondary">
               {t("scoreboard.scoreSheets")}
             </EventLink>
           )}
@@ -546,8 +550,8 @@ export default function ScoreboardPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex min-h-11 shrink-0 items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   currentTab?.id === tab.id
-                    ? "border-primary-500 text-primary-600 dark:text-primary-400"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    ? "border-primary text-akzent"
+                    : "border-transparent text-leise hover:text-fg"
                 }`}
               >
                 <Icon className="w-4 h-4" aria-hidden="true" />

@@ -82,7 +82,7 @@ export default function TeamSeasonMatrixPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
+        <h1 className="page-title flex items-center gap-2">
           <Grid3x3 className="w-6 h-6" />
           {t("matrix.heading")}
         </h1>
@@ -104,11 +104,11 @@ export default function TeamSeasonMatrixPage() {
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-leise sticky left-0 bg-flaeche-2 z-10">
+              <th className="px-4 py-3 text-left font-semibold sticky left-0 bg-flaeche-2 z-10">
                 {t("matrix.team")}
               </th>
               {seasons?.map((s) => (
-                <th key={s.id} className="px-4 py-3 text-center font-medium text-leise min-w-[9rem]">
+                <th key={s.id} className="px-4 py-3 text-center font-semibold min-w-[9rem]">
                   <div className="flex items-center justify-center gap-1">
                     {s.name}
                     {s.is_active && <span className="badge-green">{t("matrix.active")}</span>}
@@ -164,7 +164,7 @@ export default function TeamSeasonMatrixPage() {
                             <button
                               disabled={busy}
                               onClick={() => confirmM.mutate(reg.id)}
-                              className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"
+                              className="p-1 rounded text-success hover:bg-success/10 disabled:opacity-40"
                               aria-label={t("matrix.confirm")}
                               title={t("matrix.confirm")}
                             >
@@ -175,7 +175,7 @@ export default function TeamSeasonMatrixPage() {
                             <button
                               disabled={busy}
                               onClick={() => removeM.mutate(reg.id)}
-                              className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40"
+                              className="p-1 rounded text-danger hover:bg-danger/10 disabled:opacity-40"
                               aria-label={t("matrix.removeAssignment")}
                               title={t("detail.remove")}
                             >

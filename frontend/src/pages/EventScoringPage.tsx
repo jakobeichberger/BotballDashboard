@@ -137,8 +137,13 @@ export default function EventScoringPage() {
   const disabled = !canWrite;
   return (
     <div className="mx-auto max-w-3xl p-4 md:p-6">
-      <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold"><Trophy className="text-yellow-500" />{t("mobileScoring")}</h1>
-      {!online && <p role="alert" className="mb-4 rounded-lg bg-amber-100 p-3 text-amber-900">{t("offlineScoring")}</p>}
+      <header className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2"><Trophy className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{t("mobileScoring")}</h1>
+          <p className="page-subtitle">{t("mobileScoringSubtitle")}</p>
+        </div>
+      </header>
+      {!online && <p role="alert" className="mb-4 rounded-lg bg-warning/10 p-3 text-warning">{t("offlineScoring")}</p>}
       {!canWrite && <p className="mb-4 rounded-lg bg-flaeche-2 p-3">{t("readOnlyPermission")}</p>}
       <div className="mb-5"><PendingScores filter={(entry) => entry.eventId === eventId} /></div>
       <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setMessage(""); setConfirming(true); }}>
