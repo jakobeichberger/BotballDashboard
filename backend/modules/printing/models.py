@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -136,14 +137,18 @@ class PrintJob(Base):
 
 class TeamSeasonPrintQuota(Base):
     __tablename__ = "team_season_print_quotas"
-    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_print_quota_event_team"),)
+    __table_args__ = (
+        UniqueConstraint("event_id", "team_id", name="uq_print_quota_event_team"),
+        # One index serves both the per-team and the per-team-and-season lookups.
+        Index("ix_print_quotas_team_season", "team_id", "season_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     team_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
+        String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
     )
     season_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+        String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False
     )
     event_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=True, index=True

@@ -1,5 +1,7 @@
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -52,6 +54,12 @@ WorkerSessionLocal = async_sessionmaker(
 
 class Base(DeclarativeBase):
     pass
+
+
+# JSON column that is JSONB on PostgreSQL and plain JSON elsewhere (the SQLite
+# test suite). For the columns the migrations created as JSONB, so the models
+# declare what the migrated database has.
+PortableJSONB = JSON().with_variant(JSONB(), "postgresql")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

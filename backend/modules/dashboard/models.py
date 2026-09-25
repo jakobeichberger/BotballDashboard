@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -69,6 +70,10 @@ class NotificationEvent(Base):
             "next_attempt_at",
             postgresql_where=_OPEN_OUTBOX,
             sqlite_where=_OPEN_OUTBOX,
+        ),
+        CheckConstraint(
+            "status IN ('pending','sending','delivered','failed')",
+            name="ck_notification_event_status",
         ),
     )
 

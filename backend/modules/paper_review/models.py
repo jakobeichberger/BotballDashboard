@@ -3,6 +3,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Float,
@@ -152,6 +153,10 @@ class ReviewerAssignment(Base):
     __tablename__ = "reviewer_assignments"
     __table_args__ = (
         UniqueConstraint("paper_id", "reviewer_id", name="uq_reviewer_assignment_paper_reviewer"),
+        CheckConstraint(
+            "status IN ('pending','in_progress','completed','overdue')",
+            name="ck_reviewer_assignment_status",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)

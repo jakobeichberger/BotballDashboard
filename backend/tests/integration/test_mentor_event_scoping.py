@@ -84,7 +84,7 @@ class TestScoreSheetScans:
             team_id=rival.id,
             file_url="/tmp/scan.pdf",
             file_name="scan.pdf",
-            status="needs_review",
+            status="review",
             created_by=admin_user.id,
         )
         db.add(scan)
@@ -157,7 +157,7 @@ class TestScanVisibility:
                 team_id=owner.id,
                 file_url=str(tmp_path / f"{owner.id}.pdf"),
                 file_name="scan.pdf",
-                status="needs_review",
+                status="review",
                 created_by=admin_user.id,
             )
             db.add(scan)
