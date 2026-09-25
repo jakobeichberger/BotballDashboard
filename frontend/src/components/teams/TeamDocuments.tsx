@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { formatDate } from "@/i18n/format";
 import { api } from "@/lib/api";
 import { apiErrorMessage } from "@/modules/papers/paperMeta";
+import { confirmAction } from "@/lib/confirm";
 import {
   DOCUMENT_ACCEPT,
   DOCUMENT_CATEGORY_LABEL,
@@ -128,7 +129,7 @@ export function TeamDocuments({
                     className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                     title={t("common:delete")}
                     aria-label={t("documents.deleteLabel", { title: doc.title })}
-                    onClick={() => { if (confirm(t("documents.confirmDelete", { title: doc.title }))) deleteM.mutate(doc.id); }}
+                    onClick={() => void confirmAction({ message: t("documents.confirmDelete", { title: doc.title }), tone: "danger" }).then((ok) => ok && deleteM.mutate(doc.id))}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

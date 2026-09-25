@@ -6,6 +6,8 @@ import { api } from "@/lib/api";
 import { formatTime } from "@/i18n/format";
 import { CATEGORY_LABEL } from "@/lib/teams";
 import type { EventRegistration } from "@/api/types";
+import { confirmAction } from "@/lib/confirm";
+import { apiErrorMessage } from "@/lib/errors";
 
 /**
  * Teams registered for the event: register, check in on site (sets
@@ -21,7 +23,7 @@ export default function RegistrationManager({ eventId }: { eventId: string }) {
   const [error, setError] = useState("");
 
   const refresh = () => { setError(""); queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] }); };
-  const fail = (e: any) => setError(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : t("common:actionFailed"));
+  const fail = (e: any) => setError(apiErrorMessage(e, t("common:actionFailed")));
   const addTeam = useMutation({
     mutationFn: async () => api.post(`/v1/events/${eventId}/registrations`, { team_id: teamId, category: teamCategory }),
     onSuccess: () => { setTeamId(""); refresh(); },
@@ -71,7 +73,7 @@ export default function RegistrationManager({ eventId }: { eventId: string }) {
                 aria-label={t("setup.removeRegistration", { team: item.team_name })}
                 title={t("common:delete")}
                 disabled={remove.isPending}
-                onClick={() => { if (confirm(t("setup.confirmRemoveRegistration", { team: item.team_name }))) remove.mutate(item.id); }}
+                onClick={() => void confirmAction({ message: t("setup.confirmRemoveRegistration", { team: item.team_name }), tone: "danger" }).then((ok) => ok && remove.mutate(item.id))}
               ><Trash2 className="h-4 w-4" /></button>
             </span>
           </li>

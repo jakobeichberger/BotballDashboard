@@ -160,6 +160,7 @@ export function RankingList({
     return <p className="text-sm text-gray-500">{t("noScores")}</p>;
   }
   return (
+    <div className="table-scroll">
     <table className="w-full text-sm">
       <caption className="sr-only">{t("ranking.caption")}</caption>
       <thead>
@@ -183,6 +184,7 @@ export function RankingList({
         ))}
       </tbody>
     </table>
+  </div>
   );
 }
 

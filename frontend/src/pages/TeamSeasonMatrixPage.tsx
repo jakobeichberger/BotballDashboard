@@ -4,6 +4,7 @@ import { Grid3x3, ArrowLeft, Check, Plus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { useAuthStore } from "@/store/authStore";
+import { toast } from "@/lib/toast";
 
 interface Team {
   id: string;
@@ -43,8 +44,7 @@ export default function TeamSeasonMatrixPage() {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["registrations"] });
-  const onError = (e: any) =>
-    alert(e?.response?.data?.detail ?? t("common:actionFailed"));
+  const onError = (e: unknown) => toast.apiError(e, t("common:actionFailed"));
 
   const registerM = useMutation({
     mutationFn: (v: { team_id: string; season_id: string; competition_level_id: string | null }) =>
@@ -75,13 +75,13 @@ export default function TeamSeasonMatrixPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <EventLink to="/teams" className="btn-secondary text-sm">
           <ArrowLeft className="w-4 h-4" /> {t("detail.back")}
         </EventLink>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Grid3x3 className="w-6 h-6" />
           {t("matrix.heading")}

@@ -142,7 +142,7 @@ export default function PrintingPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Printer className="w-6 h-6" />
           {t("title")}
@@ -184,7 +184,7 @@ export default function PrintingPage() {
 
       {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
 
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
@@ -256,13 +256,13 @@ export default function PrintingPage() {
         <section className="card mt-6 p-5">
           <h2 className="mb-4 text-lg font-semibold">{t("adapter.title")}</h2>
           <form className="grid gap-2 md:grid-cols-6" onSubmit={(e) => { e.preventDefault(); createPrinter.mutate(); }}>
-            <input required className="input" placeholder={t("common:name")} value={printerForm.name} onChange={(e) => setPrinterForm({ ...printerForm, name: e.target.value })} />
+            <input required className="input" aria-label={t("common:name")} placeholder={t("common:name")} value={printerForm.name} onChange={(e) => setPrinterForm({ ...printerForm, name: e.target.value })} />
             <select className="input" aria-label={t("adapter.type")} value={printerForm.printer_type} onChange={(e) => setPrinterForm({ ...printerForm, printer_type: e.target.value })}>
               {Object.entries(PRINTER_TYPE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
-            <input required={!isGeneric} disabled={isGeneric} className="input" placeholder={t("adapter.url")} value={printerForm.api_url} onChange={(e) => setPrinterForm({ ...printerForm, api_url: e.target.value })} />
-            <input disabled={printerForm.printer_type !== "bambu"} className="input" placeholder={t("adapter.serial")} value={printerForm.device_id} onChange={(e) => setPrinterForm({ ...printerForm, device_id: e.target.value })} />
-            <input required={!isGeneric} disabled={isGeneric} type="password" autoComplete="new-password" className="input" placeholder={t("settings:printers.apiKey")} value={printerForm.api_key} onChange={(e) => setPrinterForm({ ...printerForm, api_key: e.target.value })} />
+            <input required={!isGeneric} disabled={isGeneric} className="input" aria-label={t("adapter.url")} placeholder={t("adapter.url")} value={printerForm.api_url} onChange={(e) => setPrinterForm({ ...printerForm, api_url: e.target.value })} />
+            <input disabled={printerForm.printer_type !== "bambu"} className="input" aria-label={t("adapter.serial")} placeholder={t("adapter.serial")} value={printerForm.device_id} onChange={(e) => setPrinterForm({ ...printerForm, device_id: e.target.value })} />
+            <input required={!isGeneric} disabled={isGeneric} type="password" autoComplete="new-password" className="input" aria-label={t("settings:printers.apiKey")} placeholder={t("settings:printers.apiKey")} value={printerForm.api_key} onChange={(e) => setPrinterForm({ ...printerForm, api_key: e.target.value })} />
             <button className="btn-primary" disabled={createPrinter.isPending}>{isGeneric ? t("adapter.create") : t("adapter.connect")}</button>
           </form>
         </section>

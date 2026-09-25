@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CATEGORY_LABEL } from "@/lib/teams";
 import { api } from "@/lib/api";
+import { apiErrorMessage } from "@/lib/errors";
 import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
 import {
   Calculator,
@@ -183,7 +184,7 @@ export default function FormulasPage() {
       queryClient.invalidateQueries({ queryKey: ["formulas", seasonId, category] });
     },
     onError: (err: any) => {
-      setSaveError(err?.response?.data?.detail ?? t("formulas.saveFailed"));
+      setSaveError(apiErrorMessage(err, t("formulas.saveFailed")));
     },
   });
 
@@ -338,7 +339,7 @@ export default function FormulasPage() {
         {/* ── Editor ───────────────────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-4">
           <div className="card p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium">{t("formulas.formulas")}</h2>
               <button className="btn-secondary" onClick={add}>
                 <Plus className="w-4 h-4" />
@@ -424,7 +425,7 @@ export default function FormulasPage() {
 
           {/* ── Preview ────────────────────────────────────────────────────── */}
           <div className="card p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium">{t("formulas.preview")}</h2>
               {previewing ? (
                 <span className="text-sm text-gray-500">{t("formulas.calculating")}</span>
@@ -463,7 +464,7 @@ export default function FormulasPage() {
                   <tbody>
                     {preview.rows.map((r) => (
                       <tr key={r.team_id} className="border-b dark:border-gray-800">
-                        <td className="py-1.5 pr-3 text-gray-500">{r.rank ?? "DQ"}</td>
+                        <td className="py-1.5 pr-3 text-gray-500">{r.rank ?? t("common:dqShort")}</td>
                         <td className="py-1.5 pr-3">{r.team_name ?? r.team_id}</td>
                         {columns.map((c) => (
                           <td key={c} className="py-1.5 pr-3 font-mono text-xs">

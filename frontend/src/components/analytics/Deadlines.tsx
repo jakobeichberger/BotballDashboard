@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/i18n/format";
 import { daysUntil, type CalendarFeedStatus, type DeadlineEntry, type SeasonTimeline } from "@/api/analytics";
 import { DEADLINE_DOT } from "./chartTheme";
+import { toast } from "@/lib/toast";
 
 const KINDS = ["paper", "review", "printing", "registration", "competition", "event", "phase", "deadline", "milestone"];
 const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
@@ -264,11 +265,20 @@ export function CalendarFeedPanel() {
             type="button"
             className="btn-secondary text-sm"
             onClick={async () => {
-              await navigator.clipboard?.writeText(url);
-              setCopied(true);
+              // Clipboard access can be missing (http, old browsers) or denied:
+              // select the address instead so it can be copied by hand.
+              try {
+                if (!navigator.clipboard) throw new Error("clipboard unavailable");
+                await navigator.clipboard.writeText(url);
+                setCopied(true);
+              } catch {
+                setCopied(false);
+                (document.getElementById("ical-url") as HTMLInputElement | null)?.select();
+                toast.error(t("common:copyFailed"));
+              }
             }}
           >
-            <Copy className="h-4 w-4" /> {copied ? t("feed.copied") : t("feed.copy")}
+            <Copy className="h-4 w-4" aria-hidden="true" /> {copied ? t("feed.copied") : t("feed.copy")}
           </button>
         </div>
       )}

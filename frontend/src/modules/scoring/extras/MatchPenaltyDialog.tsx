@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import Modal from "@/components/Modal";
 import { api } from "@/lib/api";
+import { apiErrorMessage } from "@/lib/errors";
 
 /** The match fields the penalty dialog reads (a MatchResponse subset). */
 export interface PenaltyMatch {
@@ -66,7 +67,7 @@ export default function MatchPenaltyDialog({
         correction_reason: reason.trim() || null,
       }),
     onSuccess: () => { onSaved(); onClose(); },
-    onError: (e: any) => setError(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : t("common:actionFailed")),
+    onError: (e: any) => setError(apiErrorMessage(e, t("common:actionFailed"))),
   });
 
   return (

@@ -15,6 +15,7 @@ import { localized } from "@/i18n/config";
 import PhaseManager from "@/components/events/PhaseManager";
 import RegistrationManager from "@/components/events/RegistrationManager";
 import EventBracketWeights from "@/components/events/EventBracketWeights";
+import { apiErrorMessage } from "@/lib/errors";
 
 const MODULE_ORDER = Object.keys(MODULE_LABELS) as ModuleKey[];
 const BASE_MODULES: ModuleKey[] = ["seeding", "paper", "printing", "bots"];
@@ -48,7 +49,7 @@ export default function EventSetupPage() {
   const [announcement, setAnnouncement] = useState({ title: "", body: "" });
   const [message, setMessage] = useState("");
   useEffect(() => { if (event) setForm((current) => ({ ...current, ...event, venue: event.venue ?? "" })); }, [event]);
-  const saveEvent = useMutation({ mutationFn: async () => eventId ? api.patch(`/v1/events/${eventId}`, form) : api.post("/v1/events", form), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["events"] }); queryClient.invalidateQueries({ queryKey: ["event-modules"] }); setMessage(t("setup.saved")); if (!eventId) navigate(`/events/${data.id}/settings`, { replace: true }); }, onError: (error: any) => setMessage(error.response?.data?.detail ?? t("setup.saveFailed")) });
+  const saveEvent = useMutation({ mutationFn: async () => eventId ? api.patch(`/v1/events/${eventId}`, form) : api.post("/v1/events", form), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["events"] }); queryClient.invalidateQueries({ queryKey: ["event-modules"] }); setMessage(t("setup.saved")); if (!eventId) navigate(`/events/${data.id}/settings`, { replace: true }); }, onError: (error: any) => setMessage(apiErrorMessage(error, t("setup.saveFailed"))) });
   const createSeason = useMutation({ mutationFn: async () => api.post("/seasons", { ...newSeason, is_active: true, create_default_event: false }), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["seasons"] }); setForm((current) => ({ ...current, season_id: data.id })); setMessage(t("setup.seasonCreated")); } });
   const publishAnnouncement = useMutation({ mutationFn: async () => { const created = await api.post("/dashboard/announcements", { ...announcement, season_id: event?.season_id, event_id: eventId, audience: "all" }); return api.put(`/dashboard/announcements/${created.data.id}/publish`); }, onSuccess: () => { setAnnouncement({ title: "", body: "" }); queryClient.invalidateQueries({ queryKey: ["announcements", eventId] }); } });
   return (

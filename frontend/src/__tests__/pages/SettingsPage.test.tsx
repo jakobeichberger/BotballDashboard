@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import SettingsPage from "@/pages/SettingsPage";
+import ConfirmHost from "@/components/ConfirmHost";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 
@@ -29,6 +30,7 @@ function renderPage(initialPath = "/settings/users") {
         <Routes>
           <Route path="/settings/*" element={<SettingsPage />} />
         </Routes>
+        <ConfirmHost />
       </MemoryRouter>
     </QueryClientProvider>
   );
@@ -106,13 +108,16 @@ describe("SettingsPage", () => {
     });
     (api.patch as any).mockResolvedValue({ data: {} });
     (api.post as any).mockResolvedValue({ data: {} });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     renderPage("/settings/seasons");
     expect(await screen.findByText("Abgeschlossen")).toBeInTheDocument();
     expect(screen.getByText("Archiviert")).toBeInTheDocument();
     // Archived seasons cannot be deleted.
     expect(screen.getAllByRole("button", { name: "Löschen" })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Archivieren" }));
+    // Archiving asks first, in the app's own dialog.
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Botball 2025");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Archivieren" }));
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/seasons/s1", { status: "archived" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Klonen" })[0]);
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Botball 2026" } });

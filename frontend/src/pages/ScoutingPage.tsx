@@ -9,6 +9,8 @@ import { useAuthStore } from "@/store/authStore";
 import { phaseLabel } from "@/api/analytics";
 import { formatNumber } from "@/i18n/format";
 import type { ExternalTeam, OpponentRankingEntry, ScoutingNote, ScoutingObservation } from "@/modules/scoring/extras/types";
+import { confirmAction } from "@/lib/confirm";
+import { apiErrorMessage } from "@/lib/errors";
 
 interface OwnTeam { id: string; name: string }
 
@@ -48,7 +50,7 @@ export default function ScoutingPage() {
   const owner = ownerTeamId || (myTeams.data?.length === 1 ? myTeams.data[0].id : "");
 
   const refresh = () => ["external-teams", "opponent-ranking", "scouting-notes", "scouting-observations"].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
-  const fail = (error: any) => setMessage(typeof error.response?.data?.detail === "string" ? error.response.data.detail : t("common:actionFailed"));
+  const fail = (error: unknown) => setMessage(apiErrorMessage(error, t("common:actionFailed")));
   const createTeam = useMutation({
     mutationFn: async () => (await api.post("/scoring/external-teams", { season_id: seasonId, name: newTeam.name, number: newTeam.number || null, country: newTeam.country || null })).data as ExternalTeam,
     onSuccess: (team) => { setNewTeam({ name: "", number: "", country: "" }); setSelected(team.id); refresh(); },
@@ -106,6 +108,7 @@ export default function ScoutingPage() {
       <section className="card overflow-x-auto" aria-labelledby="opponent-ranking-title">
         <h2 id="opponent-ranking-title" className="border-b px-4 py-3 font-semibold dark:border-gray-800">{t("scouting.ranking")}</h2>
         <p className="px-4 pt-2 text-xs text-gray-500">{t("scouting.rankingHint")}</p>
+        <div className="table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("scouting.team")}</th><th className="p-3 text-left">{t("scouting.country")}</th><th className="p-3 text-left">{t("scouting.source")}</th><th className="p-3 text-right">{t("scouting.seed")}</th><th className="p-3 text-right">{t("scouting.best")}</th><th className="p-3 text-right">{t("scouting.runs")}</th></tr></thead>
           <tbody>
@@ -123,6 +126,7 @@ export default function ScoutingPage() {
             {ranking.data?.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-gray-400">{t("scouting.noScores")}</td></tr>}
           </tbody>
         </table>
+      </div>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
@@ -165,7 +169,7 @@ export default function ScoutingPage() {
                   </div>
                   <div className="flex gap-1">
                     {canEditTeam && <button type="button" className="btn-secondary px-2" aria-label={t("scouting.editTeam", { name: selectedTeam.name })} onClick={() => startTeamEdit(selectedTeam)}><Pencil className="h-4 w-4" /></button>}
-                    {isOrganizer && <button type="button" className="btn-secondary px-2 text-red-600" aria-label={t("scouting.deleteTeam", { name: selectedTeam.name })} disabled={deleteTeam.isPending} onClick={() => { if (confirm(t("scouting.confirmDeleteTeam", { name: selectedTeam.name }))) deleteTeam.mutate(); }}><Trash2 className="h-4 w-4" /></button>}
+                    {isOrganizer && <button type="button" className="btn-secondary px-2 text-red-600" aria-label={t("scouting.deleteTeam", { name: selectedTeam.name })} disabled={deleteTeam.isPending} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteTeam", { name: selectedTeam.name }), tone: "danger" }).then((ok) => ok && deleteTeam.mutate())}><Trash2 className="h-4 w-4" /></button>}
                   </div>
                 </div>
               )}
@@ -173,7 +177,7 @@ export default function ScoutingPage() {
               <div>
                 <h3 className="mb-2 font-medium">{t("scouting.observedScores")}</h3>
                 <ul className="mb-2 divide-y text-sm dark:divide-gray-800">
-                  {observations.data?.map((obs) => <li key={obs.id} className="flex items-center justify-between py-1"><span>{phaseLabel(obs.phase)}{obs.round_number ? ` · ${t("scouting.round", { round: obs.round_number })}` : ""}: <strong>{obs.score}</strong>{obs.notes ? ` – ${obs.notes}` : ""}</span>{canWrite && <button type="button" className="btn-secondary px-2" aria-label={t("scouting.deleteObservation")} onClick={() => removeObservation.mutate(obs.id)}><Trash2 className="h-4 w-4" /></button>}</li>)}
+                  {observations.data?.map((obs) => <li key={obs.id} className="flex items-center justify-between py-1"><span>{phaseLabel(obs.phase)}{obs.round_number ? ` · ${t("scouting.round", { round: obs.round_number })}` : ""}: <strong>{obs.score}</strong>{obs.notes ? ` – ${obs.notes}` : ""}</span>{canWrite && <button type="button" className="btn-secondary min-h-11 min-w-11 justify-center px-2" aria-label={t("scouting.deleteObservation")} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteObservation", { score: obs.score }), tone: "danger" }).then((ok) => ok && removeObservation.mutate(obs.id))}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}</li>)}
                   {observations.data?.length === 0 && <li className="py-1 text-gray-400">{t("scouting.noObservations")}</li>}
                 </ul>
                 {canWrite && (
@@ -189,7 +193,7 @@ export default function ScoutingPage() {
               <div>
                 <h3 className="mb-2 font-medium">{t("scouting.notes")}</h3>
                 <ul className="mb-2 space-y-2 text-sm">
-                  {notes.data?.map((item) => <li key={item.id} className="rounded bg-gray-50 p-2 dark:bg-gray-800"><div className="flex items-start justify-between gap-2"><p className="whitespace-pre-wrap">{item.body}</p>{canWrite && <button type="button" className="btn-secondary px-2" aria-label={t("scouting.deleteNote")} onClick={() => removeNote.mutate(item.id)}><Trash2 className="h-4 w-4" /></button>}</div>{item.threat_level && <p className="text-xs text-gray-500">{t("scouting.threatValue", { level: item.threat_level })}</p>}</li>)}
+                  {notes.data?.map((item) => <li key={item.id} className="rounded bg-gray-50 p-2 dark:bg-gray-800"><div className="flex items-start justify-between gap-2"><p className="whitespace-pre-wrap">{item.body}</p>{canWrite && <button type="button" className="btn-secondary min-h-11 min-w-11 justify-center px-2" aria-label={t("scouting.deleteNote")} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteNote"), tone: "danger" }).then((ok) => ok && removeNote.mutate(item.id))}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}</div>{item.threat_level && <p className="text-xs text-gray-500">{t("scouting.threatValue", { level: item.threat_level })}</p>}</li>)}
                   {notes.data?.length === 0 && <li className="text-gray-400">{t("scouting.noNotes")}</li>}
                 </ul>
                 {canWrite && (

@@ -122,7 +122,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                 <th className="px-3 py-2 text-right">{t('scoreSheets.candidates.multiplier')}</th>
                 <th className="px-3 py-2 text-right">{t('scoreSheets.candidates.confidence')}</th>
                 <th className="px-3 py-2 text-right" title={t('scoreSheets.candidates.page')}>{t('scoreSheets.candidates.pageShort')}</th>
-                <th className="px-3 py-2" />
+                <th className="px-3 py-2"><span className="sr-only">{t('common:actions')}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -171,7 +171,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
 
       {/* Confirmed fields editor */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <h3 className="font-medium text-sm">
             {t('scoreSheets.fields.title')} ({fields.length})
           </h3>
@@ -190,7 +190,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                 <th className="px-3 py-2 text-right">{t('scoreSheets.fields.multiplier')}</th>
                 <th className="px-3 py-2 text-right">{t('scoreSheets.fields.maxValue')}</th>
                 <th className="px-3 py-2 text-center">{t('scoreSheets.fields.type')}</th>
-                <th className="px-3 py-2" />
+                <th className="px-3 py-2"><span className="sr-only">{t('common:actions')}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -198,6 +198,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                 <tr key={idx} className="border-t dark:border-gray-700">
                   <td className="px-2 py-1">
                     <input
+                      aria-label={`${t('scoreSheets.fields.key')} ${idx + 1}`}
                       className="input input-sm w-36 font-mono text-xs"
                       value={f.key}
                       onChange={(e) => updateField(idx, { key: e.target.value })}
@@ -206,6 +207,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                   </td>
                   <td className="px-2 py-1">
                     <input
+                      aria-label={`${t('scoreSheets.fields.label')} ${idx + 1}`}
                       className="input input-sm w-48"
                       value={f.label}
                       onChange={(e) => updateField(idx, { label: e.target.value })}
@@ -213,6 +215,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                   </td>
                   <td className="px-2 py-1">
                     <input
+                      aria-label={`${t('scoreSheets.fields.section')} ${idx + 1}`}
                       className="input input-sm w-32"
                       value={f.section ?? ''}
                       onChange={(e) => updateField(idx, { section: e.target.value || null })}
@@ -221,6 +224,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                   </td>
                   <td className="px-2 py-1">
                     <input
+                      aria-label={`${t('scoreSheets.fields.multiplier')} ${idx + 1}`}
                       type="number"
                       step="0.5"
                       className="input input-sm w-16 text-right"
@@ -230,6 +234,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                   </td>
                   <td className="px-2 py-1">
                     <input
+                      aria-label={`${t('scoreSheets.fields.maxValue')} ${idx + 1}`}
                       type="number"
                       className="input input-sm w-16 text-right"
                       value={f.max_value ?? ''}
@@ -241,6 +246,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                   </td>
                   <td className="px-2 py-1 text-center">
                     <select
+                      aria-label={`${t('scoreSheets.fields.type')} ${idx + 1}`}
                       className="input input-sm w-24"
                       value={f.type}
                       onChange={(e) => updateField(idx, { type: e.target.value as 'count' | 'boolean' })}
@@ -253,9 +259,10 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                     <button
                       type="button"
                       onClick={() => removeField(idx)}
-                      className="text-red-500 hover:text-red-700 text-xs px-2"
+                      className="grid h-11 w-11 place-items-center rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                      aria-label={t('scoreSheets.fields.removeRow', { row: idx + 1, key: f.key || '–' })}
                     >
-                      ✕
+                      <span aria-hidden="true">✕</span>
                     </button>
                   </td>
                 </tr>

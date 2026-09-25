@@ -47,6 +47,11 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
+// jsdom has no object URLs (blob downloads, image previews).
+if (typeof URL.createObjectURL !== "function") {
+  Object.assign(URL, { createObjectURL: () => "blob:test", revokeObjectURL: () => undefined });
+}
+
 // Mock service worker
 Object.defineProperty(navigator, "serviceWorker", {
   value: {

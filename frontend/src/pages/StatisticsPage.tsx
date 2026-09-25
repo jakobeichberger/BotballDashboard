@@ -153,6 +153,7 @@ export default function StatisticsPage() {
               </div>
             ) : <p className="text-sm text-gray-500">{t("noData")}</p>}
             {stats.trend.teams.length > 0 && (
+              <div className="table-scroll">
               <table className="mt-4 w-full text-sm">
                 <caption className="sr-only">{t("statistics.trendPerTeam")}</caption>
                 <thead><tr className="text-left text-gray-500">
@@ -174,6 +175,7 @@ export default function StatisticsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
             )}
           </SectionCard>
         </>

@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import { CATEGORY_LABEL, EMPTY_TEAM_FILTERS as EMPTY_FILTERS, teamFilterParams, type TeamFilters } from "@/lib/teams";
+import { confirmAction } from "@/lib/confirm";
 
 interface TeamForm {
   name: string;
@@ -189,7 +190,7 @@ export default function TeamsPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
           <Users className="h-6 w-6" />
           {t("title")}
@@ -377,10 +378,10 @@ export default function TeamsPage() {
                     </div>
                     <button
                       type="button"
-                      className="rounded p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                       aria-label={t("members.remove", { name: member.name })}
                       disabled={removeMember.isPending}
-                      onClick={() => removeMember.mutate(member.id)}
+                      onClick={() => void confirmAction({ message: t("members.confirmRemove", { name: member.name }), tone: "danger", confirmLabel: t("detail.remove") }).then((ok) => ok && removeMember.mutate(member.id))}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>

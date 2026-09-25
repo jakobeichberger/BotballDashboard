@@ -8,6 +8,8 @@ import { EventLink } from "@/components/EventLink";
 import { useEventNavigate } from "@/hooks/useEventPath";
 import { useAuthStore } from "@/store/authStore";
 import BotImage from "@/components/BotImage";
+import { confirmAction } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
 
 export default function BotDetailPage() {
   const { t } = useTranslation("bots");
@@ -43,7 +45,7 @@ export default function BotDetailPage() {
   const canManage = isAdmin || (isMentor && isMyTeamBot);
 
   const refresh = () => { qc.invalidateQueries({ queryKey: ["bot", id] }); qc.invalidateQueries({ queryKey: ["bots"] }); };
-  const onError = (e: any) => alert(e?.response?.data?.detail ?? t("common:actionFailed"));
+  const onError = (e: unknown) => toast.apiError(e, t("common:actionFailed"));
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>({});
@@ -88,12 +90,12 @@ export default function BotDetailPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <EventLink to="/bots" className="btn-secondary text-sm"><ArrowLeft className="w-4 h-4" /> {t("detail.back")}</EventLink>
         {canManage && !editing && (
           <div className="flex items-center gap-2">
             <button onClick={startEdit} className="btn-secondary text-sm"><Pencil className="w-4 h-4" /> {t("common:edit")}</button>
-            <button onClick={() => { if (confirm(t("detail.confirmDelete", { name: bot.name }))) deleteM.mutate(); }}
+            <button onClick={() => void confirmAction({ message: t("detail.confirmDelete", { name: bot.name }), tone: "danger" }).then((ok) => ok && deleteM.mutate())}
                     className="btn-danger text-sm"><Trash2 className="w-4 h-4" /> {t("common:delete")}</button>
           </div>
         )}
@@ -105,19 +107,19 @@ export default function BotDetailPage() {
           {editing ? (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div><label className="label">{t("common:name")}</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                <div><label htmlFor="botdetailpage-f1" className="label">{t("common:name")}</label><input id="botdetailpage-f1" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div>
-                  <label className="label">{t("form.season")}</label>
-                  <select className="input" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value })}>
+                  <label htmlFor="botdetailpage-f2" className="label">{t("form.season")}</label>
+                  <select id="botdetailpage-f2" className="input" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value })}>
                     <option value="">{t("form.noSeason")}</option>
                     {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name}</option>))}
                   </select>
                 </div>
-                <div><label className="label">{t("form.drive")}</label><input className="input" value={form.drive_type} onChange={(e) => setForm({ ...form, drive_type: e.target.value })} /></div>
-                <div className="sm:col-span-2 lg:col-span-3"><label className="label">{t("form.sensors")}</label><input className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} /></div>
+                <div><label htmlFor="botdetailpage-f3" className="label">{t("form.drive")}</label><input id="botdetailpage-f3" className="input" value={form.drive_type} onChange={(e) => setForm({ ...form, drive_type: e.target.value })} /></div>
+                <div className="sm:col-span-2 lg:col-span-3"><label htmlFor="botdetailpage-f4" className="label">{t("form.sensors")}</label><input id="botdetailpage-f4" className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} /></div>
               </div>
-              <div><label className="label">{t("form.description")}</label><input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-              <div><label className="label">{t("form.functionality")}</label><textarea className="input min-h-[8rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })} /></div>
+              <div><label htmlFor="botdetailpage-f5" className="label">{t("form.description")}</label><input id="botdetailpage-f5" className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+              <div><label htmlFor="botdetailpage-f6" className="label">{t("form.functionality")}</label><textarea id="botdetailpage-f6" className="input min-h-[8rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })} /></div>
               <div className="flex items-center gap-2">
                 <button className="btn-primary text-sm disabled:opacity-40" disabled={!form.name || updateM.isPending} onClick={() => updateM.mutate()}><Save className="w-4 h-4" /> {t("common:save")}</button>
                 <button className="btn-secondary text-sm" onClick={() => setEditing(false)}><X className="w-4 h-4" /> {t("common:cancel")}</button>

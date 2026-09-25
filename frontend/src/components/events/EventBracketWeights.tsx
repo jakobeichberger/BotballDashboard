@@ -5,6 +5,7 @@ import { RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
 import { CATEGORY_LABEL } from "@/lib/teams";
 import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
+import { apiErrorMessage } from "@/lib/errors";
 
 const CATEGORIES = ["botball", "open", "aerial", "jbc"] as const;
 
@@ -28,7 +29,7 @@ export default function EventBracketWeights({ eventId }: { eventId: string }) {
       setMessage(Object.keys(next).length ? t("setup.weightsSaved") : t("setup.weightsReset"));
       queryClient.invalidateQueries({ queryKey: ["event-bracket-weights", eventId, category] });
     },
-    onError: (e: any) => setMessage(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : t("common:actionFailed")),
+    onError: (e: any) => setMessage(apiErrorMessage(e, t("common:actionFailed"))),
   });
 
   return (

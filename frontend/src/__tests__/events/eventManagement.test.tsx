@@ -7,10 +7,13 @@ import RegistrationManager from "@/components/events/RegistrationManager";
 import EventBracketWeights from "@/components/events/EventBracketWeights";
 import AllianceStandings from "@/components/events/AllianceStandings";
 import { api } from "@/lib/api";
+import { confirmAction } from "@/lib/confirm";
 import { formatScore } from "@/i18n/format";
 import type { EventPhase } from "@/api/types";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() } }));
+// Destructive actions ask first (lib/confirm); these tests confirm.
+vi.mock("@/lib/confirm", () => ({ confirmAction: vi.fn().mockResolvedValue(true) }));
 
 const get = api.get as ReturnType<typeof vi.fn>;
 const ok = { data: {} };
@@ -27,7 +30,7 @@ function phase(overrides: Partial<EventPhase>): EventPhase {
 beforeEach(() => {
   vi.clearAllMocks();
   for (const method of ["post", "patch", "put", "delete"] as const) (api[method] as ReturnType<typeof vi.fn>).mockResolvedValue(ok);
-  vi.spyOn(window, "confirm").mockReturnValue(true);
+  (confirmAction as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 });
 
 const editForm = () => screen.getByRole("button", { name: "Speichern" }).closest("form")!;
@@ -43,6 +46,7 @@ describe("PhaseManager", () => {
     wrap(<PhaseManager eventId="e1" />);
     expect(await screen.findByRole("button", { name: "Phase Seeding löschen" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Phase Finale löschen" }));
+    expect(confirmAction).toHaveBeenCalledWith(expect.objectContaining({ tone: "danger", message: expect.stringContaining("Finale") }));
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/v1/events/e1/phases/p2"));
   });
 
@@ -76,11 +80,12 @@ describe("PhaseManager", () => {
   });
 
   it("shows why the backend refused a change", async () => {
-    (api.patch as ReturnType<typeof vi.fn>).mockRejectedValue({ response: { data: { detail: "Another phase already uses this sort order" } } });
+    (api.patch as ReturnType<typeof vi.fn>).mockRejectedValue({ response: { status: 409, data: { code: "http_409", message: "Another phase already uses this sort order" } } });
     wrap(<PhaseManager eventId="e1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Phase Finale bearbeiten" }));
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Another phase already uses this sort order");
+    // Known backend messages are shown in the UI language (lib/errors).
+    expect(await screen.findByRole("alert")).toHaveTextContent("Eine andere Phase verwendet diese Reihenfolge bereits.");
   });
 });
 

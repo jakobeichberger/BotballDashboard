@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { useAuthStore } from "@/store/authStore";
 import BotImage from "@/components/BotImage";
+import { toast } from "@/lib/toast";
 
 type Owner = "team" | "external";
 
@@ -73,7 +74,7 @@ export default function BotsPage() {
       setForm({ name: "", team_id: "", external_team_name: "", season_id: "", description: "", functionality: "", drive_type: "", sensors: "" });
       qc.invalidateQueries({ queryKey: ["bots"] });
     },
-    onError: (e: any) => alert(e?.response?.data?.detail ?? t("createFailed")),
+    onError: (e: unknown) => toast.apiError(e, t("createFailed")),
   });
 
   const ownerValid = owner === "team" ? !!form.team_id : !!form.external_team_name;
@@ -104,13 +105,13 @@ export default function BotsPage() {
         <div className="card p-5 mb-6 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className="label">{t("common:name")}</label>
-              <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("form.namePlaceholder")} />
+              <label htmlFor="botspage-f1" className="label">{t("common:name")}</label>
+              <input id="botspage-f1" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("form.namePlaceholder")} />
             </div>
             {isAdmin && (
               <div>
-                <label className="label">{t("form.owner")}</label>
-                <select className="input" value={owner} onChange={(e) => setOwner(e.target.value as Owner)}>
+                <label htmlFor="botspage-f2" className="label">{t("form.owner")}</label>
+                <select id="botspage-f2" className="input" value={owner} onChange={(e) => setOwner(e.target.value as Owner)}>
                   <option value="team">{t("form.ownTeam")}</option>
                   <option value="external">{t("form.externalTeam")}</option>
                 </select>
@@ -118,41 +119,41 @@ export default function BotsPage() {
             )}
             {owner === "team" ? (
               <div>
-                <label className="label">{t("form.team")}</label>
-                <select className="input" value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })}>
+                <label htmlFor="botspage-f3" className="label">{t("form.team")}</label>
+                <select id="botspage-f3" className="input" value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })}>
                   <option value="">{t("form.chooseTeam")}</option>
                   {createTeams?.map((team: any) => (<option key={team.id} value={team.id}>{team.name}</option>))}
                 </select>
               </div>
             ) : (
               <div>
-                <label className="label">{t("form.externalTeam")}</label>
-                <input className="input" value={form.external_team_name} onChange={(e) => setForm({ ...form, external_team_name: e.target.value })} placeholder={t("form.externalPlaceholder")} />
+                <label htmlFor="botspage-f4" className="label">{t("form.externalTeam")}</label>
+                <input id="botspage-f4" className="input" value={form.external_team_name} onChange={(e) => setForm({ ...form, external_team_name: e.target.value })} placeholder={t("form.externalPlaceholder")} />
               </div>
             )}
             <div>
-              <label className="label">{t("form.season")}</label>
-              <select className="input" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value })}>
+              <label htmlFor="botspage-f5" className="label">{t("form.season")}</label>
+              <select id="botspage-f5" className="input" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value })}>
                 <option value="">{t("form.noSeason")}</option>
                 {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name}</option>))}
               </select>
             </div>
             <div>
-              <label className="label">{t("form.drive")}</label>
-              <input className="input" value={form.drive_type} onChange={(e) => setForm({ ...form, drive_type: e.target.value })} placeholder={t("form.drivePlaceholder")} />
+              <label htmlFor="botspage-f6" className="label">{t("form.drive")}</label>
+              <input id="botspage-f6" className="input" value={form.drive_type} onChange={(e) => setForm({ ...form, drive_type: e.target.value })} placeholder={t("form.drivePlaceholder")} />
             </div>
             <div>
-              <label className="label">{t("form.sensors")}</label>
-              <input className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} placeholder={t("form.sensorsPlaceholder")} />
+              <label htmlFor="botspage-f7" className="label">{t("form.sensors")}</label>
+              <input id="botspage-f7" className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} placeholder={t("form.sensorsPlaceholder")} />
             </div>
           </div>
           <div>
-            <label className="label">{t("form.description")}</label>
-            <input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <label htmlFor="botspage-f8" className="label">{t("form.description")}</label>
+            <input id="botspage-f8" className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div>
-            <label className="label">{t("form.functionality")}</label>
-            <textarea className="input min-h-[6rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })}
+            <label htmlFor="botspage-f9" className="label">{t("form.functionality")}</label>
+            <textarea id="botspage-f9" className="input min-h-[6rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })}
                       placeholder={t("form.functionalityPlaceholder")} />
           </div>
           <div className="flex justify-end">

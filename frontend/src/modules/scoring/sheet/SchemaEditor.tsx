@@ -8,6 +8,7 @@ import type { ScoringSchema } from "@/api/types";
 import type { CompetitionLevel, SchemaListEntry, SchemaTemplate } from "@/modules/scoring/extras/types";
 import { definitionProblems } from "./definitionProblems";
 import { fromFlatFields, inputFields, isEither, isStructured, type SectionMultiplier, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetSection } from "./calculator";
+import { apiErrorMessage } from "@/lib/errors";
 
 type Mode = "structured" | "json";
 
@@ -45,7 +46,7 @@ export default function SchemaEditor({ eventId, schema, onMessage }: Props) {
   const inputs = useMemo(() => (problems.length ? 0 : inputFields(draft).length), [draft, problems]);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["event-schema", eventId] }); queryClient.invalidateQueries({ queryKey: ["scoring-schemas"] }); };
-  const errorText = (error: any) => (error instanceof SyntaxError ? t("schema.invalidJson") : typeof error.response?.data?.detail === "string" ? error.response.data.detail : t("schema.saveFailed"));
+  const errorText = (error: any) => (error instanceof SyntaxError ? t("schema.invalidJson") : apiErrorMessage(error, t("schema.saveFailed")));
   const save = useMutation({
     mutationFn: async () => {
       let body: Record<string, unknown>;

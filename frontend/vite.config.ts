@@ -21,10 +21,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // recharts and its d3 helpers are only used by the statistics pages.
-        manualChunks(id) {
-          if (/node_modules\/(\.pnpm\/[^/]+\/node_modules\/)?(recharts|d3-[^/]+|victory-vendor|react-smooth|recharts-scale|decimal\.js-light)\//.test(id)) return "charts";
-          return undefined;
+        // The shared chunk Rollup creates for recharts (statistics pages) gets
+        // a stable name, so the service worker can leave it out of the
+        // precache. (manualChunks would also pull React & co. into it.)
+        chunkFileNames(chunk) {
+          return chunk.moduleIds.some((id) => id.includes("/node_modules/recharts/"))
+            ? "assets/charts-[hash].js"
+            : "assets/[name]-[hash].js";
         },
       },
     },

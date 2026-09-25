@@ -1,9 +1,9 @@
 // Local API shapes for the team features added with migration 0029 (season
 // registration details, season roster, versioned documents, 3D-print
 // compliance checklist). Not yet part of the generated client.
-import { api } from "@/lib/api";
 import i18n from "@/i18n/config";
 import { formatNumber } from "@/i18n/format";
+import { downloadFile } from "@/lib/download";
 import { labelMap } from "@/i18n/labels";
 
 export type TeamCategory = "botball" | "open" | "aerial" | "jbc";
@@ -139,16 +139,7 @@ export function complianceHint(status?: ComplianceStatus | null): string | null 
 
 /** Download a protected file (bearer token) and hand it to the browser. */
 export async function downloadBlob(url: string, fileName: string, params?: Record<string, unknown>): Promise<void> {
-  const response = await api.get(url, { responseType: "blob", params });
-  const href = URL.createObjectURL(new Blob([response.data]));
-  try {
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = fileName;
-    link.click();
-  } finally {
-    URL.revokeObjectURL(href);
-  }
+  await downloadFile(url, fileName, params);
 }
 
 export function formatFileSize(bytes: number): string {

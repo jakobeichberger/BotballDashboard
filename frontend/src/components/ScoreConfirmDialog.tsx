@@ -37,6 +37,7 @@ export default function ScoreConfirmDialog({ open, title, context, fields, value
           </div>
         ))}
       </dl>
+      <div className="table-scroll">
       <table className="mb-4 w-full text-sm">
         <thead>
           <tr className="border-b dark:border-gray-700">
@@ -66,6 +67,7 @@ export default function ScoreConfirmDialog({ open, title, context, fields, value
           </tr>
         </tfoot>
       </table>
+    </div>
       {offline && (
         <p className="mb-4 rounded-lg bg-amber-100 p-2 text-sm text-amber-900">
           {t("scoreConfirm.offline")}
