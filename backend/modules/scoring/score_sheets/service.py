@@ -431,15 +431,23 @@ async def update_template_layout(
         raise ValueError("Every OCR region must reference a confirmed scoring field")
     if len(set(region_keys)) != len(region_keys):
         raise ValueError("OCR field regions must use unique keys")
-    for region in data["field_regions"]:
-        values = (region["x"], region["y"], region["width"], region["height"])
+    for box in [*data["field_regions"], *data["anchors"]]:
+        values = (box["x"], box["y"], box["width"], box["height"])
         if max(values) <= 1:
             continue
         if (
-            region["x"] + region["width"] > data["page_width"]
-            or region["y"] + region["height"] > data["page_height"]
+            box["x"] + box["width"] > data["page_width"]
+            or box["y"] + box["height"] > data["page_height"]
         ):
-            raise ValueError("Pixel OCR regions must fit within the configured page")
+            raise ValueError("Pixel OCR boxes must fit within the configured page")
+    anchor_names = [anchor["name"] for anchor in data["anchors"]]
+    if len(set(anchor_names)) != len(anchor_names):
+        raise ValueError("OCR anchors must use unique names")
+    rules = data["validation_rules"]
+    rule_keys = [rule["key"] for rule in rules["fields"]]
+    rule_keys += [key for rule in rules["sums"] for key in rule["keys"]]
+    if any(key not in keys for key in rule_keys):
+        raise ValueError("Every validation rule must reference a confirmed scoring field")
     for key, value in data.items():
         setattr(template, key, value)
     await db.flush()

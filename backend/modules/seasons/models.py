@@ -15,6 +15,14 @@ def _uuid() -> str:
     return str(uuid.uuid4())
 
 
+SEASON_STATUSES = ("draft", "active", "finished", "archived")
+
+
+def _initial_status(context) -> str:
+    """A season created as active starts in the "active" state, others as drafts."""
+    return "active" if context.get_current_parameters().get("is_active") else "draft"
+
+
 class Season(Base):
     __tablename__ = "seasons"
 
@@ -23,6 +31,12 @@ class Season(Base):
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     game_theme: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Lifecycle: draft | active | finished | archived. "active" mirrors is_active
+    # (exactly one season); "archived" makes all of the season's data read-only
+    # (see modules.seasons.lifecycle).
+    status: Mapped[str] = mapped_column(
+        String(20), default=_initial_status, server_default="draft", nullable=False, index=True
+    )
     registration_open: Mapped[date | None] = mapped_column(Date, nullable=True)
     registration_close: Mapped[date | None] = mapped_column(Date, nullable=True)
     event_start: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -88,6 +102,13 @@ class CompetitionLevel(Base):
     code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # 1 = ECER, 2 = GCER, …; "order" is reserved in SQL, hence the column name.
+    order: Mapped[int] = mapped_column("level_order", Integer, default=0, nullable=False)
+    # GCER qualifies from ECER: teams need a TeamQualification for this level
+    # (in the event's season) before they can be registered for it.
+    qualifies_from_level_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("competition_levels.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class SeasonEvent(Base):

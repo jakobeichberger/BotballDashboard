@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Download, FileText, Loader2, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 
 interface ExportButtonProps {
@@ -24,6 +25,7 @@ async function downloadFile(url: string, filename: string): Promise<void> {
 }
 
 export function ExportButton({ url, filename, label, variant = "pdf" }: ExportButtonProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +35,7 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
     try {
       await downloadFile(url, filename);
     } catch {
-      setError("Export fehlgeschlagen");
+      setError(t("export.failed"));
     } finally {
       setLoading(false);
     }
@@ -47,7 +49,7 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
         className={`btn-secondary gap-1.5 text-xs ${
           variant === "csv" ? "opacity-80" : ""
         } disabled:opacity-50 disabled:cursor-not-allowed`}
-        title={`${label} herunterladen`}
+        title={t("export.downloadTitle", { label })}
       >
         {loading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -72,10 +74,12 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
 
 interface SeasonExportProps {
   seasonId: string;
-  seasonYear: number;
+  /** Only used for the download file name. */
+  seasonYear?: number | string;
 }
 
-export function RankingExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
+export function RankingExportButtons({ seasonId, seasonYear = "saison" }: SeasonExportProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex gap-2">
       <ExportButton
@@ -93,14 +97,14 @@ export function RankingExportButtons({ seasonId, seasonYear }: SeasonExportProps
       <ExportButton
         url={`/exports/seasons/${seasonId}/matches.csv`}
         filename={`matches-${seasonYear}.csv`}
-        label="Matches CSV"
+        label={t("export.matchesCsv")}
         variant="csv"
       />
     </div>
   );
 }
 
-export function PaperExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
+export function PaperExportButtons({ seasonId, seasonYear = "saison" }: SeasonExportProps) {
   return (
     <div className="flex gap-2">
       <ExportButton
@@ -119,7 +123,7 @@ export function PaperExportButtons({ seasonId, seasonYear }: SeasonExportProps) 
   );
 }
 
-export function PrintingExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
+export function PrintingExportButtons({ seasonId, seasonYear = "saison" }: SeasonExportProps) {
   return (
     <div className="flex gap-2">
       <ExportButton
@@ -132,7 +136,7 @@ export function PrintingExportButtons({ seasonId, seasonYear }: SeasonExportProp
   );
 }
 
-export function TeamExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
+export function TeamExportButtons({ seasonId, seasonYear = "saison" }: SeasonExportProps) {
   return (
     <div className="flex gap-2">
       <ExportButton
@@ -149,4 +153,46 @@ export function TeamExportButtons({ seasonId, seasonYear }: SeasonExportProps) {
       />
     </div>
   );
+}
+
+/** Event-scoped exports: seeding ranking, formula-engine overall ranking, runs. */
+export function EventRankingExportButtons({
+  eventId,
+  slug = "event",
+  includeMatches = false,
+}: {
+  eventId: string;
+  slug?: string;
+  includeMatches?: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-wrap gap-2">
+      <ExportButton url={`/exports/events/${eventId}/ranking.pdf`} filename={`ranking-${slug}.pdf`} label={t("export.seedingPdf")} variant="pdf" />
+      <ExportButton url={`/exports/events/${eventId}/ranking.csv`} filename={`ranking-${slug}.csv`} label={t("export.seedingCsv")} variant="csv" />
+      <ExportButton url={`/exports/events/${eventId}/overall-ranking.pdf`} filename={`gesamtwertung-${slug}.pdf`} label={t("export.overallPdf")} variant="pdf" />
+      <ExportButton url={`/exports/events/${eventId}/overall-ranking.csv`} filename={`gesamtwertung-${slug}.csv`} label={t("export.overallCsv")} variant="csv" />
+      {includeMatches && (
+        <ExportButton url={`/exports/events/${eventId}/matches.csv`} filename={`laeufe-${slug}.csv`} label={t("export.runsCsv")} variant="csv" />
+      )}
+    </div>
+  );
+}
+
+/** A team's report across all events (own team or organizers only). */
+export function TeamReportExportButtons({ teamId, teamName = "team" }: { teamId: string; teamName?: string }) {
+  const { t } = useTranslation();
+  const safe = teamName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "team";
+  return (
+    <div className="flex flex-wrap gap-2">
+      <ExportButton url={`/exports/teams/${teamId}/report.pdf`} filename={`teambericht-${safe}.pdf`} label={t("export.teamReportPdf")} variant="pdf" />
+      <ExportButton url={`/exports/teams/${teamId}/history.csv`} filename={`historie-${safe}.csv`} label={t("export.historyCsv")} variant="csv" />
+    </div>
+  );
+}
+
+/** Multi-year comparison of every team (organizers). */
+export function MultiYearExportButton() {
+  const { t } = useTranslation();
+  return <ExportButton url="/exports/history.csv" filename="mehrjahresvergleich.csv" label={t("export.multiYearCsv")} variant="csv" />;
 }

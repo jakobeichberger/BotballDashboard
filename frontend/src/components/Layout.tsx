@@ -2,10 +2,14 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  Activity,
+  BarChart3,
   Bell,
+  CalendarClock,
   BellOff,
   Bot,
   CalendarDays,
+  CloudOff,
   FileText,
   Globe,
   LayoutDashboard,
@@ -28,8 +32,12 @@ import { useLogout } from "@/hooks/useAuth";
 import { usePushSubscription } from "@/hooks/usePushNotifications";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useEvent, useEvents } from "@/hooks/useEvents";
-import i18n from "@/i18n/config";
+import { isModuleEnabled, useEventModules } from "@/hooks/useEventModules";
+import { useOfflineSync } from "@/hooks/useOfflineQueue";
+import NotificationCenter from "@/components/NotificationCenter";
+import i18n, { localized } from "@/i18n/config";
 import { navigationRoutes } from "@/core/plugins";
+import { api } from "@/lib/api";
 
 const ICONS = {
   dashboard: LayoutDashboard,
@@ -41,12 +49,15 @@ const ICONS = {
   printing: Printer,
   bots: Bot,
   settings: Settings,
+  stats: BarChart3,
+  performance: Activity,
+  calendar: CalendarClock,
 };
 
 export default function Layout() {
   const { t } = useTranslation();
   const { eventId = "" } = useParams();
-  const { user, hasPermission } = useAuthStore();
+  const { user, hasPermission, setUser } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
   const logout = useLogout();
   const navigate = useNavigate();
@@ -54,6 +65,9 @@ export default function Layout() {
   const online = useOnlineStatus();
   const { data: events } = useEvents();
   const { data: event } = useEvent(eventId);
+  const { data: modules } = useEventModules(eventId);
+  // Queued offline scores are replayed on app start and on reconnect.
+  const sync = useOfflineSync();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -64,8 +78,19 @@ export default function Layout() {
     const order = ["light", "dark", "system"] as const;
     setTheme(order[(order.indexOf(theme) + 1) % order.length]);
   };
+  const toggleLanguage = () => {
+    const language = i18n.resolvedLanguage === "de" ? "en" : "de";
+    i18n.changeLanguage(language);
+    // Persist to the profile so the choice follows the user to other devices.
+    if (user) {
+      setUser({ ...user, preferred_language: language });
+      api.patch("/auth/me", { preferred_language: language }).catch(() => undefined);
+    }
+  };
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
-  const visibleNav = navigationRoutes.filter((item) => hasPermission(item.permission));
+  const visibleNav = navigationRoutes.filter(
+    (item) => hasPermission(item.permission) && isModuleEnabled(modules, item.module),
+  );
 
   const sidebar = (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -127,7 +152,7 @@ export default function Layout() {
               }
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
-              {i18n.language === "en" ? label.en : label.de}
+              {localized(label)}
             </NavLink>
           );
         })}
@@ -149,12 +174,12 @@ export default function Layout() {
         </button>
         <button
           type="button"
-          onClick={() => i18n.changeLanguage(i18n.language === "de" ? "en" : "de")}
+          onClick={toggleLanguage}
           className="sidebar-action"
           aria-label={t("changeLanguage")}
         >
           <Globe className="h-4 w-4" aria-hidden="true" />
-          {i18n.language === "de" ? "Deutsch" : "English"}
+          {t("languageName")}
         </button>
         <button
           type="button"
@@ -163,7 +188,7 @@ export default function Layout() {
           aria-label={t("changeTheme")}
         >
           <ThemeIcon className="h-4 w-4" aria-hidden="true" />
-          {theme}
+          {t(`theme.${theme}`)}
         </button>
         <button
           type="button"
@@ -178,7 +203,7 @@ export default function Layout() {
             to={`/events/${eventId}/profile`}
             className="block truncate rounded-lg px-3 pt-2 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
           >
-            {user.display_name} · Profil
+            {user.display_name} · {t("nav.profile")}
           </NavLink>
         )}
       </div>
@@ -200,15 +225,30 @@ export default function Layout() {
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-white px-4 dark:border-gray-800 dark:bg-gray-900 md:hidden">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
           <button
             type="button"
+            className="md:hidden"
             onClick={() => setMenuOpen(true)}
             aria-label={t("openMenu")}
           >
             <Menu aria-hidden="true" />
           </button>
-          <span className="truncate font-semibold">{event?.name}</span>
+          <span className="min-w-0 flex-1 truncate font-semibold">{event?.name}</span>
+          {(sync.pending > 0 || sync.failed > 0) && (
+            <span
+              className={clsx(
+                "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium",
+                sync.failed > 0 ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-900",
+              )}
+            >
+              <CloudOff className="h-3 w-3" aria-hidden="true" />
+              {sync.failed > 0
+                ? t("syncFailed", { count: sync.failed })
+                : t("pendingSync", { count: sync.pending })}
+            </span>
+          )}
+          <NotificationCenter />
         </header>
         {!online && (
           <div

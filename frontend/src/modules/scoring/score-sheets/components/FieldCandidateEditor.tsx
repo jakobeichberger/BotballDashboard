@@ -34,7 +34,7 @@ function candidateToField(c: ExtractedFieldCandidate): ScoringField {
 }
 
 export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('scoring')
   const queryClient = useQueryClient()
 
   const rawCandidates = template.extracted_fields ?? []
@@ -121,7 +121,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                 <th className="px-3 py-2 text-left">{t('scoreSheets.candidates.suggestedLabel')}</th>
                 <th className="px-3 py-2 text-right">{t('scoreSheets.candidates.multiplier')}</th>
                 <th className="px-3 py-2 text-right">{t('scoreSheets.candidates.confidence')}</th>
-                <th className="px-3 py-2 text-right">Pg</th>
+                <th className="px-3 py-2 text-right" title={t('scoreSheets.candidates.page')}>{t('scoreSheets.candidates.pageShort')}</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -245,8 +245,8 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                       value={f.type}
                       onChange={(e) => updateField(idx, { type: e.target.value as 'count' | 'boolean' })}
                     >
-                      <option value="count">count</option>
-                      <option value="boolean">boolean</option>
+                      <option value="count">{t('schema.type.count')}</option>
+                      <option value="boolean">{t('schema.type.boolean')}</option>
                     </select>
                   </td>
                   <td className="px-2 py-1 text-right">

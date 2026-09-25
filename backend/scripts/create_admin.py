@@ -78,7 +78,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create or reset a BotballDashboard admin user")
     parser.add_argument("--email", required=True, help="Admin email address")
     parser.add_argument(
-        "--password", default=None, help="Password (min. 8 chars); or set ADMIN_PASSWORD env var"
+        "--password",
+        default=None,
+        help="Password (the API password policy applies); or set ADMIN_PASSWORD env var",
     )
     parser.add_argument("--name", default="Administrator", help="Display name")
     parser.add_argument(
@@ -100,9 +102,17 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    if len(password) < 8:
-        print("[ERROR] Password must be at least 8 characters.", file=sys.stderr)
-        sys.exit(1)
+    # The same policy as the API (length, repetition, e-mail, common
+    # passwords). Outside production a weak password only warns, so the dev
+    # compose setup keeps working with its throwaway admin.
+    from modules.auth.password_policy import password_problem
+
+    problem = password_problem(password, args.email)
+    if problem:
+        if os.environ.get("APP_ENV", "production") == "production":
+            print(f"[ERROR] {problem}", file=sys.stderr)
+            sys.exit(1)
+        print(f"[WARN] {problem} (accepted because APP_ENV is not production)", file=sys.stderr)
 
     # Use uvloop if available (installed via uvicorn[standard]).
     # Python's default _UnixSelectorEventLoop calls socket.socketpair(AF_UNIX)

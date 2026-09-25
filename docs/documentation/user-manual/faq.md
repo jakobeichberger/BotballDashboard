@@ -6,167 +6,165 @@
 
 ### Ich kann mich nicht einloggen. Was tun?
 
-1. Prüfe ob Groß-/Kleinschreibung bei der E-Mail stimmt
-2. Nutze „Passwort vergessen" auf der Login-Seite → Reset-E-Mail kommt binnen weniger Minuten
-3. Falls keine E-Mail kommt: Spam-Ordner prüfen
-4. Falls weiterhin kein Zugang: Admin kontaktieren (dein Konto könnte deaktiviert sein)
+1. E-Mail-Adresse und Passwort prüfen. Nach zu vielen Versuchen (10 pro Minute) blockiert der Server kurz.
+2. **„Passwort vergessen?"** auf der Login-Seite nutzen. Der Link ist eine Stunde gültig.
+3. Kommt keine E-Mail: Spam-Ordner prüfen. Hat die Installation keinen Mailserver, setzt ein Admin das Passwort unter **Einstellungen → Benutzer**.
+4. Dein Konto könnte deaktiviert sein. Dann hilft nur die Organisation.
 
-### Ich sehe ein Modul nicht in der Navigation. Warum?
+### Ich sehe einen Bereich nicht in der Navigation. Warum?
 
-Bestimmte Module sind nur für bestimmte Rollen sichtbar:
-- **Scoring** → nur für Juror und Admin
-- **Paper-Review (Admin-Ansicht)** → nur für Reviewer-Admin oder Admin
-- **3D-Druck (Verwaltung)** → nur für Admin
-- **Benutzerverwaltung** → nur für Admin
+Zwei Gründe sind möglich:
 
-Falls du ein Modul sehen solltest aber es fehlt: Admin bitten, deine Rollen zu prüfen.
+- **Rechte:** Die Navigation zeigt nur Bereiche, für die deine Rolle Rechte hat (siehe [Rollen](index.md#rollen)). Beispiele: Paper-Review braucht `papers:read`, Statistik `scoring:admin`, Punkteformeln `scoring:formulas`.
+- **Modul im Event abgeschaltet:** Paper, 3D-Druck, Bot-Galerie, DE, Aerial und Dokumentation lassen sich pro Event abschalten. Dann fehlt der Bereich in diesem Event, auch für Admins.
 
-### Wie ändere ich mein Passwort?
+### Warum hängt alles an einem Event?
 
-**Profil → Mein Konto → Passwort ändern** → Altes Passwort, neues Passwort (2×) eingeben.
+Weil Wertungen, Ranglisten, Kontingente und Ankündigungen pro Turnier gelten. ECER und GCER derselben Saison haben getrennte Ergebnisse. Das Event wechselst du oben in der Seitenleiste.
 
-### Wie schalte ich zwischen Deutsch und Englisch um?
+### Wie ändere ich Passwort, E-Mail, Sprache oder Design?
 
-Topbar oben rechts → Flagge/Sprachkürzel anklicken → `DE` oder `EN` wählen. Die Einstellung wird gespeichert.
+Im **Profil** (Link in der Kopfzeile). Sprache und Design lassen sich auch direkt in der Kopfzeile umschalten. Beide Einstellungen werden im Konto gespeichert und gelten auf allen Geräten. Ändert man das Passwort, werden alle anderen Sitzungen beendet.
 
-### Wie aktiviere ich den Dark Mode?
+### Warum ist ein Teil der Oberfläche auf Englisch umgestellt und ein Teil nicht?
 
-Topbar → Mond-/Sonne-Icon anklicken. Einstellung wird gespeichert.
+Die Übersetzung ist noch unvollständig. Viele Seiten enthalten fest deutschen Text. Siehe [todo.md](../../todo.md).
 
-### Was ist eine PWA und soll ich sie installieren?
+### Kann ich meine Daten exportieren oder mein Konto löschen?
 
-Eine **Progressive Web App (PWA)** verhält sich wie eine native App auf deinem Gerät:
-- Funktioniert auch offline (zumindest eingeschränkt)
-- Eigenes Icon auf dem Startbildschirm
-- Schnellerer Start
-- Push-Benachrichtigungen auch wenn der Browser geschlossen ist
+Ja, im **Profil → Datenschutz**:
 
-Installation: Chrome/Edge → URL-Leiste → Install-Icon (oder Menü → „App installieren")
+- **Datenexport** als JSON.
+- **Konto löschen**, mit Passwort. Das Konto wird anonymisiert. Wertungen und andere historische Einträge bleiben ohne Personenbezug erhalten.
+
+### Soll ich die App (PWA) installieren?
+
+Für Jury und Mentoren am Turniertag: ja. Die App startet schneller, empfängt Push-Meldungen und speichert Wertungen offline zwischen.
 
 ---
 
-## Scoring
+## Wertung
+
+### Wie wird ein Lauf berechnet?
+
+Aus dem Score-Sheet-Schema des Events: Felder mal Punkte, Bereichs-Multiplikatoren, Entweder-oder-Gruppen, Seiten A/B. Dazu kommen die Sonderregeln der Saison:
+
+- Kontakt-Bonus;
+- „Runde verloren" (0 Punkte);
+- DQ.
+
+Der Server rechnet immer selbst nach.
 
 ### Wie wird der Seed-Score berechnet?
 
-```
-Seed-Score = (bester Lauf + zweitbester Lauf) / 2
-```
-
-Teams mit nur einem Lauf erhalten diesen direkt als Seed-Score. Teams ohne Lauf erscheinen am Ende der Rangliste.
-
-### Wie wird der Gesamtscore pro Lauf berechnet?
-
-```
-Gesamtscore = Σ (Feldwert × Multiplikator)
-```
-
-Jedes Feld im Score-Schema hat einen Wert und einen Multiplikator. Die Summe aller Produkte ergibt den Gesamtscore.
+In der Seeding-Rangliste: **Ø der zwei besten Seeding-Läufe**. Eine DQ oder verlorene Runde zählt als 0-Lauf, negative Werte zählen als 0. Nur Läufe aus Seeding-Phasen zählen, keine Übungsläufe. Ränge gelten je Kategorie. Gleichstände entscheidet die Tie-Breaker-Reihenfolge der Saison. In die Gesamtwertung geht der Seeding-Wert über das Formel-Set ein (siehe [Juror-Handbuch](juror.md#rangliste-und-seeding-regeln)).
 
 ### Ich habe einen falschen Score eingegeben. Kann ich ihn korrigieren?
 
-Ja. **Scoring → Match → Score → Bearbeiten** → Korrekten Wert eingeben + Korrekturgrund (Pflichtfeld). Der ursprüngliche Score bleibt im Audit-Log erhalten.
+Mit `scoring:admin` (Jury, Organisation): **Punkte eintragen → Bearbeiten**. Jede Änderung wird als Revision gespeichert, mit altem und neuem Wert, Zeit und Person. Die Teams bekommen „Score korrigiert". Mentoren wenden sich an die Jury.
 
 ### Was passiert bei einer roten Karte?
 
-Das Team wird aus allen weiteren Runden **und** Awards ausgeschlossen. Der Score bleibt in der Rangliste erhalten (historisch), aber das Team ist für das Turnier disqualifiziert.
+Das Team ist für das Event disqualifiziert:
+
+- kein Rang, Anzeige „DQ";
+- es zählt nicht mehr zum Teilnehmerfeld der Formeln (n, Maxima).
+
+Karten werden derzeit über die API gesetzt, ein Schalter in der Oberfläche fehlt noch.
+
+### Zählen Übungsläufe?
+
+Nein. Übungsläufe (Modus „Vorbereitung") erscheinen nur in der Performance-Ansicht des eigenen Teams. Sie zählen nie für Ranglisten, Gesamtwertung oder öffentliche Ergebnisse.
 
 ### Kann ich die Rangliste herunterladen?
 
-Ja. **Scoring → Rangliste → PDF** (druckfertig, A4) oder **CSV** (für Excel/Sheets). Der Export zeigt den Stand zum Zeitpunkt des Downloads.
+Ja, auf **Rangliste & Ergebnisse**: Seeding und Gesamtwertung als CSV oder PDF, dazu alle Wertungen als CSV.
 
-### Das Live-Scoreboard aktualisiert sich nicht. Was tun?
+### Die Wertung klappt am Spieltisch nicht, das WLAN ist weg.
 
-Das Scoreboard nutzt WebSockets. Mögliche Ursachen:
-1. Seite neu laden (F5 / Wisch-Refresh auf Mobil)
-2. Netzwerkunterbrechung → kurz warten, automatische Reconnect-Logik greift
-3. Proxy/Firewall blockiert WebSockets → Admin informieren
+Einfach weiter erfassen. Die Wertungen werden auf dem Gerät gespeichert und automatisch übertragen, sobald wieder Verbindung besteht. Die Kopfzeile zeigt, wie viele warten. Siehe [Offline-Betrieb](juror.md#offline-betrieb).
+
+### Die öffentliche Anzeige aktualisiert sich nicht.
+
+Die öffentliche Seite nutzt eine WebSocket-Verbindung. Oben steht der Status („Verbunden"/„Getrennt"). Die Seite verbindet sich selbst neu. Hilft das nicht: Seite neu laden und prüfen, ob der Proxy WebSockets durchlässt. Ist die Seite ganz leer, sind im Event keine Bereiche freigegeben.
 
 ---
 
 ## Paper-Review
 
-### Bis wann muss ich das Paper einreichen?
+### Bis wann muss das Paper eingereicht werden?
 
-Die aktuellen Deadlines findest du unter **Dashboard → Saison-Übersicht** oder **Paper-Review → Deadlines**. Erinnerungen kommen automatisch per E-Mail / Push-Benachrichtigung 7 Tage, 3 Tage und 1 Tag vor der Deadline.
+Das Deadline-Banner im Paper-Bereich zeigt Frist und Countdown. Alle Termine stehen auch unter **Deadlines**. Die offizielle Frist gilt bis Tagesende in der Zeitzone des Events, danach ist das Einreichen gesperrt. Erinnerungen kommen 7, 3 und 1 Tag vorher.
 
 ### Welches Format muss das Paper haben?
 
-- **Format:** PDF, IEEE A4-Template
-- **Seitenzahl:** Maximal 5 Seiten (inkl. Abbildungen und Referenzen)
-- **Pflichtabschnitte:** Abstract, Introduction, Concept/Design, Implementation, Results/Conclusion
+PDF. Die inhaltlichen Vorgaben (Template, Seitenzahl, Abschnitte) stehen im Call for Papers der Saison (`docs/assets`). Ein Verstoß gegen das Format kann einen **Formalabzug** geben.
 
-### Ich habe eine Revision angefordert bekommen. Was genau muss ich tun?
+### Ich muss überarbeiten. Was tun?
 
-1. **Paper-Review → Meine Papers → Paper → Feedback lesen** (öffentlicher Kommentar des Reviewers)
-2. Paper gemäß Feedback überarbeiten (außerhalb des Systems, z.B. in Word/LaTeX)
-3. Überarbeitetes Paper als PDF hochladen
-4. Status wechselt automatisch auf „Überarbeitung eingereicht"
+1. Auf der Paper-Detailseite das **Feedback** lesen: Kriterien, Kommentare, Revisionshinweise.
+2. Eine **neue Version** hochladen. Frühere Versionen bleiben erhalten.
+3. **Einreichen.** Der Status wird „überarbeitet eingereicht", und die Reviewer bekommen das Paper erneut.
 
-### Wie viele Revisions-Runden sind erlaubt?
+### Wie viele Überarbeitungsrunden gibt es?
 
-Es gibt keine feste Grenze. Der Prozess geht so lange weiter bis das Paper angenommen oder abgelehnt wird. Jede Revision erhöht die Versionsnummer.
+Keine feste Grenze. Die Organisation entscheidet. Jede Runde und jede Version wird gespeichert.
 
-### Darf ich KI-Tools für das Paper verwenden?
+### Darf ich KI-Tools verwenden?
 
-Eingeschränkt ja:
-- **Erlaubt:** Rechtschreibkorrektur, Grammatikverbesserung, Recherchehilfe (wenn manuell geprüft)
-- **Nicht erlaubt:** Unkontrolliert generierte Inhalte, ungeprüfter Text, verschleierte Bedeutung
+Das regelt der Call for Papers. Bei Missbrauch kann die Organisation den Status `disqualified_ai` setzen: Score 0, keine Überarbeitung.
 
-Bei Verdacht auf unerlaubte KI-Nutzung kann der Reviewer das Paper ablehnen. Das Team kann dann einen Nachweis der Eigenleistung einreichen (z.B. Google-Docs-Verlauf).
+### Ich bin Reviewer und sehe nichts in meiner Warteschlange.
 
-### Ich bin Reviewer und sehe kein Paper unter „Meine Papers". Warum?
-
-Dir wurde noch kein Paper zugewiesen. Die Zuweisung erfolgt durch einen Admin oder Lead-Reviewer. Bitte beim Admin nachfragen.
+Dir ist noch kein Paper zugewiesen, oder deine Papers liegen gerade beim Team zur Überarbeitung. Die Zuweisung macht die Organisation.
 
 ---
 
 ## 3D-Druck
 
-### Welche Dateiformate werden für Druckjobs akzeptiert?
+### Welche Dateiformate werden angenommen?
 
-STL und 3MF.
+STL, 3MF, OBJ, G-Code und bgcode, bis zur eingestellten Maximalgröße (Standard 100 MB).
 
-### Was bedeutet „Soft Limit" und „Hard Limit"?
+### Was bedeuten Soft- und Hard-Limit?
 
-- **Soft Limit:** Eine Warnung erscheint wenn du das Limit erreichst. Du kannst noch weitere Jobs beantragen.
-- **Hard Limit:** Neue Druckjobs können nicht mehr beantragt werden bis das Limit zurückgesetzt wird (durch Admin).
+- **Soft-Limit:** Warnung, der Auftrag wird trotzdem angenommen.
+- **Hard-Limit:** Teile, optional Gramm. Darüber wird ein neuer Auftrag abgelehnt. Offene Aufträge zählen mit.
 
-### Mein Druckjob ist „Fehlgeschlagen". Was nun?
+Die Limits gelten pro Event und Team. Nur die Organisation kann sie überschreiten.
 
-1. Druckjob öffnen → Fehlermeldung lesen (zeigt Ursache falls verfügbar)
-2. Falls nötig: Datei überarbeiten (z.B. nicht-manifolde Geometrie reparieren)
-3. Neuen Druckjob beantragen
+### Mein Auftrag wurde abgelehnt oder ist fehlgeschlagen.
 
-### Kann ich Druckeinstellungen (Infill, Layer Height) angeben?
+Die Begründung bzw. Fehlermeldung steht auf der Detailseite des Auftrags. Datei überarbeiten und einen neuen Auftrag stellen.
 
-Ja, im Kommentarfeld beim Erstellen des Druckjobs. Der Admin/Print-Manager entscheidet ob und wie die Einstellungen übernommen werden.
+### Kann ich Druckeinstellungen angeben?
 
-### Wie lange dauert ein Druckjob?
+Ja, im Notizfeld. Die Druck-Verantwortlichen entscheiden darüber.
 
-Das hängt von der Größe und Komplexität des Teils ab. Während des Drucks siehst du den Fortschritt in % und die geschätzte Restzeit unter **3D-Druck → Meine Jobs**.
+### Warum warnt die Seite wegen einer Checkliste?
 
-### Mein Druckjob wurde abgelehnt. Warum?
-
-Die Ablehnungsbegründung steht im Job-Detail. Häufige Gründe:
-- Datei ist nicht druckbar (nicht-manifolde Geometrie)
-- Teil überschreitet die maximale Baugröße (220×220×250 mm)
-- Druckjob verstößt gegen die Wettbewerbs-Regeln (z.B. falsches Material)
-- Hard Limit bereits erreicht
+Die 3D-Druck-Checkliste deines Teams für die Saison ist unvollständig. Du findest sie auf der Team-Detailseite. Der Auftrag wird trotzdem angenommen.
 
 ---
 
 ## Benachrichtigungen
 
-### Ich erhalte keine Push-Benachrichtigungen. Woran liegt das?
+### Ich bekomme keine Push-Benachrichtigungen.
 
-1. Browser-Berechtigung: **Browser-Einstellungen → Benachrichtigungen → BotballDashboard** → Erlauben
-2. Profil-Einstellungen: **Profil → Benachrichtigungen** → gewünschte Ereignisse aktivieren
-3. Gerät: Push-Benachrichtigungen funktionieren nur wenn die App/Tab nicht komplett geschlossen ist (außer bei PWA-Installation)
+1. Push auf **diesem Gerät** aktivieren (Profil oder Kopfzeile) und die Browser-Berechtigung erlauben.
+2. Im Profil prüfen, ob die Kategorie eingeschaltet ist.
+3. Auf iOS funktioniert Web Push nur mit der installierten App.
+4. Die Installation braucht VAPID-Schlüssel. Fehlen sie, ist Push serverseitig abgeschaltet.
 
-### Kann ich bestimmte Benachrichtigungen deaktivieren?
+Alle Meldungen stehen zusätzlich in der **Benachrichtigungszentrale** (Glocke).
 
-Ja. **Profil → Benachrichtigungen** → einzelne Ereignistypen an- oder abschalten.
+### Kann ich einzelne Benachrichtigungen abschalten?
+
+Ja, pro Kategorie im Profil: Match beginnt bald, Score korrigiert, Deadlines & Erinnerungen, Paper-Status, Druckaufträge, Ankündigungen.
+
+### Kann ich die Deadlines in meinen Kalender übernehmen?
+
+Ja: **Deadlines → Kalender-Abo (iCal)**. Der Link wird nur einmal angezeigt und lässt sich neu erzeugen oder widerrufen.
 
 ---
 
@@ -174,23 +172,15 @@ Ja. **Profil → Benachrichtigungen** → einzelne Ereignistypen an- oder abscha
 
 ### Welche Browser werden unterstützt?
 
-- **Empfohlen:** Chrome 120+, Edge 120+, Firefox 120+
-- **Eingeschränkt:** Safari 17+ (PWA und Web Push nur mit Einschränkungen)
-- **Nicht unterstützt:** Internet Explorer
+Aktuelle Versionen von Chrome, Edge, Firefox und Safari. Web Push auf iOS/iPadOS geht nur mit der installierten App.
 
 ### Funktioniert das Dashboard auf dem Handy?
 
-Ja, das Dashboard ist vollständig responsive. Für die beste Erfahrung empfehlen wir die PWA-Installation.
+Ja, die Seiten sind responsiv. Die Wertung am Spieltisch ist speziell fürs Handy gebaut, mit Wischen zwischen Matches und Kamera-Upload für Score-Sheets.
 
-### Was tun bei einem Fehler oder einem Bug?
+### Wie lange werden Daten gespeichert?
 
-1. Seite neu laden (F5)
-2. Browser-Cache leeren (Strg+Shift+R / Cmd+Shift+R)
-3. Falls das Problem bleibt: Screenshot machen und beim Admin melden
-
-### Wie lange sind meine Daten gespeichert?
-
-Alle Daten bleiben mindestens bis zum Ende der Saison erhalten. Alte Saisons werden archiviert (nicht gelöscht). Personenbezogene Daten können auf DSGVO-Anfrage gelöscht werden (Admin kontaktieren).
+Bis die Organisation sie löscht. Abgeschlossene Saisons werden **archiviert** (schreibgeschützt), nicht gelöscht. Eine Saison mit Ergebnissen lässt sich gar nicht löschen. Personenbezogene Kontodaten kannst du selbst exportieren oder löschen.
 
 ---
 
@@ -198,20 +188,24 @@ Alle Daten bleiben mindestens bis zum Ende der Saison erhalten. Alte Saisons wer
 
 ### Wie setze ich das Passwort eines Benutzers zurück?
 
-**Admin → Benutzer → Benutzer auswählen → Passwort zurücksetzen** → Der Benutzer erhält eine E-Mail mit einem Reset-Link.
+**Einstellungen → Benutzer → Passwort setzen.** Die Person wird auf allen Geräten abgemeldet. Alternativ nutzt sie selbst „Passwort vergessen?", sofern ein Mailserver eingerichtet ist.
 
 ### Wie archiviere ich eine Saison?
 
-**Admin → Saisons → Saison auswählen → Archivieren** → Archivierte Saisons sind schreibgeschützt aber weiterhin einsehbar.
+**Einstellungen → Saisons → Status `archived`.** Die Saison und ihre Events sind danach schreibgeschützt.
 
-### Wie ändere ich die aktive Saison?
+### Wie bereite ich die nächste Saison vor?
 
-**Admin → Saisons → Neue/andere Saison → „Als aktiv setzen"** → Das Dashboard zeigt ab sofort die neue aktive Saison.
+**Einstellungen → Saisons → Saison klonen.** Übernommen werden Konfiguration, Termine, leere Events, Schemas und Formeln. Danach die Termine prüfen und die Saison aktivieren.
 
-### Wie sehe ich wer einen Score geändert hat?
+### Wie sehe ich, wer einen Score geändert hat?
 
-**Admin → System → Audit-Log → Filter: Aktion = score.updated** → Zeigt alle Score-Korrekturen mit Benutzer, Zeitstempel, altem und neuem Wert.
+- Die Revisionen einer Wertung zeigt **Statistik → auffälligen Lauf öffnen**.
+- Den Audit-Trail eines Events liefert die API `GET /api/scoring/events/{id}/revisions` bzw. `/result-revisions` für DE, Aerial und Doku.
+- Alle API-Änderungen stehen zusätzlich in der Tabelle `audit_logs`.
 
-### Kann ich Test-Daten / Demo-Daten laden?
+Einen Audit-Log-Bereich in der Oberfläche gibt es nicht.
 
-Nein, das System hat keine eingebaute Demo-Daten-Funktion. Für Testzwecke empfiehlt sich eine separate Staging-Instanz (Docker Compose mit eigener Datenbank).
+### Gibt es Demo-Daten?
+
+Für die End-to-End-Tests legt `backend/scripts/seed_e2e.py` ein Beispiel-Event an. Für Probeläufe empfiehlt sich eine eigene Staging-Instanz.

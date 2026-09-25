@@ -1,18 +1,27 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Routes, Route, NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Settings, Users, Layers, Save, Calendar, CalendarClock, Printer, Megaphone, Award, Trash2, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import clsx from "clsx";
+import { useEvents } from "@/hooks/useEvents";
+import { PRINTER_TYPE_LABEL, apiError, type PrintQuota } from "@/lib/printing";
+import { CATEGORY_LABEL } from "@/lib/teams";
+import { formatDate } from "@/i18n/format";
+import { apiErrorMessage, passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import i18n from "@/i18n/config";
+import { labelMap } from "@/i18n/labels";
 
 function useInvalidate(keys: string[]) {
   const qc = useQueryClient();
   return () => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 }
-const onErr = (e: any) => alert(e?.response?.data?.detail ?? "Aktion fehlgeschlagen.");
+const onErr = (e: any) => alert(apiErrorMessage(e, i18n.t("common:actionFailed")));
 
 // ── Users ───────────────────────────────────────────────────────────────────
 function UsersSettings() {
+  const { t } = useTranslation("settings");
   const invalidate = useInvalidate(["users"]);
   const { data: users, isLoading } = useQuery({ queryKey: ["users"], queryFn: async () => (await api.get("/auth/users")).data });
   const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: async () => (await api.get("/auth/roles")).data });
@@ -37,23 +46,35 @@ function UsersSettings() {
     mutationFn: () => api.patch(`/auth/users/${editUser!.id}`, { role_ids: editUser!.roleIds }),
     onSuccess: () => { setEditUser(null); invalidate(); }, onError: onErr,
   });
+  const [pwUser, setPwUser] = useState<{ id: string; email: string; password: string } | null>(null);
+  const setPasswordM = useMutation({
+    mutationFn: () => api.post(`/auth/users/${pwUser!.id}/password`, { new_password: pwUser!.password }),
+    onSuccess: () => { setPwUser(null); alert(t("users.passwordSet")); },
+    onError: onErr,
+  });
+  const deleteUserM = useMutation({
+    mutationFn: (uid: string) => api.delete(`/auth/users/${uid}`),
+    onSuccess: invalidate, onError: onErr,
+  });
+  const createPwProblem = password ? passwordProblem(password, email) : null;
+  const pwUserProblem = pwUser?.password ? passwordProblem(pwUser.password, pwUser.email) : null;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Benutzer</h2>
-        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? "Abbrechen" : "+ Benutzer anlegen"}</button>
+        <h2 className="text-lg font-semibold">{t("users.title")}</h2>
+        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("users.create")}</button>
       </div>
 
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
-            <div><label className="label">E-Mail</label><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-            <div><label className="label">Passwort (min. 8)</label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+            <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div><label className="label">{t("common:email")}</label><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+            <div><label className="label">{t("auth:login.password")}</label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><p className={clsx("mt-1 text-xs", createPwProblem ? "text-red-600" : "text-gray-500")}>{createPwProblem ?? passwordHint()}</p></div>
           </div>
           <div>
-            <label className="label">Rollen</label>
+            <label className="label">{t("users.roles")}</label>
             <div className="flex flex-wrap gap-2">
               {roles?.map((r: any) => {
                 const on = roleIds.includes(r.id);
@@ -68,20 +89,32 @@ function UsersSettings() {
             </div>
           </div>
           <div className="flex justify-end">
-            <button className="btn-primary text-sm disabled:opacity-40" disabled={!email || !name || password.length < 8 || createM.isPending} onClick={() => createM.mutate()}>Anlegen</button>
+            <button className="btn-primary text-sm disabled:opacity-40" disabled={!email || !name || !password || !!createPwProblem || createM.isPending} onClick={() => createM.mutate()}>{t("create")}</button>
           </div>
         </div>
       )}
 
-      {isLoading && <p className="text-gray-500 text-sm">Laden...</p>}
+      {pwUser && (
+        <div className="card p-4 mb-4 space-y-3">
+          <h3 className="text-sm font-semibold">{t("users.newPasswordFor", { email: pwUser.email })}</h3>
+          <input className="input" type="password" aria-label={t("auth:reset.newPassword")} value={pwUser.password} onChange={(e) => setPwUser({ ...pwUser, password: e.target.value })} />
+          <p className={clsx("text-xs", pwUserProblem ? "text-red-600" : "text-gray-500")}>{pwUserProblem ?? passwordHint()}</p>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary text-sm" onClick={() => setPwUser(null)}>{t("common:cancel")}</button>
+            <button className="btn-primary text-sm disabled:opacity-40" disabled={!pwUser.password || !!pwUserProblem || setPasswordM.isPending} onClick={() => setPasswordM.mutate()}>{t("auth:reset.submit")}</button>
+          </div>
+        </div>
+      )}
+
+      {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
-            <th className="px-4 py-3 text-left font-medium">Name</th>
-            <th className="px-4 py-3 text-left font-medium">E-Mail</th>
-            <th className="px-4 py-3 text-left font-medium">Rollen</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th>
-            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:email")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("users.roles")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {users?.map((user: any) => (
@@ -106,19 +139,21 @@ function UsersSettings() {
                     user.roles.map((r: any) => <span key={r.id} className="badge-blue mr-1">{r.name}</span>)
                   )}
                 </td>
-                <td className="px-4 py-3"><span className={user.is_active ? "badge-green" : "badge-gray"}>{user.is_active ? "Aktiv" : "Inaktiv"}</span></td>
+                <td className="px-4 py-3"><span className={user.is_active ? "badge-green" : "badge-gray"}>{user.is_active ? t("common:active") : t("common:inactive")}</span></td>
                 <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                   {editUser && editUser.id === user.id ? (
                     <>
-                      <button className="btn-primary text-xs" disabled={updateRolesM.isPending} onClick={() => updateRolesM.mutate()}>Speichern</button>
-                      <button className="btn-secondary text-xs" onClick={() => setEditUser(null)}>Abbrechen</button>
+                      <button className="btn-primary text-xs" disabled={updateRolesM.isPending} onClick={() => updateRolesM.mutate()}>{t("common:save")}</button>
+                      <button className="btn-secondary text-xs" onClick={() => setEditUser(null)}>{t("common:cancel")}</button>
                     </>
                   ) : (
                     <>
-                      <button className="btn-secondary text-xs" onClick={() => setEditUser({ id: user.id, roleIds: user.roles.map((r: any) => r.id) })}>Rollen</button>
+                      <button className="btn-secondary text-xs" onClick={() => setEditUser({ id: user.id, roleIds: user.roles.map((r: any) => r.id) })}>{t("users.roles")}</button>
                       <button className="btn-secondary text-xs" disabled={toggleActiveM.isPending} onClick={() => toggleActiveM.mutate(user)}>
-                        {user.is_active ? "Deaktivieren" : "Aktivieren"}
+                        {user.is_active ? t("deactivate") : t("activate")}
                       </button>
+                      <button className="btn-secondary text-xs" onClick={() => setPwUser({ id: user.id, email: user.email, password: "" })}>{t("auth:reset.submit")}</button>
+                      <button className="btn-danger text-xs" disabled={deleteUserM.isPending} onClick={() => { if (confirm(t("users.confirmDelete", { name: user.display_name }))) deleteUserM.mutate(user.id); }}>{t("common:delete")}</button>
                     </>
                   )}
                 </td>
@@ -132,7 +167,26 @@ function UsersSettings() {
 }
 
 // ── Seasons ───────────────────────────────────────────────────────────────────
+const SEASON_STATUS_LABEL = labelMap("settings:seasons.status", ["draft", "active", "finished", "archived"]);
+const SEASON_STATUS_BADGE: Record<string, string> = {
+  draft: "badge-gray",
+  active: "badge-green",
+  finished: "badge-blue",
+  archived: "badge-yellow",
+};
+
+async function downloadSeasonExport(season: { id: string; name: string }) {
+  const { data } = await api.get(`/seasons/${season.id}/export.json`);
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${season.name.replace(/[^A-Za-z0-9_-]+/g, "_")}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function SeasonsSettings() {
+  const { t } = useTranslation("settings");
   const invalidate = useInvalidate(["seasons", "season-active"]);
   const { data: seasons, isLoading } = useQuery({ queryKey: ["seasons"], queryFn: async () => (await api.get("/seasons")).data });
 
@@ -150,41 +204,70 @@ function SeasonsSettings() {
   });
   const activateM = useMutation({ mutationFn: (sid: string) => api.put(`/seasons/${sid}/activate`), onSuccess: invalidate, onError: onErr });
   const deleteM = useMutation({ mutationFn: (sid: string) => api.delete(`/seasons/${sid}`), onSuccess: invalidate, onError: onErr });
+  const statusM = useMutation({
+    mutationFn: ({ sid, status }: { sid: string; status: string }) => api.patch(`/seasons/${sid}`, { status }),
+    onSuccess: invalidate, onError: onErr,
+  });
+  const [cloneOf, setCloneOf] = useState<{ id: string; name: string; year: number } | null>(null);
+  const cloneM = useMutation({
+    mutationFn: () => api.post(`/seasons/${cloneOf!.id}/clone`, { name: cloneOf!.name, year: cloneOf!.year }),
+    onSuccess: () => { setCloneOf(null); invalidate(); }, onError: onErr,
+  });
+  const exportM = useMutation({ mutationFn: downloadSeasonExport, onError: onErr });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Saisons</h2>
-        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? "Abbrechen" : "+ Saison anlegen"}</button>
+        <h2 className="text-lg font-semibold">{t("seasons.title")}</h2>
+        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("seasons.create")}</button>
       </div>
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Botball 2027" /></div>
-            <div><label className="label">Jahr</label><input className="input" type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} /></div>
-            <div><label className="label">Spielthema</label><input className="input" value={theme} onChange={(e) => setTheme(e.target.value)} /></div>
-            <div><label className="label">Event-Start</label><input className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
-            <div><label className="label">Event-Ende</label><input className="input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
+            <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Botball 2027" /></div>
+            <div><label className="label">{t("seasons.year")}</label><input className="input" type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} /></div>
+            <div><label className="label">{t("seasons.gameTheme")}</label><input className="input" value={theme} onChange={(e) => setTheme(e.target.value)} /></div>
+            <div><label className="label">{t("seasons.eventStart")}</label><input className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
+            <div><label className="label">{t("seasons.eventEnd")}</label><input className="input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
           </div>
-          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>Anlegen</button></div>
+          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>{t("create")}</button></div>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">Laden...</p>}
+      {cloneOf && (
+        <div className="card p-4 mb-4 space-y-3">
+          <h3 className="text-sm font-semibold">{t("seasons.cloneTitle")}</h3>
+          <p className="text-xs text-gray-500">{t("seasons.cloneHint")}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label className="label" htmlFor="clone-name">{t("common:name")}</label><input id="clone-name" className="input" value={cloneOf.name} onChange={(e) => setCloneOf({ ...cloneOf, name: e.target.value })} /></div>
+            <div><label className="label" htmlFor="clone-year">{t("seasons.year")}</label><input id="clone-year" className="input" type="number" value={cloneOf.year} onChange={(e) => setCloneOf({ ...cloneOf, year: Number(e.target.value) })} /></div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary text-sm" onClick={() => setCloneOf(null)}>{t("common:cancel")}</button>
+            <button className="btn-primary text-sm disabled:opacity-40" disabled={!cloneOf.name || cloneM.isPending} onClick={() => cloneM.mutate()}>{t("seasons.clone")}</button>
+          </div>
+        </div>
+      )}
+      {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
-            <th className="px-4 py-3 text-left font-medium">Name</th><th className="px-4 py-3 text-left font-medium">Jahr</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("seasons.year")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {seasons?.map((s: any) => (
               <tr key={s.id}>
                 <td className="px-4 py-3 font-medium">{s.name}</td>
                 <td className="px-4 py-3 text-gray-500">{s.year}</td>
-                <td className="px-4 py-3">{s.is_active ? <span className="badge-green">Aktiv</span> : <span className="badge-gray">Inaktiv</span>}</td>
-                <td className="px-4 py-3 text-right space-x-2">
-                  {!s.is_active && <button className="btn-secondary text-xs" disabled={activateM.isPending} onClick={() => activateM.mutate(s.id)}>Aktivieren</button>}
-                  {!s.is_active && <button className="btn-danger text-xs" disabled={deleteM.isPending} onClick={() => { if (confirm(`Saison "${s.name}" löschen?`)) deleteM.mutate(s.id); }}>Löschen</button>}
+                <td className="px-4 py-3"><span className={SEASON_STATUS_BADGE[s.status] ?? "badge-gray"}>{SEASON_STATUS_LABEL[s.status] ?? s.status}</span></td>
+                <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                  {s.status !== "active" && s.status !== "archived" && <button className="btn-secondary text-xs" disabled={activateM.isPending} onClick={() => activateM.mutate(s.id)}>{t("activate")}</button>}
+                  {s.status === "active" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => statusM.mutate({ sid: s.id, status: "finished" })}>{t("seasons.finish")}</button>}
+                  {s.status === "finished" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => { if (confirm(t("seasons.confirmArchive", { name: s.name }))) statusM.mutate({ sid: s.id, status: "archived" }); }}>{t("seasons.archive")}</button>}
+                  {s.status === "archived" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => statusM.mutate({ sid: s.id, status: "finished" })}>{t("seasons.unarchive")}</button>}
+                  <button className="btn-secondary text-xs" onClick={() => setCloneOf({ id: s.id, name: t("seasons.copyName", { name: s.name }), year: s.year + 1 })}>{t("seasons.clone")}</button>
+                  <button className="btn-secondary text-xs" disabled={exportM.isPending} onClick={() => exportM.mutate(s)}>{t("seasons.export")}</button>
+                  {!s.is_active && s.status !== "archived" && <button className="btn-danger text-xs" disabled={deleteM.isPending} onClick={() => { if (confirm(t("seasons.confirmDelete", { name: s.name }))) deleteM.mutate(s.id); }}>{t("common:delete")}</button>}
                 </td>
               </tr>
             ))}
@@ -197,6 +280,7 @@ function SeasonsSettings() {
 
 // ── Printers ──────────────────────────────────────────────────────────────────
 function SpoolsPanel() {
+  const { t } = useTranslation("settings");
   const invalidate = useInvalidate(["spools"]);
   const { data: spools } = useQuery({ queryKey: ["spools"], queryFn: async () => (await api.get("/printing/spools")).data });
   const [material, setMaterial] = useState("PLA");
@@ -215,21 +299,21 @@ function SpoolsPanel() {
 
   return (
     <div className="mt-8">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Filament-Spulen</h3>
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("spools.title")}</h3>
       <div className="card p-4 mb-4 flex flex-wrap items-end gap-3">
-        <div><label className="label">Material</label>
+        <div><label className="label">{t("spools.material")}</label>
           <select className="input" value={material} onChange={(e) => setMaterial(e.target.value)}><option>PLA</option><option>PETG</option></select></div>
-        <div><label className="label">Farbe</label><input className="input" value={color} onChange={(e) => setColor(e.target.value)} /></div>
-        <div><label className="label">Marke</label><input className="input" value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
-        <div><label className="label">Gramm</label><input type="number" className="input w-28" value={grams} onChange={(e) => setGrams(Number(e.target.value))} /></div>
-        <button className="btn-primary text-sm disabled:opacity-40" disabled={createM.isPending} onClick={() => createM.mutate()}>+ Spule</button>
+        <div><label className="label">{t("spools.color")}</label><input className="input" value={color} onChange={(e) => setColor(e.target.value)} /></div>
+        <div><label className="label">{t("spools.brand")}</label><input className="input" value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
+        <div><label className="label">{t("spools.grams")}</label><input type="number" className="input w-28" value={grams} onChange={(e) => setGrams(Number(e.target.value))} /></div>
+        <button className="btn-primary text-sm disabled:opacity-40" disabled={createM.isPending} onClick={() => createM.mutate()}>{t("spools.add")}</button>
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
-            <th className="px-4 py-3 text-left font-medium">Material</th><th className="px-4 py-3 text-left font-medium">Farbe</th>
-            <th className="px-4 py-3 text-left font-medium">Marke</th><th className="px-4 py-3 text-right font-medium">Rest</th>
-            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
+            <th className="px-4 py-3 text-left font-medium">{t("spools.material")}</th><th className="px-4 py-3 text-left font-medium">{t("spools.color")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("spools.brand")}</th><th className="px-4 py-3 text-right font-medium">{t("spools.remaining")}</th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {spools?.map((s: any) => {
@@ -246,7 +330,92 @@ function SpoolsPanel() {
                 </tr>
               );
             })}
-            {spools?.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">Keine Spulen</td></tr>}
+            {spools?.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">{t("spools.empty")}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+type QuotaDraft = { max_parts: string; soft_limit_parts: string; max_grams: string };
+
+function QuotaRow({ quota, seasonId }: { quota: PrintQuota; seasonId: string }) {
+  const { t } = useTranslation("settings");
+  const invalidate = useInvalidate(["print-quotas"]);
+  const [draft, setDraft] = useState<QuotaDraft>({
+    max_parts: String(quota.max_parts),
+    soft_limit_parts: String(quota.soft_limit_parts),
+    max_grams: quota.max_grams?.toString() ?? "",
+  });
+  const [error, setError] = useState<string | null>(null);
+  const saveM = useMutation({
+    mutationFn: () => api.put("/printing/quotas", {
+      team_id: quota.team_id,
+      season_id: seasonId,
+      event_id: quota.event_id,
+      max_parts: Number(draft.max_parts),
+      soft_limit_parts: Number(draft.soft_limit_parts),
+      max_grams: draft.max_grams === "" ? null : Number(draft.max_grams),
+      clear_max_grams: draft.max_grams === "",
+    }),
+    onSuccess: () => { setError(null); invalidate(); },
+    onError: (e) => setError(apiError(e)),
+  });
+  const committed = quota.used_parts + quota.open_parts;
+  const field = (key: keyof QuotaDraft, label: string, step = 1) => (
+    <input aria-label={`${label} ${quota.team_name ?? ""}`} className="input w-24" type="number" min={0} step={step} value={draft[key]} onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} />
+  );
+  return (
+    <tr>
+      <td className="px-4 py-3 font-medium">{quota.team_name ?? quota.team_id}</td>
+      <td className="px-4 py-3 text-gray-500">
+        <span className={committed > quota.soft_limit_parts ? "text-yellow-600" : undefined}>{t("quotas.usedParts", { used: quota.used_parts, open: quota.open_parts })}</span>
+        <span className="block text-xs">{Math.round(quota.used_grams)} g{quota.open_grams ? ` ${t("quotas.openGrams", { grams: Math.round(quota.open_grams) })}` : ""}</span>
+      </td>
+      <td className="px-4 py-3">{field("soft_limit_parts", t("quotas.softLimit"))}</td>
+      <td className="px-4 py-3">{field("max_parts", t("quotas.hardLimit"))}</td>
+      <td className="px-4 py-3">{field("max_grams", t("quotas.maxGrams"), 10)}</td>
+      <td className="px-4 py-3 text-right">
+        <button className="btn-secondary text-xs" disabled={saveM.isPending || draft.max_parts === "" || draft.soft_limit_parts === ""} onClick={() => saveM.mutate()}>{t("common:save")}</button>
+        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      </td>
+    </tr>
+  );
+}
+
+function QuotasPanel() {
+  const { t } = useTranslation("settings");
+  const { data: events } = useEvents();
+  const [eventId, setEventId] = useState("");
+  const selected = events?.find((e) => e.id === eventId) ?? events?.[0];
+  const { data: quotas, isLoading } = useQuery<PrintQuota[]>({
+    queryKey: ["print-quotas", selected?.id],
+    queryFn: async () => (await api.get(`/printing/events/${selected!.id}/quotas`)).data,
+    enabled: !!selected,
+  });
+  return (
+    <div className="mt-8">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("quotas.title")}</h3>
+        <select className="input" aria-label={t("quotas.event")} value={selected?.id ?? ""} onChange={(e) => setEventId(e.target.value)}>
+          {events?.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </select>
+      </div>
+      <p className="mb-3 text-xs text-gray-500">{t("quotas.hint")}</p>
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+            <th className="px-4 py-3 text-left font-medium">{t("quotas.team")}</th><th className="px-4 py-3 text-left font-medium">{t("quotas.used")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("quotas.softLimitParts")}</th><th className="px-4 py-3 text-left font-medium">{t("quotas.hardLimitParts")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("quotas.maxGrams")}</th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
+          </tr></thead>
+          <tbody className="divide-y dark:divide-gray-800">
+            {selected && quotas?.map((q) => <QuotaRow key={`${q.id}-${q.max_parts}-${q.soft_limit_parts}-${q.max_grams}`} quota={q} seasonId={selected.season_id} />)}
+            {isLoading && <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">{t("common:loading")}</td></tr>}
+            {quotas?.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">{t("quotas.empty")}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -255,6 +424,7 @@ function SpoolsPanel() {
 }
 
 function PrintersSettings() {
+  const { t } = useTranslation("settings");
   const invalidate = useInvalidate(["printers"]);
   const { data: printers, isLoading } = useQuery({ queryKey: ["printers"], queryFn: async () => (await api.get("/printing/printers")).data });
   const [show, setShow] = useState(false);
@@ -262,10 +432,21 @@ function PrintersSettings() {
   const [model, setModel] = useState("");
   const [type, setType] = useState("bambu");
   const [apiUrl, setApiUrl] = useState("");
+  const [deviceId, setDeviceId] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const isGeneric = type === "generic";
 
   const createM = useMutation({
-    mutationFn: () => api.post("/printing/printers", { name, model: model || null, printer_type: type, api_url: apiUrl || null }),
-    onSuccess: () => { setShow(false); setName(""); setModel(""); setApiUrl(""); invalidate(); },
+    mutationFn: () => api.post("/printing/printers", {
+      name,
+      model: model || null,
+      printer_type: type,
+      // A generic printer is operated by hand: no adapter, nothing to connect to.
+      api_url: isGeneric ? null : apiUrl || null,
+      device_id: type === "bambu" ? deviceId || null : null,
+      api_key: isGeneric ? null : apiKey || null,
+    }),
+    onSuccess: () => { setShow(false); setName(""); setModel(""); setApiUrl(""); setDeviceId(""); setApiKey(""); invalidate(); },
     onError: onErr,
   });
   const toggleM = useMutation({ mutationFn: (p: any) => api.patch(`/printing/printers/${p.id}`, { is_active: !p.is_active }), onSuccess: invalidate, onError: onErr });
@@ -273,52 +454,58 @@ function PrintersSettings() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Drucker</h2>
-        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? "Abbrechen" : "+ Drucker hinzufügen"}</button>
+        <h2 className="text-lg font-semibold">{t("printers.title")}</h2>
+        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("printers.add")}</button>
       </div>
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
-            <div><label className="label">Modell</label><input className="input" value={model} onChange={(e) => setModel(e.target.value)} /></div>
-            <div><label className="label">Typ</label>
+            <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div><label className="label">{t("printers.model")}</label><input className="input" value={model} onChange={(e) => setModel(e.target.value)} /></div>
+            <div><label className="label">{t("printers.type")}</label>
               <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
-                <option value="bambu">Bambu</option><option value="octoprint">OctoPrint</option><option value="generic">Generisch</option>
+                {Object.entries(PRINTER_TYPE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </div>
-            <div><label className="label">API-URL</label><input className="input" value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="http://..." /></div>
+            <div><label className="label">{t("printers.apiUrl")}</label><input className="input" disabled={isGeneric} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="http://..." /></div>
+            {type === "bambu" && <div><label className="label">{t("printers.serial")}</label><input className="input" value={deviceId} onChange={(e) => setDeviceId(e.target.value)} /></div>}
+            {!isGeneric && <div><label className="label">{t("printers.apiKey")}</label><input className="input" type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} /></div>}
           </div>
-          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>Hinzufügen</button></div>
+          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>{t("common:add")}</button></div>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">Laden...</p>}
+      {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
-            <th className="px-4 py-3 text-left font-medium">Name</th><th className="px-4 py-3 text-left font-medium">Modell</th>
-            <th className="px-4 py-3 text-left font-medium">Typ</th><th className="px-4 py-3 text-left font-medium">Status</th>
-            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("printers.model")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("printers.type")}</th><th className="px-4 py-3 text-left font-medium">{t("common:status")}</th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {printers?.map((p: any) => (
               <tr key={p.id}>
                 <td className="px-4 py-3 font-medium">{p.name}</td>
                 <td className="px-4 py-3 text-gray-500">{p.model ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500">{p.printer_type}</td>
-                <td className="px-4 py-3"><span className={p.is_active ? "badge-green" : "badge-gray"}>{p.is_active ? "Aktiv" : "Inaktiv"}</span></td>
-                <td className="px-4 py-3 text-right"><button className="btn-secondary text-xs" disabled={toggleM.isPending} onClick={() => toggleM.mutate(p)}>{p.is_active ? "Deaktivieren" : "Aktivieren"}</button></td>
+                <td className="px-4 py-3 text-gray-500">{PRINTER_TYPE_LABEL[p.printer_type] ?? p.printer_type}</td>
+                <td className="px-4 py-3"><span className={p.is_active ? "badge-green" : "badge-gray"}>{p.is_active ? t("common:active") : t("common:inactive")}</span></td>
+                <td className="px-4 py-3 text-right"><button className="btn-secondary text-xs" disabled={toggleM.isPending} onClick={() => toggleM.mutate(p)}>{p.is_active ? t("deactivate") : t("activate")}</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <SpoolsPanel />
+      <QuotasPanel />
     </div>
   );
 }
 
 // ── Announcements ─────────────────────────────────────────────────────────────
+const AUDIENCES = ["all", "teams", "reviewers", "jurors", "internal"];
+
 function AnnouncementsSettings() {
+  const { t } = useTranslation("settings");
   const invalidate = useInvalidate(["announcements-admin"]);
   const { data: anns, isLoading } = useQuery({ queryKey: ["announcements-admin"], queryFn: async () => (await api.get("/dashboard/announcements?include_unpublished=true")).data });
   const [show, setShow] = useState(false);
@@ -336,41 +523,40 @@ function AnnouncementsSettings() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Ankündigungen</h2>
-        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? "Abbrechen" : "+ Ankündigung"}</button>
+        <h2 className="text-lg font-semibold">{t("announcements.title")}</h2>
+        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("announcements.add")}</button>
       </div>
       {show && (
         <div className="card p-4 mb-4 space-y-3">
-          <div><label className="label">Titel</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div><label className="label">Text</label><textarea className="input min-h-[5rem]" value={text} onChange={(e) => setText(e.target.value)} /></div>
-          <div><label className="label">Zielgruppe</label>
+          <div><label className="label">{t("announcements.titleLabel")}</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div><label className="label">{t("announcements.text")}</label><textarea className="input min-h-[5rem]" value={text} onChange={(e) => setText(e.target.value)} /></div>
+          <div><label className="label">{t("announcements.audience")}</label>
             <select className="input w-48" value={audience} onChange={(e) => setAudience(e.target.value)}>
-              <option value="all">Alle</option><option value="teams">Teams</option><option value="reviewers">Reviewer</option>
-              <option value="jurors">Juroren</option><option value="internal">Intern</option>
+              {AUDIENCES.map((value) => <option key={value} value={value}>{t(`announcements.audiences.${value}`)}</option>)}
             </select>
           </div>
-          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!title || !text || createM.isPending} onClick={() => createM.mutate()}>Als Entwurf speichern</button></div>
+          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!title || !text || createM.isPending} onClick={() => createM.mutate()}>{t("announcements.saveDraft")}</button></div>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">Laden...</p>}
+      {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
-            <th className="px-4 py-3 text-left font-medium">Titel</th><th className="px-4 py-3 text-left font-medium">Zielgruppe</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
+            <th className="px-4 py-3 text-left font-medium">{t("announcements.titleLabel")}</th><th className="px-4 py-3 text-left font-medium">{t("announcements.audience")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {anns?.map((a: any) => (
               <tr key={a.id}>
                 <td className="px-4 py-3 font-medium">{a.title}</td>
-                <td className="px-4 py-3 text-gray-500">{a.audience}</td>
-                <td className="px-4 py-3"><span className={a.is_published ? "badge-green" : "badge-gray"}>{a.is_published ? "Veröffentlicht" : "Entwurf"}</span></td>
+                <td className="px-4 py-3 text-gray-500">{AUDIENCES.includes(a.audience) ? t(`announcements.audiences.${a.audience}`) : a.audience}</td>
+                <td className="px-4 py-3"><span className={a.is_published ? "badge-green" : "badge-gray"}>{a.is_published ? t("announcements.published") : t("announcements.draft")}</span></td>
                 <td className="px-4 py-3 text-right">
-                  {!a.is_published && <button className="btn-secondary text-xs" disabled={publishM.isPending} onClick={() => publishM.mutate(a.id)}>Veröffentlichen</button>}
+                  {!a.is_published && <button className="btn-secondary text-xs" disabled={publishM.isPending} onClick={() => publishM.mutate(a.id)}>{t("announcements.publish")}</button>}
                 </td>
               </tr>
             ))}
-            {anns?.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Keine Ankündigungen</td></tr>}
+            {anns?.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">{t("announcements.empty")}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -378,19 +564,17 @@ function AnnouncementsSettings() {
   );
 }
 
-const ALL_CATEGORIES = [
-  { value: "botball", label: "Botball" }, { value: "open", label: "Open" },
-  { value: "aerial", label: "Aerial" }, { value: "jbc", label: "JBC" },
-];
+const ALL_CATEGORIES = ["botball", "open", "aerial", "jbc"];
 
 // ── Season editor: dates, deadlines/events, phases ────────────────────────────
-const DATE_FIELDS: [string, string][] = [
-  ["registration_open", "Registrierung offen"], ["registration_close", "Registrierung Ende"],
-  ["event_start", "Event-Start"], ["event_end", "Event-Ende"],
-  ["paper_submission_deadline", "Paper-Deadline"], ["print_submission_deadline", "Druck-Deadline"],
+const DATE_FIELDS = [
+  "registration_open", "registration_close",
+  "event_start", "event_end",
+  "paper_submission_deadline", "print_submission_deadline",
 ];
 
 function SeasonEditor() {
+  const { t } = useTranslation("settings");
   const qc = useQueryClient();
   const { data: seasons } = useQuery({ queryKey: ["seasons"], queryFn: async () => (await api.get("/seasons")).data });
   const [selId, setSelId] = useState("");
@@ -399,7 +583,7 @@ function SeasonEditor() {
   const { data: events } = useQuery({ queryKey: ["season-events", seasonId], queryFn: async () => (await api.get(`/seasons/${seasonId}/events`)).data, enabled: !!seasonId });
 
   const [dates, setDates] = useState<Record<string, string>>({});
-  useEffect(() => { if (season) setDates(Object.fromEntries(DATE_FIELDS.map(([k]) => [k, season[k] ?? ""]))); }, [season?.id]); // eslint-disable-line
+  useEffect(() => { if (season) setDates(Object.fromEntries(DATE_FIELDS.map((k) => [k, season[k] ?? ""]))); }, [season?.id]); // eslint-disable-line
 
   const invSeason = () => { qc.invalidateQueries({ queryKey: ["season", seasonId] }); qc.invalidateQueries({ queryKey: ["season-active"] }); };
   const invEvents = () => qc.invalidateQueries({ queryKey: ["season-events", seasonId] });
@@ -422,69 +606,69 @@ function SeasonEditor() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Saison-Details</h2>
+        <h2 className="text-lg font-semibold">{t("seasonDetails.title")}</h2>
         <select className="input text-sm w-64" value={selId || seasons?.[0]?.id || ""} onChange={(e) => setSelId(e.target.value)}>
-          {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name} {s.is_active ? "(aktiv)" : ""}</option>))}
+          {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name} {s.is_active ? t("activeSuffix") : ""}</option>))}
         </select>
       </div>
 
       {/* Dates / deadlines */}
       <div className="card p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Termine & Fristen</h3>
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("seasonDetails.dates")}</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {DATE_FIELDS.map(([key, label]) => (
+          {DATE_FIELDS.map((key) => (
             <div key={key}>
-              <label className="label">{label}</label>
+              <label className="label">{t(`seasonDetails.dateField.${key}`)}</label>
               <input type="date" className="input" value={dates[key] ?? ""} onChange={(e) => setDates({ ...dates, [key]: e.target.value })} />
             </div>
           ))}
         </div>
         <div className="flex justify-end">
           <button className="btn-primary text-sm disabled:opacity-40" disabled={saveDatesM.isPending} onClick={() => saveDatesM.mutate()}>
-            <Save className="w-4 h-4" /> Termine speichern
+            <Save className="w-4 h-4" /> {t("seasonDetails.saveDates")}
           </button>
         </div>
       </div>
 
       {/* Deadlines & events */}
       <div className="card p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Zusätzliche Deadlines & Events</h3>
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("seasonDetails.extra")}</h3>
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[10rem]"><label className="label">Titel</label><input className="input" value={evTitle} onChange={(e) => setEvTitle(e.target.value)} placeholder="z. B. Kickoff-Meeting" /></div>
-          <div><label className="label">Art</label><select className="input" value={evType} onChange={(e) => setEvType(e.target.value)}><option value="deadline">Deadline</option><option value="event">Event</option></select></div>
-          <div><label className="label">Datum</label><input type="date" className="input" value={evDate} onChange={(e) => setEvDate(e.target.value)} /></div>
-          <button className="btn-primary text-sm disabled:opacity-40" disabled={!evTitle || !evDate || addEventM.isPending} onClick={() => addEventM.mutate()}>+ Hinzufügen</button>
+          <div className="flex-1 min-w-[10rem]"><label className="label">{t("announcements.titleLabel")}</label><input className="input" value={evTitle} onChange={(e) => setEvTitle(e.target.value)} placeholder={t("seasonDetails.titlePlaceholder")} /></div>
+          <div><label className="label">{t("seasonDetails.kind")}</label><select className="input" value={evType} onChange={(e) => setEvType(e.target.value)}><option value="deadline">{t("seasonDetails.deadline")}</option><option value="event">{t("seasonDetails.event")}</option></select></div>
+          <div><label className="label">{t("common:date")}</label><input type="date" className="input" value={evDate} onChange={(e) => setEvDate(e.target.value)} /></div>
+          <button className="btn-primary text-sm disabled:opacity-40" disabled={!evTitle || !evDate || addEventM.isPending} onClick={() => addEventM.mutate()}>{t("seasonDetails.add")}</button>
         </div>
         <div className="divide-y dark:divide-gray-800">
           {events?.map((ev: any) => (
             <div key={ev.id} className="flex items-center justify-between py-2 text-sm">
               <div className="flex items-center gap-3">
-                <span className="text-gray-500 w-24">{ev.event_date}</span>
-                <span className={ev.event_type === "event" ? "badge-blue" : "badge-yellow"}>{ev.event_type === "event" ? "Event" : "Deadline"}</span>
+                <span className="text-gray-500 w-24">{formatDate(ev.event_date)}</span>
+                <span className={ev.event_type === "event" ? "badge-blue" : "badge-yellow"}>{ev.event_type === "event" ? t("seasonDetails.event") : t("seasonDetails.deadline")}</span>
                 <span className="text-gray-900 dark:text-white">{ev.title}</span>
               </div>
-              <button className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => delEventM.mutate(ev.id)} title="Löschen"><Trash2 className="w-4 h-4" /></button>
+              <button className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => delEventM.mutate(ev.id)} title={t("common:delete")}><Trash2 className="w-4 h-4" /></button>
             </div>
           ))}
-          {events?.length === 0 && <p className="py-3 text-gray-400">Keine zusätzlichen Termine.</p>}
+          {events?.length === 0 && <p className="py-3 text-gray-400">{t("seasonDetails.noExtra")}</p>}
         </div>
       </div>
 
       {/* Phases */}
       <div className="card p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Phasen</h3>
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("seasonDetails.phases")}</h3>
         <div className="divide-y dark:divide-gray-800">
           {season?.phases?.map((p: any) => (
             <div key={p.id} className="flex items-center justify-between py-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-gray-900 dark:text-white">{p.name}</span>
-                <span className="text-xs text-gray-400">({p.phase_type}, {p.rounds} Runden)</span>
-                {p.is_active && <span className="badge-green">aktiv</span>}
+                <span className="text-xs text-gray-400">{t("seasonDetails.phaseInfo", { type: p.phase_type, rounds: p.rounds })}</span>
+                {p.is_active && <span className="badge-green">{t("activeBadge")}</span>}
               </div>
-              {!p.is_active && <button className="btn-secondary text-xs" disabled={activatePhaseM.isPending} onClick={() => activatePhaseM.mutate(p.id)}>Aktivieren</button>}
+              {!p.is_active && <button className="btn-secondary text-xs" disabled={activatePhaseM.isPending} onClick={() => activatePhaseM.mutate(p.id)}>{t("activate")}</button>}
             </div>
           ))}
-          {(!season?.phases || season.phases.length === 0) && <p className="py-3 text-gray-400">Keine Phasen definiert.</p>}
+          {(!season?.phases || season.phases.length === 0) && <p className="py-3 text-gray-400">{t("dashboard:noPhases")}</p>}
         </div>
       </div>
     </div>
@@ -493,6 +677,7 @@ function SeasonEditor() {
 
 // ── Competition levels ────────────────────────────────────────────────────────
 function LevelsSettings() {
+  const { t } = useTranslation("settings");
   const invalidate = useInvalidate(["levels-all"]);
   const { data: levels } = useQuery({ queryKey: ["levels-all"], queryFn: async () => (await api.get("/seasons/competition-levels/all?include_inactive=true")).data });
   const [name, setName] = useState("");
@@ -504,30 +689,35 @@ function LevelsSettings() {
   });
   const toggleM = useMutation({ mutationFn: (l: any) => api.patch(`/seasons/competition-levels/${l.id}`, { is_active: !l.is_active }), onSuccess: invalidate, onError: onErr });
   const delM = useMutation({ mutationFn: (id: string) => api.delete(`/seasons/competition-levels/${id}`), onSuccess: invalidate, onError: onErr });
+  // Order (ECER = 1, GCER = 2) and the level teams qualify from (GCER ← ECER).
+  const patchM = useMutation({ mutationFn: ({ id, ...body }: { id: string; order?: number; qualifies_from_level_id?: string | null }) => api.patch(`/seasons/competition-levels/${id}`, body), onSuccess: invalidate, onError: onErr });
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-semibold">Wettbewerbsstufen</h2></div>
+      <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-semibold">{t("levels.title")}</h2></div>
       <div className="card p-4 mb-4 flex flex-wrap items-end gap-3">
-        <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Senior" /></div>
-        <div><label className="label">Code</label><input className="input w-28" value={code} onChange={(e) => setCode(e.target.value)} placeholder="SR" /></div>
-        <button className="btn-primary text-sm disabled:opacity-40" disabled={!name || !code || createM.isPending} onClick={() => createM.mutate()}>+ Stufe</button>
+        <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Senior" /></div>
+        <div><label className="label">{t("levels.code")}</label><input className="input w-28" value={code} onChange={(e) => setCode(e.target.value)} placeholder="SR" /></div>
+        <button className="btn-primary text-sm disabled:opacity-40" disabled={!name || !code || createM.isPending} onClick={() => createM.mutate()}>{t("levels.add")}</button>
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
-            <th className="px-4 py-3 text-left font-medium">Name</th><th className="px-4 py-3 text-left font-medium">Code</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("levels.code")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("levels.order")}</th><th className="px-4 py-3 text-left font-medium">{t("levels.qualifiesFrom")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {levels?.map((l: any) => (
               <tr key={l.id}>
                 <td className="px-4 py-3 font-medium">{l.name}</td>
                 <td className="px-4 py-3 text-gray-500 font-mono">{l.code}</td>
-                <td className="px-4 py-3"><span className={l.is_active ? "badge-green" : "badge-gray"}>{l.is_active ? "Aktiv" : "Inaktiv"}</span></td>
+                <td className="px-4 py-3"><input type="number" min={0} max={100} aria-label={t("levels.orderOf", { name: l.name })} className="input w-20" defaultValue={l.order ?? 0} onBlur={(e) => Number(e.target.value) !== (l.order ?? 0) && patchM.mutate({ id: l.id, order: Number(e.target.value) })} /></td>
+                <td className="px-4 py-3"><select aria-label={t("levels.qualifiesFromOf", { name: l.name })} className="input" value={l.qualifies_from_level_id ?? ""} onChange={(e) => patchM.mutate({ id: l.id, qualifies_from_level_id: e.target.value || null })}><option value="">{t("levels.none")}</option>{levels?.filter((other: any) => other.id !== l.id).map((other: any) => <option key={other.id} value={other.id}>{other.name}</option>)}</select></td>
+                <td className="px-4 py-3"><span className={l.is_active ? "badge-green" : "badge-gray"}>{l.is_active ? t("common:active") : t("common:inactive")}</span></td>
                 <td className="px-4 py-3 text-right space-x-2">
-                  <button className="btn-secondary text-xs" disabled={toggleM.isPending} onClick={() => toggleM.mutate(l)}>{l.is_active ? "Deaktivieren" : "Aktivieren"}</button>
-                  <button className="btn-danger text-xs" disabled={delM.isPending} onClick={() => { if (confirm(`Stufe "${l.name}" löschen?`)) delM.mutate(l.id); }}>Löschen</button>
+                  <button className="btn-secondary text-xs" disabled={toggleM.isPending} onClick={() => toggleM.mutate(l)}>{l.is_active ? t("deactivate") : t("activate")}</button>
+                  <button className="btn-danger text-xs" disabled={delM.isPending} onClick={() => { if (confirm(t("levels.confirmDelete", { name: l.name }))) delM.mutate(l.id); }}>{t("common:delete")}</button>
                 </td>
               </tr>
             ))}
@@ -538,7 +728,10 @@ function LevelsSettings() {
   );
 }
 
+const SEASON_MODULES = ["use_seeding", "use_double_elimination", "use_aerial", "use_documentation_scoring", "use_paper_scoring"];
+
 function SeasonModulesSettings() {
+  const { t } = useTranslation("settings");
   const queryClient = useQueryClient();
   const { data: seasons, isLoading: loadingSeasons } = useQuery({ queryKey: ["seasons"], queryFn: async () => (await api.get("/seasons")).data });
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>("");
@@ -567,42 +760,36 @@ function SeasonModulesSettings() {
       use_aerial: effective.use_aerial, active_categories: effective.active_categories,
     });
   };
-  if (loadingSeasons) return <p className="text-gray-500 text-sm">Laden...</p>;
-  const modules = [
-    { field: "use_seeding", label: "Seeding (Robot Game)", description: "Qualifikationsrunden mit Punktewertung" },
-    { field: "use_double_elimination", label: "Double Elimination", description: "K.O.-Turnier mit Bracket A/B" },
-    { field: "use_aerial", label: "Aerial", description: "Drohnen-Wettbewerb mit 4 Runs" },
-    { field: "use_documentation_scoring", label: "Dokumentation", description: "Teil 1/2/3 + Onsite (je 0–100)" },
-    { field: "use_paper_scoring", label: "Paper-Scoring", description: "Wissenschaftliche Arbeit (0–1)" },
-  ];
+  if (loadingSeasons) return <p className="text-gray-500 text-sm">{t("common:loading")}</p>;
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Saison-Module</h2>
-        <button onClick={handleSave} disabled={!draft || saveMutation.isPending} className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />Speichern</button>
+        <h2 className="text-lg font-semibold">{t("modules.title")}</h2>
+        <button onClick={handleSave} disabled={!draft || saveMutation.isPending} className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t("common:save")}</button>
       </div>
-      {saveMutation.isSuccess && <div className="mb-4 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">Gespeichert</div>}
+      {saveMutation.isSuccess && <div className="mb-4 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">{t("profile:saved")}</div>}
       <div className="mb-6">
-        <label htmlFor="season-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Saison</label>
+        <label htmlFor="season-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("teams:season")}</label>
         <select id="season-select" value={selectedSeasonId || seasons?.[0]?.id || ""} onChange={(e) => { setSelectedSeasonId(e.target.value); setDraft(null); }} className="input text-sm w-64">
-          {seasons?.map((s: any) => <option key={s.id} value={s.id}>{s.name} {s.is_active ? "(aktiv)" : ""}</option>)}
+          {seasons?.map((s: any) => <option key={s.id} value={s.id}>{s.name} {s.is_active ? t("activeSuffix") : ""}</option>)}
         </select>
       </div>
-      {loadingSeason ? <p className="text-gray-500 text-sm">Laden...</p> : (
+      {loadingSeason ? <p className="text-gray-500 text-sm">{t("common:loading")}</p> : (
         <div className="space-y-6">
           <div className="card p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Aktive Module</h3>
-            {modules.map(({ field, label, description }) => (
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("modules.active")}</h3>
+            {SEASON_MODULES.map((field) => (
               <label key={field} className="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" checked={!!(effective[field] ?? false)} onChange={(e) => setFlag(field, e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                <div><div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div><div className="text-xs text-gray-500">{description}</div></div>
+                <div><div className="text-sm font-medium text-gray-900 dark:text-white">{t(`modules.module.${field}.label`)}</div><div className="text-xs text-gray-500">{t(`modules.module.${field}.description`)}</div></div>
               </label>
             ))}
           </div>
           <div className="card p-4">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Aktive Kategorien</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("modules.categories")}</h3>
             <div className="flex flex-wrap gap-2">
-              {ALL_CATEGORIES.map(({ value, label }) => {
+              {ALL_CATEGORIES.map((value) => {
+                const label = CATEGORY_LABEL[value];
                 const active = (effective.active_categories ?? ["botball"]).includes(value);
                 return <button key={value} onClick={() => toggleCategory(value)} className={clsx("px-3 py-1.5 rounded-full text-sm font-medium border transition-colors", active ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:border-primary-700 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>{label}</button>;
               })}
@@ -616,6 +803,7 @@ function SeasonModulesSettings() {
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 function RolesSettings() {
+  const { t } = useTranslation("settings");
   const invalidate = useInvalidate(["roles"]);
   const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: async () => (await api.get("/auth/roles")).data });
   const { data: perms } = useQuery({ queryKey: ["permissions"], queryFn: async () => (await api.get("/auth/permissions")).data });
@@ -629,21 +817,27 @@ function RolesSettings() {
     onSuccess: () => { setShow(false); setName(""); setDesc(""); setSelPerms([]); invalidate(); },
     onError: onErr,
   });
+  const [editRole, setEditRole] = useState<{ id: string; names: string[] } | null>(null);
+  const updateRoleM = useMutation({
+    mutationFn: () => api.put(`/auth/roles/${editRole!.id}`, { permission_names: editRole!.names }),
+    onSuccess: () => { setEditRole(null); invalidate(); },
+    onError: onErr,
+  });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Rollen</h2>
-        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? "Abbrechen" : "+ Rolle anlegen"}</button>
+        <h2 className="text-lg font-semibold">{t("roles.title")}</h2>
+        <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("roles.addButton")}</button>
       </div>
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="z. B. head-juror" /></div>
-            <div><label className="label">Beschreibung</label><input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+            <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("roles.namePlaceholder")} /></div>
+            <div><label className="label">{t("roles.description")}</label><input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
           </div>
           <div>
-            <label className="label">Berechtigungen</label>
+            <label className="label">{t("roles.permissions")}</label>
             <div className="flex flex-wrap gap-1.5">
               {perms?.map((p: any) => {
                 const on = selPerms.includes(p.name);
@@ -657,22 +851,48 @@ function RolesSettings() {
               })}
             </div>
           </div>
-          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>Rolle anlegen</button></div>
+          <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>{t("roles.create")}</button></div>
         </div>
       )}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
-            <th className="px-4 py-3 text-left font-medium">Rolle</th>
-            <th className="px-4 py-3 text-left font-medium">Beschreibung</th>
-            <th className="px-4 py-3 text-left font-medium">Berechtigungen</th>
+            <th className="px-4 py-3 text-left font-medium">{t("roles.role")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("roles.description")}</th>
+            <th className="px-4 py-3 text-left font-medium">{t("roles.permissions")}</th>
+            <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
             {roles?.map((r: any) => (
               <tr key={r.id}>
-                <td className="px-4 py-3 font-medium">{r.name} {r.is_system && <span className="badge-gray ml-1">System</span>}</td>
+                <td className="px-4 py-3 font-medium">{r.name} {r.is_system && <span className="badge-gray ml-1">{t("roles.system")}</span>}</td>
                 <td className="px-4 py-3 text-gray-500">{r.description ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{r.permissions?.length ?? 0} Rechte</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">
+                  {editRole && editRole.id === r.id ? (
+                    <div className="flex flex-wrap gap-1">
+                      {perms?.map((p: any) => {
+                        const on = editRole.names.includes(p.name);
+                        return (
+                          <button key={p.id} type="button" title={p.description ?? ""}
+                            onClick={() => setEditRole({ id: r.id, names: on ? editRole.names.filter((x) => x !== p.name) : [...editRole.names, p.name] })}
+                            className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : t("roles.permissionCount", { count: r.permissions?.length ?? 0 })}
+                </td>
+                <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                  {editRole && editRole.id === r.id ? (
+                    <>
+                      <button className="btn-primary text-xs" disabled={updateRoleM.isPending} onClick={() => updateRoleM.mutate()}>{t("common:save")}</button>
+                      <button className="btn-secondary text-xs" onClick={() => setEditRole(null)}>{t("common:cancel")}</button>
+                    </>
+                  ) : (
+                    <button className="btn-secondary text-xs" onClick={() => setEditRole({ id: r.id, names: (r.permissions ?? []).map((p: any) => p.name) })}>{t("roles.edit")}</button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -683,26 +903,27 @@ function RolesSettings() {
 }
 
 const NAV = [
-  { to: "/settings/users", icon: Users, label: "Benutzer" },
-  { to: "/settings/roles", icon: ShieldCheck, label: "Rollen" },
-  { to: "/settings/seasons", icon: Calendar, label: "Saisons" },
-  { to: "/settings/season-details", icon: CalendarClock, label: "Saison-Details" },
-  { to: "/settings/modules", icon: Layers, label: "Saison-Module" },
-  { to: "/settings/levels", icon: Award, label: "Wettbewerbsstufen" },
-  { to: "/settings/printers", icon: Printer, label: "Drucker" },
-  { to: "/settings/announcements", icon: Megaphone, label: "Ankündigungen" },
+  { to: "/settings/users", icon: Users, label: "users" },
+  { to: "/settings/roles", icon: ShieldCheck, label: "roles" },
+  { to: "/settings/seasons", icon: Calendar, label: "seasons" },
+  { to: "/settings/season-details", icon: CalendarClock, label: "seasonDetails" },
+  { to: "/settings/modules", icon: Layers, label: "modules" },
+  { to: "/settings/levels", icon: Award, label: "levels" },
+  { to: "/settings/printers", icon: Printer, label: "printers" },
+  { to: "/settings/announcements", icon: Megaphone, label: "announcements" },
 ];
 
 export default function SettingsPage() {
+  const { t } = useTranslation("settings");
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><Settings className="w-6 h-6" />Einstellungen</h1>
+      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><Settings className="w-6 h-6" />{t("title")}</h1>
       <div className="flex gap-6">
         <aside className="w-48 shrink-0">
           <nav className="space-y-1">
             {NAV.map(({ to, icon: Icon, label }) => (
               <NavLink key={to} to={to} className={({ isActive }) => clsx("flex items-center gap-2 px-3 py-2 rounded-lg text-sm", isActive ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800")}>
-                <Icon className="w-4 h-4" />{label}
+                <Icon className="w-4 h-4" />{t(`nav.${label}`)}
               </NavLink>
             ))}
           </nav>

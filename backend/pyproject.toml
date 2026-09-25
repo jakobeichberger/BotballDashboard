@@ -24,7 +24,7 @@ dependencies = [
     "email-validator==2.1.1",
 
     # ── Auth ──────────────────────────────────────────────────
-    "python-jose[cryptography]==3.5.0",
+    "PyJWT==2.15.0",
     "bcrypt==4.2.1",
 
     # ── Redis / task queue ────────────────────────────────────
@@ -60,6 +60,8 @@ dependencies = [
 
     # ── PDF Export ────────────────────────────────────────────
     "reportlab==4.2.0",
+    # Text extraction for the paper version diff.
+    "pypdf==6.19.0",
 ]
 
 [project.optional-dependencies]
@@ -97,6 +99,22 @@ ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
 exclude = ["alembic/versions", "tests"]
 
+[tool.coverage.run]
+source = ["."]
+# Application code only: the tests themselves, migrations and operator
+# scripts (exercised by CI's migration and deployment jobs) are not counted.
+omit = ["tests/*", "alembic/*", "scripts/*"]
+
+[tool.coverage.report]
+# pytest --cov fails below this. About two points under the measured total
+# (Sept 2026: 77.9 %); raise it as coverage grows towards the targets
+# of docs/modules/10-testing.md.
+fail_under = 76
+skip_empty = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# The suite signs tokens with a throwaway JWT_SECRET_KEY; production enforces
+# a long secret (core.config), so PyJWT's short-key warning is only noise here.
+filterwarnings = ["ignore:The HMAC key is .* below the minimum recommended length"]

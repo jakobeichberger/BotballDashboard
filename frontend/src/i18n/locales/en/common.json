@@ -37,7 +37,7 @@
   "logout": "Sign out",
   "changeLanguage": "Change language",
   "changeTheme": "Change theme",
-  "offlineReadOnly": "Connection lost – changes are locked until reconnection.",
+  "offlineReadOnly": "Connection lost – scores are stored locally, all other changes are locked until reconnection.",
   "nav": {
     "dashboard": "Dashboard",
     "teams": "Teams",
@@ -47,6 +47,69 @@
     "settings": "Settings",
     "users": "Users",
     "seasons": "Seasons",
-    "bots": "Bot Gallery"
-  }
+    "bots": "Bot Gallery",
+    "profile": "Profile"
+  },
+  "pendingSync": "{{count}} score(s) waiting to sync",
+  "syncFailed": "{{count}} score(s) could not be synced",
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "markAllRead": "Mark all as read",
+    "open": "Open notifications ({{count}} unread)",
+    "unread": "unread:"
+  },
+  "moduleDisabled": "This module is not active for this event.",
+  "restoringSession": "Restoring session…",
+  "loadingEllipsis": "Loading…",
+  "eventsLoading": "Loading events…",
+  "eventsLoadFailed": "Events could not be loaded.",
+  "retry": "Try again",
+  "languageName": "English",
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "pendingScores": {
+    "title": "Not yet synced ({{count}})",
+    "score": "Score",
+    "status": {
+      "pending": "Waiting to sync",
+      "syncing": "Syncing …",
+      "conflict": "Conflict",
+      "error": "Error"
+    },
+    "saveAnyway": "Save anyway",
+    "confirmDiscard": "Discard this score?",
+    "discard": "Discard",
+    "conflictExisting": "A score has meanwhile already been recorded for this team and match."
+  },
+  "scoreConfirm": {
+    "title": "Confirm score",
+    "field": "Field",
+    "value": "Value",
+    "points": "Points",
+    "total": "Total",
+    "offline": "Offline: the score is stored on this device and sent automatically once the connection is back.",
+    "correct": "Correct",
+    "saveLocally": "Save locally",
+    "submit": "Submit officially"
+  },
+  "export": {
+    "failed": "Export failed",
+    "downloadTitle": "Download {{label}}",
+    "matchesCsv": "Matches CSV",
+    "seedingPdf": "Seeding PDF",
+    "seedingCsv": "Seeding CSV",
+    "overallPdf": "Overall PDF",
+    "overallCsv": "Overall CSV",
+    "runsCsv": "Runs CSV",
+    "teamReportPdf": "Team report PDF",
+    "historyCsv": "History CSV",
+    "multiYearCsv": "Multi-year comparison CSV"
+  },
+  "add": "Add",
+  "actionFailed": "Action failed.",
+  "pleaseChoose": "Please choose"
 }

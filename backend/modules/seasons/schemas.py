@@ -1,6 +1,9 @@
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+SeasonStatus = Literal["draft", "active", "finished", "archived"]
 
 
 class SeasonPhaseCreate(BaseModel):
@@ -40,6 +43,14 @@ class SeasonCreate(BaseModel):
     name: str
     year: int
     game_theme: str | None = None
+    # Creating a season as active deactivates the previously active one, exactly
+    # like PUT /seasons/{id}/activate.
+    is_active: bool = False
+    # Defaults to "active" for an active season and "draft" otherwise.
+    status: SeasonStatus | None = None
+    # The setup wizard creates its own event right after the season; it passes
+    # False so the season does not end up with a second, auto-generated event.
+    create_default_event: bool = True
     registration_open: date | None = None
     registration_close: date | None = None
     event_start: date | None = None
@@ -61,6 +72,7 @@ class SeasonUpdate(BaseModel):
     name: str | None = None
     game_theme: str | None = None
     is_active: bool | None = None
+    status: SeasonStatus | None = None
     registration_open: date | None = None
     registration_close: date | None = None
     event_start: date | None = None
@@ -85,6 +97,7 @@ class SeasonResponse(BaseModel):
     year: int
     game_theme: str | None
     is_active: bool
+    status: str
     registration_open: date | None
     registration_close: date | None
     event_start: date | None
@@ -111,6 +124,7 @@ class SeasonListItem(BaseModel):
     year: int
     game_theme: str | None
     is_active: bool
+    status: str
     event_start: date | None
     event_end: date | None
 
@@ -123,12 +137,16 @@ class CompetitionLevelResponse(BaseModel):
     code: str
     description: str | None
     is_active: bool
+    order: int = 0
+    qualifies_from_level_id: str | None = None
 
 
 class CompetitionLevelCreate(BaseModel):
     name: str
     code: str
     description: str | None = None
+    order: int = Field(default=0, ge=0, le=100)
+    qualifies_from_level_id: str | None = None
 
 
 class CompetitionLevelUpdate(BaseModel):
@@ -136,6 +154,9 @@ class CompetitionLevelUpdate(BaseModel):
     code: str | None = None
     description: str | None = None
     is_active: bool | None = None
+    order: int | None = Field(default=None, ge=0, le=100)
+    # Explicit null clears the qualification source.
+    qualifies_from_level_id: str | None = None
 
 
 class SeasonEventCreate(BaseModel):
@@ -154,3 +175,8 @@ class SeasonEventResponse(BaseModel):
     event_type: str
     event_date: date
     description: str | None
+
+
+class SeasonClone(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    year: int = Field(ge=2000, le=2100)

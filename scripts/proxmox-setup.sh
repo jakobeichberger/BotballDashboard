@@ -7,19 +7,29 @@
 #   or locally:
 #   bash scripts/proxmox-setup.sh
 #
+# Run it INSIDE the Debian LXC/VM that will host the stack (not on the
+# Proxmox node itself).
+#
 # What this script does:
-#   1.  Checks prerequisites (OS, root, network)
+#   1.  Checks prerequisites (OS, root, network) and installs git/curl/python3/age
 #   2.  Installs Docker + Docker Compose plugin
 #   3.  Installs Node.js 20 + pnpm (needed to build the frontend on the host)
 #   4.  Clones the repository (or updates if already cloned)
-#   5.  Interactively generates a .env file with all required secrets
-#   6.  Creates required data directories
+#   5.  Interactively generates .env with all secrets (APP/JWT secrets, DB
+#       password, Fernet key, age backup key pair, compose profiles, alerts)
+#   6.  Creates the data directories (/data/db, /data/backups)
 #   7.  Builds the frontend on the host (esbuild/workbox run natively, no Docker)
-#   8.  Builds the backend Docker image; the frontend nginx image just copies dist/
-#   9.  Starts all services
-#   10. Generates VAPID keys, rebuilds frontend with them, restarts nginx
-#   11. Creates first admin user
-#   12. Prints access info
+#   8.  Builds the backend image (backend, worker, beat, backup) and wraps dist/
+#       into the nginx frontend image
+#   9.  Starts db/redis, repairs the DB role if needed, then starts the whole
+#       stack: traefik, backend, worker, beat, frontend, backup (profile
+#       "production") and optionally prometheus/blackbox/alertmanager
+#       (profile "monitoring")
+#   10. Generates VAPID keys, rebuilds the frontend with them
+#   11. Creates the first admin user
+#   12. Runs scripts/verify-deployment.sh and prints access info
+#
+# Updates afterwards: scripts/update.sh (git pull + rebuild + up -d).
 #
 # Tested on: Debian 12 (Bookworm) LXC container on Proxmox VE 8
 #
@@ -49,7 +59,11 @@ DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
 NODE_MAJOR="20"
 PNPM_VERSION="10.29.3"
-HEALTH_URL="http://localhost:8000/api/system/health"
+# Private key that decrypts the backups. It must be copied OFF this machine.
+BACKUP_IDENTITY_FILE="/root/botball-backup-identity.txt"
+# SSH key / known_hosts / rclone.conf for the optional off-site backup copy;
+# mounted read-only into the backup container (BACKUP_OFFSITE_CONFIG_DIR).
+OFFSITE_CONFIG_DIR="${DATA_DIR}/backup-offsite"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 info()    { echo -e "${CYAN}[INFO]${NC}  $*"; }
@@ -101,7 +115,167 @@ generate_secret() {
 }
 
 generate_fernet_key() {
-  python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+  # A Fernet key is 32 random bytes, urlsafe-base64 encoded – no need for the
+  # cryptography package on the host.
+  python3 -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())"
+}
+
+# Value of KEY from ${INSTALL_DIR}/.env (handles JSON-quoted values).
+env_value() {
+  python3 - "${INSTALL_DIR}/.env" "$1" <<'PYEOF'
+import json, re, sys
+path, key = sys.argv[1], sys.argv[2]
+try:
+    lines = open(path).read().splitlines()
+except FileNotFoundError:
+    sys.exit(0)
+for line in lines:
+    m = re.match(rf"^{re.escape(key)}\s*=\s*(.*)$", line)
+    if m:
+        v = m.group(1).strip()
+        if len(v) >= 2 and v[0] == v[-1] == '"':
+            try:
+                v = json.loads(v)
+            except ValueError:
+                v = v[1:-1]
+        print(v)
+        break
+PYEOF
+}
+
+# Sets KEY=VALUE in ${INSTALL_DIR}/.env (JSON-quoted), replacing or appending.
+set_env_value() {
+  python3 - "${INSTALL_DIR}/.env" "$1" "$2" <<'PYEOF'
+from pathlib import Path
+import json
+import sys
+
+path, key, value = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+line_value = f"{key}={json.dumps(value)}"
+lines = path.read_text().splitlines() if path.exists() else []
+for index, line in enumerate(lines):
+    if line.startswith(f"{key}="):
+        lines[index] = line_value
+        break
+else:
+    lines.append(line_value)
+path.write_text("\n".join(lines) + "\n")
+PYEOF
+}
+
+# Creates (or reuses) the age key pair for backups and prints the public key.
+# Returns non-zero when age-keygen is unavailable.
+ensure_backup_keypair() {
+  command -v age-keygen &>/dev/null || return 1
+  if [[ ! -f "${BACKUP_IDENTITY_FILE}" ]]; then
+    (umask 077 && age-keygen -o "${BACKUP_IDENTITY_FILE}" 2>/dev/null) || return 1
+  fi
+  age-keygen -y "${BACKUP_IDENTITY_FILE}"
+}
+
+# Returns 0 when $1 is empty or a supported BACKUP_OFFSITE_TARGET form.
+valid_offsite_target() {
+  [[ -z "$1" || "$1" =~ ^rsync:[^:]+:.+$ || "$1" =~ ^rclone:[^:]+:.*$ || "$1" == /* ]]
+}
+
+# Prepares ${OFFSITE_CONFIG_DIR} for BACKUP_OFFSITE_TARGET ($1). Idempotent:
+# an existing SSH key or known_hosts entry is kept.
+setup_offsite_access() {
+  local target="$1"
+  mkdir -p "${OFFSITE_CONFIG_DIR}"
+  chmod 700 "${OFFSITE_CONFIG_DIR}"
+  [[ -z "${target}" ]] && return 0
+  case "${target}" in
+    rsync:*)
+      local remote="${target#rsync:}"
+      local host="${remote%%:*}"
+      host="${host#*@}"
+      if [[ ! -f "${OFFSITE_CONFIG_DIR}/id_ed25519" ]]; then
+        if command -v ssh-keygen &>/dev/null; then
+          ssh-keygen -q -t ed25519 -N "" -C "botball-backup@$(hostname)" -f "${OFFSITE_CONFIG_DIR}/id_ed25519"
+          info "Generated an SSH key for the off-site copy."
+        else
+          warn "ssh-keygen missing – put an SSH key at ${OFFSITE_CONFIG_DIR}/id_ed25519 yourself."
+        fi
+      fi
+      if [[ -f "${OFFSITE_CONFIG_DIR}/id_ed25519.pub" ]]; then
+        warn "Authorize this key on ${host} (e.g. in ~/.ssh/authorized_keys of the target user):"
+        echo "    $(cat "${OFFSITE_CONFIG_DIR}/id_ed25519.pub")"
+      fi
+      if ! grep -q "${host}" "${OFFSITE_CONFIG_DIR}/known_hosts" 2>/dev/null; then
+        if ssh-keyscan -T 10 "${host}" >> "${OFFSITE_CONFIG_DIR}/known_hosts" 2>/dev/null \
+            && grep -q "${host}" "${OFFSITE_CONFIG_DIR}/known_hosts"; then
+          info "Stored the host key of ${host} in ${OFFSITE_CONFIG_DIR}/known_hosts – verify its fingerprint."
+        else
+          warn "Could not fetch the host key of ${host}. Add it to ${OFFSITE_CONFIG_DIR}/known_hosts,"
+          warn "otherwise every off-site copy fails (StrictHostKeyChecking)."
+        fi
+      fi
+      ;;
+    rclone:*)
+      if [[ ! -f "${OFFSITE_CONFIG_DIR}/rclone.conf" ]]; then
+        warn "Put an rclone config with the remote '${target#rclone:}' at ${OFFSITE_CONFIG_DIR}/rclone.conf"
+        warn "(create it with 'rclone config' on any machine). Until then off-site copies fail."
+      fi
+      ;;
+    /*)
+      warn "The off-site directory ${target} must be mounted into the backup container,"
+      warn "e.g. in docker-compose.override.yml (see docs/operations.md)."
+      ;;
+  esac
+  chmod -R go-rwx "${OFFSITE_CONFIG_DIR}"
+}
+
+# Adds settings introduced after the first installation to a kept .env.
+ensure_env_defaults() {
+  local env_file="${INSTALL_DIR}/.env"
+  if ! grep -q '^COMPOSE_PROFILES=' "${env_file}"; then
+    set_env_value COMPOSE_PROFILES "production"
+    info "Added COMPOSE_PROFILES=production to .env (enables the backup service)"
+  fi
+  if ! grep -q '^POSTGRES_UNIX_SOCKET_DIRECTORIES=' "${env_file}"; then
+    # Installs from before this setting always ran PostgreSQL TCP-only.
+    set_env_value POSTGRES_UNIX_SOCKET_DIRECTORIES ""
+  fi
+  if ! grep -q '^BACKUP_HOST_DIR=' "${env_file}"; then
+    set_env_value BACKUP_HOST_DIR "${DATA_DIR}/backups"
+  fi
+  if ! grep -q '^BACKUP_OFFSITE_CONFIG_DIR=' "${env_file}"; then
+    set_env_value BACKUP_OFFSITE_CONFIG_DIR "${OFFSITE_CONFIG_DIR}"
+  fi
+  if ! grep -q '^BACKUP_OFFSITE_TARGET=' "${env_file}"; then
+    set_env_value BACKUP_OFFSITE_TARGET ""
+    info "Added BACKUP_OFFSITE_TARGET (empty = no off-site copy) to .env – see docs/operations.md"
+  fi
+  local offsite_target
+  offsite_target=$(env_value BACKUP_OFFSITE_TARGET)
+  if valid_offsite_target "${offsite_target}"; then
+    setup_offsite_access "${offsite_target}"
+  else
+    warn "BACKUP_OFFSITE_TARGET '${offsite_target}' is not rsync:user@host:/path, rclone:remote:path or /dir."
+  fi
+  if [[ -z "$(env_value AGE_RECIPIENT)" ]]; then
+    local recipient
+    if recipient=$(ensure_backup_keypair); then
+      set_env_value AGE_RECIPIENT "${recipient}"
+      warn "Generated a backup key pair: ${BACKUP_IDENTITY_FILE} – copy it OFF this machine."
+    else
+      warn "AGE_RECIPIENT is empty – backups will FAIL until you set it (see docs/operations.md)."
+    fi
+  fi
+  local name value
+  for name in APP_SECRET_KEY JWT_SECRET_KEY POSTGRES_PASSWORD; do
+    value=$(env_value "${name}")
+    if [[ ${#value} -lt 24 ]]; then
+      warn "${name} is shorter than 24 characters – the backend refuses to start in production."
+    fi
+  done
+  local printer_key
+  printer_key=$(env_value PRINTER_CREDENTIAL_ENCRYPTION_KEY)
+  if ! python3 -c "import base64,sys; sys.exit(len(base64.urlsafe_b64decode(sys.argv[1])) != 32)" "${printer_key}" 2>/dev/null; then
+    warn "PRINTER_CREDENTIAL_ENCRYPTION_KEY is not a valid Fernet key – the backend refuses to start in production."
+    warn "Only generate a new one if no printer credentials are stored yet: make fernet-key"
+  fi
 }
 
 # ── Step 1: Prerequisite Checks ───────────────────────────────────────────────
@@ -127,14 +301,28 @@ check_prerequisites() {
   success "Internet connectivity OK"
 
   local pkgs=()
-  command -v git     &>/dev/null || pkgs+=(git)
-  command -v curl    &>/dev/null || pkgs+=(curl)
-  command -v python3 &>/dev/null || pkgs+=(python3)
+  command -v git        &>/dev/null || pkgs+=(git)
+  command -v curl       &>/dev/null || pkgs+=(curl)
+  command -v python3    &>/dev/null || pkgs+=(python3)
+  # age-keygen creates the backup encryption key pair (Debian 12: package "age").
+  command -v age-keygen &>/dev/null || pkgs+=(age)
+  # ssh-keygen/ssh-keyscan prepare an optional rsync off-site backup target.
+  command -v ssh-keygen &>/dev/null || pkgs+=(openssh-client)
   if [[ ${#pkgs[@]} -gt 0 ]]; then
     info "Installing missing packages: ${pkgs[*]}..."
-    apt-get update -qq && apt-get install -y -q "${pkgs[@]}" > /dev/null
+    if ! { apt-get update -qq && apt-get install -y -q "${pkgs[@]}" > /dev/null; }; then
+      warn "Could not install all of: ${pkgs[*]}"
+    fi
+  fi
+  if ! command -v git &>/dev/null || ! command -v python3 &>/dev/null; then
+    die "git and python3 are required."
   fi
   success "git, curl, python3 available"
+  if command -v age-keygen &>/dev/null; then
+    success "age available (backup encryption)"
+  else
+    warn "age is not installed – no backup key pair can be generated here."
+  fi
 }
 
 # ── Step 2: Install Docker ─────────────────────────────────────────────────────
@@ -146,7 +334,6 @@ install_docker() {
     docker_ver=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1)
     if [[ "${docker_ver:-0}" -ge "$MIN_DOCKER_VERSION" ]]; then
       success "Docker ${docker_ver} already installed"
-      apt-get install -y -q python3-cryptography > /dev/null 2>&1 || true
       return 0
     else
       warn "Docker version too old (${docker_ver}). Upgrading..."
@@ -161,11 +348,6 @@ install_docker() {
   local installed_ver
   installed_ver=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1)
   success "Docker ${installed_ver} installed and running"
-
-  info "Installing python3-cryptography for key generation..."
-  apt-get install -y -q python3-cryptography > /dev/null 2>&1 || \
-    pip3 install cryptography --quiet
-  success "python3-cryptography available"
 }
 
 # ── Step 3: Install Node.js + pnpm ────────────────────────────────────────────
@@ -240,7 +422,8 @@ configure_env() {
     echo -e "${YELLOW}A .env file already exists.${NC}"
     read -rp "Overwrite it? (y/N): " overwrite
     if [[ ! "${overwrite}" =~ ^[Yy]$ ]]; then
-      success ".env kept as-is"
+      ensure_env_defaults
+      success ".env kept (missing new settings added)"
       return 0
     fi
   elif [[ -f "${DATA_DIR}/db/PG_VERSION" ]]; then
@@ -267,15 +450,21 @@ configure_env() {
   prompt POSTGRES_DB   "PostgreSQL database name" "botball"
   prompt POSTGRES_USER "PostgreSQL user"          "botball"
   local pg_pass_default
-  pg_pass_default=$(generate_secret 16)
-  prompt POSTGRES_PASSWORD "PostgreSQL password (leave empty to auto-generate)" ""
-  if [[ -z "${POSTGRES_PASSWORD}" ]]; then
-    POSTGRES_PASSWORD="${pg_pass_default}"
-    info "Auto-generated PostgreSQL password: ${POSTGRES_PASSWORD}"
-  fi
+  # 32 bytes → 43 characters; the backend refuses production secrets < 24 chars.
+  pg_pass_default=$(generate_secret 32)
+  while true; do
+    prompt POSTGRES_PASSWORD "PostgreSQL password (min. 24 chars, leave empty to auto-generate)" ""
+    if [[ -z "${POSTGRES_PASSWORD}" ]]; then
+      POSTGRES_PASSWORD="${pg_pass_default}"
+      info "Auto-generated PostgreSQL password (stored in .env)"
+      break
+    fi
+    [[ ${#POSTGRES_PASSWORD} -ge 24 ]] && break
+    warn "Too short – the backend refuses passwords under 24 characters in production."
+  done
 
   echo -e "\n${BOLD}--- Email (SMTP) ---${NC}"
-  echo -e "${YELLOW}Email is optional. Without it, password resets and notifications will be disabled.${NC}"
+  echo -e "${YELLOW}Email is optional. Without it the dashboard sends no e-mails (e.g. account notifications, alert mails).${NC}"
   read -rp "Configure SMTP email? (y/N): " use_smtp
   if [[ "${use_smtp}" =~ ^[Yy]$ ]]; then
     prompt SMTP_HOST     "SMTP host"          "mail.yourschool.at"
@@ -295,7 +484,7 @@ configure_env() {
       SENDGRID_FROM="${SMTP_USER}"
     fi
   else
-    warn "SMTP skipped – email features (password reset, notifications) will be disabled."
+    warn "SMTP skipped – the dashboard will not send e-mails. Configure SMTP_* in .env later if needed."
     SMTP_HOST=""
     SMTP_PORT="587"
     SMTP_USER=""
@@ -312,7 +501,57 @@ configure_env() {
   PRINTER_CREDENTIAL_ENCRYPTION_KEY=$(generate_fernet_key)
   info "APP_SECRET_KEY              generated"
   info "JWT_SECRET_KEY              generated"
-  info "PRINTER_ENCRYPTION_KEY      generated"
+  info "PRINTER_ENCRYPTION_KEY      generated (Fernet)"
+
+  echo -e "\n${BOLD}--- Backups (encrypted with age) ---${NC}"
+  echo -e "Backups are encrypted with an age public key. The matching private key"
+  echo -e "(identity) is needed to restore and must be stored OFF this server."
+  prompt AGE_RECIPIENT "Existing age public key (age1..., leave empty to generate a new key pair)" ""
+  BACKUPS_ENABLED=true
+  if [[ -z "${AGE_RECIPIENT}" ]]; then
+    if AGE_RECIPIENT=$(ensure_backup_keypair); then
+      info "Backup key pair generated: ${BACKUP_IDENTITY_FILE}"
+      warn "Copy ${BACKUP_IDENTITY_FILE} to a password manager / offline medium and"
+      warn "then delete it from this server – without it backups cannot be restored."
+    else
+      AGE_RECIPIENT=""
+      BACKUPS_ENABLED=false
+      warn "age-keygen unavailable – BACKUPS ARE DISABLED. Set AGE_RECIPIENT in .env and"
+      warn "add \"production\" to COMPOSE_PROFILES later (see docs/operations.md)."
+    fi
+  elif [[ ! "${AGE_RECIPIENT}" =~ ^age1[0-9a-z]+$ ]]; then
+    die "'${AGE_RECIPIENT}' is not an age public key (age1...)."
+  fi
+  BACKUP_OFFSITE_TARGET=""
+  if [[ "${BACKUPS_ENABLED}" == "true" ]]; then
+    echo -e "Optional off-site copy of every archive (a second location protects against"
+    echo -e "losing this server): rsync:user@host:/path, rclone:remote:path or empty."
+    while true; do
+      prompt BACKUP_OFFSITE_TARGET "Off-site target (empty = none)" ""
+      valid_offsite_target "${BACKUP_OFFSITE_TARGET}" && break
+      warn "Use rsync:user@host:/path, rclone:remote:path, an absolute directory or leave it empty."
+    done
+    setup_offsite_access "${BACKUP_OFFSITE_TARGET}"
+  fi
+
+  echo -e "\n${BOLD}--- Monitoring (optional) ---${NC}"
+  echo -e "Prometheus + Alertmanager: alerts for API down, readiness, 5xx rate and failed/stale backups."
+  read -rp "Enable monitoring? (y/N): " use_monitoring
+  ALERT_WEBHOOK_URL=""
+  ALERT_EMAIL_TO=""
+  local profiles=()
+  [[ "${BACKUPS_ENABLED}" == "true" ]] && profiles+=(production)
+  if [[ "${use_monitoring}" =~ ^[Yy]$ ]]; then
+    profiles+=(monitoring)
+    prompt ALERT_WEBHOOK_URL "Alert webhook URL (e.g. https://ntfy.sh/<topic>, empty = none)" ""
+    if [[ -n "${SMTP_HOST}" ]]; then
+      prompt ALERT_EMAIL_TO "Alert e-mail recipient (empty = none)" ""
+    fi
+    if [[ -z "${ALERT_WEBHOOK_URL}" && -z "${ALERT_EMAIL_TO}" ]]; then
+      warn "No alert receiver – alerts are only visible in Prometheus/Alertmanager (SSH tunnel)."
+    fi
+  fi
+  COMPOSE_PROFILES=$(IFS=,; echo "${profiles[*]}")
 
   # The private key is stored in a Docker volume; only the browser public key
   # is kept in .env and embedded into the frontend build.
@@ -324,9 +563,20 @@ configure_env() {
   prompt ADMIN_EMAIL    "Admin email address"    "admin@${DOMAIN}"
   prompt ADMIN_NAME     "Admin display name"     "Administrator"
   while true; do
-    prompt ADMIN_PASSWORD "Admin password (min. 8 chars)" "" "true"
-    if [[ ${#ADMIN_PASSWORD} -lt 8 ]]; then
-      warn "Password too short (min. 8 characters). Please try again."
+    # Same rules as the backend's password policy: at least 10 characters,
+    # not one repeated character, not the e-mail address. Common/leaked
+    # passwords are rejected when the admin account is created.
+    prompt ADMIN_PASSWORD "Admin password (min. 10 chars)" "" "true"
+    if [[ ${#ADMIN_PASSWORD} -lt 10 ]]; then
+      warn "Password too short (min. 10 characters). Please try again."
+      continue
+    fi
+    if [[ -z "${ADMIN_PASSWORD//"${ADMIN_PASSWORD:0:1}"/}" ]]; then
+      warn "Password must not consist of one repeated character. Please try again."
+      continue
+    fi
+    if [[ "${ADMIN_PASSWORD,,}" == "${ADMIN_EMAIL,,}" ]]; then
+      warn "Password must not be the e-mail address. Please try again."
       continue
     fi
     prompt ADMIN_PASSWORD_CONFIRM "Admin password (repeat)" "" "true"
@@ -346,7 +596,12 @@ configure_env() {
 # Generated by proxmox-setup.sh on $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # ─────────────────────────────────────────────
 # BotballDashboard – environment variables
+# See .env.example for every option.
 # ─────────────────────────────────────────────
+
+# ── Compose profiles ─────────────────────────
+# production = backup service, monitoring = Prometheus/Alertmanager
+COMPOSE_PROFILES=${COMPOSE_PROFILES}
 
 # ── Application ──────────────────────────────
 APP_ENV=production
@@ -361,6 +616,10 @@ POSTGRES_DB=${POSTGRES_DB}
 POSTGRES_USER=${POSTGRES_USER}
 POSTGRES_PASSWORD=$(_q "${POSTGRES_PASSWORD}")
 
+# TCP only: Unix sockets cannot be created in an unprivileged LXC without
+# nesting. start_services() creates the role/database over TCP instead.
+POSTGRES_UNIX_SOCKET_DIRECTORIES=
+
 # pgdata bind-mount (production only – dev uses plain named volume when these are empty)
 PGDATA_DRIVER_OPT_TYPE=none
 PGDATA_DRIVER_OPT_O=bind
@@ -373,13 +632,14 @@ REDIS_URL=redis://redis:6379/0
 JWT_SECRET_KEY=$(_q "${JWT_SECRET_KEY}")
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=15
 JWT_REFRESH_TOKEN_EXPIRE_DAYS=30
+TOKEN_DENYLIST_BACKEND=redis
 
 # ── Email (primary SMTP) ──────────────────────
 SMTP_HOST=${SMTP_HOST}
 SMTP_PORT=${SMTP_PORT}
 SMTP_USER=${SMTP_USER}
 SMTP_PASSWORD=$(_q "${SMTP_PASSWORD}")
-SMTP_FROM=${SMTP_FROM}
+SMTP_FROM=$(_q "${SMTP_FROM}")
 SMTP_TLS=${SMTP_TLS}
 
 # ── Email fallback (SendGrid) ─────────────────
@@ -397,10 +657,24 @@ PRINTER_CREDENTIAL_ENCRYPTION_KEY=$(_q "${PRINTER_CREDENTIAL_ENCRYPTION_KEY}")
 # ── File uploads ─────────────────────────────
 UPLOAD_DIR=/app/uploads
 MAX_UPLOAD_SIZE_MB=20
+PRINT_UPLOAD_MAX_MB=100
 
 # ── Traefik / SSL ─────────────────────────────
 TRAEFIK_EMAIL=${TRAEFIK_EMAIL}
 DOMAIN=${DOMAIN}
+
+# ── Backups ──────────────────────────────────
+# Private key for restores: ${BACKUP_IDENTITY_FILE} (keep a copy off-site!)
+AGE_RECIPIENT=${AGE_RECIPIENT}
+BACKUP_HOST_DIR=${DATA_DIR}/backups
+# Off-site copy of every archive (rsync:user@host:/path, rclone:remote:path,
+# /dir); empty = none. Key/config in BACKUP_OFFSITE_CONFIG_DIR.
+BACKUP_OFFSITE_TARGET=$(_q "${BACKUP_OFFSITE_TARGET}")
+BACKUP_OFFSITE_CONFIG_DIR=${OFFSITE_CONFIG_DIR}
+
+# ── Alerts (monitoring profile) ──────────────
+ALERT_WEBHOOK_URL=$(_q "${ALERT_WEBHOOK_URL}")
+ALERT_EMAIL_TO=${ALERT_EMAIL_TO}
 EOF
 
   chmod 600 "${INSTALL_DIR}/.env"
@@ -412,8 +686,12 @@ create_directories() {
   header "Step 6/10 – Creating Data Directories"
 
   mkdir -p "${DATA_DIR}/db"
-  mkdir -p "${DATA_DIR}/uploads"
-  mkdir -p "${DATA_DIR}/letsencrypt"
+  # Encrypted backup archives (BACKUP_HOST_DIR); sync this directory off-site.
+  mkdir -p "${DATA_DIR}/backups"
+  chmod 700 "${DATA_DIR}/backups"
+  # Off-site copy credentials (BACKUP_OFFSITE_CONFIG_DIR), may stay empty.
+  mkdir -p "${OFFSITE_CONFIG_DIR}"
+  chmod 700 "${OFFSITE_CONFIG_DIR}"
 
   # postgres:alpine runs as UID 70 inside the container. Pre-owning the bind-
   # mount directory to that UID lets PostgreSQL initialise without needing to
@@ -426,22 +704,10 @@ create_directories() {
     info "${DATA_DIR}/db is non-empty – preserving existing ownership"
   fi
 
-  local acme_file="${DATA_DIR}/letsencrypt/acme.json"
-  if [[ ! -f "${acme_file}" ]]; then
-    touch "${acme_file}"
-    chmod 600 "${acme_file}"
-  fi
-
-  success "Created: ${DATA_DIR}/db, ${DATA_DIR}/uploads, ${DATA_DIR}/letsencrypt"
-
-  if grep -q "device: /data/db" "${INSTALL_DIR}/docker-compose.yml"; then
-    success "docker-compose.yml already uses /data/db"
-  else
-    info "Patching docker-compose.yml to use /data/db..."
-    sed -i 's|device: \./data|device: /data|g; s|device: ./data|device: /data|g' \
-      "${INSTALL_DIR}/docker-compose.yml"
-    success "docker-compose.yml patched to use ${DATA_DIR}/db"
-  fi
+  # Uploads, VAPID keys and Let's Encrypt certificates live in Docker named
+  # volumes (uploads, vapid, letsencrypt); they are included in backups
+  # (uploads) or re-creatable (certificates, VAPID via make vapid-keys).
+  success "Created: ${DATA_DIR}/db, ${DATA_DIR}/backups, ${OFFSITE_CONFIG_DIR}"
 }
 
 # ── Step 7: Build Frontend on Host ────────────────────────────────────────────
@@ -477,14 +743,25 @@ build_images() {
 
   cd "${INSTALL_DIR}"
 
-  info "Pulling base images..."
-  docker compose pull --quiet traefik db redis 2>/dev/null || true
+  info "Pulling base images (postgres, redis, traefik, monitoring)..."
+  docker compose pull --ignore-buildable --quiet 2>/dev/null || true
 
-  info "Building backend image..."
-  docker compose build --no-cache backend
+  # backend, worker, beat and backup all run the backend image; build every
+  # one that is part of the active profiles (COMPOSE_PROFILES in .env).
+  local services=() service
+  for service in $(docker compose config --services); do
+    case "${service}" in
+      backend|worker|beat|backup) services+=("${service}") ;;
+    esac
+  done
+  info "Building backend image for: ${services[*]}..."
+  # --pull refreshes base images; fall back to cached ones if the registry is
+  # unreachable or rate-limited.
+  docker compose build --pull "${services[@]}" || docker compose build "${services[@]}"
   info "Building frontend image from the host-built dist/..."
-  docker build --no-cache -f frontend/Dockerfile.prebuilt \
-    -t botballdashboard-frontend:local frontend
+  docker build --pull -f frontend/Dockerfile.prebuilt \
+    -t botballdashboard-frontend:local frontend \
+    || docker build -f frontend/Dockerfile.prebuilt -t botballdashboard-frontend:local frontend
 
   success "All images built"
 }
@@ -503,15 +780,18 @@ start_services() {
   # "volume exists but doesn't match configuration" interactively when the
   # pgdata volume driver_opts changed between runs (bind-mount ↔ named).
   # The actual data in /data/db is a bind mount and is NOT deleted by this.
-  docker volume rm botballdashboard_pgdata 2>/dev/null || true
+  # Only for the bind mount – removing a plain named volume would delete data.
+  if [[ "$(env_value PGDATA_DRIVER_OPT_TYPE)" == "none" ]]; then
+    docker volume rm botballdashboard_pgdata 2>/dev/null || true
+  fi
 
   # Start infrastructure first; bypass depends_on so the script controls ordering
-  info "Starting infrastructure services (db, redis, traefik, frontend)..."
-  docker compose up -d --no-deps db redis traefik frontend
+  info "Starting infrastructure services (db, redis)..."
+  docker compose up -d --no-deps db redis
 
   # Wait for db before even attempting to start the backend
   local pg_user
-  pg_user=$(grep '^POSTGRES_USER=' .env | cut -d= -f2)
+  pg_user=$(env_value POSTGRES_USER)
 
   info "Waiting for database to be healthy..."
   local retries=40
@@ -600,27 +880,35 @@ PYEOF
     sleep 2
   done
 
-  # Now start the backend (db + redis confirmed healthy)
-  info "Starting backend service..."
-  docker compose up -d --no-deps backend 2>&1 || true
+  # db + redis are healthy: start everything in the active profiles –
+  # traefik, backend, worker, beat, frontend, backup ("production") and
+  # prometheus/blackbox/alertmanager ("monitoring").
+  info "Starting all services (profiles: $(env_value COMPOSE_PROFILES))..."
+  docker compose up -d --remove-orphans
 
-  info "Waiting for backend API to respond (up to 3 min – migrations run on first boot)..."
-  local api_retries=60
-  until curl -fsSL --max-time 3 "${HEALTH_URL}" > /dev/null 2>&1; do
-    api_retries=$((api_retries - 1))
-    if [[ $api_retries -le 0 ]]; then
-      warn "Backend did not respond in time. Last 20 lines of backend logs:"
-      docker compose logs --tail=20 backend
-      warn "Setup continues – the backend may still be starting."
-      break
-    fi
-    sleep 3
-  done
-  if [[ $api_retries -gt 0 ]]; then
-    success "Backend API is responding"
+  info "Waiting for the backend to become healthy (up to 5 min – migrations run on first boot)..."
+  if wait_for_backend 60; then
+    success "Backend API is healthy"
+  else
+    warn "Backend is not healthy yet. Last 30 lines of backend logs:"
+    docker compose logs --tail=30 backend
+    warn "Setup continues – check again with: docker compose ps"
   fi
 
-  success "All services started"
+  docker compose ps
+  success "Services started"
+}
+
+# Polls the backend container's healthcheck; $1 = attempts (5 s apart).
+wait_for_backend() {
+  local attempts="$1" state=""
+  for _ in $(seq 1 "${attempts}"); do
+    state=$(docker inspect --format '{{.State.Health.Status}}' \
+      "$(docker compose ps -q backend)" 2>/dev/null || true)
+    [[ "${state}" == "healthy" ]] && return 0
+    sleep 5
+  done
+  return 1
 }
 
 # ── Step 9b: Generate VAPID Keys + Rebuild Frontend ──────────────────────────
@@ -628,9 +916,19 @@ generate_vapid_keys() {
   info "Generating VAPID keys via backend container..."
 
   local vapid_out
-  vapid_out=$(docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend \
+  cd "${INSTALL_DIR}"
+  # Re-running the setup must not replace existing keys – that would silently
+  # invalidate every browser push subscription.
+  if [[ -n "$(env_value VAPID_PUBLIC_KEY)" ]] \
+    && docker compose exec -T backend test -f /app/vapid/private_key.pem 2>/dev/null; then
+    VAPID_PUBLIC_KEY=$(env_value VAPID_PUBLIC_KEY)
+    success "VAPID keys already present – kept"
+    return
+  fi
+  # `vapid --applicationServerKey` prints "Application Server Key = <key>".
+  vapid_out=$(docker compose exec -T backend \
     sh -c "mkdir -p /app/vapid && cd /app/vapid && vapid --gen >/dev/null && vapid --applicationServerKey" \
-    2>/dev/null) || true
+    2>/dev/null | sed -n 's/^Application Server Key = *//p' | tr -d '[:space:]') || true
 
   if [[ -z "${vapid_out}" ]]; then
     warn "VAPID key generation failed – push notifications disabled."
@@ -659,15 +957,17 @@ else:
 path.write_text("\n".join(lines) + "\n")
 PYEOF
 
-  # Restart backend to pick up the new VAPID keys
-  docker compose -f "${INSTALL_DIR}/docker-compose.yml" restart backend > /dev/null 2>&1
+  # Recreate backend + worker so they pick up VAPID_PUBLIC_KEY from .env
+  # (`restart` would keep the old environment).
+  (cd "${INSTALL_DIR}" && docker compose up -d backend worker > /dev/null 2>&1)
 
   # Rebuild the frontend with the real VAPID public key embedded, then restart nginx
   info "Rebuilding frontend with VAPID public key..."
   cd "${INSTALL_DIR}/frontend"
   VITE_API_URL=/api VITE_VAPID_PUBLIC_KEY="${VAPID_PUBLIC_KEY}" pnpm build
-  docker build --no-cache -f Dockerfile.prebuilt -t botballdashboard-frontend:local . > /dev/null 2>&1
-  docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d --force-recreate frontend > /dev/null 2>&1
+  docker build -f Dockerfile.prebuilt -t botballdashboard-frontend:local . > /dev/null 2>&1
+  (cd "${INSTALL_DIR}" && docker compose up -d --force-recreate frontend > /dev/null 2>&1)
+  cd "${INSTALL_DIR}"
 
   success "VAPID keys generated and frontend rebuilt with push notifications enabled"
 }
@@ -691,7 +991,7 @@ create_admin_user() {
   # (e.g. $, !, spaces) that would corrupt the value if passed as a CLI argument.
   local output
   output=$(ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T \
+    docker compose exec -T \
       -e ADMIN_PASSWORD \
       backend \
     python scripts/create_admin.py \
@@ -709,17 +1009,35 @@ create_admin_user() {
   fi
 }
 
+# ── Step 9d: Verify ──────────────────────────────────────────────────────────
+verify_deployment() {
+  header "Verifying the installation"
+  cd "${INSTALL_DIR}"
+  # A fresh Let's Encrypt certificate can take a minute; a failed check here
+  # does not abort the setup – rerun the script later.
+  if ! ./scripts/verify-deployment.sh; then
+    warn "Some checks failed (see FAIL lines). Rerun later: ${INSTALL_DIR}/scripts/verify-deployment.sh"
+  fi
+}
+
 # ── Step 10: Post-install Info ────────────────────────────────────────────────
 print_summary() {
   header "Step 10/10 – Setup Complete"
 
-  # Save admin credentials before sourcing .env (they are not stored in .env)
+  # Admin credentials are not stored in .env; they only exist in this run.
   local _admin_email="${ADMIN_EMAIL:-}"
   local _admin_name="${ADMIN_NAME:-}"
   local _admin_password="${ADMIN_PASSWORD:-}"
 
-  # shellcheck source=/dev/null
-  source "${INSTALL_DIR}/.env"
+  # Read values with env_value instead of `source .env`: sourcing would expand
+  # $ and backticks inside generated passwords.
+  local DOMAIN POSTGRES_DB POSTGRES_USER VAPID_PUBLIC_KEY AGE_RECIPIENT COMPOSE_PROFILES
+  DOMAIN=$(env_value DOMAIN)
+  POSTGRES_DB=$(env_value POSTGRES_DB)
+  POSTGRES_USER=$(env_value POSTGRES_USER)
+  VAPID_PUBLIC_KEY=$(env_value VAPID_PUBLIC_KEY)
+  AGE_RECIPIENT=$(env_value AGE_RECIPIENT)
+  COMPOSE_PROFILES=$(env_value COMPOSE_PROFILES)
 
   # Collect host IP addresses (exclude loopback and Docker bridge networks)
   local host_ips=()
@@ -766,17 +1084,43 @@ print_summary() {
   echo -e "  cd ${INSTALL_DIR}"
   echo -e "  docker compose logs -f          # live logs"
   echo -e "  docker compose ps               # service status"
-  echo -e "  docker compose down             # stop all"
-  echo -e "  docker compose pull && docker compose up -d  # update"
+  echo -e "  docker compose down             # stop all (data is kept)"
+  echo -e "  ./scripts/update.sh              # update: git pull + rebuild images + up -d"
+  echo -e "  ./scripts/verify-deployment.sh   # check services, TLS, headers, backups"
   echo ""
 
   if [[ -z "${VAPID_PUBLIC_KEY:-}" ]]; then
     echo -e "${YELLOW}${BOLD}⚠  VAPID keys not set – push notifications disabled.${NC}"
     echo -e "   Run the following to generate them:"
     echo -e "   cd ${INSTALL_DIR} && make vapid-keys"
-    echo -e "   Then add the output to ${INSTALL_DIR}/.env and restart: docker compose up -d backend"
+    echo -e "   Put the printed VAPID_PUBLIC_KEY into ${INSTALL_DIR}/.env and run ./scripts/update.sh --no-pull"
     echo ""
   fi
+
+  echo -e "${BOLD}Backups:${NC}"
+  if [[ -n "${AGE_RECIPIENT}" && ",${COMPOSE_PROFILES}," == *",production,"* ]]; then
+    echo -e "  Daily encrypted backups → ${DATA_DIR}/backups (status: docker compose ps backup)"
+    if [[ -f "${BACKUP_IDENTITY_FILE}" ]]; then
+      echo -e "  ${YELLOW}${BOLD}Private key: ${BACKUP_IDENTITY_FILE}${NC}"
+      echo -e "  ${YELLOW}Copy it off this server (password manager/offline) and delete it here.${NC}"
+      echo -e "  ${YELLOW}Without it no backup can be restored.${NC}"
+    fi
+    local offsite_target
+    offsite_target=$(env_value BACKUP_OFFSITE_TARGET)
+    if [[ -n "${offsite_target}" ]]; then
+      echo -e "  Off-site copy of every archive → ${offsite_target}"
+      echo -e "  Test it now: docker compose exec backup python scripts/backup_scheduler.py once"
+    else
+      echo -e "  ${YELLOW}No off-site copy configured.${NC} Set BACKUP_OFFSITE_TARGET in .env – see docs/operations.md."
+    fi
+  else
+    echo -e "  ${RED}${BOLD}⚠  Backups are DISABLED${NC} (AGE_RECIPIENT or the \"production\" profile missing)."
+    echo -e "  See docs/operations.md → Encrypted backups."
+  fi
+  if [[ ",${COMPOSE_PROFILES}," == *",monitoring,"* ]]; then
+    echo -e "  Monitoring: ssh -L 9090:localhost:9090 -L 9093:localhost:9093 root@<host>"
+  fi
+  echo ""
 
   echo -e "${BOLD}First login:${NC}"
   echo -e "  URL:      https://${DOMAIN}"
@@ -813,6 +1157,7 @@ main() {
   start_services        # 9
   generate_vapid_keys   # 9b ← rebuilds frontend with real VAPID key
   create_admin_user     # 9c
+  verify_deployment     # 9d
   print_summary         # 10
 }
 

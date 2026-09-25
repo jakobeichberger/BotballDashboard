@@ -19,6 +19,28 @@ The admin_user fixture is a superuser, so it bypasses all permission checks
 
 import pytest
 
+from tests.paper_helpers import FULL_SCORES, api_upload, api_upload_and_submit
+
+
+async def _other_team_id(client, auth_headers, name="Other"):
+    resp = await client.post(
+        "/api/teams", headers=auth_headers, json={"name": name, "country": "DE"}
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["id"]
+
+
+async def _submitted_and_assigned(client, auth_headers, season, team, reviewer_id):
+    created = await _create_paper(client, auth_headers, season, team)
+    await api_upload_and_submit(client, auth_headers, created["id"])
+    resp = await client.post(
+        f"/api/papers/{created['id']}/assignments",
+        headers=auth_headers,
+        json={"reviewer_id": reviewer_id},
+    )
+    assert resp.status_code == 201, resp.text
+    return created
+
 
 def _paper_body(season, team, **overrides):
     body = {
@@ -89,8 +111,9 @@ class TestCreateGetList:
 
     @pytest.mark.asyncio
     async def test_list_papers(self, client, auth_headers, season, team):
+        other_team_id = await _other_team_id(client, auth_headers)
         await _create_paper(client, auth_headers, season, team, title="One")
-        await _create_paper(client, auth_headers, season, team, title="Two")
+        await _create_paper(client, auth_headers, season, team, title="Two", team_id=other_team_id)
         resp = await client.get("/api/papers", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
@@ -103,8 +126,11 @@ class TestCreateGetList:
     @pytest.mark.asyncio
     async def test_list_filter_by_status(self, client, auth_headers, season, team):
         # Two freshly created papers default to "draft".
+        other_team_id = await _other_team_id(client, auth_headers)
         a = await _create_paper(client, auth_headers, season, team, title="Draft A")
-        b = await _create_paper(client, auth_headers, season, team, title="Draft B")
+        b = await _create_paper(
+            client, auth_headers, season, team, title="Draft B", team_id=other_team_id
+        )
 
         resp = await client.get("/api/papers", headers=auth_headers, params={"status": "draft"})
         assert resp.status_code == 200
@@ -216,8 +242,15 @@ class TestUploadDownload:
 
 class TestSubmit:
     @pytest.mark.asyncio
+    async def test_submit_without_pdf_conflicts(self, client, auth_headers, season, team):
+        created = await _create_paper(client, auth_headers, season, team)
+        resp = await client.put(f"/api/papers/{created['id']}/submit", headers=auth_headers)
+        assert resp.status_code == 409
+
+    @pytest.mark.asyncio
     async def test_submit_paper(self, client, auth_headers, season, team):
         created = await _create_paper(client, auth_headers, season, team)
+        await api_upload(client, auth_headers, created["id"])
         resp = await client.put(f"/api/papers/{created['id']}/submit", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
@@ -227,7 +260,7 @@ class TestSubmit:
     @pytest.mark.asyncio
     async def test_double_submit_conflict(self, client, auth_headers, season, team):
         created = await _create_paper(client, auth_headers, season, team)
-        await client.put(f"/api/papers/{created['id']}/submit", headers=auth_headers)
+        await api_upload_and_submit(client, auth_headers, created["id"])
         resp = await client.put(f"/api/papers/{created['id']}/submit", headers=auth_headers)
         assert resp.status_code == 409
 
@@ -334,19 +367,16 @@ class TestReviews:
     async def test_save_review_after_assignment(
         self, client, auth_headers, season, team, admin_user
     ):
-        created = await _create_paper(client, auth_headers, season, team)
-        await client.post(
-            f"/api/papers/{created['id']}/assignments",
-            headers=auth_headers,
-            json={"reviewer_id": admin_user.id},
-        )
+        created = await _submitted_and_assigned(client, auth_headers, season, team, admin_user.id)
         resp = await client.put(
             f"/api/papers/{created['id']}/reviews",
             headers=auth_headers,
             json={
                 "score_content": 8.0,
-                "score_methodology": 6.0,
+                "score_implementation": 6.0,
+                "comment_content": "Clear concept",
                 "comments": "Solid",
+                "revision_notes": "Shorten section 3",
                 "recommendation": "accept",
             },
         )
@@ -354,6 +384,9 @@ class TestReviews:
         data = resp.json()
         assert data["total_score"] == 7.0  # avg(8, 6)
         assert data["comments"] == "Solid"
+        assert data["comment_content"] == "Clear concept"
+        assert data["revision_notes"] == "Shorten section 3"
+        assert data["version_number"] == 1
         assert data["is_submitted"] is False
 
     @pytest.mark.asyncio
@@ -371,33 +404,36 @@ class TestReviews:
     async def test_submit_review_marks_submitted(
         self, client, auth_headers, season, team, admin_user
     ):
-        created = await _create_paper(client, auth_headers, season, team)
-        await client.post(
-            f"/api/papers/{created['id']}/assignments",
+        created = await _submitted_and_assigned(client, auth_headers, season, team, admin_user.id)
+        resp = await client.put(
+            f"/api/papers/{created['id']}/reviews",
             headers=auth_headers,
-            json={"reviewer_id": admin_user.id},
+            params={"submit": "true"},
+            json={**FULL_SCORES, "recommendation": "accept"},
         )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["is_submitted"] is True
+        assert data["submitted_at"] is not None
+        assert data["total_score"] == 8.0
+        assert data["recommendation"] == "accept"
+
+    @pytest.mark.asyncio
+    async def test_submit_incomplete_review_422(
+        self, client, auth_headers, season, team, admin_user
+    ):
+        created = await _submitted_and_assigned(client, auth_headers, season, team, admin_user.id)
         resp = await client.put(
             f"/api/papers/{created['id']}/reviews",
             headers=auth_headers,
             params={"submit": "true"},
             json={"score_content": 9.0, "recommendation": "accept"},
         )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["is_submitted"] is True
-        assert data["submitted_at"] is not None
-        assert data["total_score"] == 9.0
-        assert data["recommendation"] == "accept"
+        assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_review_idempotent_update(self, client, auth_headers, season, team, admin_user):
-        created = await _create_paper(client, auth_headers, season, team)
-        await client.post(
-            f"/api/papers/{created['id']}/assignments",
-            headers=auth_headers,
-            json={"reviewer_id": admin_user.id},
-        )
+        created = await _submitted_and_assigned(client, auth_headers, season, team, admin_user.id)
         first = await client.put(
             f"/api/papers/{created['id']}/reviews",
             headers=auth_headers,
@@ -406,19 +442,14 @@ class TestReviews:
         second = await client.put(
             f"/api/papers/{created['id']}/reviews",
             headers=auth_headers,
-            json={"score_methodology": 7.0},
+            json={"score_implementation": 7.0},
         )
         assert first.json()["id"] == second.json()["id"]
         assert second.json()["total_score"] == 6.0  # avg(5, 7)
 
     @pytest.mark.asyncio
     async def test_list_reviews(self, client, auth_headers, season, team, admin_user):
-        created = await _create_paper(client, auth_headers, season, team)
-        await client.post(
-            f"/api/papers/{created['id']}/assignments",
-            headers=auth_headers,
-            json={"reviewer_id": admin_user.id},
-        )
+        created = await _submitted_and_assigned(client, auth_headers, season, team, admin_user.id)
         await client.put(
             f"/api/papers/{created['id']}/reviews",
             headers=auth_headers,
@@ -455,31 +486,26 @@ class TestFullLifecycle:
         pid = created["id"]
         assert created["status"] == "draft"
 
-        # submit -> submitted
-        r = await client.put(f"/api/papers/{pid}/submit", headers=auth_headers)
-        assert r.json()["status"] == "submitted"
+        # upload + submit -> submitted
+        r = await api_upload_and_submit(client, auth_headers, pid)
+        assert r["status"] == "submitted"
 
-        # assign + review + submit
+        # the first assignment starts the review
         await client.post(
             f"/api/papers/{pid}/assignments",
             headers=auth_headers,
             json={"reviewer_id": admin_user.id},
         )
+        paper = await client.get(f"/api/papers/{pid}", headers=auth_headers)
+        assert paper.json()["status"] == "under_review"
+
         rev = await client.put(
             f"/api/papers/{pid}/reviews",
             headers=auth_headers,
             params={"submit": "true"},
-            json={"score_content": 8.0, "recommendation": "accept"},
+            json={**FULL_SCORES, "recommendation": "accept"},
         )
         assert rev.json()["is_submitted"] is True
-
-        # admin moves the paper under review, then accepts it
-        ur = await client.put(
-            f"/api/papers/{pid}/status",
-            headers=auth_headers,
-            params={"status": "under_review"},
-        )
-        assert ur.json()["status"] == "under_review"
 
         acc = await client.put(
             f"/api/papers/{pid}/status",

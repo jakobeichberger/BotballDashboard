@@ -1,3 +1,5 @@
+import type { SheetDefinition } from "@/modules/scoring/sheet/calculator";
+
 export interface EventSummary {
   id: string;
   season_id: string;
@@ -56,8 +58,43 @@ export interface ScheduledMatch {
   duration_minutes: number;
   status: string;
   bracket: string | null;
+  next_winner_match_id?: string | null;
+  next_loser_match_id?: string | null;
+  /** Loser-bracket rounds alternate "minor" / "major". */
+  round_kind?: string | null;
   version: number;
-  participants: Array<{ id: string; team_id: string | null; team_name: string | null; team_number: string | null; position: number; side: string | null }>;
+  participants: Array<{
+    id: string;
+    team_id: string | null;
+    team_name: string | null;
+    team_number: string | null;
+    position: number;
+    side: string | null;
+    result?: string | null;
+    score?: number | null;
+  }>;
+}
+
+export interface BracketPlacement {
+  team_id: string;
+  team_name: string;
+  team_number: string | null;
+  /** Bracket placement, shared by teams knocked out in the same round. */
+  rank: number;
+  /** Placement with ties broken by the season's tie-breakers / seeding rank. */
+  placement?: number | null;
+  decided_by?: string | null;
+}
+
+/** One elimination phase as returned by /events/{id}/bracket (and the public variant). */
+export interface BracketPhase {
+  phase_id: string;
+  phase_name: string;
+  phase_type: string;
+  status: string;
+  bracket_label: string;
+  matches: ScheduledMatch[];
+  placements: BracketPlacement[];
 }
 
 export interface RankingEntry {
@@ -70,6 +107,8 @@ export interface RankingEntry {
   best_score: number;
   average_score: number;
   rounds_played: number;
+  /** Label of the tie-breaker that placed the team against an equal seed score. */
+  tiebreaker?: string | null;
   updated_at: string;
 }
 
@@ -103,6 +142,8 @@ export interface ScoringSchema {
   event_id: string | null;
   competition_level_id: string | null;
   fields: ScoringField[];
+  /** Structured sheet (sections, area multipliers, sides A/B); null for flat schemas. */
+  definition?: SheetDefinition | null;
   version: number;
   is_active: boolean;
 }

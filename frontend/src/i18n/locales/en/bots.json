@@ -1,0 +1,45 @@
+{
+  "title": "Bot gallery",
+  "createFailed": "Creating failed.",
+  "filter": {
+    "season": "Filter by season",
+    "allSeasons": "All seasons",
+    "teams": "Filter teams",
+    "allTeams": "All teams",
+    "ownTeams": "Own teams",
+    "externalTeams": "External teams"
+  },
+  "add": "+ Create bot",
+  "form": {
+    "namePlaceholder": "e.g. RoboLion X1",
+    "owner": "Belongs to",
+    "ownTeam": "Own team",
+    "externalTeam": "External team",
+    "team": "Team",
+    "chooseTeam": "— choose team —",
+    "externalPlaceholder": "e.g. Team Zurich",
+    "season": "Season",
+    "noSeason": "— none —",
+    "drive": "Drive",
+    "drivePlaceholder": "e.g. differential",
+    "sensors": "Sensors",
+    "sensorsPlaceholder": "e.g. 2x IR, camera",
+    "description": "Short description",
+    "functionality": "How it works",
+    "functionalityPlaceholder": "How does the robot work? Design, drive, strategy …",
+    "create": "Create bot",
+    "imageHint": "An image can be uploaded on the detail page after creating the bot."
+  },
+  "own": "Own",
+  "external": "External",
+  "empty": "No bots in the gallery yet",
+  "detail": {
+    "back": "Back to the gallery",
+    "notFound": "Bot not found.",
+    "confirmDelete": "Really delete bot \"{{name}}\"?",
+    "noFunctionality": "No description of how it works available.",
+    "noImage": "No image uploaded",
+    "imageTypes": "PNG, JPEG, GIF or WebP",
+    "uploadImage": "Upload image"
+  }
+}

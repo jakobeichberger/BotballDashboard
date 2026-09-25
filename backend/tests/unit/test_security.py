@@ -4,6 +4,7 @@ upload validation, secret-validation, and self-service privilege boundaries."""
 import io
 
 import pytest
+from cryptography.fernet import Fernet
 
 from core.config import Settings
 from core.exceptions import ValidationError
@@ -120,10 +121,23 @@ class TestSecretValidation:
             app_secret_key="A" * 40,
             jwt_secret_key="B" * 40,
             postgres_password="C" * 40,
-            printer_credential_encryption_key="D" * 40,
+            printer_credential_encryption_key=Fernet.generate_key().decode(),
             _env_file=None,
         )
         assert s.app_env == "production"
+
+    def test_production_rejects_non_fernet_printer_key(self):
+        # 40 random characters pass the length check but would crash the first
+        # printer credential encryption at runtime – refuse at start instead.
+        with pytest.raises(Exception, match="PRINTER_CREDENTIAL_ENCRYPTION_KEY"):
+            Settings(
+                app_env="production",
+                app_secret_key="A" * 40,
+                jwt_secret_key="B" * 40,
+                postgres_password="C" * 40,
+                printer_credential_encryption_key="D" * 40,
+                _env_file=None,
+            )
 
     def test_development_allows_defaults(self):
         s = Settings(

@@ -66,7 +66,11 @@ export interface paths {
         get: operations["get_me_api_auth_me_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete My Account
+         * @description Delete (anonymise) the caller's account. Requires the current password.
+         */
+        delete: operations["delete_my_account_api_auth_me_delete"];
         options?: never;
         head?: never;
         /** Update Me */
@@ -84,6 +88,98 @@ export interface paths {
         put?: never;
         /** Change Password */
         post: operations["change_password_api_auth_me_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change Email */
+        post: operations["change_email_api_auth_me_email_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export My Data
+         * @description All personal data stored about the caller (DSGVO Art. 15/20).
+         */
+        get: operations["export_my_data_api_auth_me_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password-reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Password Reset
+         * @description Always 204, whether or not the address belongs to an account.
+         */
+        post: operations["request_password_reset_api_auth_password_reset_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Password Reset */
+        post: operations["confirm_password_reset_api_auth_password_reset_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notification Preferences */
+        get: operations["get_notification_preferences_api_auth_me_notification_preferences_get"];
+        /** Update Notification Preferences */
+        put: operations["update_notification_preferences_api_auth_me_notification_preferences_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -137,11 +233,35 @@ export interface paths {
         get: operations["get_user_api_auth_users__user_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Admin Delete User
+         * @description Delete (anonymise) a user account; its history stays attributed to it.
+         */
+        delete: operations["admin_delete_user_api_auth_users__user_id__delete"];
         options?: never;
         head?: never;
         /** Update User */
         patch: operations["update_user_api_auth_users__user_id__patch"];
+        trace?: never;
+    };
+    "/api/auth/users/{user_id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Set Password
+         * @description Set a user's password (e.g. after a lost password) and end their sessions.
+         */
+        post: operations["admin_set_password_api_auth_users__user_id__password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/auth/roles": {
@@ -172,6 +292,26 @@ export interface paths {
         /** List Permissions */
         get: operations["list_permissions_api_auth_permissions_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/roles/{role_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Role
+         * @description Replace a role's permissions (the admin role keeps its critical ones).
+         */
+        put: operations["update_role_api_auth_roles__role_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -231,6 +371,46 @@ export interface paths {
         head?: never;
         /** Update Season */
         patch: operations["update_season_api_seasons__season_id__patch"];
+        trace?: never;
+    };
+    "/api/seasons/{season_id}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clone Season
+         * @description Copy a season's configuration (not its results) into a new draft season.
+         */
+        post: operations["clone_season_api_seasons__season_id__clone_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/seasons/{season_id}/export.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Season
+         * @description Complete JSON snapshot of the season (events, registrations, results, …).
+         */
+        get: operations["export_season_api_seasons__season_id__export_json_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/seasons/{season_id}/activate": {
@@ -391,6 +571,26 @@ export interface paths {
         patch: operations["update_event_api_v1_events__event_id__patch"];
         trace?: never;
     };
+    "/api/v1/events/{event_id}/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Event Modules
+         * @description Which modules the event uses — drives the navigation and route guards.
+         */
+        get: operations["get_event_modules_api_v1_events__event_id__modules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/registrations": {
         parameters: {
             query?: never;
@@ -491,6 +691,98 @@ export interface paths {
         put?: never;
         /** Generate Schedule */
         post: operations["generate_schedule_api_v1_events__event_id__schedule_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/registrations/seeds-from-seeding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign Seeds From Seeding
+         * @description Fill the registration seeds (per category) from the seeding ranking.
+         */
+        post: operations["assign_seeds_from_seeding_api_v1_events__event_id__registrations_seeds_from_seeding_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/schedule/{match_id}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Match Result
+         * @description Record a match result; elimination winners and losers advance automatically.
+         */
+        post: operations["record_match_result_api_v1_events__event_id__schedule__match_id__result_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/bracket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bracket */
+        get: operations["get_bracket_api_v1_events__event_id__bracket_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/phases/{phase_id}/alliances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Alliance Standings */
+        get: operations["get_alliance_standings_api_v1_events__event_id__phases__phase_id__alliances_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/bracket-weights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bracket Weights */
+        get: operations["get_bracket_weights_api_v1_events__event_id__bracket_weights_get"];
+        /** Set Bracket Weights */
+        put: operations["set_bracket_weights_api_v1_events__event_id__bracket_weights_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -617,6 +909,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/events/{slug}/bracket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Bracket */
+        get: operations["get_public_bracket_api_v1_public_events__slug__bracket_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/events/{slug}/ranking": {
         parameters: {
             query?: never;
@@ -692,11 +1001,32 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Teams */
+        /**
+         * List Teams
+         * @description Teams, searchable by name/number/school/city and filterable by country,
+         *     status (active/archived), season and the season's team type.
+         */
         get: operations["list_teams_api_teams_get"];
         put?: never;
         /** Create Team */
         post: operations["create_team_api_teams_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/countries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Team Countries */
+        get: operations["list_team_countries_api_teams_countries_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -775,6 +1105,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/print-compliance/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Compliance Items
+         * @description The season's checklist items (the competition rules for printed parts).
+         */
+        get: operations["list_compliance_items_api_teams_print_compliance_items_get"];
+        put?: never;
+        /** Create Compliance Item */
+        post: operations["create_compliance_item_api_teams_print_compliance_items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/print-compliance/items/defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Compliance Items
+         * @description Start a season's checklist from the general 3D-print rules (module 04).
+         */
+        post: operations["seed_compliance_items_api_teams_print_compliance_items_defaults_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/print-compliance/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Compliance Item */
+        delete: operations["delete_compliance_item_api_teams_print_compliance_items__item_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Compliance Item */
+        patch: operations["update_compliance_item_api_teams_print_compliance_items__item_id__patch"];
+        trace?: never;
+    };
     "/api/teams/{team_id}/history": {
         parameters: {
             query?: never;
@@ -842,6 +1231,220 @@ export interface paths {
         delete: operations["remove_member_api_teams__team_id__members__member_id__delete"];
         options?: never;
         head?: never;
+        /**
+         * Update Member
+         * @description Edit a member. Linking or unlinking a user account (user_id) decides
+         *     who acts for the team, so only teams:admin may change it; a mentor can
+         *     still correct name, e-mail and role of their own team's members.
+         */
+        patch: operations["update_member_api_teams__team_id__members__member_id__patch"];
+        trace?: never;
+    };
+    "/api/teams/{team_id}/seasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Team Seasons
+         * @description Every season the team took part in, with its registration details.
+         */
+        get: operations["list_team_seasons_api_teams__team_id__seasons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/seasons/{season_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Team Season */
+        get: operations["get_team_season_api_teams__team_id__seasons__season_id__get"];
+        /**
+         * Update Team Season
+         * @description Edit a season registration.
+         *
+         *     Organizers (teams:admin) edit everything: team type, fee and kit status,
+         *     confirmation, notes. A mentor may only keep the contact person and the
+         *     address of their own team up to date.
+         */
+        put: operations["update_team_season_api_teams__team_id__seasons__season_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/seasons/{season_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Season Roster
+         * @description Who was on the team in this season (names and season roles only).
+         */
+        get: operations["get_season_roster_api_teams__team_id__seasons__season_id__members_get"];
+        /** Set Season Roster */
+        put: operations["set_season_roster_api_teams__team_id__seasons__season_id__members_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/seasons/{season_id}/print-compliance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Print Compliance */
+        get: operations["get_print_compliance_api_teams__team_id__seasons__season_id__print_compliance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/seasons/{season_id}/print-compliance/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Verify Print Compliance
+         * @description Organizer confirms (or withdraws) the team's completed checklist.
+         */
+        put: operations["verify_print_compliance_api_teams__team_id__seasons__season_id__print_compliance_verify_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/seasons/{season_id}/print-compliance/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Print Compliance Check
+         * @description Tick (or untick) one checklist item for the team.
+         */
+        put: operations["set_print_compliance_check_api_teams__team_id__seasons__season_id__print_compliance__item_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Team Documents
+         * @description The team's documents with all versions (own team and organizers only).
+         */
+        get: operations["list_team_documents_api_teams__team_id__documents_get"];
+        put?: never;
+        /**
+         * Upload Team Document
+         * @description Upload a new document (PDF or image) as its version 1.
+         */
+        post: operations["upload_team_document_api_teams__team_id__documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/documents/{document_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Team Document Version
+         * @description Upload a new version; earlier versions stay in the archive.
+         */
+        post: operations["upload_team_document_version_api_teams__team_id__documents__document_id__versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Team Document
+         * @description Delete a document with all its versions.
+         */
+        delete: operations["delete_team_document_api_teams__team_id__documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Team Document */
+        patch: operations["update_team_document_api_teams__team_id__documents__document_id__patch"];
+        trace?: never;
+    };
+    "/api/teams/{team_id}/documents/{document_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Team Document
+         * @description Download one version (default: the latest) as an attachment.
+         */
+        get: operations["download_team_document_api_teams__team_id__documents__document_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -855,6 +1458,8 @@ export interface paths {
         /**
          * Get Scoring Schema
          * @description The active scoring schema (scored fields + multipliers) for a season.
+         *
+         *     With `event_id`, an event-specific schema version wins over the season's.
          */
         get: operations["get_scoring_schema_api_scoring_seasons__season_id__schema_get"];
         put?: never;
@@ -926,7 +1531,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Score Revisions */
+        /**
+         * List Score Revisions
+         * @description A match's score history; still available after the match was deleted.
+         */
         get: operations["list_score_revisions_api_scoring_matches__match_id__revisions_get"];
         put?: never;
         post?: never;
@@ -944,8 +1552,51 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Confirm Match */
+        /**
+         * Confirm Match
+         * @description Confirm a score; the season's required referee checklist items must be ticked.
+         */
         put: operations["confirm_match_api_scoring_matches__match_id__confirm_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Event Score Revisions
+         * @description Score audit trail of an event, newest first, including deleted matches.
+         */
+        get: operations["list_event_score_revisions_api_scoring_events__event_id__revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/result-revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Result Revisions
+         * @description Audit trail of the DE, aerial and documentation results of an event.
+         */
+        get: operations["list_result_revisions_api_scoring_events__event_id__result_revisions_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -962,10 +1613,10 @@ export interface paths {
         };
         /**
          * Get Ranking
-         * @description Public endpoint – no auth required for scoreboard display.
+         * @description Seeding ranking of the season's default event.
          *
-         *     NOTE: unlike GET /v1/public/events/{slug}/ranking this does not honour the
-         *     event's public_scoreboard / public_results flags.
+         *     Readable without login only when that event's scoreboard is public (see
+         *     _authorize_ranking); otherwise scoring:read is required.
          */
         get: operations["get_ranking_api_scoring_seasons__season_id__ranking_get"];
         put?: never;
@@ -985,9 +1636,32 @@ export interface paths {
         };
         /**
          * Get Ranking Extended
-         * @description Seeding ranking enriched with team name and registration category.
+         * @description Seeding ranking enriched with team name and category.
+         *
+         *     Ranks are per category (Botball and Open are separate competitions); a
+         *     red-carded team is listed with `disqualified` and no rank.
          */
         get: operations["get_ranking_extended_api_scoring_seasons__season_id__ranking_extended_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/ranking/extended": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Event Ranking Extended
+         * @description Seeding ranking of one event, with team names and per-category ranks.
+         */
+        get: operations["get_event_ranking_extended_api_scoring_events__event_id__ranking_extended_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1008,7 +1682,8 @@ export interface paths {
          * @description Overall ranking computed from the season's configured formula set.
          *
          *     Results are recorded per event, so this ranks one event: the one named by
-         *     `event_id`, otherwise the season's most recent one.
+         *     `event_id`, otherwise the season's default event — the same one the other
+         *     season routes read and write, so a result entered through them shows here.
          */
         get: operations["get_overall_ranking_api_scoring_seasons__season_id__ranking_overall_get"];
         put?: never;
@@ -1074,6 +1749,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scoring/events/{event_id}/de-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Event De Results */
+        get: operations["list_event_de_results_api_scoring_events__event_id__de_results_get"];
+        /** Bulk Upsert Event De Results */
+        put: operations["bulk_upsert_event_de_results_api_scoring_events__event_id__de_results_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/de-results/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upsert Event De Result */
+        put: operations["upsert_event_de_result_api_scoring_events__event_id__de_results__team_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scoring/seasons/{season_id}/aerial-results": {
         parameters: {
             query?: never;
@@ -1126,6 +1836,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scoring/events/{event_id}/aerial-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Event Aerial Results */
+        get: operations["list_event_aerial_results_api_scoring_events__event_id__aerial_results_get"];
+        /** Bulk Upsert Event Aerial Results */
+        put: operations["bulk_upsert_event_aerial_results_api_scoring_events__event_id__aerial_results_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/aerial-ranking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event Aerial Ranking */
+        get: operations["get_event_aerial_ranking_api_scoring_events__event_id__aerial_ranking_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/aerial-results/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upsert Event Aerial Result */
+        put: operations["upsert_event_aerial_result_api_scoring_events__event_id__aerial_results__team_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scoring/seasons/{season_id}/doc-scores": {
         parameters: {
             query?: never;
@@ -1154,6 +1916,41 @@ export interface paths {
         get?: never;
         /** Upsert Doc Score */
         put: operations["upsert_doc_score_api_scoring_seasons__season_id__doc_scores__team_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/doc-scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Event Doc Scores */
+        get: operations["list_event_doc_scores_api_scoring_events__event_id__doc_scores_get"];
+        /** Bulk Upsert Event Doc Scores */
+        put: operations["bulk_upsert_event_doc_scores_api_scoring_events__event_id__doc_scores_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/doc-scores/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upsert Event Doc Score */
+        put: operations["upsert_event_doc_score_api_scoring_events__event_id__doc_scores__team_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1302,6 +2099,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scoring/formulas/seasons/{season_id}/presets/{preset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Formula Preset
+         * @description Replace a category's formulas with a shipped preset (ECER, regional, GCER, ...).
+         */
+        post: operations["apply_formula_preset_api_scoring_formulas_seasons__season_id__presets__preset_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scoring/formulas/seasons/{season_id}/{category}/effective": {
         parameters: {
             query?: never;
@@ -1388,6 +2205,436 @@ export interface paths {
         /** Set Bracket Weights */
         put: operations["set_bracket_weights_api_scoring_formulas_seasons__season_id___category__bracket_weights_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/seasons/{season_id}/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rules
+         * @description Tie-breaker order, finals replay rule, contact bonus and referee checklist.
+         */
+        get: operations["get_rules_api_scoring_seasons__season_id__rules_get"];
+        /** Put Rules */
+        put: operations["put_rules_api_scoring_seasons__season_id__rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/tiebreaker-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tiebreaker Presets
+         * @description Tie-breaker lists transcribed from the 2024/2025/2026 game reviews.
+         */
+        get: operations["list_tiebreaker_presets_api_scoring_tiebreaker_presets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/schema-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Schema Templates
+         * @description Score sheets 2024/2025 (complete) and 2026 (structure) as starting points.
+         */
+        get: operations["list_schema_templates_api_scoring_schema_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/schemas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Schemas
+         * @description Active schema versions of every event/level — sources for "clone from".
+         */
+        get: operations["list_schemas_api_scoring_schemas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/scoring-schema/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clone Schema
+         * @description Copy another event's/level's schema (e.g. ECER → GCER) as a new version.
+         */
+        post: operations["clone_schema_api_scoring_events__event_id__scoring_schema_clone_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/scheduled-matches/{scheduled_match_id}/outcome": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Head To Head Outcome
+         * @description Winner of a head-to-head match and what decided it (score, tie-breaker, …).
+         */
+        get: operations["get_head_to_head_outcome_api_scoring_scheduled_matches__scheduled_match_id__outcome_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/de-placement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get De Placement */
+        get: operations["get_de_placement_api_scoring_events__event_id__de_placement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/parts-challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Parts Challenges */
+        get: operations["list_parts_challenges_api_scoring_events__event_id__parts_challenges_get"];
+        put?: never;
+        /** Create Parts Challenge */
+        post: operations["create_parts_challenge_api_scoring_events__event_id__parts_challenges_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/parts-challenges/{challenge_id}/ruling": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Rule Parts Challenge */
+        put: operations["rule_parts_challenge_api_scoring_parts_challenges__challenge_id__ruling_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/seasons/{season_id}/external-teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List External Teams */
+        get: operations["list_external_teams_api_scoring_seasons__season_id__external_teams_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/external-teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create External Team */
+        post: operations["create_external_team_api_scoring_external_teams_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/external-teams/{external_team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete External Team */
+        delete: operations["delete_external_team_api_scoring_external_teams__external_team_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update External Team */
+        patch: operations["update_external_team_api_scoring_external_teams__external_team_id__patch"];
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/scouting/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Scouting Notes
+         * @description Organizers see all notes, everybody else only their own teams' notes.
+         */
+        get: operations["list_scouting_notes_api_scoring_events__event_id__scouting_notes_get"];
+        put?: never;
+        /** Create Scouting Note */
+        post: operations["create_scouting_note_api_scoring_events__event_id__scouting_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/scouting/notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Scouting Note */
+        delete: operations["delete_scouting_note_api_scoring_scouting_notes__note_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Scouting Note */
+        patch: operations["update_scouting_note_api_scoring_scouting_notes__note_id__patch"];
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/scouting/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Observations */
+        get: operations["list_observations_api_scoring_events__event_id__scouting_observations_get"];
+        put?: never;
+        /** Create Observation */
+        post: operations["create_observation_api_scoring_events__event_id__scouting_observations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/scouting/observations/{observation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Observation */
+        delete: operations["delete_observation_api_scoring_scouting_observations__observation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/opponent-ranking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Opponent Ranking
+         * @description Own teams (official seeding) and external teams (observed scores) ranked together.
+         */
+        get: operations["get_opponent_ranking_api_scoring_events__event_id__opponent_ranking_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/scouting/report.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Scouting Report */
+        get: operations["export_scouting_report_api_scoring_events__event_id__scouting_report_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/seasons/{season_id}/qualifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Qualifications */
+        get: operations["list_qualifications_api_scoring_seasons__season_id__qualifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/seasons/{season_id}/qualification-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Qualification Status
+         * @description Candidates for a level and whether each is already qualified.
+         */
+        get: operations["get_qualification_status_api_scoring_seasons__season_id__qualification_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/levels/{level_id}/qualify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Qualify Teams
+         * @description Admin: mark teams as qualified for this level (manual, with a note).
+         */
+        post: operations["qualify_teams_api_scoring_levels__level_id__qualify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/qualifications/{qualification_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Qualification */
+        delete: operations["revoke_qualification_api_scoring_qualifications__qualification_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/register-qualified": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register Qualified Teams
+         * @description Register every team qualified for the level at this (e.g. GCER) event.
+         */
+        post: operations["register_qualified_teams_api_scoring_events__event_id__register_qualified_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1498,6 +2745,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/papers/deadline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Paper Deadline
+         * @description The season's paper deadline, resolved to the event's timezone.
+         */
+        get: operations["get_paper_deadline_api_papers_deadline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/papers/deadlines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Paper Deadlines
+         * @description Official and internal paper deadlines of a season.
+         */
+        get: operations["list_paper_deadlines_api_papers_deadlines_get"];
+        put?: never;
+        /** Create Paper Deadline */
+        post: operations["create_paper_deadline_api_papers_deadlines_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/papers/deadlines/{deadline_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Paper Deadline */
+        delete: operations["delete_paper_deadline_api_papers_deadlines__deadline_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Paper Deadline */
+        patch: operations["update_paper_deadline_api_papers_deadlines__deadline_id__patch"];
+        trace?: never;
+    };
+    "/api/papers/auto-assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Auto Assign Reviewers
+         * @description Give every open paper up to N reviewers, balancing the reviewers'
+         *     workload and skipping conflicts of interest (own team, same school).
+         */
+        post: operations["auto_assign_reviewers_api_papers_auto_assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/papers/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Paper Stats
+         * @description Averages, acceptance rate and review progress for organizers.
+         */
+        get: operations["get_paper_stats_api_papers_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/papers/{paper_id}": {
         parameters: {
             query?: never;
@@ -1516,6 +2863,26 @@ export interface paths {
         patch: operations["update_paper_api_papers__paper_id__patch"];
         trace?: never;
     };
+    "/api/papers/{paper_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Paper Feedback
+         * @description Reviewer feedback released to the paper's team (decided rounds only).
+         */
+        get: operations["get_paper_feedback_api_papers__paper_id__feedback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/papers/{paper_id}/upload": {
         parameters: {
             query?: never;
@@ -1525,8 +2892,48 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload Paper File */
+        /**
+         * Upload Paper File
+         * @description Upload the PDF as a new version (drafts and requested revisions only).
+         */
         post: operations["upload_paper_file_api_papers__paper_id__upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/papers/{paper_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Paper Versions */
+        get: operations["list_paper_versions_api_papers__paper_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/papers/{paper_id}/versions/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diff Paper Versions
+         * @description Text diff between two PDF versions (default: previous vs. latest).
+         */
+        get: operations["diff_paper_versions_api_papers__paper_id__versions_diff_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1540,7 +2947,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download Paper */
+        /**
+         * Download Paper
+         * @description Download one version of the PDF (default: the latest).
+         */
         get: operations["download_paper_api_papers__paper_id__download_get"];
         put?: never;
         post?: never;
@@ -1575,7 +2985,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set Paper Status */
+        /**
+         * Set Paper Status
+         * @description Set the status. disqualified_ai records AI misuse: score 0, no revision.
+         */
         put: operations["set_paper_status_api_papers__paper_id__status_put"];
         post?: never;
         delete?: never;
@@ -1595,7 +3008,8 @@ export interface paths {
         put?: never;
         /**
          * Finalize Paper
-         * @description Aggregate submitted reviews into final_score and recompute paper ranks.
+         * @description Aggregate submitted reviews (minus format deductions) into final_score,
+         *     lock the round's reviews and recompute paper ranks.
          */
         post: operations["finalize_paper_api_papers__paper_id__finalize_post"];
         delete?: never;
@@ -1648,8 +3062,9 @@ export interface paths {
         get?: never;
         /**
          * Set Paper Score
-         * @description Record the review outcome. Separate from PATCH /{paper_id} because
-         *     final_score feeds the overall ranking and papers:write reaches mentors.
+         * @description Record the review outcome or a format deduction. Separate from
+         *     PATCH /{paper_id} because final_score feeds the overall ranking and
+         *     papers:write reaches mentors. Deductions take effect on finalize.
          */
         put: operations["set_paper_score_api_papers__paper_id__score_put"];
         post?: never;
@@ -1685,9 +3100,30 @@ export interface paths {
         };
         /** List Reviews */
         get: operations["list_reviews_api_papers__paper_id__reviews_get"];
-        /** Save Review */
+        /**
+         * Save Review
+         * @description Save (or with ?submit=true, submit) the caller's review of the current
+         *     version. A submitted review is locked until an organizer reopens it.
+         */
         put: operations["save_review_api_papers__paper_id__reviews_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/papers/{paper_id}/reviews/{review_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen Review */
+        post: operations["reopen_review_api_papers__paper_id__reviews__review_id__reopen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1771,7 +3207,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Print Job */
+        get: operations["get_print_job_api_printing_jobs__job_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1798,6 +3235,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/printing/jobs/{job_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reject Print Job */
+        put: operations["reject_print_job_api_printing_jobs__job_id__reject_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/printing/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cancel Print Job
+         * @description Cancel a job. A running print is aborted on the printer as well; the
+         *     response says whether that worked (printer_cancel / printer_message).
+         */
+        put: operations["cancel_print_job_api_printing_jobs__job_id__cancel_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/printing/jobs/{job_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Print File */
+        get: operations["download_print_file_api_printing_jobs__job_id__file_get"];
+        put?: never;
+        /** Upload Print File */
+        post: operations["upload_print_file_api_printing_jobs__job_id__file_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/printing/quotas": {
         parameters: {
             query?: never;
@@ -1809,6 +3302,23 @@ export interface paths {
         get: operations["get_quota_api_printing_quotas_get"];
         /** Set Quota */
         put: operations["set_quota_api_printing_quotas_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/printing/events/{event_id}/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Event Quotas */
+        get: operations["list_event_quotas_api_printing_events__event_id__quotas_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1886,6 +3396,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/announcements/{ann_id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Unpublish Announcement */
+        put: operations["unpublish_announcement_api_dashboard_announcements__ann_id__unpublish_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/announcements/{ann_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Announcement */
+        delete: operations["delete_announcement_api_dashboard_announcements__ann_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/stats": {
         parameters: {
             query?: never;
@@ -1898,6 +3442,240 @@ export interface paths {
          * @description Returns aggregated stats for the dashboard overview widget.
          */
         get: operations["get_stats_api_dashboard_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notifications
+         * @description The caller's recent notifications (in-app fallback for push).
+         */
+        get: operations["list_notifications_api_dashboard_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Notifications Read */
+        post: operations["mark_notifications_read_api_dashboard_notifications_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark All Notifications Read */
+        post: operations["mark_all_notifications_read_api_dashboard_notifications_read_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Summary
+         * @description Role-aware overview: juror queue, own team status, organizer progress.
+         */
+        get: operations["get_summary_api_dashboard_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/teams/{team_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Team History
+         * @description Results of a team at every event over all seasons, oldest first.
+         */
+        get: operations["get_team_history_api_dashboard_teams__team_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/events/{event_id}/performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Performance Overview
+         * @description Team comparison: all teams for organizers, the own teams for mentors.
+         */
+        get: operations["get_performance_overview_api_dashboard_events__event_id__performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/events/{event_id}/teams/{team_id}/performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Team Performance */
+        get: operations["get_team_performance_api_dashboard_events__event_id__teams__team_id__performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/events/{event_id}/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Event Statistics
+         * @description Distributions, heatmap, trends and flagged runs for jurors to double-check.
+         */
+        get: operations["get_event_statistics_api_dashboard_events__event_id__statistics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/deadlines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Deadlines
+         * @description Deadlines of one season, or of every season that concerns the caller.
+         */
+        get: operations["list_deadlines_api_dashboard_deadlines_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/seasons/{season_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Season Timeline */
+        get: operations["get_season_timeline_api_dashboard_seasons__season_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/calendar-feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Calendar Feed */
+        get: operations["get_calendar_feed_api_dashboard_calendar_feed_get"];
+        put?: never;
+        /**
+         * Create Calendar Feed
+         * @description Create or rotate the caller's feed token. It is only shown this once.
+         */
+        post: operations["create_calendar_feed_api_dashboard_calendar_feed_post"];
+        /** Delete Calendar Feed */
+        delete: operations["delete_calendar_feed_api_dashboard_calendar_feed_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/deadlines.ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Deadlines Ics
+         * @description iCal feed of the caller's deadlines.
+         *
+         *     Calendar apps authenticate with the personal ``token`` from
+         *     POST /dashboard/calendar-feed; the web app may use its bearer token
+         *     instead. The feed carries the same deadlines as GET /dashboard/deadlines.
+         */
+        get: operations["deadlines_ics_api_dashboard_deadlines_ics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1932,6 +3710,43 @@ export interface paths {
         };
         /** Export Event Ranking Pdf */
         get: operations["export_event_ranking_pdf_api_exports_events__event_id__ranking_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/events/{event_id}/overall-ranking.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Event Overall Ranking Csv
+         * @description Overall ranking with every value the season's formula set computed.
+         */
+        get: operations["export_event_overall_ranking_csv_api_exports_events__event_id__overall_ranking_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/events/{event_id}/overall-ranking.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Event Overall Ranking Pdf */
+        get: operations["export_event_overall_ranking_pdf_api_exports_events__event_id__overall_ranking_pdf_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2042,6 +3857,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exports/seasons/{season_id}/reviews.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Reviews Csv
+         * @description Every review of the season with all criterion scores and comments.
+         *
+         *     Organizer-only: unlike the team's feedback view it names the reviewer and
+         *     includes drafts and private notes.
+         */
+        get: operations["export_reviews_csv_api_exports_seasons__season_id__reviews_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exports/seasons/{season_id}/printing.pdf": {
         parameters: {
             query?: never;
@@ -2085,6 +3923,66 @@ export interface paths {
         };
         /** Export Teams Csv */
         get: operations["export_teams_csv_api_exports_seasons__season_id__teams_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/teams/{team_id}/report.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Team Report Pdf
+         * @description Results of one team across every event and season.
+         */
+        get: operations["export_team_report_pdf_api_exports_teams__team_id__report_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/teams/{team_id}/history.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Team History Csv
+         * @description Multi-year results of one team as CSV.
+         */
+        get: operations["export_team_history_csv_api_exports_teams__team_id__history_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/history.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export All History Csv
+         * @description Official results of every team at every event over all seasons.
+         */
+        get: operations["export_all_history_csv_api_exports_history_csv_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2206,12 +4104,55 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountDelete */
+        AccountDelete: {
+            /** Current Password */
+            current_password: string;
+        };
+        /** AdminPasswordSet */
+        AdminPasswordSet: {
+            /** New Password */
+            new_password: string;
+        };
+        /** AdminSection */
+        AdminSection: {
+            /** Teams Registered */
+            teams_registered: number;
+            /** Teams Checked In */
+            teams_checked_in: number;
+            /** Teams Scored */
+            teams_scored: number;
+            /** Teams With Paper */
+            teams_with_paper: number;
+            /** Papers Total */
+            papers_total: number;
+            /** Reviews Pending */
+            reviews_pending: number;
+            /** Official Runs */
+            official_runs: number;
+            /** Practice Runs */
+            practice_runs: number;
+            /** Unconfirmed Runs */
+            unconfirmed_runs: number;
+            /** De Results */
+            de_results: number;
+            /** Doc Scores */
+            doc_scores: number;
+            print_queue: components["schemas"]["PrintQueueStatus"];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
         /** AerialResultResponse */
         AerialResultResponse: {
             /** Id */
             id: string;
             /** Season Id */
             season_id: string;
+            /** Event Id */
+            event_id: string;
             /** Team Id */
             team_id: string;
             /** Run1 */
@@ -2248,6 +4189,30 @@ export interface components {
             run4?: number | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** AllianceRun */
+        AllianceRun: {
+            /** Match Id */
+            match_id: string;
+            /** Round Number */
+            round_number: number;
+            /** Score */
+            score: number;
+        };
+        /** AllianceStanding */
+        AllianceStanding: {
+            /** Rank */
+            rank: number;
+            /** Team Ids */
+            team_ids: string[];
+            /** Team Names */
+            team_names: string[];
+            /** Runs */
+            runs: components["schemas"]["AllianceRun"][];
+            /** Best Score */
+            best_score: number;
+            /** Total Score */
+            total_score: number;
         };
         /** AnnouncementCreate */
         AnnouncementCreate: {
@@ -2293,6 +4258,92 @@ export interface components {
              */
             created_at: string;
         };
+        /** Anomaly */
+        Anomaly: {
+            /** Match Id */
+            match_id: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Round Number */
+            round_number: number;
+            /** Total Score */
+            total_score: number;
+            /** Is Practice */
+            is_practice: boolean;
+            /** Scheduled Match Id */
+            scheduled_match_id: string | null;
+            /** Confirmed */
+            confirmed: boolean;
+            /** Created At */
+            created_at: string | null;
+            /** Severity */
+            severity: string;
+            /** Reasons */
+            reasons: components["schemas"]["AnomalyReason"][];
+        };
+        /** AnomalyReason */
+        AnomalyReason: {
+            /** Kind */
+            kind: string;
+            /** Message */
+            message: string;
+            /** Severity */
+            severity: string;
+            /** Score */
+            score: number | null;
+        };
+        /** AutoAssignRequest */
+        AutoAssignRequest: {
+            /** Season Id */
+            season_id: string;
+            /** Event Id */
+            event_id?: string | null;
+            /**
+             * Reviewers Per Paper
+             * @default 2
+             */
+            reviewers_per_paper: number;
+            /** Reviewer Ids */
+            reviewer_ids?: string[] | null;
+            /** Due At */
+            due_at?: string | null;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+        };
+        /** AutoAssignResponse */
+        AutoAssignResponse: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Assignments */
+            assignments: components["schemas"]["AutoAssignment"][];
+            /** Unfilled */
+            unfilled: components["schemas"]["AutoAssignUnfilled"][];
+        };
+        /** AutoAssignUnfilled */
+        AutoAssignUnfilled: {
+            /** Paper Id */
+            paper_id: string;
+            /** Paper Title */
+            paper_title: string;
+            /** Missing */
+            missing: number;
+        };
+        /** AutoAssignment */
+        AutoAssignment: {
+            /** Paper Id */
+            paper_id: string;
+            /** Paper Title */
+            paper_title: string;
+            /** Reviewer Id */
+            reviewer_id: string;
+            /** Reviewer Name */
+            reviewer_name: string;
+        };
         /** Body_upload_bot_image_api_bots__bot_id__image_post */
         Body_upload_bot_image_api_bots__bot_id__image_post: {
             /** File */
@@ -2300,6 +4351,11 @@ export interface components {
         };
         /** Body_upload_paper_file_api_papers__paper_id__upload_post */
         Body_upload_paper_file_api_papers__paper_id__upload_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_upload_print_file_api_printing_jobs__job_id__file_post */
+        Body_upload_print_file_api_printing_jobs__job_id__file_post: {
             /** File */
             file: string;
         };
@@ -2338,6 +4394,29 @@ export interface components {
             game_theme?: string | null;
             /** Competition Level Id */
             competition_level_id?: string | null;
+        };
+        /** Body_upload_team_document_api_teams__team_id__documents_post */
+        Body_upload_team_document_api_teams__team_id__documents_post: {
+            /** File */
+            file: string;
+            /** Title */
+            title: string;
+            /**
+             * Category
+             * @default other
+             */
+            category: string;
+            /** Season Id */
+            season_id?: string | null;
+            /** Description */
+            description?: string | null;
+        };
+        /** Body_upload_team_document_version_api_teams__team_id__documents__document_id__versions_post */
+        Body_upload_team_document_version_api_teams__team_id__documents__document_id__versions_post: {
+            /** File */
+            file: string;
+            /** Comment */
+            comment?: string | null;
         };
         /** BotCreate */
         BotCreate: {
@@ -2410,15 +4489,85 @@ export interface components {
             /** Is Published */
             is_published?: boolean | null;
         };
-        /**
-         * BracketWeightsUpdate
-         * @description Bracket -> weight, e.g. {"A": 1.0, "B": 0.5683760683760684}.
-         */
-        BracketWeightsUpdate: {
-            /** Weights */
-            weights: {
-                [key: string]: number;
-            };
+        /** BoxSummary */
+        BoxSummary: {
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+            /** Min */
+            min?: number | null;
+            /** Q1 */
+            q1?: number | null;
+            /** Median */
+            median?: number | null;
+            /** Q3 */
+            q3?: number | null;
+            /** Max */
+            max?: number | null;
+            /** Mean */
+            mean?: number | null;
+        };
+        /** BracketPhaseResponse */
+        BracketPhaseResponse: {
+            /** Phase Id */
+            phase_id: string;
+            /** Phase Name */
+            phase_name: string;
+            /** Phase Type */
+            phase_type: string;
+            /** Status */
+            status: string;
+            /** Bracket Label */
+            bracket_label: string;
+            /** Matches */
+            matches: components["schemas"]["ScheduledMatchResponse"][];
+            /** Placements */
+            placements: components["schemas"]["BracketPlacement"][];
+        };
+        /** BracketPlacement */
+        BracketPlacement: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Team Number */
+            team_number: string | null;
+            /** Rank */
+            rank: number;
+            /** Placement */
+            placement?: number | null;
+            /** Decided By */
+            decided_by?: string | null;
+        };
+        /** CalendarFeedCreated */
+        CalendarFeedCreated: {
+            /** Token */
+            token: string;
+            /** Path */
+            path: string;
+        };
+        /** CalendarFeedStatus */
+        CalendarFeedStatus: {
+            /** Active */
+            active: boolean;
+            /** Created At */
+            created_at?: string | null;
+            /** Last Used At */
+            last_used_at?: string | null;
+        };
+        /** ChecklistItem */
+        ChecklistItem: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
         };
         /** CompetitionLevelCreate */
         CompetitionLevelCreate: {
@@ -2428,6 +4577,13 @@ export interface components {
             code: string;
             /** Description */
             description?: string | null;
+            /**
+             * Order
+             * @default 0
+             */
+            order: number;
+            /** Qualifies From Level Id */
+            qualifies_from_level_id?: string | null;
         };
         /** CompetitionLevelResponse */
         CompetitionLevelResponse: {
@@ -2441,6 +4597,13 @@ export interface components {
             description: string | null;
             /** Is Active */
             is_active: boolean;
+            /**
+             * Order
+             * @default 0
+             */
+            order: number;
+            /** Qualifies From Level Id */
+            qualifies_from_level_id?: string | null;
         };
         /** CompetitionLevelUpdate */
         CompetitionLevelUpdate: {
@@ -2452,6 +4615,100 @@ export interface components {
             description?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Order */
+            order?: number | null;
+            /** Qualifies From Level Id */
+            qualifies_from_level_id?: string | null;
+        };
+        /** ComplianceCheckUpdate */
+        ComplianceCheckUpdate: {
+            /** Checked */
+            checked: boolean;
+            /** Note */
+            note?: string | null;
+        };
+        /** ComplianceEntry */
+        ComplianceEntry: {
+            item: components["schemas"]["ComplianceItemResponse"];
+            /** Checked */
+            checked: boolean;
+            /** Note */
+            note: string | null;
+            /** Checked By */
+            checked_by: string | null;
+            /** Checked At */
+            checked_at: string | null;
+            /** Verified By */
+            verified_by: string | null;
+            /** Verified At */
+            verified_at: string | null;
+        };
+        /** ComplianceItemCreate */
+        ComplianceItemCreate: {
+            /** Season Id */
+            season_id: string;
+            /** Label */
+            label: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
+        /** ComplianceItemResponse */
+        ComplianceItemResponse: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Label */
+            label: string;
+            /** Description */
+            description: string | null;
+            /** Sort Order */
+            sort_order: number;
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** ComplianceItemUpdate */
+        ComplianceItemUpdate: {
+            /** Label */
+            label?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
+        /** ComplianceStatusResponse */
+        ComplianceStatusResponse: {
+            /** Team Id */
+            team_id: string;
+            /** Season Id */
+            season_id: string;
+            /** Items */
+            items: components["schemas"]["ComplianceEntry"][];
+            /** Total */
+            total: number;
+            /** Checked */
+            checked: number;
+            /** Verified */
+            verified: number;
+            /** Complete */
+            complete: boolean;
+            /** Is Verified */
+            is_verified: boolean;
+        };
+        /** ComplianceVerify */
+        ComplianceVerify: {
+            /**
+             * Verified
+             * @default true
+             */
+            verified: boolean;
         };
         /**
          * ConfirmFieldsRequest
@@ -2495,12 +4752,29 @@ export interface components {
             /** Permissions */
             permissions: string[];
         };
+        /** DEPlacementEntry */
+        DEPlacementEntry: {
+            /** Bracket */
+            bracket: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string | null;
+            /** De Rank */
+            de_rank: number | null;
+            /** Placement */
+            placement: number;
+            /** Decided By */
+            decided_by: string | null;
+        };
         /** DEResultResponse */
         DEResultResponse: {
             /** Id */
             id: string;
             /** Season Id */
             season_id: string;
+            /** Event Id */
+            event_id: string;
             /** Team Id */
             team_id: string;
             /** Bracket */
@@ -2534,12 +4808,56 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** DashboardSummary */
+        DashboardSummary: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * Modules
+             * @default []
+             */
+            modules: string[];
+            juror: components["schemas"]["JurorSection"] | null;
+            mentor: components["schemas"]["MentorSection"] | null;
+            admin: components["schemas"]["AdminSection"] | null;
+            /** Deadlines */
+            deadlines: components["schemas"]["DeadlineEntry"][];
+        };
+        /** DeadlineEntry */
+        DeadlineEntry: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Kind */
+            kind: string;
+            /** Color */
+            color: string;
+            /** Start */
+            start: string;
+            /** End */
+            end?: string | null;
+            /** All Day */
+            all_day: boolean;
+            /** Season Id */
+            season_id: string;
+            /** Season Name */
+            season_name: string;
+            /** Event Id */
+            event_id?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Done */
+            done?: boolean | null;
+        };
         /** DocScoreResponse */
         DocScoreResponse: {
             /** Id */
             id: string;
             /** Season Id */
             season_id: string;
+            /** Event Id */
+            event_id: string;
             /** Team Id */
             team_id: string;
             /** Part1 */
@@ -2577,6 +4895,16 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** EmailChange */
+        EmailChange: {
+            /**
+             * New Email
+             * Format: email
+             */
+            new_email: string;
+            /** Current Password */
+            current_password: string;
+        };
         /** EventCreate */
         EventCreate: {
             /** Season Id */
@@ -2608,7 +4936,7 @@ export interface components {
              */
             status: "draft" | "published" | "live" | "completed" | "archived";
             /** Active Modules */
-            active_modules?: string[];
+            active_modules?: string[] | null;
             /**
              * Public Scoreboard
              * @default false
@@ -2636,6 +4964,24 @@ export interface components {
             table_count: number;
             /** Notes */
             notes?: string | null;
+        };
+        /**
+         * EventModulesResponse
+         * @description Module switches of one event, resolved against its season.
+         */
+        EventModulesResponse: {
+            /** Event Id */
+            event_id: string;
+            /** Available Modules */
+            available_modules: string[];
+            /** Active Modules */
+            active_modules: string[];
+            /** Effective Modules */
+            effective_modules: string[];
+            /** Season Flags */
+            season_flags: {
+                [key: string]: boolean;
+            };
         };
         /** EventPhaseCreate */
         EventPhaseCreate: {
@@ -2869,10 +5215,44 @@ export interface components {
             raw_scores?: {
                 [key: string]: unknown;
             };
+            /**
+             * Round Lost
+             * @default false
+             */
+            round_lost: boolean;
+            /** Round Lost Reason */
+            round_lost_reason?: ("never_left_start_box" | "motors_running" | "other") | null;
+            /**
+             * End Contact
+             * @default false
+             */
+            end_contact: boolean;
+            /** Tiebreak Values */
+            tiebreak_values?: {
+                [key: string]: number | boolean | null;
+            };
             /** Notes */
             notes?: string | null;
             /** Idempotency Key */
             idempotency_key: string;
+        };
+        /** EventStatistics */
+        EventStatistics: {
+            /** Event Id */
+            event_id: string;
+            /** Event Name */
+            event_name: string;
+            /** Include Practice */
+            include_practice: boolean;
+            overview: components["schemas"]["StatsOverview"];
+            /** Rounds */
+            rounds: components["schemas"]["RoundDistribution"][];
+            /** Fields */
+            fields: components["schemas"]["FieldDistribution"][];
+            heatmap: components["schemas"]["Heatmap"];
+            trend: components["schemas"]["Trend"];
+            /** Anomalies */
+            anomalies: components["schemas"]["Anomaly"][];
         };
         /** EventUpdate */
         EventUpdate: {
@@ -2907,6 +5287,68 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** ExternalTeamCreate */
+        ExternalTeamCreate: {
+            /** Season Id */
+            season_id: string;
+            /** Name */
+            name: string;
+            /** Number */
+            number?: string | null;
+            /** Country */
+            country?: string | null;
+            /** School */
+            school?: string | null;
+            /**
+             * Source
+             * @default observed
+             * @enum {string}
+             */
+            source: "observed" | "official";
+            /** Notes */
+            notes?: string | null;
+        };
+        /** ExternalTeamResponse */
+        ExternalTeamResponse: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Name */
+            name: string;
+            /** Number */
+            number: string | null;
+            /** Country */
+            country: string | null;
+            /** School */
+            school: string | null;
+            /** Source */
+            source: string;
+            /** Notes */
+            notes: string | null;
+            /** Created By */
+            created_by?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ExternalTeamUpdate */
+        ExternalTeamUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Number */
+            number?: string | null;
+            /** Country */
+            country?: string | null;
+            /** School */
+            school?: string | null;
+            /** Source */
+            source?: ("observed" | "official") | null;
+            /** Notes */
+            notes?: string | null;
+        };
         /**
          * ExtractedFieldCandidate
          * @description A field candidate auto-detected by the OCR pipeline.
@@ -2938,6 +5380,32 @@ export interface components {
              * @default false
              */
             accepted: boolean;
+        };
+        /** FieldDistribution */
+        FieldDistribution: {
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+            /** Min */
+            min?: number | null;
+            /** Q1 */
+            q1?: number | null;
+            /** Median */
+            median?: number | null;
+            /** Q3 */
+            q3?: number | null;
+            /** Max */
+            max?: number | null;
+            /** Mean */
+            mean?: number | null;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Zero Share */
+            zero_share?: number | null;
         };
         /** FilamentSpoolCreate */
         FilamentSpoolCreate: {
@@ -3027,6 +5495,21 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** FormulaPresetResponse */
+        FormulaPresetResponse: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Category */
+            category: string;
+            /** Description */
+            description: string;
+            /** Formulas */
+            formulas: {
+                [key: string]: string;
+            }[];
+        };
         /**
          * FormulaPreviewResponse
          * @description Result of running a candidate formula set against the season's real data.
@@ -3059,6 +5542,11 @@ export interface components {
             /** Rank */
             rank?: number | null;
             /**
+             * Disqualified
+             * @default false
+             */
+            disqualified: boolean;
+            /**
              * Values
              * @default {}
              */
@@ -3085,6 +5573,11 @@ export interface components {
                     [key: string]: string;
                 }[];
             };
+            /**
+             * Presets
+             * @default []
+             */
+            presets: components["schemas"]["FormulaPresetResponse"][];
         };
         /** FormulaResponse */
         FormulaResponse: {
@@ -3137,12 +5630,105 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HeadToHeadOutcome */
+        HeadToHeadOutcome: {
+            /** Scheduled Match Id */
+            scheduled_match_id: string;
+            /** Winner */
+            winner: string | null;
+            /** Reason */
+            reason: string;
+            /** Decided By */
+            decided_by: string | null;
+            /** Replay */
+            replay: boolean;
+            /** Sides */
+            sides: components["schemas"]["HeadToHeadSide"][];
+        };
+        /** HeadToHeadSide */
+        HeadToHeadSide: {
+            /** Match Id */
+            match_id: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string | null;
+            /** Sheet Score */
+            sheet_score: number;
+            /** Bonus Score */
+            bonus_score: number;
+            /** Total Score */
+            total_score: number;
+            /** Is Disqualified */
+            is_disqualified: boolean;
+            /** Round Lost */
+            round_lost: boolean;
+            /** Round Lost Reason */
+            round_lost_reason: string | null;
+            /** End Contact */
+            end_contact: boolean;
+        };
+        /** Heatmap */
+        Heatmap: {
+            /** Fields */
+            fields: components["schemas"]["HeatmapField"][];
+            /** Teams */
+            teams: components["schemas"]["HeatmapTeam"][];
+        };
+        /** HeatmapCell */
+        HeatmapCell: {
+            /** Key */
+            key: string;
+            /** Avg */
+            avg: number | null;
+            /** Ratio */
+            ratio: number | null;
+        };
+        /** HeatmapField */
+        HeatmapField: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** HeatmapTeam */
+        HeatmapTeam: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Values */
+            values: components["schemas"]["HeatmapCell"][];
+        };
+        /** JurorSection */
+        JurorSection: {
+            /** Unconfirmed Count */
+            unconfirmed_count: number;
+            /** Unconfirmed */
+            unconfirmed: components["schemas"]["SummaryUnconfirmedRun"][];
+            /** Upcoming Matches */
+            upcoming_matches: components["schemas"]["SummaryScheduledMatch"][];
+            /** Open Scans Count */
+            open_scans_count: number;
+            /** Open Scans */
+            open_scans: components["schemas"]["SummaryScan"][];
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * MatchConfirm
+         * @description Referee checklist ticked by the juror, {item_key: checked}.
+         */
+        MatchConfirm: {
+            /** Checklist */
+            checklist?: {
+                [key: string]: boolean;
+            };
         };
         /** MatchCreate */
         MatchCreate: {
@@ -3168,6 +5754,22 @@ export interface components {
             /** Raw Scores */
             raw_scores?: {
                 [key: string]: unknown;
+            };
+            /**
+             * Round Lost
+             * @default false
+             */
+            round_lost: boolean;
+            /** Round Lost Reason */
+            round_lost_reason?: ("never_left_start_box" | "motors_running" | "other") | null;
+            /**
+             * End Contact
+             * @default false
+             */
+            end_contact: boolean;
+            /** Tiebreak Values */
+            tiebreak_values?: {
+                [key: string]: number | boolean | null;
             };
             /**
              * Is Practice
@@ -3224,6 +5826,36 @@ export interface components {
             };
             /** Total Score */
             total_score: number;
+            /**
+             * Sheet Score
+             * @default 0
+             */
+            sheet_score: number;
+            /**
+             * Bonus Score
+             * @default 0
+             */
+            bonus_score: number;
+            /**
+             * Round Lost
+             * @default false
+             */
+            round_lost: boolean;
+            /** Round Lost Reason */
+            round_lost_reason?: string | null;
+            /**
+             * End Contact
+             * @default false
+             */
+            end_contact: boolean;
+            /** Tiebreak Values */
+            tiebreak_values?: {
+                [key: string]: unknown;
+            };
+            /** Checklist */
+            checklist?: {
+                [key: string]: unknown;
+            } | null;
             /** Is Disqualified */
             is_disqualified: boolean;
             /** Is Practice */
@@ -3246,11 +5878,30 @@ export interface components {
             confirmed_by: string | null;
             /** Confirmed At */
             confirmed_at: string | null;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * MatchResultRequest
+         * @description Result of a scheduled match.
+         *
+         *     Elimination phases need ``winner_team_id``; seeding-like and alliance
+         *     phases record per-team ``scores`` (team id → score).
+         */
+        MatchResultRequest: {
+            /** Winner Team Id */
+            winner_team_id?: string | null;
+            /** Scores */
+            scores?: {
+                [key: string]: number;
+            };
+            /** Expected Version */
+            expected_version?: number | null;
         };
         /** MatchUpdate */
         MatchUpdate: {
@@ -3260,6 +5911,16 @@ export interface components {
             } | null;
             /** Is Disqualified */
             is_disqualified?: boolean | null;
+            /** Round Lost */
+            round_lost?: boolean | null;
+            /** Round Lost Reason */
+            round_lost_reason?: ("never_left_start_box" | "motors_running" | "other") | null;
+            /** End Contact */
+            end_contact?: boolean | null;
+            /** Tiebreak Values */
+            tiebreak_values?: {
+                [key: string]: number | boolean | null;
+            } | null;
             /** Yellow Card */
             yellow_card?: boolean | null;
             /** Red Card */
@@ -3280,14 +5941,221 @@ export interface components {
             /** Display Name */
             display_name?: string | null;
             /** Preferred Language */
-            preferred_language?: string | null;
+            preferred_language?: ("de" | "en") | null;
             /** Theme */
-            theme?: string | null;
+            theme?: ("light" | "dark" | "system") | null;
         };
-        /** OcrAnchor */
+        /** MentorPaper */
+        MentorPaper: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Final Score */
+            final_score: number | null;
+        };
+        /** MentorPrintJob */
+        MentorPrintJob: {
+            /** Id */
+            id: string;
+            /** File Name */
+            file_name: string;
+            /** Status */
+            status: string;
+            /** Created At */
+            created_at: string | null;
+        };
+        /** MentorPrintJobs */
+        MentorPrintJobs: {
+            /** Open */
+            open: number;
+            /** Completed */
+            completed: number;
+            /** Recent */
+            recent: components["schemas"]["MentorPrintJob"][];
+        };
+        /** MentorScore */
+        MentorScore: {
+            /** Match Id */
+            match_id: string;
+            /** Round Number */
+            round_number: number;
+            /** Total Score */
+            total_score: number;
+            /** Is Practice */
+            is_practice: boolean;
+            /** Is Disqualified */
+            is_disqualified: boolean;
+            /** Confirmed */
+            confirmed: boolean;
+            /** Created At */
+            created_at: string | null;
+        };
+        /** MentorSection */
+        MentorSection: {
+            /** Teams */
+            teams: components["schemas"]["MentorTeam"][];
+        };
+        /** MentorTeam */
+        MentorTeam: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Seeding Rank */
+            seeding_rank: number | null;
+            /** Seed Score */
+            seed_score: number | null;
+            /** Seeding Teams */
+            seeding_teams: number;
+            /** Next Matches */
+            next_matches: components["schemas"]["SummaryScheduledMatch"][];
+            paper: components["schemas"]["MentorPaper"] | null;
+            print_jobs: components["schemas"]["MentorPrintJobs"];
+            /** Latest Scores */
+            latest_scores: components["schemas"]["MentorScore"][];
+        };
+        /** NotificationItem */
+        NotificationItem: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string | null;
+            /** Event Type */
+            event_type: string;
+            /** Category */
+            category: string | null;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Url */
+            url: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Read */
+            read: boolean;
+        };
+        /** NotificationList */
+        NotificationList: {
+            /** Items */
+            items: components["schemas"]["NotificationItem"][];
+            /** Unread */
+            unread: number;
+        };
+        /**
+         * NotificationPreferences
+         * @description Push delivery per notification category (see modules.dashboard.notifications).
+         */
+        NotificationPreferences: {
+            /**
+             * Match Soon
+             * @default true
+             */
+            match_soon: boolean;
+            /**
+             * Score Corrected
+             * @default true
+             */
+            score_corrected: boolean;
+            /**
+             * Deadlines
+             * @default true
+             */
+            deadlines: boolean;
+            /**
+             * Paper Status
+             * @default true
+             */
+            paper_status: boolean;
+            /**
+             * Print Status
+             * @default true
+             */
+            print_status: boolean;
+            /**
+             * Announcements
+             * @default true
+             */
+            announcements: boolean;
+        };
+        /** NotificationPreferencesUpdate */
+        NotificationPreferencesUpdate: {
+            /** Match Soon */
+            match_soon?: boolean | null;
+            /** Score Corrected */
+            score_corrected?: boolean | null;
+            /** Deadlines */
+            deadlines?: boolean | null;
+            /** Paper Status */
+            paper_status?: boolean | null;
+            /** Print Status */
+            print_status?: boolean | null;
+            /** Announcements */
+            announcements?: boolean | null;
+        };
+        /** NotificationReadRequest */
+        NotificationReadRequest: {
+            /** Ids */
+            ids?: string[];
+        };
+        /** ObservationCreate */
+        ObservationCreate: {
+            /** External Team Id */
+            external_team_id: string;
+            /** Owner Team Id */
+            owner_team_id?: string | null;
+            /**
+             * Phase
+             * @default seeding
+             * @enum {string}
+             */
+            phase: "seeding" | "double_seeding" | "double_elimination" | "alliance" | "other";
+            /** Round Number */
+            round_number?: number | null;
+            /** Score */
+            score: number;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** ObservationResponse */
+        ObservationResponse: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string;
+            /** External Team Id */
+            external_team_id: string;
+            /** Owner Team Id */
+            owner_team_id: string | null;
+            /** Author Id */
+            author_id: string | null;
+            /** Phase */
+            phase: string;
+            /** Round Number */
+            round_number: number | null;
+            /** Score */
+            score: number;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * OcrAnchor
+         * @description A printed reference mark (a filled square) the worker aligns every scan by.
+         */
         OcrAnchor: {
-            /** Name */
-            name: string;
             /** X */
             x: number;
             /** Y */
@@ -3296,11 +6164,11 @@ export interface components {
             width: number;
             /** Height */
             height: number;
+            /** Name */
+            name: string;
         };
         /** OcrFieldRegion */
         OcrFieldRegion: {
-            /** Key */
-            key: string;
             /** X */
             x: number;
             /** Y */
@@ -3309,11 +6177,95 @@ export interface components {
             width: number;
             /** Height */
             height: number;
+            /** Key */
+            key: string;
+        };
+        /**
+         * OcrFieldRule
+         * @description Plausibility check for one field, on top of the field's own min/max.
+         */
+        OcrFieldRule: {
+            /** Key */
+            key: string;
+            /** Min Value */
+            min_value?: number | null;
+            /** Max Value */
+            max_value?: number | null;
+            /**
+             * Integer
+             * @default false
+             */
+            integer: boolean;
+            /** Min Confidence */
+            min_confidence?: number | null;
+        };
+        /**
+         * OcrSumRule
+         * @description The read values of several fields must add up to a plausible total.
+         */
+        OcrSumRule: {
+            /** Label */
+            label: string;
+            /** Keys */
+            keys: string[];
+            /** Min Value */
+            min_value?: number | null;
+            /** Max Value */
+            max_value?: number | null;
+        };
+        /**
+         * OcrValidationRules
+         * @description How the OCR worker decides which read values a human must double-check.
+         *
+         *     Every value is shown in the review anyway; these rules only decide which
+         *     ones are flagged. Unknown keys from older layouts are ignored.
+         */
+        OcrValidationRules: {
+            /**
+             * Min Confidence
+             * @default 0.85
+             */
+            min_confidence: number;
+            /** Fields */
+            fields?: components["schemas"]["OcrFieldRule"][];
+            /** Sums */
+            sums?: components["schemas"]["OcrSumRule"][];
+        };
+        /** OpponentRankingEntry */
+        OpponentRankingEntry: {
+            /** Rank */
+            rank: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "internal" | "external";
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Team Number */
+            team_number: string | null;
+            /** Country */
+            country: string | null;
+            /** Seed Score */
+            seed_score: number;
+            /** Best Score */
+            best_score: number;
+            /** Runs */
+            runs: number;
+            /** Official Rank */
+            official_rank?: number | null;
         };
         /** OverallRankingEntry */
         OverallRankingEntry: {
             /** Rank */
-            rank: number;
+            rank: number | null;
+            /**
+             * Disqualified
+             * @default false
+             */
+            disqualified: boolean;
             /** Team Id */
             team_id: string;
             /** Team Name */
@@ -3357,6 +6309,128 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** PaperDeadlineCreate */
+        PaperDeadlineCreate: {
+            /** Season Id */
+            season_id: string;
+            /**
+             * Deadline Type
+             * @enum {string}
+             */
+            deadline_type: "official_submission" | "official_final" | "internal_draft" | "internal_review" | "internal_revision" | "internal_final";
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Label */
+            label?: string | null;
+            /**
+             * Is Hard Block
+             * @default false
+             */
+            is_hard_block: boolean;
+        };
+        /**
+         * PaperDeadlineInfo
+         * @description The season's paper deadline as a concrete instant.
+         *
+         *     deadline_date is the blocking official_submission deadline or, without
+         *     one, the season's paper_submission_deadline; cutoff_at is the end of that
+         *     day in the event's timezone (UTC). locked is what applies to the caller:
+         *     False for papers:admin even after the cut-off (override). final_* is the
+         *     blocking official_final deadline for revised versions. deadlines lists
+         *     every official and internal deadline of the season; a passed internal
+         *     one is a warning, not a lock.
+         */
+        PaperDeadlineInfo: {
+            /** Deadline Date */
+            deadline_date: string | null;
+            /** Timezone */
+            timezone: string;
+            /** Cutoff At */
+            cutoff_at: string | null;
+            /** Passed */
+            passed: boolean;
+            /** Locked */
+            locked: boolean;
+            /** Can Override */
+            can_override: boolean;
+            /** Final Deadline Date */
+            final_deadline_date?: string | null;
+            /** Final Cutoff At */
+            final_cutoff_at?: string | null;
+            /**
+             * Final Locked
+             * @default false
+             */
+            final_locked: boolean;
+            /**
+             * Deadlines
+             * @default []
+             */
+            deadlines: components["schemas"]["PaperDeadlineStatus"][];
+        };
+        /** PaperDeadlineResponse */
+        PaperDeadlineResponse: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Deadline Type */
+            deadline_type: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Label */
+            label: string | null;
+            /** Is Hard Block */
+            is_hard_block: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * PaperDeadlineStatus
+         * @description One configured deadline, resolved to the event's timezone.
+         */
+        PaperDeadlineStatus: {
+            /** Id */
+            id: string;
+            /** Deadline Type */
+            deadline_type: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Label */
+            label: string | null;
+            /** Is Hard Block */
+            is_hard_block: boolean;
+            /**
+             * Cutoff At
+             * Format: date-time
+             */
+            cutoff_at: string;
+            /** Passed */
+            passed: boolean;
+        };
+        /** PaperDeadlineUpdate */
+        PaperDeadlineUpdate: {
+            /** Deadline Type */
+            deadline_type?: ("official_submission" | "official_final" | "internal_draft" | "internal_review" | "internal_revision" | "internal_final") | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Label */
+            label?: string | null;
+            /** Is Hard Block */
+            is_hard_block?: boolean | null;
+        };
         /** PaperListItem */
         PaperListItem: {
             /** Id */
@@ -3373,6 +6447,8 @@ export interface components {
             status: string;
             /** Revision Number */
             revision_number: number;
+            /** Current Version */
+            current_version?: number | null;
             /** Final Score */
             final_score: number | null;
             /** Paper Rank */
@@ -3413,10 +6489,18 @@ export interface components {
             submitted_at: string | null;
             /** Revision Number */
             revision_number: number;
+            /** Current Version */
+            current_version: number | null;
             /** Final Score */
             final_score: number | null;
             /** Paper Rank */
             paper_rank: number | null;
+            /** Format Deduction */
+            format_deduction: number;
+            /** Format Deduction Reason */
+            format_deduction_reason: string | null;
+            /** Finalized At */
+            finalized_at: string | null;
             /** Notes */
             notes: string | null;
             /**
@@ -3433,16 +6517,71 @@ export interface components {
             reviews: components["schemas"]["ReviewResponse"][];
             /** Assignments */
             assignments: components["schemas"]["ReviewerAssignmentResponse"][];
+            /**
+             * Versions
+             * @default []
+             */
+            versions: components["schemas"]["PaperVersionResponse"][];
+            /**
+             * Feedback
+             * @default []
+             */
+            feedback: components["schemas"]["ReviewFeedback"][];
+            deadline?: components["schemas"]["PaperDeadlineInfo"] | null;
         };
         /**
          * PaperScoreUpdate
          * @description The review outcome, settable only by papers:admin.
+         *
+         *     format_deduction is in points on the 0-100 paper scale (a format violation
+         *     can cost up to 100 %); finalize_paper subtracts it from the reviewers'
+         *     average.
          */
         PaperScoreUpdate: {
             /** Final Score */
             final_score?: number | null;
             /** Paper Rank */
             paper_rank?: number | null;
+            /** Format Deduction */
+            format_deduction?: number | null;
+            /** Format Deduction Reason */
+            format_deduction_reason?: string | null;
+        };
+        /**
+         * PaperStatsResponse
+         * @description Season/event overview for organizers.
+         */
+        PaperStatsResponse: {
+            /** Total */
+            total: number;
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+            /** Decided */
+            decided: number;
+            /** Accepted */
+            accepted: number;
+            /** Rejected */
+            rejected: number;
+            /** Disqualified */
+            disqualified: number;
+            /** Acceptance Rate */
+            acceptance_rate: number | null;
+            /** Average Final Score */
+            average_final_score: number | null;
+            /** Average Review Score */
+            average_review_score: number | null;
+            /** Criterion Averages */
+            criterion_averages: {
+                [key: string]: number | null;
+            };
+            /** Reviews Submitted */
+            reviews_submitted: number;
+            /** Reviews Open */
+            reviews_open: number;
+            /** Average Revision Rounds */
+            average_revision_rounds: number | null;
         };
         /** PaperStatusHistoryResponse */
         PaperStatusHistoryResponse: {
@@ -3481,6 +6620,251 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /**
+         * PaperVersionDiff
+         * @description Line diff of the text extracted from two PDF versions.
+         *
+         *     text_available is False when the text could not be extracted (pypdf
+         *     missing, scanned PDF without text, broken file); reason says why and only
+         *     the metadata of both versions is compared then.
+         */
+        PaperVersionDiff: {
+            from_version: components["schemas"]["PaperVersionMeta"];
+            to_version: components["schemas"]["PaperVersionMeta"];
+            /** Text Available */
+            text_available: boolean;
+            /** Reason */
+            reason: string | null;
+            /** Diff */
+            diff: string[];
+            /** Added */
+            added: number;
+            /** Removed */
+            removed: number;
+            /** Truncated */
+            truncated: boolean;
+        };
+        /** PaperVersionMeta */
+        PaperVersionMeta: {
+            /** Version Number */
+            version_number: number;
+            /** File Name */
+            file_name: string;
+            /** File Size Bytes */
+            file_size_bytes: number;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Pages */
+            pages: number | null;
+        };
+        /** PaperVersionResponse */
+        PaperVersionResponse: {
+            /** Id */
+            id: string;
+            /** Version Number */
+            version_number: number;
+            /** Revision Number */
+            revision_number: number;
+            /** File Name */
+            file_name: string;
+            /** File Size Bytes */
+            file_size_bytes: number;
+            /** Uploaded By */
+            uploaded_by: string | null;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Submitted At */
+            submitted_at: string | null;
+        };
+        /** PartsChallengeCreate */
+        PartsChallengeCreate: {
+            /** Scheduled Match Id */
+            scheduled_match_id?: string | null;
+            /** Challenger Team Id */
+            challenger_team_id: string;
+            /** Challenged Team Id */
+            challenged_team_id: string;
+            /** Description */
+            description: string;
+        };
+        /** PartsChallengeResponse */
+        PartsChallengeResponse: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string;
+            /** Scheduled Match Id */
+            scheduled_match_id: string | null;
+            /** Challenger Team Id */
+            challenger_team_id: string;
+            /** Challenged Team Id */
+            challenged_team_id: string;
+            /** Description */
+            description: string;
+            /** Upheld */
+            upheld: boolean | null;
+            /** Ruling Note */
+            ruling_note: string | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** PartsChallengeRuling */
+        PartsChallengeRuling: {
+            /** Upheld */
+            upheld: boolean;
+            /** Ruling Note */
+            ruling_note?: string | null;
+        };
+        /** PasswordResetConfirm */
+        PasswordResetConfirm: {
+            /** Token */
+            token: string;
+            /** New Password */
+            new_password: string;
+        };
+        /** PasswordResetRequest */
+        PasswordResetRequest: {
+            /** Email */
+            email: string;
+        };
+        /** PerformanceField */
+        PerformanceField: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Team Avg */
+            team_avg: number | null;
+            /** Field Avg */
+            field_avg: number | null;
+            /** Field Best */
+            field_best: number | null;
+            /** Delta */
+            delta: number | null;
+            /** Share Of Best */
+            share_of_best: number | null;
+        };
+        /** PerformanceOverviewRow */
+        PerformanceOverviewRow: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Team Number */
+            team_number: string | null;
+            /** Official Runs */
+            official_runs: number;
+            /** Official Avg */
+            official_avg: number | null;
+            /** Official Best */
+            official_best: number | null;
+            /** Practice Runs */
+            practice_runs: number;
+            /** Practice Avg */
+            practice_avg: number | null;
+            /** Trend Per Run */
+            trend_per_run: number | null;
+            /** Seeding Rank */
+            seeding_rank: number | null;
+            /** Last Run At */
+            last_run_at: string | null;
+        };
+        /** PerformancePhase */
+        PerformancePhase: {
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+            /** Min */
+            min?: number | null;
+            /** Q1 */
+            q1?: number | null;
+            /** Median */
+            median?: number | null;
+            /** Q3 */
+            q3?: number | null;
+            /** Max */
+            max?: number | null;
+            /** Mean */
+            mean?: number | null;
+            /** Phase */
+            phase: string;
+        };
+        /** PerformanceRun */
+        PerformanceRun: {
+            /** Match Id */
+            match_id: string;
+            /** Round Number */
+            round_number: number;
+            /** Created At */
+            created_at: string | null;
+            /** Total Score */
+            total_score: number;
+            /** Is Practice */
+            is_practice: boolean;
+            /** Is Disqualified */
+            is_disqualified: boolean;
+            /** Phase */
+            phase: string;
+            /** Phase Name */
+            phase_name: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Confirmed */
+            confirmed: boolean;
+        };
+        /** PerformanceSeasonEvent */
+        PerformanceSeasonEvent: {
+            /** Event Id */
+            event_id: string;
+            /** Event Name */
+            event_name: string;
+            /** Event Type */
+            event_type: string;
+            /** Starts At */
+            starts_at: string | null;
+            /** Practice Runs */
+            practice_runs: number;
+            /** Practice Avg */
+            practice_avg: number | null;
+            /** Official Runs */
+            official_runs: number;
+            /** Official Avg */
+            official_avg: number | null;
+            /** Official Best */
+            official_best: number | null;
+        };
+        /** PerformanceSummary */
+        PerformanceSummary: {
+            /** Official Runs */
+            official_runs: number;
+            /** Official Avg */
+            official_avg: number | null;
+            /** Official Best */
+            official_best: number | null;
+            /** Practice Runs */
+            practice_runs: number;
+            /** Practice Avg */
+            practice_avg: number | null;
+            /** Practice Best */
+            practice_best: number | null;
+            /** Trend Per Run */
+            trend_per_run: number | null;
+        };
         /** PermissionResponse */
         PermissionResponse: {
             /** Id */
@@ -3489,6 +6873,86 @@ export interface components {
             name: string;
             /** Description */
             description: string | null;
+        };
+        /** PrintJobCancelResponse */
+        PrintJobCancelResponse: {
+            /** Id */
+            id: string;
+            /** Printer Id */
+            printer_id: string | null;
+            /** Team Id */
+            team_id: string;
+            /** Season Id */
+            season_id: string;
+            /** Event Id */
+            event_id: string | null;
+            /** Submitted By */
+            submitted_by: string | null;
+            /** File Name */
+            file_name: string;
+            /** File Url */
+            file_url?: string | null;
+            /** File Size Bytes */
+            file_size_bytes?: number | null;
+            /** Material */
+            material: string;
+            /** Color */
+            color: string | null;
+            /** Estimated Grams */
+            estimated_grams: number | null;
+            /** Actual Grams */
+            actual_grams: number | null;
+            /** Estimated Minutes */
+            estimated_minutes: number | null;
+            /** Actual Minutes */
+            actual_minutes: number | null;
+            /** Status */
+            status: string;
+            /** Priority */
+            priority: number;
+            /** Progress */
+            progress: number | null;
+            /** Status Message */
+            status_message: string | null;
+            /** Remaining Seconds */
+            remaining_seconds?: number | null;
+            /** Error Message */
+            error_message?: string | null;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /**
+             * Quota Override
+             * @default false
+             */
+            quota_override: boolean;
+            /** Spool Id */
+            spool_id?: string | null;
+            /** External Job Id */
+            external_job_id: string | null;
+            /** Last Polled At */
+            last_polled_at: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Approved By */
+            approved_by: string | null;
+            /** Approved At */
+            approved_at: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Printer Cancel
+             * @default not_applicable
+             */
+            printer_cancel: string;
+            /** Printer Message */
+            printer_message?: string | null;
         };
         /** PrintJobCreate */
         PrintJobCreate: {
@@ -3513,9 +6977,14 @@ export interface components {
             estimated_minutes?: number | null;
             /** Notes */
             notes?: string | null;
+            /**
+             * Quota Override
+             * @default false
+             */
+            quota_override: boolean;
         };
-        /** PrintJobResponse */
-        PrintJobResponse: {
+        /** PrintJobCreateResponse */
+        PrintJobCreateResponse: {
             /** Id */
             id: string;
             /** Printer Id */
@@ -3530,6 +6999,10 @@ export interface components {
             submitted_by: string | null;
             /** File Name */
             file_name: string;
+            /** File Url */
+            file_url?: string | null;
+            /** File Size Bytes */
+            file_size_bytes?: number | null;
             /** Material */
             material: string;
             /** Color */
@@ -3550,6 +7023,101 @@ export interface components {
             progress: number | null;
             /** Status Message */
             status_message: string | null;
+            /** Remaining Seconds */
+            remaining_seconds?: number | null;
+            /** Error Message */
+            error_message?: string | null;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /**
+             * Quota Override
+             * @default false
+             */
+            quota_override: boolean;
+            /** Spool Id */
+            spool_id?: string | null;
+            /** External Job Id */
+            external_job_id: string | null;
+            /** Last Polled At */
+            last_polled_at: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Approved By */
+            approved_by: string | null;
+            /** Approved At */
+            approved_at: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Quota Warning */
+            quota_warning?: string | null;
+            /** Compliance Warning */
+            compliance_warning?: string | null;
+        };
+        /** PrintJobReject */
+        PrintJobReject: {
+            /** Reason */
+            reason: string;
+        };
+        /** PrintJobResponse */
+        PrintJobResponse: {
+            /** Id */
+            id: string;
+            /** Printer Id */
+            printer_id: string | null;
+            /** Team Id */
+            team_id: string;
+            /** Season Id */
+            season_id: string;
+            /** Event Id */
+            event_id: string | null;
+            /** Submitted By */
+            submitted_by: string | null;
+            /** File Name */
+            file_name: string;
+            /** File Url */
+            file_url?: string | null;
+            /** File Size Bytes */
+            file_size_bytes?: number | null;
+            /** Material */
+            material: string;
+            /** Color */
+            color: string | null;
+            /** Estimated Grams */
+            estimated_grams: number | null;
+            /** Actual Grams */
+            actual_grams: number | null;
+            /** Estimated Minutes */
+            estimated_minutes: number | null;
+            /** Actual Minutes */
+            actual_minutes: number | null;
+            /** Status */
+            status: string;
+            /** Priority */
+            priority: number;
+            /** Progress */
+            progress: number | null;
+            /** Status Message */
+            status_message: string | null;
+            /** Remaining Seconds */
+            remaining_seconds?: number | null;
+            /** Error Message */
+            error_message?: string | null;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /**
+             * Quota Override
+             * @default false
+             */
+            quota_override: boolean;
+            /** Spool Id */
+            spool_id?: string | null;
             /** External Job Id */
             external_job_id: string | null;
             /** Last Polled At */
@@ -3576,6 +7144,8 @@ export interface components {
             printer_id?: string | null;
             /** Status */
             status?: ("pending" | "approved" | "queued" | "printing" | "completed" | "failed" | "cancelled") | null;
+            /** Spool Id */
+            spool_id?: string | null;
             /** Actual Grams */
             actual_grams?: number | null;
             /** Actual Minutes */
@@ -3584,6 +7154,17 @@ export interface components {
             notes?: string | null;
             /** Priority */
             priority?: number | null;
+        };
+        /** PrintQueueStatus */
+        PrintQueueStatus: {
+            /** Pending */
+            pending: number;
+            /** Active */
+            active: number;
+            /** Completed */
+            completed: number;
+            /** Failed */
+            failed: number;
         };
         /** PrinterCreate */
         PrinterCreate: {
@@ -3596,7 +7177,7 @@ export interface components {
              * @default bambu
              * @enum {string}
              */
-            printer_type: "bambu" | "octoprint";
+            printer_type: "bambu" | "octoprint" | "generic";
             /** Api Url */
             api_url?: string | null;
             /** Device Id */
@@ -3616,18 +7197,22 @@ export interface components {
             model: string | null;
             /** Printer Type */
             printer_type: string;
-            /** Api Url */
-            api_url: string | null;
-            /** Device Id */
-            device_id: string | null;
             /** Is Active */
             is_active: boolean;
             /** Is Online */
             is_online: boolean;
             /** Last Seen */
             last_seen: string | null;
+            /** Current State */
+            current_state?: string | null;
+            /** Status Message */
+            status_message?: string | null;
+            /** Api Url */
+            api_url?: string | null;
+            /** Device Id */
+            device_id?: string | null;
             /** Notes */
-            notes: string | null;
+            notes?: string | null;
         };
         /** PrinterUpdate */
         PrinterUpdate: {
@@ -3730,6 +7315,56 @@ export interface components {
             /** User Agent */
             user_agent?: string | null;
         };
+        /** QualificationResponse */
+        QualificationResponse: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name?: string | null;
+            /** Level Id */
+            level_id: string;
+            /** From Level Id */
+            from_level_id: string | null;
+            /** Source Event Id */
+            source_event_id: string | null;
+            /** Note */
+            note: string | null;
+            /** Qualified By */
+            qualified_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** QualificationStatusEntry */
+        QualificationStatusEntry: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Qualified */
+            qualified: boolean;
+            /** Qualification Id */
+            qualification_id: string | null;
+            /** Note */
+            note: string | null;
+        };
+        /** QualifyRequest */
+        QualifyRequest: {
+            /** Season Id */
+            season_id: string;
+            /** Team Ids */
+            team_ids: string[];
+            /** Note */
+            note?: string | null;
+            /** Source Event Id */
+            source_event_id?: string | null;
+        };
         /** QuotaResponse */
         QuotaResponse: {
             /** Id */
@@ -3738,6 +7373,8 @@ export interface components {
             team_id: string;
             /** Season Id */
             season_id: string;
+            /** Event Id */
+            event_id?: string | null;
             /** Max Parts */
             max_parts: number;
             /** Soft Limit Parts */
@@ -3748,8 +7385,20 @@ export interface components {
             used_parts: number;
             /** Used Grams */
             used_grams: number;
+            /**
+             * Open Parts
+             * @default 0
+             */
+            open_parts: number;
+            /**
+             * Open Grams
+             * @default 0
+             */
+            open_grams: number;
             /** Notes */
             notes: string | null;
+            /** Team Name */
+            team_name?: string | null;
         };
         /** QuotaUpsert */
         QuotaUpsert: {
@@ -3757,21 +7406,54 @@ export interface components {
             team_id: string;
             /** Season Id */
             season_id: string;
+            /** Event Id */
+            event_id?: string | null;
             /** Max Parts */
             max_parts?: number | null;
             /** Soft Limit Parts */
             soft_limit_parts?: number | null;
             /** Max Grams */
             max_grams?: number | null;
+            /**
+             * Clear Max Grams
+             * @default false
+             */
+            clear_max_grams: boolean;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** RankingPreview */
+        RankingPreview: {
+            /** Seeding Rank */
+            seeding_rank: number | null;
+            /** Seeding Score */
+            seeding_score: number | null;
+            /** Seeding Teams */
+            seeding_teams: number;
+            /** Points To Next Rank */
+            points_to_next_rank: number | null;
+            /** Overall Rank */
+            overall_rank: number | null;
+            /** Overall Score */
+            overall_score: number | null;
+            /** Overall Teams */
+            overall_teams: number;
         };
         /** RankingResponse */
         RankingResponse: {
             /** Rank */
-            rank: number;
+            rank: number | null;
             /** Event Id */
             event_id: string;
             /** Team Id */
             team_id: string;
+            /** Category */
+            category?: string | null;
+            /**
+             * Disqualified
+             * @default false
+             */
+            disqualified: boolean;
             /** Seed Score */
             seed_score: number;
             /** Best Score */
@@ -3780,57 +7462,192 @@ export interface components {
             average_score: number;
             /** Rounds Played */
             rounds_played: number;
+            /** Tiebreaker */
+            tiebreaker?: string | null;
             /**
              * Updated At
              * Format: date-time
              */
             updated_at: string;
         };
+        /** RegisterQualifiedRequest */
+        RegisterQualifiedRequest: {
+            /** Level Id */
+            level_id: string;
+            /**
+             * Category
+             * @default botball
+             * @enum {string}
+             */
+            category: "botball" | "open" | "aerial" | "jbc";
+        };
+        /**
+         * RegisteredTeam
+         * @description An event registration created by "register qualified teams".
+         */
+        RegisteredTeam: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Competition Level Id */
+            competition_level_id: string | null;
+            /** Category */
+            category: string;
+        };
+        /** ResultRevisionResponse */
+        ResultRevisionResponse: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string;
+            /** Team Id */
+            team_id: string;
+            /** Kind */
+            kind: string;
+            /** Previous Value */
+            previous_value: {
+                [key: string]: unknown;
+            } | null;
+            /** New Value */
+            new_value: {
+                [key: string]: unknown;
+            } | null;
+            /** Changed By */
+            changed_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** ReviewCreateUpdate */
         ReviewCreateUpdate: {
             /** Score Content */
             score_content?: number | null;
-            /** Score Methodology */
-            score_methodology?: number | null;
-            /** Score Presentation */
-            score_presentation?: number | null;
-            /** Score Originality */
-            score_originality?: number | null;
+            /** Score Implementation */
+            score_implementation?: number | null;
+            /** Score Results */
+            score_results?: number | null;
+            /** Score Language */
+            score_language?: number | null;
+            /** Score Format */
+            score_format?: number | null;
+            /** Comment Content */
+            comment_content?: string | null;
+            /** Comment Implementation */
+            comment_implementation?: string | null;
+            /** Comment Results */
+            comment_results?: string | null;
+            /** Comment Language */
+            comment_language?: string | null;
+            /** Comment Format */
+            comment_format?: string | null;
             /** Comments */
             comments?: string | null;
+            /** Revision Notes */
+            revision_notes?: string | null;
             /** Private Notes */
             private_notes?: string | null;
             /** Recommendation */
             recommendation?: ("accept" | "reject" | "revision_minor" | "revision_major") | null;
         };
-        /** ReviewResponse */
-        ReviewResponse: {
+        /**
+         * ReviewFeedback
+         * @description A submitted review as the paper's team sees it: scores and comments,
+         *     but neither the reviewer's identity nor their private notes.
+         */
+        ReviewFeedback: {
             /** Id */
             id: string;
-            /** Paper Id */
-            paper_id: string;
-            /** Reviewer Id */
-            reviewer_id: string;
             /** Revision Number */
             revision_number: number;
+            /** Version Number */
+            version_number: number | null;
             /** Score Content */
             score_content: number | null;
-            /** Score Methodology */
-            score_methodology: number | null;
-            /** Score Presentation */
-            score_presentation: number | null;
-            /** Score Originality */
-            score_originality: number | null;
+            /** Score Implementation */
+            score_implementation: number | null;
+            /** Score Results */
+            score_results: number | null;
+            /** Score Language */
+            score_language: number | null;
+            /** Score Format */
+            score_format: number | null;
+            /** Comment Content */
+            comment_content: string | null;
+            /** Comment Implementation */
+            comment_implementation: string | null;
+            /** Comment Results */
+            comment_results: string | null;
+            /** Comment Language */
+            comment_language: string | null;
+            /** Comment Format */
+            comment_format: string | null;
             /** Total Score */
             total_score: number | null;
             /** Comments */
             comments: string | null;
+            /** Revision Notes */
+            revision_notes: string | null;
             /** Recommendation */
             recommendation: string | null;
-            /** Is Submitted */
-            is_submitted: boolean;
             /** Submitted At */
             submitted_at: string | null;
+        };
+        /**
+         * ReviewResponse
+         * @description Full review: for organizers and the reviewer who wrote it.
+         */
+        ReviewResponse: {
+            /** Id */
+            id: string;
+            /** Revision Number */
+            revision_number: number;
+            /** Version Number */
+            version_number: number | null;
+            /** Score Content */
+            score_content: number | null;
+            /** Score Implementation */
+            score_implementation: number | null;
+            /** Score Results */
+            score_results: number | null;
+            /** Score Language */
+            score_language: number | null;
+            /** Score Format */
+            score_format: number | null;
+            /** Comment Content */
+            comment_content: string | null;
+            /** Comment Implementation */
+            comment_implementation: string | null;
+            /** Comment Results */
+            comment_results: string | null;
+            /** Comment Language */
+            comment_language: string | null;
+            /** Comment Format */
+            comment_format: string | null;
+            /** Total Score */
+            total_score: number | null;
+            /** Comments */
+            comments: string | null;
+            /** Revision Notes */
+            revision_notes: string | null;
+            /** Recommendation */
+            recommendation: string | null;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Paper Id */
+            paper_id: string;
+            /** Reviewer Id */
+            reviewer_id: string;
+            /** Private Notes */
+            private_notes: string | null;
+            /** Is Submitted */
+            is_submitted: boolean;
             /**
              * Created At
              * Format: date-time
@@ -3861,6 +7678,8 @@ export interface components {
             due_at: string | null;
             /** Status */
             status: string;
+            /** Version Number */
+            version_number: number | null;
             /** Reminder Sent At */
             reminder_sent_at: string | null;
             /** Completed At */
@@ -3904,6 +7723,13 @@ export interface components {
             /** Permissions */
             permissions: components["schemas"]["RoleResponse"][];
         };
+        /** RolePermissionsUpdate */
+        RolePermissionsUpdate: {
+            /** Permission Names */
+            permission_names: string[];
+            /** Description */
+            description?: string | null;
+        };
         /** RoleResponse */
         RoleResponse: {
             /** Id */
@@ -3912,6 +7738,64 @@ export interface components {
             name: string;
             /** Description */
             description: string | null;
+        };
+        /** RoundDistribution */
+        RoundDistribution: {
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+            /** Min */
+            min?: number | null;
+            /** Q1 */
+            q1?: number | null;
+            /** Median */
+            median?: number | null;
+            /** Q3 */
+            q3?: number | null;
+            /** Max */
+            max?: number | null;
+            /** Mean */
+            mean?: number | null;
+            /** Round Number */
+            round_number: number;
+        };
+        /** RuleSetResponse */
+        RuleSetResponse: {
+            /** Tiebreakers */
+            tiebreakers?: components["schemas"]["TiebreakerCriterion"][];
+            /**
+             * Finals Replay
+             * @default false
+             */
+            finals_replay: boolean;
+            /**
+             * End Contact Bonus Percent
+             * @default 25
+             */
+            end_contact_bonus_percent: number;
+            /** Referee Checklist */
+            referee_checklist?: components["schemas"]["ChecklistItem"][];
+            /** Season Id */
+            season_id: string;
+        };
+        /** RuleSetUpdate */
+        RuleSetUpdate: {
+            /** Tiebreakers */
+            tiebreakers?: components["schemas"]["TiebreakerCriterion"][];
+            /**
+             * Finals Replay
+             * @default false
+             */
+            finals_replay: boolean;
+            /**
+             * End Contact Bonus Percent
+             * @default 25
+             */
+            end_contact_bonus_percent: number;
+            /** Referee Checklist */
+            referee_checklist?: components["schemas"]["ChecklistItem"][];
         };
         /** ScheduleGenerateRequest */
         ScheduleGenerateRequest: {
@@ -3931,6 +7815,8 @@ export interface components {
             table_count?: number | null;
             /** Team Ids */
             team_ids?: string[] | null;
+            /** Category */
+            category?: ("botball" | "open" | "aerial" | "jbc") | null;
             /**
              * Replace Existing
              * @default false
@@ -3965,6 +7851,12 @@ export interface components {
             next_winner_match_id: string | null;
             /** Next Loser Match Id */
             next_loser_match_id: string | null;
+            /** Next Winner Slot */
+            next_winner_slot?: number | null;
+            /** Next Loser Slot */
+            next_loser_slot?: number | null;
+            /** Round Kind */
+            round_kind?: string | null;
             /** Version */
             version: number;
             /** Notes */
@@ -3987,6 +7879,60 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** SchemaClone */
+        SchemaClone: {
+            /** Source Schema Id */
+            source_schema_id: string;
+            /** Competition Level Id */
+            competition_level_id?: string | null;
+            /**
+             * Activate
+             * @default true
+             */
+            activate: boolean;
+        };
+        /** SchemaListEntry */
+        SchemaListEntry: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Season Name */
+            season_name: string | null;
+            /** Event Id */
+            event_id: string | null;
+            /** Event Name */
+            event_name: string | null;
+            /** Competition Level Id */
+            competition_level_id: string | null;
+            /** Competition Level Name */
+            competition_level_name: string | null;
+            /** Version */
+            version: number;
+            /** Structured */
+            structured: boolean;
+            /** Field Count */
+            field_count: number;
+        };
+        /** SchemaTemplateResponse */
+        SchemaTemplateResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Year */
+            year: number;
+            /** Complete */
+            complete: boolean;
+            /** Source */
+            source: string;
+            /** Notes */
+            notes: string;
+            /** Definition */
+            definition: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * ScoreBulkEntry
          * @description Used for rapid multi-match entry (e.g., score table entry).
@@ -4003,7 +7949,11 @@ export interface components {
             /** Id */
             id: string;
             /** Match Id */
-            match_id: string;
+            match_id: string | null;
+            /** Match Ref */
+            match_ref?: string | null;
+            /** Team Id */
+            team_id?: string | null;
             /** Event Id */
             event_id: string;
             /** Revision */
@@ -4104,10 +8054,7 @@ export interface components {
             anchors?: components["schemas"]["OcrAnchor"][];
             /** Field Regions */
             field_regions: components["schemas"]["OcrFieldRegion"][];
-            /** Validation Rules */
-            validation_rules?: {
-                [key: string]: unknown;
-            };
+            validation_rules?: components["schemas"]["OcrValidationRules"];
         };
         /**
          * ScoreSheetTemplateListItem
@@ -4281,17 +8228,73 @@ export interface components {
             /** Section */
             section?: string | null;
         };
-        /** ScoringSchemaVersionCreate */
+        /**
+         * ScoringSchemaVersionCreate
+         * @description A flat field list, or a structured sheet (`definition`, see scoring.sheet).
+         */
         ScoringSchemaVersionCreate: {
             /** Competition Level Id */
             competition_level_id?: string | null;
             /** Fields */
-            fields: components["schemas"]["ScoringFieldDefinition"][];
+            fields?: components["schemas"]["ScoringFieldDefinition"][];
+            definition?: components["schemas"]["SheetDefinition"] | null;
             /**
              * Activate
              * @default true
              */
             activate: boolean;
+        };
+        /** ScoutingNoteCreate */
+        ScoutingNoteCreate: {
+            /** External Team Id */
+            external_team_id: string;
+            /** Owner Team Id */
+            owner_team_id?: string | null;
+            /** Body */
+            body: string;
+            /** Threat Level */
+            threat_level?: number | null;
+        };
+        /** ScoutingNoteResponse */
+        ScoutingNoteResponse: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string;
+            /** External Team Id */
+            external_team_id: string;
+            /** Owner Team Id */
+            owner_team_id: string | null;
+            /** Author Id */
+            author_id: string | null;
+            /** Body */
+            body: string;
+            /** Threat Level */
+            threat_level: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ScoutingNoteUpdate */
+        ScoutingNoteUpdate: {
+            /** Body */
+            body?: string | null;
+            /** Threat Level */
+            threat_level?: number | null;
+        };
+        /** SeasonClone */
+        SeasonClone: {
+            /** Name */
+            name: string;
+            /** Year */
+            year: number;
         };
         /** SeasonCreate */
         SeasonCreate: {
@@ -4301,6 +8304,18 @@ export interface components {
             year: number;
             /** Game Theme */
             game_theme?: string | null;
+            /**
+             * Is Active
+             * @default false
+             */
+            is_active: boolean;
+            /** Status */
+            status?: ("draft" | "active" | "finished" | "archived") | null;
+            /**
+             * Create Default Event
+             * @default true
+             */
+            create_default_event: boolean;
             /** Registration Open */
             registration_open?: string | null;
             /** Registration Close */
@@ -4400,6 +8415,8 @@ export interface components {
             game_theme: string | null;
             /** Is Active */
             is_active: boolean;
+            /** Status */
+            status: string;
             /** Event Start */
             event_start: string | null;
             /** Event End */
@@ -4457,6 +8474,8 @@ export interface components {
             game_theme: string | null;
             /** Is Active */
             is_active: boolean;
+            /** Status */
+            status: string;
             /** Registration Open */
             registration_open: string | null;
             /** Registration Close */
@@ -4491,6 +8510,17 @@ export interface components {
             /** Phases */
             phases: components["schemas"]["SeasonPhaseResponse"][];
         };
+        /** SeasonTimeline */
+        SeasonTimeline: {
+            /** Season Id */
+            season_id: string;
+            /** Season Name */
+            season_name: string;
+            /** Season Year */
+            season_year: number;
+            /** Events */
+            events: components["schemas"]["TimelineEvent"][];
+        };
         /** SeasonUpdate */
         SeasonUpdate: {
             /** Name */
@@ -4499,6 +8529,8 @@ export interface components {
             game_theme?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Status */
+            status?: ("draft" | "active" | "finished" | "archived") | null;
             /** Registration Open */
             registration_open?: string | null;
             /** Registration Close */
@@ -4526,6 +8558,183 @@ export interface components {
             /** Active Categories */
             active_categories?: string[] | null;
         };
+        /** SeedAssignmentRequest */
+        SeedAssignmentRequest: {
+            /** Category */
+            category?: ("botball" | "open" | "aerial" | "jbc") | null;
+            /** Phase Id */
+            phase_id?: string | null;
+        };
+        /**
+         * SheetDefinition
+         * @description A structured score sheet: sections per side, "Total = A + B".
+         */
+        SheetDefinition: {
+            /** Sides */
+            sides?: string[];
+            /** Sections */
+            sections: components["schemas"]["SheetSection"][];
+        };
+        /**
+         * SheetEitherMultiplier
+         * @description Alternatives of which only the best counts, e.g. "# full pom sets or # full trays ×2".
+         */
+        SheetEitherMultiplier: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Either */
+            either: components["schemas"]["SheetMultiplier"][];
+        };
+        /**
+         * SheetField
+         * @description One itemised line: value × multiplier.
+         */
+        SheetField: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Type
+             * @default count
+             * @enum {string}
+             */
+            type: "count" | "number" | "boolean";
+            /**
+             * Multiplier
+             * @default 1
+             */
+            multiplier: number;
+            /** Min Value */
+            min_value?: number | null;
+            /** Max Value */
+            max_value?: number | null;
+            /**
+             * Required
+             * @default false
+             */
+            required: boolean;
+        };
+        /**
+         * SheetMultiplier
+         * @description A value applied to a section subtotal.
+         *
+         *     boolean: checked → × factor. count/number: × (value × factor + offset).
+         *     A result below 1 leaves the subtotal unchanged.
+         */
+        SheetMultiplier: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Type
+             * @default boolean
+             * @enum {string}
+             */
+            type: "boolean" | "count" | "number";
+            /**
+             * Factor
+             * @default 1
+             */
+            factor: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+            /** Min Value */
+            min_value?: number | null;
+            /** Max Value */
+            max_value?: number | null;
+        };
+        /** SheetSection */
+        SheetSection: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Fields */
+            fields: components["schemas"]["SheetField"][];
+            /** Multipliers */
+            multipliers?: (components["schemas"]["SheetMultiplier"] | components["schemas"]["SheetEitherMultiplier"])[];
+        };
+        /** StatsOverview */
+        StatsOverview: {
+            /** Runs */
+            runs: number;
+            /** Disqualified */
+            disqualified: number;
+            /** Teams */
+            teams: number;
+            /** Unconfirmed */
+            unconfirmed: number;
+            total: components["schemas"]["BoxSummary"] | null;
+        };
+        /** SummaryScan */
+        SummaryScan: {
+            /** Id */
+            id: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Status */
+            status: string;
+            /** File Name */
+            file_name: string;
+            /** Created At */
+            created_at: string | null;
+        };
+        /** SummaryScheduledMatch */
+        SummaryScheduledMatch: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /** Round Number */
+            round_number: number;
+            /** Table Number */
+            table_number: number | null;
+            /** Scheduled At */
+            scheduled_at: string | null;
+            /** Status */
+            status: string;
+            /** Phase Name */
+            phase_name: string | null;
+            /** Teams */
+            teams: components["schemas"]["SummaryTeamRef"][];
+        };
+        /** SummaryTeamRef */
+        SummaryTeamRef: {
+            /** Team Id */
+            team_id: string | null;
+            /** Team Name */
+            team_name: string | null;
+        };
+        /** SummaryUnconfirmedRun */
+        SummaryUnconfirmedRun: {
+            /** Match Id */
+            match_id: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Round Number */
+            round_number: number;
+            /** Total Score */
+            total_score: number;
+            /** Is Disqualified */
+            is_disqualified: boolean;
+            /** Created At */
+            created_at: string | null;
+            /** Entered By Name */
+            entered_by_name: string | null;
+            /** Entered By Team Member */
+            entered_by_team_member: boolean;
+        };
         /** TeamCreate */
         TeamCreate: {
             /** Name */
@@ -4551,6 +8760,70 @@ export interface components {
              */
             members: components["schemas"]["TeamMemberCreate"][];
         };
+        /** TeamDocumentResponse */
+        TeamDocumentResponse: {
+            /** Id */
+            id: string;
+            /** Team Id */
+            team_id: string;
+            /** Season Id */
+            season_id: string | null;
+            /** Title */
+            title: string;
+            /** Category */
+            category: string;
+            /** Description */
+            description: string | null;
+            /** Current Version */
+            current_version: number;
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Versions */
+            versions: components["schemas"]["TeamDocumentVersionResponse"][];
+        };
+        /** TeamDocumentUpdate */
+        TeamDocumentUpdate: {
+            /** Title */
+            title?: string | null;
+            /** Category */
+            category?: ("project_plan" | "presentation" | "code_documentation" | "other") | null;
+            /** Description */
+            description?: string | null;
+            /** Season Id */
+            season_id?: string | null;
+        };
+        /** TeamDocumentVersionResponse */
+        TeamDocumentVersionResponse: {
+            /** Id */
+            id: string;
+            /** Version Number */
+            version_number: number;
+            /** File Name */
+            file_name: string;
+            /** Media Type */
+            media_type: string;
+            /** File Size Bytes */
+            file_size_bytes: number;
+            /** Comment */
+            comment: string | null;
+            /** Uploaded By */
+            uploaded_by: string | null;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+        };
         /** TeamEventHistoryResponse */
         TeamEventHistoryResponse: {
             /** Event Id */
@@ -4573,6 +8846,59 @@ export interface components {
             best_score: number | null;
             /** Rounds Played */
             rounds_played: number;
+        };
+        /** TeamHistoryRow */
+        TeamHistoryRow: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Team Number */
+            team_number: string | null;
+            /** Season Id */
+            season_id: string;
+            /** Season Name */
+            season_name: string;
+            /** Season Year */
+            season_year: number;
+            /** Event Id */
+            event_id: string;
+            /** Event Name */
+            event_name: string;
+            /** Event Type */
+            event_type: string;
+            /** Starts At */
+            starts_at: string | null;
+            /** Category */
+            category: string;
+            /** Seeding Rank */
+            seeding_rank: number | null;
+            /** Seeding Score */
+            seeding_score: number | null;
+            /** Seeding Teams */
+            seeding_teams: number;
+            /** Best Score */
+            best_score: number | null;
+            /** Official Runs */
+            official_runs: number;
+            /** Official Avg */
+            official_avg: number | null;
+            /** Overall Rank */
+            overall_rank: number | null;
+            /** Overall Score */
+            overall_score: number | null;
+            /** Overall Teams */
+            overall_teams: number;
+            /** De Score */
+            de_score: number | null;
+            /** Doc Score */
+            doc_score: number | null;
+            /** Paper Score */
+            paper_score: number | null;
+            /** Practice Runs */
+            practice_runs?: number | null;
+            /** Practice Avg */
+            practice_avg?: number | null;
         };
         /** TeamListItem */
         TeamListItem: {
@@ -4621,12 +8947,60 @@ export interface components {
             user_id: string | null;
         };
         /**
+         * TeamMemberUpdate
+         * @description Partial update; an explicit ``user_id: null`` unlinks the account.
+         */
+        TeamMemberUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Role */
+            role?: string | null;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** TeamPerformance */
+        TeamPerformance: {
+            /** Event Id */
+            event_id: string;
+            /** Event Name */
+            event_name: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Category */
+            category: string;
+            /** Include Practice */
+            include_practice: boolean;
+            /** Runs */
+            runs: components["schemas"]["PerformanceRun"][];
+            summary: components["schemas"]["PerformanceSummary"];
+            /** Fields */
+            fields: components["schemas"]["PerformanceField"][];
+            /** Strengths */
+            strengths: string[];
+            /** Weaknesses */
+            weaknesses: string[];
+            /** Phases */
+            phases: components["schemas"]["PerformancePhase"][];
+            /** Season Events */
+            season_events: components["schemas"]["PerformanceSeasonEvent"][];
+            ranking_preview: components["schemas"]["RankingPreview"];
+        };
+        /**
          * TeamRankingEntry
          * @description Extended seeding ranking entry with team name and category.
          */
         TeamRankingEntry: {
             /** Rank */
-            rank: number;
+            rank: number | null;
+            /**
+             * Disqualified
+             * @default false
+             */
+            disqualified: boolean;
             /** Team Id */
             team_id: string;
             /** Team Name */
@@ -4641,6 +9015,8 @@ export interface components {
             average_score: number;
             /** Rounds Played */
             rounds_played: number;
+            /** Tiebreaker */
+            tiebreaker?: string | null;
         };
         /** TeamResponse */
         TeamResponse: {
@@ -4669,6 +9045,26 @@ export interface components {
             created_at: string;
             /** Members */
             members: components["schemas"]["TeamMemberResponse"][];
+        };
+        /** TeamSeasonMemberEntry */
+        TeamSeasonMemberEntry: {
+            /** Member Id */
+            member_id: string;
+            /** Role */
+            role?: string | null;
+        };
+        /** TeamSeasonMemberResponse */
+        TeamSeasonMemberResponse: {
+            /** Id */
+            id: string;
+            /** Member Id */
+            member_id: string;
+            /** Name */
+            name: string;
+            /** Team Role */
+            team_role: string;
+            /** Role */
+            role: string | null;
         };
         /** TeamSeasonRegistrationCreate */
         TeamSeasonRegistrationCreate: {
@@ -4700,6 +9096,70 @@ export interface components {
             confirmed: boolean;
             /** Notes */
             notes: string | null;
+            /**
+             * Category
+             * @default botball
+             */
+            category: string;
+            /**
+             * Fee Status
+             * @default pending
+             */
+            fee_status: string;
+            /**
+             * Kit Status
+             * @default not_sent
+             */
+            kit_status: string;
+            /**
+             * Paper Required
+             * @default true
+             */
+            paper_required: boolean;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Contact Phone */
+            contact_phone?: string | null;
+            /** Address */
+            address?: string | null;
+        };
+        /**
+         * TeamSeasonRosterUpdate
+         * @description The complete roster of a season; members left out are removed.
+         */
+        TeamSeasonRosterUpdate: {
+            /** Members */
+            members: components["schemas"]["TeamSeasonMemberEntry"][];
+        };
+        /**
+         * TeamSeasonUpdate
+         * @description PUT /teams/{id}/seasons/{season_id}: partial update of a registration.
+         */
+        TeamSeasonUpdate: {
+            /** Category */
+            category?: ("botball" | "open" | "aerial" | "jbc") | null;
+            /** Competition Level Id */
+            competition_level_id?: string | null;
+            /** Fee Status */
+            fee_status?: ("pending" | "paid" | "waived") | null;
+            /** Kit Status */
+            kit_status?: ("not_sent" | "sent" | "received") | null;
+            /** Paper Required */
+            paper_required?: boolean | null;
+            /** Confirmed */
+            confirmed?: boolean | null;
+            /** Notes */
+            notes?: string | null;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Contact Phone */
+            contact_phone?: string | null;
+            /** Address */
+            address?: string | null;
         };
         /** TeamUpdate */
         TeamUpdate: {
@@ -4720,6 +9180,77 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** TiebreakerCriterion */
+        TiebreakerCriterion: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Direction
+             * @default max
+             * @enum {string}
+             */
+            direction: "max" | "min";
+            /**
+             * Source
+             * @default entry
+             * @enum {string}
+             */
+            source: "sheet" | "entry";
+            /** Sheet Keys */
+            sheet_keys?: string[];
+            /**
+             * Replay Only
+             * @default false
+             */
+            replay_only: boolean;
+        };
+        /** TiebreakerPreset */
+        TiebreakerPreset: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Finals Replay */
+            finals_replay: boolean;
+            /** Tiebreakers */
+            tiebreakers: components["schemas"]["TiebreakerCriterion"][];
+        };
+        /** TimelineEvent */
+        TimelineEvent: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Event Type */
+            event_type: string;
+            /** Color */
+            color: string;
+            /** Starts At */
+            starts_at: string | null;
+            /** Ends At */
+            ends_at: string | null;
+            /** Status */
+            status: string;
+            /** Phases */
+            phases: components["schemas"]["TimelinePhase"][];
+        };
+        /** TimelinePhase */
+        TimelinePhase: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Phase Type */
+            phase_type: string;
+            /** Starts At */
+            starts_at: string | null;
+            /** Ends At */
+            ends_at: string | null;
+            /** Status */
+            status: string;
+        };
         /** TokenResponse */
         TokenResponse: {
             /** Access Token */
@@ -4731,6 +9262,42 @@ export interface components {
             token_type: string;
             /** Expires In */
             expires_in: number;
+        };
+        /** Trend */
+        Trend: {
+            /** Rounds */
+            rounds: components["schemas"]["TrendRound"][];
+            /** Teams */
+            teams: components["schemas"]["TrendTeam"][];
+        };
+        /** TrendPoint */
+        TrendPoint: {
+            /** Round Number */
+            round_number: number;
+            /** Total Score */
+            total_score: number;
+            /** Match Id */
+            match_id: string;
+        };
+        /** TrendRound */
+        TrendRound: {
+            /** Round Number */
+            round_number: number;
+            /** Mean */
+            mean: number | null;
+            /** Median */
+            median: number | null;
+        };
+        /** TrendTeam */
+        TrendTeam: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Points */
+            points: components["schemas"]["TrendPoint"][];
+            /** Slope */
+            slope: number | null;
         };
         /** UserCreate */
         UserCreate: {
@@ -4759,8 +9326,18 @@ export interface components {
             display_name: string;
             /** Is Active */
             is_active: boolean;
+            /**
+             * Is Superuser
+             * @default false
+             */
+            is_superuser: boolean;
             /** Roles */
             roles: components["schemas"]["RoleResponse"][];
+            /**
+             * Permissions
+             * @default []
+             */
+            permissions: string[];
         };
         /** UserPasswordChange */
         UserPasswordChange: {
@@ -4800,9 +9377,9 @@ export interface components {
             /** Display Name */
             display_name?: string | null;
             /** Preferred Language */
-            preferred_language?: string | null;
+            preferred_language?: ("de" | "en") | null;
             /** Theme */
-            theme?: string | null;
+            theme?: ("light" | "dark" | "system") | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Role Ids */
@@ -4821,6 +9398,13 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** BracketWeightsUpdate */
+        modules__events__schemas__BracketWeightsUpdate: {
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+        };
         /** ScoringSchemaResponse */
         modules__events__schemas__ScoringSchemaResponse: {
             /** Id */
@@ -4835,6 +9419,10 @@ export interface components {
             fields: {
                 [key: string]: unknown;
             }[];
+            /** Definition */
+            definition?: {
+                [key: string]: unknown;
+            } | null;
             /** Version */
             version: number;
             /** Is Active */
@@ -4845,16 +9433,32 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * BracketWeightsUpdate
+         * @description Bracket -> weight, e.g. {"A": 1.0, "B": 0.5683760683760684}.
+         */
+        modules__scoring__formula_schemas__BracketWeightsUpdate: {
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+        };
         /** ScoringSchemaResponse */
         modules__scoring__schemas__ScoringSchemaResponse: {
             /** Id */
             id: string;
             /** Season Id */
             season_id: string;
+            /** Event Id */
+            event_id?: string | null;
             /** Competition Level Id */
             competition_level_id: string | null;
             /** Fields */
             fields: unknown[];
+            /** Definition */
+            definition?: {
+                [key: string]: unknown;
+            } | null;
             /** Version */
             version: number;
             /** Is Active */
@@ -4960,6 +9564,37 @@ export interface operations {
             };
         };
     };
+    delete_my_account_api_auth_me_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_me_api_auth_me_patch: {
         parameters: {
             query?: never;
@@ -5012,6 +9647,174 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_email_api_auth_me_email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_my_data_api_auth_me_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    request_password_reset_api_auth_password_reset_request_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_password_reset_api_auth_password_reset_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_notification_preferences_api_auth_me_notification_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferences"];
+                };
+            };
+        };
+    };
+    update_notification_preferences_api_auth_me_notification_preferences_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationPreferencesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferences"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -5172,6 +9975,35 @@ export interface operations {
             };
         };
     };
+    admin_delete_user_api_auth_users__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_user_api_auth_users__user_id__patch: {
         parameters: {
             query?: never;
@@ -5195,6 +10027,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_set_password_api_auth_users__user_id__password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminPasswordSet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5276,6 +10141,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionResponse"][];
+                };
+            };
+        };
+    };
+    update_role_api_auth_roles__role_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RolePermissionsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5435,6 +10335,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SeasonResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clone_season_api_seasons__season_id__clone_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeasonClone"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeasonResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_season_api_seasons__season_id__export_json_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -5895,6 +10861,37 @@ export interface operations {
             };
         };
     };
+    get_event_modules_api_v1_events__event_id__modules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventModulesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_registrations_api_v1_events__event_id__registrations_get: {
         parameters: {
             query?: never;
@@ -6227,6 +11224,214 @@ export interface operations {
             };
         };
     };
+    assign_seeds_from_seeding_api_v1_events__event_id__registrations_seeds_from_seeding_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeedAssignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventRegistrationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_match_result_api_v1_events__event_id__schedule__match_id__result_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchResultRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledMatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_bracket_api_v1_events__event_id__bracket_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BracketPhaseResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alliance_standings_api_v1_events__event_id__phases__phase_id__alliances_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                phase_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllianceStanding"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_bracket_weights_api_v1_events__event_id__bracket_weights_get: {
+        parameters: {
+            query?: {
+                category?: string;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_bracket_weights_api_v1_events__event_id__bracket_weights_put: {
+        parameters: {
+            query?: {
+                category?: string;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["modules__events__schemas__BracketWeightsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_scheduled_match_api_v1_events__event_id__schedule__match_id__patch: {
         parameters: {
             query?: never;
@@ -6496,6 +11701,37 @@ export interface operations {
             };
         };
     };
+    get_public_bracket_api_v1_public_events__slug__bracket_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BracketPhaseResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_public_ranking_api_v1_public_events__slug__ranking_get: {
         parameters: {
             query?: never;
@@ -6623,6 +11859,11 @@ export interface operations {
             query?: {
                 season_id?: string | null;
                 competition_level_id?: string | null;
+                /** @description Name, number, school or city */
+                q?: string | null;
+                country?: string | null;
+                status?: string | null;
+                category?: string | null;
             };
             header?: never;
             path?: never;
@@ -6679,6 +11920,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_team_countries_api_teams_countries_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
                 };
             };
         };
@@ -6816,6 +12077,166 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_compliance_items_api_teams_print_compliance_items_get: {
+        parameters: {
+            query: {
+                season_id: string;
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceItemResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_compliance_item_api_teams_print_compliance_items_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComplianceItemCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceItemResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seed_compliance_items_api_teams_print_compliance_items_defaults_post: {
+        parameters: {
+            query: {
+                season_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceItemResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_compliance_item_api_teams_print_compliance_items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_compliance_item_api_teams_print_compliance_items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComplianceItemUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceItemResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -7019,10 +12440,523 @@ export interface operations {
             };
         };
     };
+    update_member_api_teams__team_id__members__member_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamMemberUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_team_seasons_api_teams__team_id__seasons_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSeasonRegistrationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_team_season_api_teams__team_id__seasons__season_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSeasonRegistrationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_team_season_api_teams__team_id__seasons__season_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamSeasonUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSeasonRegistrationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_season_roster_api_teams__team_id__seasons__season_id__members_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSeasonMemberResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_season_roster_api_teams__team_id__seasons__season_id__members_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamSeasonRosterUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSeasonMemberResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_print_compliance_api_teams__team_id__seasons__season_id__print_compliance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_print_compliance_api_teams__team_id__seasons__season_id__print_compliance_verify_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComplianceVerify"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_print_compliance_check_api_teams__team_id__seasons__season_id__print_compliance__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                season_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComplianceCheckUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_team_documents_api_teams__team_id__documents_get: {
+        parameters: {
+            query?: {
+                season_id?: string | null;
+            };
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamDocumentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_team_document_api_teams__team_id__documents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_team_document_api_teams__team_id__documents_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamDocumentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_team_document_version_api_teams__team_id__documents__document_id__versions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_team_document_version_api_teams__team_id__documents__document_id__versions_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamDocumentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_team_document_api_teams__team_id__documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_team_document_api_teams__team_id__documents__document_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamDocumentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamDocumentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_team_document_api_teams__team_id__documents__document_id__download_get: {
+        parameters: {
+            query?: {
+                version?: number | null;
+            };
+            header?: never;
+            path: {
+                team_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_scoring_schema_api_scoring_seasons__season_id__schema_get: {
         parameters: {
             query?: {
                 competition_level_id?: string | null;
+                event_id?: string | null;
             };
             header?: never;
             path: {
@@ -7058,6 +12992,7 @@ export interface operations {
                 team_id?: string | null;
                 phase_id?: string | null;
                 is_practice?: boolean | null;
+                event_id?: string | null;
             };
             header?: never;
             path: {
@@ -7190,7 +13125,9 @@ export interface operations {
     };
     delete_match_api_scoring_matches__match_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                reason?: string | null;
+            };
             header?: never;
             path: {
                 match_id: string;
@@ -7292,7 +13229,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MatchConfirm"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -7301,6 +13242,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_event_score_revisions_api_scoring_events__event_id__revisions_get: {
+        parameters: {
+            query?: {
+                team_id?: string | null;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreRevisionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_result_revisions_api_scoring_events__event_id__result_revisions_get: {
+        parameters: {
+            query?: {
+                kind?: string | null;
+                team_id?: string | null;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultRevisionResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -7351,10 +13359,44 @@ export interface operations {
         parameters: {
             query?: {
                 category?: string | null;
+                event_id?: string | null;
             };
             header?: never;
             path: {
                 season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamRankingEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_ranking_extended_api_scoring_events__event_id__ranking_extended_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+            };
+            header?: never;
+            path: {
+                event_id: string;
             };
             cookie?: never;
         };
@@ -7449,7 +13491,9 @@ export interface operations {
     };
     list_de_results_api_scoring_seasons__season_id__de_results_get: {
         parameters: {
-            query?: never;
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7480,7 +13524,9 @@ export interface operations {
     };
     bulk_upsert_de_results_api_scoring_seasons__season_id__de_results_put: {
         parameters: {
-            query?: never;
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7515,7 +13561,9 @@ export interface operations {
     };
     upsert_de_result_api_scoring_seasons__season_id__de_results__team_id__put: {
         parameters: {
-            query?: never;
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7549,9 +13597,113 @@ export interface operations {
             };
         };
     };
-    list_aerial_results_api_scoring_seasons__season_id__aerial_results_get: {
+    list_event_de_results_api_scoring_events__event_id__de_results_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DEResultResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_upsert_event_de_results_api_scoring_events__event_id__de_results_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DEResultUpsert"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DEResultResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_event_de_result_api_scoring_events__event_id__de_results__team_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DEResultUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DEResultResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_aerial_results_api_scoring_seasons__season_id__aerial_results_get: {
+        parameters: {
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7582,7 +13734,9 @@ export interface operations {
     };
     bulk_upsert_aerial_results_api_scoring_seasons__season_id__aerial_results_put: {
         parameters: {
-            query?: never;
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7617,7 +13771,9 @@ export interface operations {
     };
     get_aerial_ranking_api_scoring_seasons__season_id__aerial_ranking_get: {
         parameters: {
-            query?: never;
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7648,7 +13804,9 @@ export interface operations {
     };
     upsert_aerial_result_api_scoring_seasons__season_id__aerial_results__team_id__put: {
         parameters: {
-            query?: never;
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7682,9 +13840,144 @@ export interface operations {
             };
         };
     };
-    list_doc_scores_api_scoring_seasons__season_id__doc_scores_get: {
+    list_event_aerial_results_api_scoring_events__event_id__aerial_results_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AerialResultResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_upsert_event_aerial_results_api_scoring_events__event_id__aerial_results_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AerialResultUpsert"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AerialResultResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_aerial_ranking_api_scoring_events__event_id__aerial_ranking_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_event_aerial_result_api_scoring_events__event_id__aerial_results__team_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AerialResultUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AerialResultResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_doc_scores_api_scoring_seasons__season_id__doc_scores_get: {
+        parameters: {
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7715,7 +14008,9 @@ export interface operations {
     };
     bulk_upsert_doc_scores_api_scoring_seasons__season_id__doc_scores_put: {
         parameters: {
-            query?: never;
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
@@ -7750,10 +14045,114 @@ export interface operations {
     };
     upsert_doc_score_api_scoring_seasons__season_id__doc_scores__team_id__put: {
         parameters: {
-            query?: never;
+            query?: {
+                event_id?: string | null;
+            };
             header?: never;
             path: {
                 season_id: string;
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocScoreUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocScoreResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_event_doc_scores_api_scoring_events__event_id__doc_scores_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocScoreResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_upsert_event_doc_scores_api_scoring_events__event_id__doc_scores_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocScoreUpsert"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocScoreResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_event_doc_score_api_scoring_events__event_id__doc_scores__team_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
                 team_id: string;
             };
             cookie?: never;
@@ -8095,6 +14494,40 @@ export interface operations {
             };
         };
     };
+    apply_formula_preset_api_scoring_formulas_seasons__season_id__presets__preset_id__post: {
+        parameters: {
+            query?: {
+                category?: string | null;
+            };
+            header?: never;
+            path: {
+                season_id: string;
+                preset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_effective_set_api_scoring_formulas_seasons__season_id___category__effective_get: {
         parameters: {
             query?: never;
@@ -8279,7 +14712,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BracketWeightsUpdate"];
+                "application/json": components["schemas"]["modules__scoring__formula_schemas__BracketWeightsUpdate"];
             };
         };
         responses: {
@@ -8292,6 +14725,925 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rules_api_scoring_seasons__season_id__rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_rules_api_scoring_seasons__season_id__rules_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleSetUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tiebreaker_presets_api_scoring_tiebreaker_presets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TiebreakerPreset"][];
+                };
+            };
+        };
+    };
+    list_schema_templates_api_scoring_schema_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchemaTemplateResponse"][];
+                };
+            };
+        };
+    };
+    list_schemas_api_scoring_schemas_get: {
+        parameters: {
+            query?: {
+                season_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchemaListEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clone_schema_api_scoring_events__event_id__scoring_schema_clone_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchemaClone"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["modules__scoring__schemas__ScoringSchemaResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_head_to_head_outcome_api_scoring_scheduled_matches__scheduled_match_id__outcome_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduled_match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeadToHeadOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_de_placement_api_scoring_events__event_id__de_placement_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DEPlacementEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_parts_challenges_api_scoring_events__event_id__parts_challenges_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartsChallengeResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_parts_challenge_api_scoring_events__event_id__parts_challenges_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartsChallengeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartsChallengeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rule_parts_challenge_api_scoring_parts_challenges__challenge_id__ruling_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                challenge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartsChallengeRuling"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartsChallengeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_external_teams_api_scoring_seasons__season_id__external_teams_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalTeamResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_external_team_api_scoring_external_teams_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalTeamCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalTeamResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_external_team_api_scoring_external_teams__external_team_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_external_team_api_scoring_external_teams__external_team_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalTeamUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalTeamResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_scouting_notes_api_scoring_events__event_id__scouting_notes_get: {
+        parameters: {
+            query?: {
+                external_team_id?: string | null;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoutingNoteResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_scouting_note_api_scoring_events__event_id__scouting_notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoutingNoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoutingNoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_scouting_note_api_scoring_scouting_notes__note_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_scouting_note_api_scoring_scouting_notes__note_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoutingNoteUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoutingNoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_observations_api_scoring_events__event_id__scouting_observations_get: {
+        parameters: {
+            query?: {
+                external_team_id?: string | null;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_observation_api_scoring_events__event_id__scouting_observations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObservationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_observation_api_scoring_scouting_observations__observation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                observation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_opponent_ranking_api_scoring_events__event_id__opponent_ranking_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpponentRankingEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_scouting_report_api_scoring_events__event_id__scouting_report_pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_qualifications_api_scoring_seasons__season_id__qualifications_get: {
+        parameters: {
+            query?: {
+                level_id?: string | null;
+            };
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualificationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_qualification_status_api_scoring_seasons__season_id__qualification_status_get: {
+        parameters: {
+            query: {
+                level_id: string;
+            };
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualificationStatusEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    qualify_teams_api_scoring_levels__level_id__qualify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                level_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QualifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualificationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_qualification_api_scoring_qualifications__qualification_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                qualification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_qualified_teams_api_scoring_events__event_id__register_qualified_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterQualifiedRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisteredTeam"][];
                 };
             };
             /** @description Validation Error */
@@ -8573,6 +15925,231 @@ export interface operations {
             };
         };
     };
+    get_paper_deadline_api_papers_deadline_get: {
+        parameters: {
+            query: {
+                season_id: string;
+                event_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperDeadlineInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_paper_deadlines_api_papers_deadlines_get: {
+        parameters: {
+            query: {
+                season_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperDeadlineResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_paper_deadline_api_papers_deadlines_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaperDeadlineCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperDeadlineResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_paper_deadline_api_papers_deadlines__deadline_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deadline_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_paper_deadline_api_papers_deadlines__deadline_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deadline_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaperDeadlineUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperDeadlineResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auto_assign_reviewers_api_papers_auto_assign_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoAssignRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoAssignResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_paper_stats_api_papers_stats_get: {
+        parameters: {
+            query?: {
+                season_id?: string | null;
+                event_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_paper_api_papers__paper_id__get: {
         parameters: {
             query?: never;
@@ -8639,6 +16216,37 @@ export interface operations {
             };
         };
     };
+    get_paper_feedback_api_papers__paper_id__feedback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paper_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewFeedback"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_paper_file_api_papers__paper_id__upload_post: {
         parameters: {
             query?: never;
@@ -8674,9 +16282,76 @@ export interface operations {
             };
         };
     };
-    download_paper_api_papers__paper_id__download_get: {
+    list_paper_versions_api_papers__paper_id__versions_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                paper_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperVersionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    diff_paper_versions_api_papers__paper_id__versions_diff_get: {
+        parameters: {
+            query?: {
+                from_version?: number | null;
+                to_version?: number | null;
+            };
+            header?: never;
+            path: {
+                paper_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperVersionDiff"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_paper_api_papers__paper_id__download_get: {
+        parameters: {
+            query?: {
+                version?: number | null;
+            };
             header?: never;
             path: {
                 paper_id: string;
@@ -8739,7 +16414,8 @@ export interface operations {
     set_paper_status_api_papers__paper_id__status_put: {
         parameters: {
             query: {
-                status: "draft" | "submitted" | "under_review" | "accepted" | "rejected" | "revision_requested";
+                status: "draft" | "submitted" | "under_review" | "revision_requested" | "resubmitted" | "accepted" | "rejected" | "disqualified_ai";
+                reason?: string | null;
             };
             header?: never;
             path: {
@@ -8755,7 +16431,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PaperResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9001,6 +16677,38 @@ export interface operations {
             };
         };
     };
+    reopen_review_api_papers__paper_id__reviews__review_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paper_id: string;
+                review_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_paper_history_api_papers__paper_id__history_get: {
         parameters: {
             query?: never;
@@ -9173,6 +16881,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["PrintJobCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_print_job_api_printing_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["PrintJobResponse"];
                 };
             };
@@ -9253,6 +16992,138 @@ export interface operations {
             };
         };
     };
+    reject_print_job_api_printing_jobs__job_id__reject_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrintJobReject"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrintJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_print_job_api_printing_jobs__job_id__cancel_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrintJobCancelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_print_file_api_printing_jobs__job_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_print_file_api_printing_jobs__job_id__file_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_print_file_api_printing_jobs__job_id__file_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrintJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_quota_api_printing_quotas_get: {
         parameters: {
             query: {
@@ -9306,6 +17177,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuotaResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_event_quotas_api_printing_events__event_id__quotas_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotaResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -9513,6 +17415,66 @@ export interface operations {
             };
         };
     };
+    unpublish_announcement_api_dashboard_announcements__ann_id__unpublish_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ann_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_announcement_api_dashboard_announcements__ann_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ann_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_stats_api_dashboard_stats_get: {
         parameters: {
             query?: {
@@ -9533,6 +17495,402 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notifications_api_dashboard_notifications_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                unread_only?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_notifications_read_api_dashboard_notifications_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationReadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_all_notifications_read_api_dashboard_notifications_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_summary_api_dashboard_summary_get: {
+        parameters: {
+            query: {
+                event_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_team_history_api_dashboard_teams__team_id__history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamHistoryRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_performance_overview_api_dashboard_events__event_id__performance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerformanceOverviewRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_team_performance_api_dashboard_events__event_id__teams__team_id__performance_get: {
+        parameters: {
+            query?: {
+                include_practice?: boolean;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamPerformance"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_statistics_api_dashboard_events__event_id__statistics_get: {
+        parameters: {
+            query?: {
+                include_practice?: boolean;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventStatistics"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_deadlines_api_dashboard_deadlines_get: {
+        parameters: {
+            query?: {
+                season_id?: string | null;
+                since?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeadlineEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_season_timeline_api_dashboard_seasons__season_id__timeline_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeasonTimeline"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_calendar_feed_api_dashboard_calendar_feed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarFeedStatus"];
+                };
+            };
+        };
+    };
+    create_calendar_feed_api_dashboard_calendar_feed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarFeedCreated"];
+                };
+            };
+        };
+    };
+    delete_calendar_feed_api_dashboard_calendar_feed_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deadlines_ics_api_dashboard_deadlines_ics_get: {
+        parameters: {
+            query?: {
+                /** @description Personal calendar feed token */
+                token?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9577,6 +17935,68 @@ export interface operations {
         };
     };
     export_event_ranking_pdf_api_exports_events__event_id__ranking_pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_event_overall_ranking_csv_api_exports_events__event_id__overall_ranking_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_event_overall_ranking_pdf_api_exports_events__event_id__overall_ranking_pdf_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -9798,6 +18218,37 @@ export interface operations {
             };
         };
     };
+    export_reviews_csv_api_exports_seasons__season_id__reviews_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_printing_pdf_api_exports_seasons__season_id__printing_pdf_get: {
         parameters: {
             query?: never;
@@ -9887,6 +18338,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_team_report_pdf_api_exports_teams__team_id__report_pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_team_history_csv_api_exports_teams__team_id__history_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_all_history_csv_api_exports_history_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

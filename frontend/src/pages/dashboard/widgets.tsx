@@ -1,5 +1,8 @@
 import { Link, useParams } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { formatDate, formatNumber } from "@/i18n/format";
+import { PAPER_STATUS_LABEL } from "@/modules/papers/paperMeta";
 
 /** A single KPI tile. */
 export function StatCard({
@@ -71,8 +74,9 @@ export function SectionCard({
 
 /** Season phase timeline. */
 export function PhaseTimeline({ phases }: { phases: Array<any> }) {
+  const { t } = useTranslation("dashboard");
   if (!phases?.length) {
-    return <p className="text-sm text-gray-500">Keine Phasen definiert.</p>;
+    return <p className="text-sm text-gray-500">{t("noPhases")}</p>;
   }
   return (
     <ul className="space-y-2">
@@ -87,7 +91,7 @@ export function PhaseTimeline({ phases }: { phases: Array<any> }) {
           />
           <span className="text-sm font-medium">{phase.name}</span>
           <span className="text-xs text-gray-500 ml-auto">{phase.phase_type}</span>
-          {phase.is_active && <span className="badge-green text-xs">Aktiv</span>}
+          {phase.is_active && <span className="badge-green text-xs">{t("common:active")}</span>}
         </li>
       ))}
     </ul>
@@ -96,8 +100,9 @@ export function PhaseTimeline({ phases }: { phases: Array<any> }) {
 
 /** Published announcements. */
 export function AnnouncementsList({ announcements }: { announcements: Array<any> }) {
+  const { t } = useTranslation("dashboard");
   if (!announcements?.length) {
-    return <p className="text-sm text-gray-500">Keine aktuellen Ankündigungen.</p>;
+    return <p className="text-sm text-gray-500">{t("noAnnouncements")}</p>;
   }
   return (
     <ul className="space-y-3">
@@ -110,7 +115,7 @@ export function AnnouncementsList({ announcements }: { announcements: Array<any>
               className="text-xs text-gray-400"
               dateTime={a.published_at}
             >
-              {new Date(a.published_at).toLocaleDateString("de-DE")}
+              {formatDate(a.published_at)}
             </time>
           )}
         </li>
@@ -150,17 +155,18 @@ export function RankingList({
   entries: Array<any>;
   teams: Record<string, string>;
 }) {
+  const { t } = useTranslation("dashboard");
   if (!entries?.length) {
-    return <p className="text-sm text-gray-500">Noch keine Wertungen vorhanden.</p>;
+    return <p className="text-sm text-gray-500">{t("noScores")}</p>;
   }
   return (
     <table className="w-full text-sm">
-      <caption className="sr-only">Aktuelles Ranking</caption>
+      <caption className="sr-only">{t("ranking.caption")}</caption>
       <thead>
         <tr className="text-left text-gray-500">
-          <th scope="col" className="py-1 pr-2 font-medium">Platz</th>
-          <th scope="col" className="py-1 pr-2 font-medium">Team</th>
-          <th scope="col" className="py-1 font-medium text-right">Punkte</th>
+          <th scope="col" className="py-1 pr-2 font-medium">{t("ranking.place")}</th>
+          <th scope="col" className="py-1 pr-2 font-medium">{t("ranking.team")}</th>
+          <th scope="col" className="py-1 font-medium text-right">{t("ranking.points")}</th>
         </tr>
       </thead>
       <tbody>
@@ -169,7 +175,9 @@ export function RankingList({
             <td className="py-1 pr-2 tabular-nums">{e.rank}</td>
             <td className="py-1 pr-2">{e.team_name ?? teams[e.team_id] ?? e.team_id}</td>
             <td className="py-1 text-right tabular-nums">
-              {(e.seed_score ?? e.best_score ?? 0).toFixed?.(1) ?? e.seed_score}
+              {typeof (e.seed_score ?? e.best_score ?? 0) === "number"
+                ? formatNumber(e.seed_score ?? e.best_score ?? 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+                : e.seed_score}
             </td>
           </tr>
         ))}
@@ -180,9 +188,10 @@ export function RankingList({
 
 /** Reviewer queue: papers grouped by status. */
 export function ReviewQueue({ papers }: { papers: Array<any> }) {
+  const { t } = useTranslation("dashboard");
   const { eventId = "" } = useParams();
   if (!papers?.length) {
-    return <p className="text-sm text-gray-500">Keine Paper zur Begutachtung.</p>;
+    return <p className="text-sm text-gray-500">{t("noPapersToReview")}</p>;
   }
   return (
     <ul className="space-y-2">
@@ -192,12 +201,12 @@ export function ReviewQueue({ papers }: { papers: Array<any> }) {
           className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800"
         >
           <span className="text-sm font-medium flex-1 truncate">{p.title}</span>
-          <span className="badge-gray text-xs">{p.status}</span>
+          <span className="badge-gray text-xs">{PAPER_STATUS_LABEL[p.status] ?? p.status}</span>
           <Link
             to={eventId ? `/events/${eventId}/papers` : "/papers"}
             className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
           >
-            Öffnen
+            {t("open")}
           </Link>
         </li>
       ))}

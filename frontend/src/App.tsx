@@ -1,7 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Suspense, lazy } from "react";
+import { useTranslation } from "react-i18next";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ModuleRoute from "@/components/ModuleRoute";
 import EventIndexRedirect from "@/components/EventIndexRedirect";
 import LoginPage from "@/pages/LoginPage";
 import { eventRoutes } from "@/core/plugins";
@@ -11,15 +13,20 @@ import { useAuthStore } from "@/store/authStore";
 const EventSetupPage = lazy(() => import("@/pages/EventSetupPage"));
 const PublicEventPage = lazy(() => import("@/pages/PublicEventPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 
 function AppRoutes() {
+  const { t } = useTranslation();
   useRestoreSession();
   useCurrentUser();
   const sessionChecked = useAuthStore((state) => state.sessionChecked);
-  if (!sessionChecked) return <div className="grid h-screen place-items-center text-gray-500">Sitzung wird wiederhergestellt…</div>;
-  return <Suspense fallback={<div className="grid h-screen place-items-center text-gray-500">Laden…</div>}>
+  if (!sessionChecked) return <div className="grid h-screen place-items-center text-gray-500">{t("restoringSession")}</div>;
+  return <Suspense fallback={<div className="grid h-screen place-items-center text-gray-500">{t("loadingEllipsis")}</div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/public/:eventSlug" element={<PublicEventPage />} />
       <Route element={<ProtectedRoute />}>
         <Route index element={<EventIndexRedirect />} />
@@ -27,8 +34,8 @@ function AppRoutes() {
         <Route path="settings/*" element={<ProtectedRoute requirePermission="users:read"><SettingsPage /></ProtectedRoute>} />
         <Route path="events/:eventId" element={<Layout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
-          {eventRoutes.map(({ path, permission, component: Component }) => (
-            <Route key={path} path={path} element={<ProtectedRoute requirePermission={permission}><Component /></ProtectedRoute>} />
+          {eventRoutes.map(({ path, permission, module, component: Component }) => (
+            <Route key={path} path={path} element={<ProtectedRoute requirePermission={permission}><ModuleRoute module={module}><Component /></ModuleRoute></ProtectedRoute>} />
           ))}
         </Route>
       </Route>

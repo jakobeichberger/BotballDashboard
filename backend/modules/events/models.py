@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import (
     JSON,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -40,8 +41,10 @@ class Event(Base):
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="draft")
+    # Feature modules the organizer enabled; see modules.events.module_access
+    # for how they combine with the season flags.
     active_modules: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=lambda: ["seeding"]
+        JSON, nullable=False, default=lambda: ["seeding", "paper", "printing", "bots"]
     )
     public_scoreboard: Mapped[bool] = mapped_column(default=False, nullable=False)
     public_schedule: Mapped[bool] = mapped_column(default=False, nullable=False)
@@ -151,6 +154,9 @@ class ScheduledMatch(Base):
     next_loser_match_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("scheduled_matches.id", ondelete="SET NULL"), nullable=True
     )
+    # Participant position (1 or 2) the winner / loser takes in the linked match.
+    next_winner_slot: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    next_loser_slot: Mapped[int | None] = mapped_column(Integer, nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -158,6 +164,15 @@ class ScheduledMatch(Base):
     participants: Mapped[list["MatchParticipant"]] = relationship(
         "MatchParticipant", back_populates="scheduled_match", cascade="all, delete-orphan"
     )
+
+    @property
+    def round_kind(self) -> str | None:
+        """Loser-bracket rounds alternate: odd rounds are "minor" (loser-bracket
+        survivors play each other), even rounds are "major" (survivors meet the
+        teams dropping down from the winner bracket)."""
+        if self.bracket != "loser":
+            return None
+        return "minor" if self.round_number % 2 else "major"
 
 
 class MatchParticipant(Base):
@@ -194,3 +209,25 @@ class MatchParticipant(Base):
     @property
     def team_number(self) -> str | None:
         return self.team.team_number if self.team else None
+
+
+class EventBracketWeight(Base):
+    """Weight of one double-elimination bracket (A, B, C, …) at one event.
+
+    The game review announces bracket weights per tournament, so they belong to
+    the event. Season-wide weights (``scoring_bracket_weights``) remain the
+    fallback when an event does not define its own.
+    """
+
+    __tablename__ = "event_bracket_weights"
+    __table_args__ = (
+        UniqueConstraint("event_id", "category", "bracket", name="uq_event_bracket_weight"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    category: Mapped[str] = mapped_column(String(30), nullable=False, default="botball")
+    bracket: Mapped[str] = mapped_column(String(20), nullable=False)
+    weight: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)

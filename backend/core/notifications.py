@@ -1,9 +1,10 @@
 """Email + Web Push notification helpers."""
 
+import asyncio
 import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any
+from typing import Any, Literal
 
 import aiosmtplib
 
@@ -90,6 +91,14 @@ async def _send_sendgrid(
 # ── Web Push ──────────────────────────────────────────────────────────────────
 
 
+PushStatus = Literal["sent", "failed", "gone", "disabled"]
+
+
+def email_enabled() -> bool:
+    """Whether outgoing e-mail is configured (same rule as account-creation mail)."""
+    return bool(settings.smtp_host) and not settings.is_dev
+
+
 async def send_push_notification(
     endpoint: str,
     p256dh: str,
@@ -97,24 +106,43 @@ async def send_push_notification(
     title: str,
     body: str,
     url: str | None = None,
-) -> bool:
-    if not settings.vapid_private_key:
-        return False
-    try:
-        from pywebpush import webpush
+) -> PushStatus:
+    """Send one Web Push message.
 
-        subscription_info = {
-            "endpoint": endpoint,
-            "keys": {"p256dh": p256dh, "auth": auth},
-        }
-        data = json.dumps({"title": title, "body": body, "url": url})
-        webpush(
+    Returns ``"sent"`` on success, ``"gone"`` when the push service reports the
+    subscription as expired (HTTP 404/410 — the caller should delete it),
+    ``"failed"`` for any other error (worth a retry) and ``"disabled"`` when no
+    VAPID key is configured.
+    """
+    if not settings.vapid_private_key:
+        return "disabled"
+    try:
+        from pywebpush import WebPushException, webpush
+    except ImportError:  # pragma: no cover - dependency is installed in production
+        return "disabled"
+
+    subscription_info = {
+        "endpoint": endpoint,
+        "keys": {"p256dh": p256dh, "auth": auth},
+    }
+    data = json.dumps({"title": title, "body": body, "url": url})
+    try:
+        # pywebpush is synchronous (requests); keep it off the event loop.
+        await asyncio.to_thread(
+            webpush,
             subscription_info=subscription_info,
             data=data,
             vapid_private_key=settings.vapid_private_key,
             vapid_claims={"sub": f"mailto:{settings.vapid_admin_email}"},
         )
-        return True
+        return "sent"
+    except WebPushException as exc:
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        if status_code in (404, 410):
+            logger.info("push_subscription_gone", endpoint=endpoint[:40], status=status_code)
+            return "gone"
+        logger.warning("push_failed", error=str(exc), endpoint=endpoint[:40])
+        return "failed"
     except Exception as exc:
         logger.warning("push_failed", error=str(exc), endpoint=endpoint[:40])
-        return False
+        return "failed"

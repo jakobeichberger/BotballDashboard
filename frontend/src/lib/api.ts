@@ -1,5 +1,44 @@
-import axios from "axios";
+import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/authStore";
+import { enqueueScore, isQueueableScoreRequest, newIdempotencyKey } from "@/lib/offlineQueue";
+
+declare module "axios" {
+  interface AxiosRequestConfig {
+    /** Replayed from the offline queue — never queue it again. */
+    _fromOfflineQueue?: boolean;
+    /** Summary shown in the pending-sync list if the request gets queued. */
+    offlineLabel?: string;
+  }
+}
+
+/** Body of the 202 response a queued score request resolves with. */
+export interface QueuedResponse {
+  queued: true;
+  idempotency_key: string;
+}
+
+export function isQueuedResponse(data: unknown): data is QueuedResponse {
+  return typeof data === "object" && data !== null && (data as QueuedResponse).queued === true;
+}
+
+function bodyOf(config: InternalAxiosRequestConfig): Record<string, unknown> {
+  const data = typeof config.data === "string" ? safeParse(config.data) : config.data;
+  return data && typeof data === "object" && !(data instanceof FormData) ? (data as Record<string, unknown>) : {};
+}
+
+function safeParse(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+async function queueRequest(config: InternalAxiosRequestConfig): Promise<AxiosResponse<QueuedResponse>> {
+  const userId = useAuthStore.getState().user?.id ?? null;
+  const entry = await enqueueScore(config.url ?? "", bodyOf(config), config.offlineLabel ?? "", userId);
+  return { data: { queued: true, idempotency_key: entry.id }, status: 202, statusText: "Queued offline", headers: {}, config };
+}
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -24,7 +63,20 @@ export const api = axios.create({
 // Attach access token to every request
 api.interceptors.request.use((config) => {
   const method = config.method?.toUpperCase();
+  const queueable = isQueueableScoreRequest(method, config.url) && !config._fromOfflineQueue;
+  if (queueable) {
+    // Every score entry carries an idempotency key, so a replay from the
+    // offline queue can never be counted twice.
+    const body = bodyOf(config);
+    if (typeof body.idempotency_key !== "string") config.data = { ...body, idempotency_key: newIdempotencyKey() };
+  }
   if (method && !["GET", "HEAD", "OPTIONS"].includes(method) && !navigator.onLine) {
+    // Score entries are stored locally and synced later; every other write
+    // needs a connection.
+    if (queueable) {
+      config.adapter = () => queueRequest(config);
+      return config;
+    }
     return Promise.reject(new Error("OFFLINE_WRITE_BLOCKED"));
   }
   const token = useAuthStore.getState().accessToken;
@@ -45,10 +97,17 @@ api.interceptors.response.use(
       error.response.data.detail = error.response.data.message;
     }
     const original = error.config;
+    // The connection dropped mid-request: keep the score entry for later.
+    if (!error.response && !axios.isCancel(error) && original && !original._fromOfflineQueue && isQueueableScoreRequest(original.method, original.url)) {
+      return queueRequest(original);
+    }
+    // A 401 from the login itself means wrong credentials, not an expired
+    // session: refreshing (and redirecting to /login) would swallow the
+    // error message the login form shows.
     if (
       error.response?.status === 401 &&
       !original._retry &&
-      !String(original.url).includes("/auth/refresh")
+      !/\/auth\/(refresh|login)$/.test(String(original.url))
     ) {
       original._retry = true;
       if (isRefreshing) {

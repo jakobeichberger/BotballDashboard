@@ -61,6 +61,14 @@ coverage.xml
 *.crt
 secrets/
 
+# Written by scripts/update.sh (previous commit + Alembic revision for rollbacks)
+.deploy-state
+
 # Playwright
 frontend/test-results/
 frontend/playwright-report/
+# Session chains the e2e helpers hand from test to test (refresh cookies).
+frontend/e2e/.auth/
+frontend/coverage/
+# Default BACKUP_OFFSITE_CONFIG_DIR (SSH key, rclone.conf for off-site backups).
+/backup-offsite/

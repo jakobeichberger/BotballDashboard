@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
+import { useScoringScope } from "@/hooks/useScoringScope";
 import { EventLink } from "@/components/EventLink";
 import { Medal, ArrowLeft, Save } from "lucide-react";
+import DEPlacementPanel from "@/modules/scoring/extras/DEPlacementPanel";
 
 interface DEEntry {
   id?: string;
@@ -21,20 +23,15 @@ interface Team {
 }
 
 export default function DEPage() {
-  const [searchParams] = useSearchParams();
-  const sid = searchParams.get("season_id") ?? "";
+  const { t } = useTranslation("scoring");
   const queryClient = useQueryClient();
-
-  const { data: season } = useQuery({
-    queryKey: ["seasons", "active"],
-    queryFn: async () => { const { data } = await api.get("/seasons/active"); return data; },
-  });
-  const seasonId = sid || season?.id;
+  // Results belong to the event of the current route, not the season's first event.
+  const { base, eventId } = useScoringScope();
 
   const { data: existing } = useQuery<DEEntry[]>({
-    queryKey: ["de-results", seasonId],
-    queryFn: async () => { const { data } = await api.get(`/scoring/seasons/${seasonId}/de-results`); return data; },
-    enabled: !!seasonId,
+    queryKey: ["de-results", base],
+    queryFn: async () => { const { data } = await api.get(`${base}/de-results`); return data; },
+    enabled: !!base,
   });
 
   const { data: teams } = useQuery<Team[]>({
@@ -59,16 +56,17 @@ export default function DEPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (entries: DEEntry[]) => {
-      await api.put(`/scoring/seasons/${seasonId}/de-results`, entries);
+      await api.put(`${base}/de-results`, entries);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["de-results", seasonId] });
+      queryClient.invalidateQueries({ queryKey: ["de-results", base] });
+      queryClient.invalidateQueries({ queryKey: ["overall-ranking"] });
       setDraft({});
     },
   });
 
   const handleSave = () => {
-    if (!teams || !seasonId) return;
+    if (!teams || !base) return;
     const entries: DEEntry[] = teams
       .filter((t) => {
         const e = effective(t.id);
@@ -91,12 +89,12 @@ export default function DEPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <EventLink to="/scoreboard" aria-label="Zurück zur Rangliste" className="text-gray-400 hover:text-gray-600">
+          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-gray-400 hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
           </EventLink>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Medal className="w-6 h-6 text-blue-500" />
-            Double Elimination – Ergebnisse
+            {t("de.title")}
           </h1>
         </div>
         <button
@@ -105,25 +103,29 @@ export default function DEPage() {
           className="btn-primary text-sm flex items-center gap-2"
         >
           <Save className="w-4 h-4" />
-          {saveMutation.isPending ? "Speichern…" : "Speichern"}
+          {saveMutation.isPending ? t("saving") : t("common:save")}
         </button>
       </div>
 
       {saveMutation.isSuccess && (
         <div className="mb-4 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">
-          Gespeichert
+          {t("profile:saved")}
         </div>
       )}
+
+      <p className="text-sm text-gray-500 mb-4">
+        {t("de.hint")}
+      </p>
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">Bracket</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">DE-Rang</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">Bracket-Score (0–1)</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">DE-Score (0–1)</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("de.bracket")}</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("de.rank")}</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("de.bracketScore")}</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("de.deScore")}</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -140,7 +142,7 @@ export default function DEPage() {
                     <select
                       value={e.bracket ?? ""}
                       onChange={(ev) => setField(team.id, "bracket", ev.target.value)}
-                      aria-label={`Bracket für ${team.name}`}
+                      aria-label={t("de.bracketFor", { team: team.name })}
                       className="input text-sm w-20"
                     >
                       <option value="">–</option>
@@ -154,7 +156,7 @@ export default function DEPage() {
                       min={1}
                       value={e.de_rank ?? ""}
                       onChange={(ev) => setField(team.id, "de_rank", ev.target.value === "" ? null : Number(ev.target.value))}
-                      aria-label={`DE-Rang für ${team.name}`}
+                      aria-label={t("de.rankFor", { team: team.name })}
                       className="input text-sm w-20 text-center"
                       placeholder="–"
                     />
@@ -165,7 +167,7 @@ export default function DEPage() {
                       min={0} max={1} step={0.0001}
                       value={e.bracket_score ?? ""}
                       onChange={(ev) => setField(team.id, "bracket_score", ev.target.value === "" ? null : Number(ev.target.value))}
-                      aria-label={`Bracket-Score für ${team.name}`}
+                      aria-label={t("de.bracketScoreFor", { team: team.name })}
                       className="input text-sm w-28 text-center"
                       placeholder="–"
                     />
@@ -176,7 +178,7 @@ export default function DEPage() {
                       min={0} max={1} step={0.0001}
                       value={e.de_score ?? ""}
                       onChange={(ev) => setField(team.id, "de_score", ev.target.value === "" ? null : Number(ev.target.value))}
-                      aria-label={`DE-Score für ${team.name}`}
+                      aria-label={t("de.deScoreFor", { team: team.name })}
                       className="input text-sm w-28 text-center"
                       placeholder="–"
                     />
@@ -187,6 +189,7 @@ export default function DEPage() {
           </tbody>
         </table>
       </div>
+      {eventId && <DEPlacementPanel eventId={eventId} />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -61,6 +61,11 @@ class User(Base):
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     preferred_language: Mapped[str] = mapped_column(String(5), default="de", nullable=False)
     theme: Mapped[str] = mapped_column(String(10), default="system", nullable=False)
+    # Push opt-outs per notification category (modules.dashboard.notifications);
+    # a missing key means "on".
+    notification_preferences: Mapped[dict] = mapped_column(
+        JSON, default=dict, nullable=False, server_default="{}"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -68,6 +73,14 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Embedded in every access token ("tv" claim). Bumping it invalidates all
+    # access tokens issued before a password change/reset or deactivation.
+    token_version: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    # Set when the account was deleted by its owner or an admin: the row stays
+    # (history keeps its foreign keys) but carries no personal data any more.
+    anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     roles: Mapped[list[Role]] = relationship(Role, secondary="user_roles", back_populates="users")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
@@ -122,3 +135,20 @@ class PushSubscription(Base):
     )
 
     user: Mapped[User] = relationship(User, back_populates="push_subscriptions")
+
+
+class PasswordResetToken(Base):
+    """Single-use password reset token. Only the SHA-256 of the token is stored."""
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

@@ -191,8 +191,9 @@ DoubleSeedScore = (2/3) × (n − DoubleSeedRank + 1) / n
 
 | Saison | Formel |
 |---|---|
-| 2024 | `DocScore = 3/10·P1 + 3/10·P2 + 3/10·P3 + 1/10·Onsite` |
-| 2025/2026 | `DocScore = 2/10·P1 + 2/10·P2 + 2/10·P3 + 4/10·Onsite` |
+| 2024 | `DocScore = 3/10·P1 + 3/10·P2 + 1/10·P3 + 3/10·Onsite` |
+| 2025/2026 | `DocScore = 2/10·P1 + 2/10·P2 + 2/10·P3 + 4/10·Onsite` (Formel-Vorlage `regional_2026_botball`) |
+| GCER 2026 | `DocScore = Onsite` – „Documentation scores at GCER will only include the Onsite Documentation score“ (Vorlage `gcer_2026_botball`) |
 
 **Documentation Score – ECER-spezifisch (kein Onsite):**
 
@@ -222,6 +223,25 @@ Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore
 ```
 
 *(n = Anzahl Teams im Turnier/Bracket)*
+
+**Umsetzung in der Formel-Engine (verbindliche Regeln aus dem Game Review):**
+
+- `seed_runs` enthält nur Läufe aus Seeding-Phasen (Phase des Matches bzw. seines geplanten Matches;
+  frei erfasste Matches ohne Phase zählen als Seeding). DE-, Double-Seeding-, Alliance- und Finalmatches
+  zählen nie zum Seed Score.
+- Ein disqualifizierter Seeding-Lauf zählt als **0** (er wird nicht weggelassen), Scores unter 0 zählen als 0.
+  Der Seed Score ist der Schnitt der zwei besten gespielten Läufe inklusive dieser Nullen.
+- `double_seed_runs` kommen aus Double-Seeding-Phasen; `double_seed_total` ist der Schnitt **aller**
+  Läufe („No scores will be dropped in Double Seeding“).
+- `n` und das Teilnehmerfeld kommen aus dem Event (Event-Anmeldungen plus Teams mit Ergebnissen dort),
+  nicht aus der Saison-Anmeldung. Die Kategorie kommt aus der Event-Anmeldung, sonst aus der Saison-Anmeldung.
+- Seeding-Ränge werden pro Kategorie vergeben (Botball und Open getrennt); Gleichstand teilt sich einen
+  Rang (1, 2, 2, 4).
+- Eine **rote Karte** in irgendeinem offiziellen Match des Events disqualifiziert das Team für die
+  gesamte Wertung des Events: es erhält keinen Rang (`rank = null`, `disqualified = true`), zählt nicht
+  zu `n` und wird in Exporten/öffentlicher Rangliste nicht gelistet.
+- Formel-Vorlagen: `ecer_2025_botball` (Standard), `ecer_2025_open` (Standard), `regional_2026_botball`,
+  `gcer_2026_botball`, `aerial`, `jbc` – im Formel-Editor über „Vorlage laden“.
 
 ---
 
@@ -259,14 +279,14 @@ Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore
 | Kitchen Floor | Botguy | ×15 | |
 | Condiment Stations | Unsorted Poms | ×1 | # of Sorted Stations |
 | Condiment Stations | Sorted Poms | ×5 | |
-| Serving Station | Red/Orange/Yellow Pom in Tray | ×5 | # Full Pom Sets in Trays |
-| Serving Station | One Side in Tray | ×15 | # Full Trays ×2 |
+| Serving Station | Red/Orange/Yellow Pom in Tray | ×5 | # Full Pom Sets in Trays **oder** # Full Trays ×2 |
+| Serving Station | One Side in Tray | ×15 | |
 | Serving Station | One Entree in Tray | ×15 | |
-| Beverage Station | Cups | ×5 | Full Cup ×2 |
-| Beverage Station | Water Bottles | ×10 | 2+ Cups ×2 |
-| Beverage Station | Ice | ×10 | 5 Water Bottles ×3 |
-| Beverage Station | Matching Drink Color | ×30 | 6 Water Bottles ×6 |
-| Beverage Station | Wrong Drink Color | ×10 | |
+| Cups | Ice | ×10 | Full Cup ×2 |
+| Cups | Wrong Drink Color | ×10 | 2+ Cups in Beverage Station ×2 |
+| Cups | Matching Drink Color | ×30 | |
+| Beverage Station | Cups | ×5 | 5 Water Bottles ×3 **oder** 6 Water Bottles ×6 |
+| Beverage Station | Water Bottles | ×10 | |
 | Fry Station | Potato | ×50 | No Fries on Game Surface ×2 |
 
 #### 2026 – Logistics/Warehouse Theme
@@ -296,6 +316,29 @@ Game-Elemente aus Regeltext extrahiert. Exakte Multiplikatoren liegen nur im gra
 - Stacks: unterster Piece muss Pallet oder Cube sein; nur Cubes können gestapelt werden
 
 > Alle Felder werden als konfigurierbares YAML/JSON-Schema pro Saison im System hinterlegt. Für 2026 müssen die exakten Multiplikator-Werte aus dem offiziellen Score-Sheet (PDF) manuell eingetragen werden.
+
+#### Umsetzung: strukturiertes Score-Sheet
+
+Ein Schema ist entweder eine flache Feldliste (Σ Wert × Multiplikator) oder eine strukturierte `definition` (`backend/modules/scoring/sheet.py`, gespiegelt in `frontend/src/modules/scoring/sheet/calculator.ts`, beide gegen dieselben Fixtures getestet):
+
+- **Bereiche** mit Feldern (Anzahl/Boolean, Punkte, Maximalwert) → Zwischensumme.
+- **Bereichs-Multiplikatoren** auf die Zwischensumme: Häkchen (× Faktor), Anzahl (× (n · Faktor + Offset), z. B. „Robots back ×n+1“), **Entweder-oder** (die bessere Alternative zählt). Werte unter 1 lassen die Zwischensumme unverändert. Mehrere Multiplikatoren eines Bereichs werden multipliziert.
+- **Seiten A/B**: jeder Bereich pro Seite, Total = A + B. Rohwerte heißen dann `A.<feld>` / `B.<feld>`.
+- Vorlagen 2024 und 2025 (vollständig, aus den Score-Sheets) und 2026 (nur Struktur, Punkte = 1) sind im Editor wählbar; „Klonen von“ kopiert das aktive Schema eines anderen Events/einer anderen Stufe als neue Version.
+
+### Tie-Breaker & Sonderregeln (Game Review)
+
+Pro Saison konfigurierbar (`/scoring/seasons/:id/rules`, Vorlagen 2024/2025/2026 aus den Game Reviews):
+
+- **Tie-Breaker-Liste** in Reihenfolge. Jeder Tie-Breaker liest seinen Wert aus dem Score-Sheet (Summe beider Seiten) oder wird vom Juror pro Match eingetragen. Verwendet für Seeding-Gleichstände (Werte der gewerteten besten zwei Läufe), DE-Duelle und gleiche DE-Ränge; die UI zeigt, welcher Tie-Breaker entschieden hat.
+  - Seeding: Ränge je Kategorie (Botball/Open getrennt). Gleiche Seed-Scores werden nur durch Tie-Breaker getrennt; trennt keiner (oder ist keiner konfiguriert), teilen sich die Teams den Rang (1, 2, 2, 4). Eine DQ oder verlorene Runde zählt 0, ihre Tie-Breaker-Werte zählen nicht. Eine geänderte Tie-Breaker-Liste rankt alle Events der Saison neu.
+  - Duelle (DE, Finale): Sobald beide Scores eines geplanten Matches erfasst sind, wird das Ergebnis über `record_match_result` eingetragen – Bracket-Fortschritt, Korrektur und DE-Ränge (`de_results`) laufen damit über dieselbe Stelle wie das manuelle Ergebnis. Ein unentschiedenes Duell bleibt offen („replay“).
+  - DE-Platzierung: Teams, die in derselben Runde ausscheiden, teilen sich den Bracket-Rang (`rank`). `placement`/`decided_by` ordnen sie nach Tie-Breakern (Werte aus den Läufen der Eliminationsphase), zuletzt nach Seeding-Rang. Bracket-Ansicht und `/scoring/events/:id/de-placement` nutzen dieselbe Implementierung (`events.service.tiebroken_placements`).
+- **Finale wiederholen** (`finals_replay`, 2026): Im Finale entscheidet kein Tie-Breaker, das Match wird wiederholt. Der Tie-Breaker „closest to Botguy“ (2026) gilt erst nach einem Replay (`replay_only`, Match-Kennzeichen „Replay“).
+- **Kontakt am Spielende**: Berührt ein Roboter absichtlich die gegnerische Seite, erhält der Gegner 25 % des Scores des verursachenden Teams (Prozentsatz konfigurierbar).
+- **Runde verloren** (Startbox nie verlassen / Motoren laufen am Ende): Die Runde zählt 0 Punkte, ist aber keine DQ. Im Duell verliert das Team; haben beide Teams die Runde verloren, verliert das Team, das die Startbox nie verlassen hat.
+- **Schiedsrichter-Checkliste**: Prüfpunkte, die der Juror vor dem Bestätigen eines Scores abhakt; das Ergebnis wird mit dem Match gespeichert.
+- **Parts Challenge**: Die Einsprache wird mit dem Match erfasst. Entscheidet der Head Judge für den Challenger, wird das angefochtene Team für die Runde disqualifiziert, sonst der Challenger. Eine eigene Rangliste gibt es dafür nicht, weil die Challenge keine Wertung ist.
 
 ### Yellow/Red Card System – Team Misconduct
 

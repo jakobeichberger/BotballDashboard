@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { CalendarDays, WandSparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { CalendarDays, ListOrdered, WandSparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import type { EventPhase, ScheduledMatch } from "@/api/types";
+import BracketView from "@/components/BracketView";
+import AllianceStandings from "@/components/events/AllianceStandings";
+import type { BracketPhase, EventPhase, ScheduledMatch } from "@/api/types";
+import { phaseLabel } from "@/api/analytics";
+import { formatDateTime } from "@/i18n/format";
+
+const MATCH_STATUSES = ["scheduled", "called", "running", "completed", "cancelled"];
 
 type MatchEdit = {
   scheduled_at?: string;
@@ -20,11 +27,14 @@ function toLocalDateTimeInput(value?: string | null) {
 }
 
 export default function EventSchedulePage() {
+  const { t } = useTranslation("events");
   const { eventId = "" } = useParams();
   const queryClient = useQueryClient();
   const canManage = useAuthStore((state) => state.hasPermission("events:admin"));
   const canEdit = useAuthStore((state) => state.hasPermission("events:write"));
+  const canScore = useAuthStore((state) => state.hasPermission("scoring:admin"));
   const [phaseId, setPhaseId] = useState("");
+  const [notice, setNotice] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [error, setError] = useState("");
   const [edits, setEdits] = useState<Record<string, MatchEdit>>({});
@@ -38,6 +48,39 @@ export default function EventSchedulePage() {
     queryFn: async () => (await api.get(`/v1/events/${eventId}/schedule`)).data,
     refetchInterval: 15_000,
   });
+  const bracket = useQuery<BracketPhase[]>({
+    queryKey: ["event-bracket", eventId],
+    queryFn: async () => (await api.get(`/v1/events/${eventId}/bracket`)).data,
+    refetchInterval: 15_000,
+  });
+  const refreshSchedule = () => {
+    queryClient.invalidateQueries({ queryKey: ["event-schedule", eventId] });
+    queryClient.invalidateQueries({ queryKey: ["event-bracket", eventId] });
+  };
+  const assignSeeds = useMutation({
+    mutationFn: async () =>
+      api.post(`/v1/events/${eventId}/registrations/seeds-from-seeding`, {}),
+    onSuccess: (response) => {
+      setError("");
+      setNotice(t("schedulePage.seedsTaken", { count: response.data.length }));
+      queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] });
+    },
+    onError: (reason: any) =>
+      setError(reason.response?.data?.detail ?? t("schedulePage.seedsFailed")),
+  });
+  const recordResult = useMutation({
+    mutationFn: async ({ match, teamId }: { match: ScheduledMatch; teamId: string }) =>
+      api.post(`/v1/events/${eventId}/schedule/${match.id}/result`, {
+        winner_team_id: teamId,
+        expected_version: match.version,
+      }),
+    onSuccess: () => {
+      setError("");
+      refreshSchedule();
+    },
+    onError: (reason: any) =>
+      setError(reason.response?.data?.detail ?? t("schedulePage.resultFailed")),
+  });
   const generate = useMutation({
     mutationFn: async () =>
       api.post(`/v1/events/${eventId}/schedule/generate`, {
@@ -47,10 +90,10 @@ export default function EventSchedulePage() {
       }),
     onSuccess: () => {
       setError("");
-      queryClient.invalidateQueries({ queryKey: ["event-schedule", eventId] });
+      refreshSchedule();
     },
     onError: (reason: any) =>
-      setError(reason.response?.data?.detail ?? "Zeitplan konnte nicht erzeugt werden."),
+      setError(reason.response?.data?.detail ?? t("schedulePage.generateFailed")),
   });
   const updateMatch = useMutation({
     mutationFn: async (match: ScheduledMatch) =>
@@ -70,7 +113,7 @@ export default function EventSchedulePage() {
     onError: (reason: any) =>
       setError(
         reason.response?.data?.detail ??
-          "Zeitplanänderung konnte nicht gespeichert werden.",
+          t("schedulePage.updateFailed"),
       ),
   });
 
@@ -81,9 +124,26 @@ export default function EventSchedulePage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-2xl font-bold">
           <CalendarDays />
-          Zeitplan & Brackets
+          {t("schedulePage.title")}
         </h1>
+        {canManage && (
+          <button
+            type="button"
+            className="btn-secondary flex items-center gap-2"
+            disabled={assignSeeds.isPending}
+            onClick={() => assignSeeds.mutate()}
+            title={t("schedulePage.seedsHint")}
+          >
+            <ListOrdered className="h-4 w-4" />
+            {t("schedulePage.seeds")}
+          </button>
+        )}
       </div>
+      {notice && (
+        <p role="status" className="mb-4 text-sm text-emerald-600">
+          {notice}
+        </p>
+      )}
 
       {canManage && (
         <form
@@ -94,21 +154,21 @@ export default function EventSchedulePage() {
           }}
         >
           <select
-            aria-label="Turnierphase"
+            aria-label={t("schedulePage.phase")}
             className="input"
             value={phaseId}
             required
             onChange={(event) => setPhaseId(event.target.value)}
           >
-            <option value="">Phase wählen</option>
+            <option value="">{t("schedulePage.choosePhase")}</option>
             {phases.data?.map((phase) => (
               <option key={phase.id} value={phase.id}>
-                {phase.name} · {phase.phase_type}
+                {phase.name} · {phaseLabel(phase.phase_type)}
               </option>
             ))}
           </select>
           <input
-            aria-label="Startzeit"
+            aria-label={t("schedulePage.startTime")}
             className="input"
             type="datetime-local"
             required
@@ -120,7 +180,7 @@ export default function EventSchedulePage() {
             disabled={generate.isPending}
           >
             <WandSparkles className="h-4 w-4" />
-            Generieren
+            {t("schedulePage.generate")}
           </button>
           {error && (
             <p role="alert" className="text-sm text-red-600 md:col-span-3">
@@ -135,14 +195,14 @@ export default function EventSchedulePage() {
           <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
               {[
-                "Zeit",
-                "Code",
-                "Phase",
-                "Runde",
-                "Tisch",
-                "Teams",
-                "Status",
-                ...(canEdit ? ["Aktion"] : []),
+                t("schedulePage.col.time"),
+                t("schedulePage.col.code"),
+                t("schedulePage.col.phase"),
+                t("schedulePage.col.round"),
+                t("schedulePage.col.table"),
+                t("schedulePage.col.teams"),
+                t("common:status"),
+                ...(canEdit ? [t("schedulePage.col.action")] : []),
               ].map((label) => (
                 <th key={label} className="px-4 py-3 text-left">
                   {label}
@@ -156,7 +216,7 @@ export default function EventSchedulePage() {
                 <td className="whitespace-nowrap px-4 py-3">
                   {canEdit ? (
                     <input
-                      aria-label={`Zeit ${match.code}`}
+                      aria-label={t("schedulePage.timeOf", { code: match.code })}
                       className="input w-48"
                       type="datetime-local"
                       value={toLocalDateTimeInput(
@@ -175,10 +235,7 @@ export default function EventSchedulePage() {
                       }
                     />
                   ) : match.scheduled_at ? (
-                    new Intl.DateTimeFormat(undefined, {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    }).format(new Date(match.scheduled_at))
+                    formatDateTime(match.scheduled_at, { dateStyle: "short", timeStyle: "short" })
                   ) : (
                     "–"
                   )}
@@ -189,7 +246,7 @@ export default function EventSchedulePage() {
                 <td className="px-4 py-3">
                   {canEdit ? (
                     <input
-                      aria-label={`Tisch ${match.code}`}
+                      aria-label={t("schedulePage.tableOf", { code: match.code })}
                       className="input w-20"
                       type="number"
                       min={1}
@@ -210,13 +267,13 @@ export default function EventSchedulePage() {
                 </td>
                 <td className="px-4 py-3">
                   {match.participants
-                    .map((participant) => participant.team_name ?? "TBD")
-                    .join(" vs. ") || "TBD"}
+                    .map((participant) => participant.team_name ?? t("tbd"))
+                    .join(" vs. ") || t("tbd")}
                 </td>
                 <td className="px-4 py-3">
                   {canEdit ? (
                     <select
-                      aria-label={`Status ${match.code}`}
+                      aria-label={t("schedulePage.statusOf", { code: match.code })}
                       className="input"
                       value={edits[match.id]?.status ?? match.status}
                       onChange={(event) =>
@@ -229,14 +286,14 @@ export default function EventSchedulePage() {
                         }))
                       }
                     >
-                      {["scheduled", "called", "running", "completed", "cancelled"].map(
+                      {MATCH_STATUSES.map(
                         (status) => (
-                          <option key={status}>{status}</option>
+                          <option key={status} value={status}>{t(`matchStatus.${status}`)}</option>
                         ),
                       )}
                     </select>
                   ) : (
-                    match.status
+                    t(`matchStatus.${match.status}`, { defaultValue: match.status })
                   )}
                 </td>
                 {canEdit && (
@@ -247,7 +304,7 @@ export default function EventSchedulePage() {
                       disabled={!edits[match.id] || updateMatch.isPending}
                       onClick={() => updateMatch.mutate(match)}
                     >
-                      Speichern
+                      {t("common:save")}
                     </button>
                   </td>
                 )}
@@ -256,9 +313,38 @@ export default function EventSchedulePage() {
           </tbody>
         </table>
         {!schedule.isLoading && !schedule.data?.length && (
-          <p className="p-8 text-center text-gray-500">Noch kein Zeitplan vorhanden.</p>
+          <p className="p-8 text-center text-gray-500">{t("schedulePage.empty")}</p>
         )}
       </div>
+
+      {phases.data?.filter((phase) => phase.phase_type === "alliance").map((phase) => (
+        <AllianceStandings key={phase.id} eventId={eventId} phase={phase} />
+      ))}
+
+      {!!bracket.data?.length && (
+        <section className="card mt-6 p-4" aria-labelledby="bracket-heading">
+          <h2 id="bracket-heading" className="mb-1 text-xl font-bold">
+            {t("schedulePage.brackets")}
+          </h2>
+          {canScore && (
+            <p className="mb-4 text-sm text-gray-500">
+              {t("schedulePage.bracketHint")}
+            </p>
+          )}
+          {!canManage && error && (
+            <p role="alert" className="mb-3 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          <BracketView
+            phases={bracket.data}
+            onPickWinner={
+              canScore ? (match, teamId) => recordResult.mutate({ match, teamId }) : undefined
+            }
+            disabled={recordResult.isPending}
+          />
+        </section>
+      )}
     </div>
   );
 }

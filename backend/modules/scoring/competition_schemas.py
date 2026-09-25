@@ -27,6 +27,7 @@ class DEResultResponse(BaseModel):
 
     id: str
     season_id: str
+    event_id: str
     team_id: str
     bracket: str
     de_rank: int | None
@@ -53,6 +54,7 @@ class AerialResultResponse(BaseModel):
 
     id: str
     season_id: str
+    event_id: str
     team_id: str
     run1: float | None
     run2: float | None
@@ -81,6 +83,7 @@ class DocScoreResponse(BaseModel):
 
     id: str
     season_id: str
+    event_id: str
     team_id: str
     part1: float | None
     part2: float | None
@@ -96,7 +99,9 @@ class DocScoreResponse(BaseModel):
 
 
 class OverallRankingEntry(BaseModel):
-    rank: int
+    # None when the team is disqualified (red card) and takes no place.
+    rank: int | None
+    disqualified: bool = False
     team_id: str
     team_name: str | None
     category: str
@@ -114,7 +119,8 @@ class OverallRankingEntry(BaseModel):
 class TeamRankingEntry(BaseModel):
     """Extended seeding ranking entry with team name and category."""
 
-    rank: int
+    rank: int | None
+    disqualified: bool = False
     team_id: str
     team_name: str | None
     category: str
@@ -122,3 +128,18 @@ class TeamRankingEntry(BaseModel):
     best_score: float
     average_score: float
     rounds_played: int
+    # Tie-breaker that placed the team against an equal seed score, if any.
+    tiebreaker: str | None = None
+
+
+class ResultRevisionResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    event_id: str
+    team_id: str
+    kind: str
+    previous_value: dict | None
+    new_value: dict | None
+    changed_by: str | None
+    created_at: datetime

@@ -1,0 +1,140 @@
+# Unit tests for alerts.yml:  promtool test rules monitoring/alerts.test.yml
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="botball-api", instance="backend:8000"}'
+        values: "1 1 0 0 0 0"
+      - series: 'probe_success{job="botball-readiness", instance="http://backend:8000/api/system/readiness"}'
+        values: "1 0 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ApiDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-api, instance: "backend:8000" }
+            exp_annotations:
+              summary: "BotballDashboard API is not reachable"
+              description: "Prometheus cannot scrape backend:8000 for 2 minutes. Check `docker compose ps backend` and `docker compose logs backend`."
+      - eval_time: 5m
+        alertname: ReadinessFailing
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-readiness, instance: "http://backend:8000/api/system/readiness" }
+            exp_annotations:
+              summary: "BotballDashboard readiness check fails"
+              description: "/api/system/readiness has not returned 200 for 2 minutes: PostgreSQL, Redis or the Celery worker is unavailable (OCR, push and printer polling stop without the worker)."
+
+  - interval: 1m
+    input_series:
+      # 60 requests/min, 10 of them 5xx -> 16.67 % errors.
+      - series: 'botball_http_requests_total{method="GET", route="/api/x", status="200"}'
+        values: "0+50x20"
+      - series: 'botball_http_requests_total{method="GET", route="/api/x", status="500"}'
+        values: "0+10x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HighServerErrorRate
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "More than 5 % of API requests fail with 5xx"
+              description: "16.67% of API requests returned a 5xx status over the last 5 minutes. Check `docker compose logs backend`."
+
+  - interval: 1m
+    input_series:
+      # A healthy API must not raise the error-rate alert.
+      - series: 'botball_http_requests_total{method="GET", route="/api/x", status="200"}'
+        values: "0+60x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HighServerErrorRate
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'botball_backup_last_run_success{job="botball-backup", instance="backup:9101"}'
+        values: "1 1 0"
+      # Last success at t=0 (epoch); after 26 h + 10 min the backup is stale.
+      - series: 'botball_backup_last_success_timestamp_seconds{job="botball-backup", instance="backup:9101"}'
+        values: "0x1700"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: BackupFailed
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "The last backup run failed"
+              description: "backup.sh failed; it is retried every BACKUP_RETRY_SECONDS (default 1 h). See `docker compose logs backup`."
+      - eval_time: 25h
+        alertname: BackupStale
+        exp_alerts: []
+      - eval_time: 27h
+        alertname: BackupStale
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "No successful backup for more than 26 hours"
+              description: "The last successful backup is 1d 3h 0m 0s old."
+
+  - interval: 1m
+    input_series:
+      - series: 'botball_backup_offsite_last_success{job="botball-backup", instance="backup:9101"}'
+        values: "1 1 0 0 1"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: BackupOffsiteCopyFailed
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: BackupOffsiteCopyFailed
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "The off-site copy of the last backup failed"
+              description: "The archive exists locally but was not copied to BACKUP_OFFSITE_TARGET; the copy is retried every BACKUP_RETRY_SECONDS. See `docker compose logs backup`."
+      - eval_time: 4m
+        alertname: BackupOffsiteCopyFailed
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'botball_backup_status_known{job="botball-backup", instance="backup:9101"}'
+        values: "1x90"
+      - series: 'up{job="botball-backup", instance="backup:9101"}'
+        values: "0x30"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: BackupNeverSucceeded
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "Backups have run but none succeeded yet"
+              description: "The backup service has recorded runs but no successful backup. See `docker compose logs backup`."
+      - eval_time: 20m
+        alertname: BackupMonitoringDown
+        exp_alerts:
+          - exp_labels: { severity: warning, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "Backup service is not running or not scraped"
+              description: "backup:9101 is unreachable. Is the \"production\" compose profile enabled (COMPOSE_PROFILES=production,monitoring)?"
+
+  - interval: 1m
+    input_series:
+      # Redis failed for a moment at minute 3; the deny-list never failed.
+      - series: 'botball_redis_fail_open_total{job="botball-api", instance="backend:8000", component="rate_limit"}'
+        values: "0 0 0 3 3 3 3 3 3 3 3 3 3 3 3"
+      - series: 'botball_redis_fail_open_total{job="botball-api", instance="backend:8000", component="token_denylist"}'
+        values: "0x14"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: RedisFailOpen
+        exp_alerts:
+          - exp_labels: { severity: warning, component: rate_limit }
+            exp_annotations:
+              summary: "Security checks run without Redis (rate_limit)"
+              description: "Redis was unreachable, so the rate_limit check let requests through (fail open): rate limits or revoked access tokens are not enforced. Check `docker compose logs redis`."
+      - eval_time: 14m
+        alertname: RedisFailOpen
+        exp_alerts: []

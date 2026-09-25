@@ -37,6 +37,53 @@ export interface ScoreSheetTemplateListItem {
   uploaded_at: string
 }
 
+/** An OCR box: normalized (0–1 of the page) or, for old layouts, pixels. */
+export interface OcrRegion {
+  key: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** A printed reference mark (filled square) the OCR worker aligns scans by. */
+export interface OcrAnchor extends Omit<OcrRegion, 'key'> {
+  name: string
+}
+
+/** Plausibility check for one field (backend OcrFieldRule). */
+export interface OcrFieldRule {
+  key: string
+  min_value: number | null
+  max_value: number | null
+  integer: boolean
+  /** 0–1; null uses the template-wide threshold. */
+  min_confidence: number | null
+}
+
+/** The read values of several fields must add up to a plausible total. */
+export interface OcrSumRule {
+  label: string
+  keys: string[]
+  min_value: number | null
+  max_value: number | null
+}
+
+/** Which OCR values are flagged for a closer look (backend OcrValidationRules). */
+export interface OcrValidationRules {
+  min_confidence: number
+  fields: OcrFieldRule[]
+  sums: OcrSumRule[]
+}
+
+export interface ScoreSheetLayout {
+  page_width: number
+  page_height: number
+  anchors: OcrAnchor[]
+  field_regions: OcrRegion[]
+  validation_rules: OcrValidationRules
+}
+
 export interface ScoreSheetTemplate extends ScoreSheetTemplateListItem {
   season_id: string
   competition_level_id: string | null
@@ -46,6 +93,12 @@ export interface ScoreSheetTemplate extends ScoreSheetTemplateListItem {
   uploaded_by: string
   confirmed_by: string | null
   confirmed_at: string | null
+  page_width?: number | null
+  page_height?: number | null
+  anchors?: OcrAnchor[] | null
+  field_regions?: OcrRegion[] | null
+  /** Older layouts may hold rules in another shape; see parseRules(). */
+  validation_rules?: Partial<OcrValidationRules> | Record<string, unknown> | null
 }
 
 export interface UploadScoreSheetParams {
@@ -99,6 +152,9 @@ export const scoreSheetApi = {
 
   setActive: (sheetId: string) =>
     api.put(`/scoring/score-sheets/${sheetId}/active`),
+
+  updateLayout: (sheetId: string, layout: ScoreSheetLayout) =>
+    api.patch<ScoreSheetTemplate>(`/scoring/score-sheets/${sheetId}/layout`, layout).then(r => r.data),
 
   delete: (sheetId: string) =>
     api.delete(`/scoring/score-sheets/${sheetId}`),

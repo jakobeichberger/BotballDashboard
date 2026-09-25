@@ -1,6 +1,7 @@
 """Celery worker configuration for OCR and recurring device polling."""
 
 from celery import Celery
+from celery.schedules import crontab
 
 from core.config import get_settings
 
@@ -24,6 +25,20 @@ celery_app.conf.beat_schedule = {
     "deliver-notification-outbox": {
         "task": "notifications.deliver_outbox",
         "schedule": 10.0,
+    },
+    "queue-match-reminders": {
+        "task": "notifications.match_reminders",
+        "schedule": 60.0,
+    },
+    "queue-deadline-reminders": {
+        "task": "notifications.deadline_reminders",
+        # Daily at 07:00 UTC, before the morning of the event day in Europe.
+        "schedule": crontab(hour=7, minute=0),
+    },
+    "queue-paper-deadline-reminders": {
+        "task": "papers.deadline_reminders",
+        # Daily, right after the season deadline reminders.
+        "schedule": crontab(hour=7, minute=5),
     },
     "process-paper-review-deadlines": {
         "task": "papers.process_review_deadlines",

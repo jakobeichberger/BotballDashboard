@@ -1,0 +1,39 @@
+# Pre-commit hooks – the same checks CI runs, before each commit.
+#   pipx install pre-commit   (or: pip install pre-commit)
+#   pre-commit install
+#   pre-commit run --all-files   # once, on demand
+# The frontend hook needs `pnpm install` in frontend/ first.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Keep in sync with the ruff pin in backend/pyproject.toml.
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        name: ruff check (backend)
+        files: ^backend/
+      - id: ruff-format
+        name: ruff format (backend)
+        files: ^backend/
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        files: ^(scripts|backend/scripts|monitoring)/.*\.sh$
+
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint (frontend)
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        # pre-commit passes repo-relative paths; eslint runs inside frontend/.
+        entry: bash -c 'cd frontend && files=("${@#frontend/}") && pnpm exec eslint --report-unused-disable-directives --max-warnings 0 "${files[@]}"' --

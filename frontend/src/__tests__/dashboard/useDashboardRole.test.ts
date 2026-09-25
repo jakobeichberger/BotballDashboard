@@ -6,32 +6,32 @@ describe("resolveDashboardRole", () => {
     expect(resolveDashboardRole(null)).toBe("user");
   });
 
-  it("returns 'admin' for a superuser regardless of roles", () => {
-    expect(resolveDashboardRole({ is_superuser: true, roles: [] })).toBe("admin");
+  it("returns 'admin' for a superuser regardless of permissions", () => {
+    expect(resolveDashboardRole({ is_superuser: true, permissions: [] })).toBe("admin");
   });
 
-  it("returns 'admin' for the admin role", () => {
-    expect(resolveDashboardRole({ roles: [{ name: "admin" }] })).toBe("admin");
+  it("returns 'admin' for organizer permissions", () => {
+    expect(resolveDashboardRole({ permissions: ["events:write"] })).toBe("admin");
+    expect(resolveDashboardRole({ permissions: ["teams:admin"] })).toBe("admin");
+    expect(resolveDashboardRole({ permissions: ["dashboard:write"] })).toBe("admin");
   });
 
-  it("returns 'reviewer' for the reviewer role", () => {
-    expect(resolveDashboardRole({ roles: [{ name: "reviewer" }] })).toBe("reviewer");
+  it("returns 'reviewer' for papers:review", () => {
+    expect(resolveDashboardRole({ permissions: ["papers:read", "papers:review"] })).toBe("reviewer");
   });
 
-  it("prefers admin over reviewer when both are present", () => {
-    expect(
-      resolveDashboardRole({ roles: [{ name: "reviewer" }, { name: "admin" }] })
-    ).toBe("admin");
+  it("prefers admin over reviewer when both apply", () => {
+    expect(resolveDashboardRole({ permissions: ["papers:review", "events:write"] })).toBe("admin");
   });
 
-  it("maps mentor/guest/juror to 'user'", () => {
-    expect(resolveDashboardRole({ roles: [{ name: "mentor" }] })).toBe("user");
-    expect(resolveDashboardRole({ roles: [{ name: "guest" }] })).toBe("user");
-    expect(resolveDashboardRole({ roles: [{ name: "juror" }] })).toBe("user");
+  it("maps mentor/guest/juror permissions to 'user'", () => {
+    expect(resolveDashboardRole({ permissions: ["teams:write", "scoring:write"] })).toBe("user");
+    expect(resolveDashboardRole({ permissions: ["scoring:read"] })).toBe("user");
+    expect(resolveDashboardRole({ permissions: ["scoring:admin"] })).toBe("user");
   });
 
-  it("returns 'user' for a user with no roles", () => {
-    expect(resolveDashboardRole({ roles: [] })).toBe("user");
+  it("returns 'user' for a user without permissions", () => {
+    expect(resolveDashboardRole({ permissions: [] })).toBe("user");
     expect(resolveDashboardRole({})).toBe("user");
   });
 });

@@ -115,35 +115,101 @@ class SetActiveRequest(BaseModel):
     sheet_id: UUID
 
 
-class OcrAnchor(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
-    x: float = Field(ge=0)
-    y: float = Field(ge=0)
-    width: float = Field(gt=0)
-    height: float = Field(gt=0)
+class _OcrBox(BaseModel):
+    """A box on the page: normalized (all values ≤ 1) or in page pixels."""
 
-
-class OcrFieldRegion(BaseModel):
-    key: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=100)
     x: float = Field(ge=0)
     y: float = Field(ge=0)
     width: float = Field(gt=0)
     height: float = Field(gt=0)
 
     @model_validator(mode="after")
-    def validate_normalized_coordinates(self) -> OcrFieldRegion:
+    def validate_normalized_coordinates(self) -> _OcrBox:
         values = (self.x, self.y, self.width, self.height)
         if max(values) <= 1 and (self.x + self.width > 1 or self.y + self.height > 1):
-            raise ValueError("Normalized OCR regions must fit within the page")
+            raise ValueError("Normalized OCR boxes must fit within the page")
+        return self
+
+
+class OcrAnchor(_OcrBox):
+    """A printed reference mark (a filled square) the worker aligns every scan by."""
+
+    name: str = Field(min_length=1, max_length=100)
+
+
+class OcrFieldRegion(_OcrBox):
+    key: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=100)
+
+
+class OcrFieldRule(BaseModel):
+    """Plausibility check for one field, on top of the field's own min/max."""
+
+    key: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=100)
+    min_value: float | None = None
+    max_value: float | None = None
+    integer: bool = False
+    # Stricter (or looser) confidence threshold for this field only.
+    min_confidence: float | None = Field(default=None, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> OcrFieldRule:
+        if (
+            self.min_value is not None
+            and self.max_value is not None
+            and self.min_value > self.max_value
+        ):
+            raise ValueError(f"Rule for {self.key}: minimum is above maximum")
+        return self
+
+
+class OcrSumRule(BaseModel):
+    """The read values of several fields must add up to a plausible total."""
+
+    label: str = Field(min_length=1, max_length=100)
+    keys: list[str] = Field(min_length=2, max_length=50)
+    min_value: float | None = None
+    max_value: float | None = None
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> OcrSumRule:
+        if self.min_value is None and self.max_value is None:
+            raise ValueError(f"Sum rule {self.label}: set a minimum or a maximum")
+        if (
+            self.min_value is not None
+            and self.max_value is not None
+            and self.min_value > self.max_value
+        ):
+            raise ValueError(f"Sum rule {self.label}: minimum is above maximum")
+        if len(set(self.keys)) != len(self.keys):
+            raise ValueError(f"Sum rule {self.label}: fields must be unique")
+        return self
+
+
+class OcrValidationRules(BaseModel):
+    """How the OCR worker decides which read values a human must double-check.
+
+    Every value is shown in the review anyway; these rules only decide which
+    ones are flagged. Unknown keys from older layouts are ignored.
+    """
+
+    min_confidence: float = Field(default=0.85, ge=0, le=1)
+    fields: list[OcrFieldRule] = Field(default_factory=list)
+    sums: list[OcrSumRule] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_unique_fields(self) -> OcrValidationRules:
+        keys = [rule.key for rule in self.fields]
+        if len(set(keys)) != len(keys):
+            raise ValueError("Each field may have only one validation rule")
         return self
 
 
 class ScoreSheetTemplateLayoutUpdate(BaseModel):
     page_width: int = Field(ge=100, le=20000)
     page_height: int = Field(ge=100, le=20000)
-    anchors: list[OcrAnchor] = Field(default_factory=list)
+    anchors: list[OcrAnchor] = Field(default_factory=list, max_length=20)
     field_regions: list[OcrFieldRegion] = Field(min_length=1)
-    validation_rules: dict = Field(default_factory=dict)
+    validation_rules: OcrValidationRules = Field(default_factory=OcrValidationRules)
 
 
 class ScoreSheetScanResponse(BaseModel):

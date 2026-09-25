@@ -1,214 +1,170 @@
-# Done – Erledigte Module
+# Done – umgesetzter Stand
+
+Stand: 2026-09-25, Migrationen `0001`–`0030`. Die Liste ist nach Modulen gegliedert. Jeder Punkt ist gegen den Code geprüft. Offenes steht in [todo.md](todo.md), die Änderungen chronologisch in [CHANGELOG.md](../CHANGELOG.md).
 
 ---
 
-## [x] Modul 1: Infrastruktur & Projekt-Setup
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- `docker-compose.yml` (Produktion: Traefik + SSL, PostgreSQL 16, Redis 7, Backend, Frontend)
-- `docker-compose.dev.yml` (Hot-Reload-Überrides für Entwicklung)
-- `backend/Dockerfile` (Multi-Stage: development / production target, poppler-utils für OCR)
-- `frontend/Dockerfile` (Node 20 Builder → nginx alpine)
-- `frontend/nginx.conf` (SPA-Fallback, gzip, Cache-Header)
-- `.env.example` (alle Variablen dokumentiert)
-- `Makefile` (up/dev/migrate/logs/shell-backend/shell-db/vapid-keys/fernet-key)
-- `.gitignore`
-- `backend/pyproject.toml` (FastAPI, SQLAlchemy 2.0, Alembic, JWT, Redis, aiosmtplib, pywebpush, cryptography, structlog, httpx)
-- `frontend/package.json` (React 18, Vite, Tailwind, TanStack Query, Zustand, i18next, Zod, vite-plugin-pwa, recharts, lucide-react)
-- Alembic-Setup: `alembic.ini`, `alembic/env.py` (async), `alembic/script.py.mako`
+## Infrastruktur und Betrieb
 
-**Kommuniziert mit:** Alle Module (Basis)
-**Notizen:** `migrate-then-start.sh` führt Migrationen automatisch vor dem Backend-Start aus.
+- Docker-Compose-Dienste `traefik`, `db` (PostgreSQL 16), `redis`, `backend`, `worker`, `beat`, `frontend`. Im Profil `production` kommt `backup` dazu, im Profil `monitoring` `prometheus`, `blackbox` und `alertmanager`. Alle Dienste mit Log-Rotation.
+- `scripts/proxmox-setup.sh` erzeugt alle Secrets, darunter den Fernet-Schlüssel und das age-Schlüsselpaar für Backups. Es startet **alle** Dienste inklusive Worker und Beat und prüft danach mit `scripts/verify-deployment.sh`.
+- `scripts/update.sh` baut die Images neu, merkt sich Commit und Alembic-Stand für ein Rollback und prüft danach. `deploy.yml` läuft per `workflow_dispatch` über SSH auf dem Host.
+- `.env.example` enthält alle Variablen. In Produktion werden Standard-Secrets und ein ungültiger Fernet-Schlüssel abgelehnt. `SMTP_HOST` leer bedeutet: kein Mailversand.
+- Backups: `backup.sh` bricht bei Fehlern laut ab. `backup_scheduler.py` wiederholt fehlgeschlagene Läufe, führt eine Statusdatei und liefert Metriken. `restore.sh` und `restore-test.sh` prüfen die Uploads per Manifest.
+- Off-site-Backup: Mit `BACKUP_OFFSITE_TARGET` (`rsync:user@host:/pfad`, `rclone:remote:pfad` oder ein Verzeichnis) kopiert der Scheduler jedes erfolgreiche Archiv sofort dorthin. Ein Fehlschlag hat eigenen Status und eigene Metriken (`botball_backup_offsite_*`), macht den Container unhealthy und wird nach `BACKUP_RETRY_SECONDS` ohne neues Backup wiederholt. `proxmox-setup.sh` fragt das Ziel ab, erzeugt den SSH-Schlüssel und holt `known_hosts`.
+- Alertmanager-Regeln: API down, Readiness, 5xx-Rate, Redis-Ausfall bei Rate-Limits oder Token-Sperrliste (fail open, `botball_redis_fail_open_total`), Backup fehlgeschlagen, veraltet oder nie gelaufen, Off-site-Kopie fehlgeschlagen.
+- `/api/system/health`, `/api/system/readiness` (PostgreSQL, Redis, Worker) und `/api/system/metrics` (nur intern).
+- Uvicorn mit `--proxy-headers` und `FORWARDED_ALLOW_IPS`. nginx setzt die Security-Header auch auf `index.html` und Assets.
+- CI: ruff, mypy und pytest mit Coverage-Schwelle (`fail_under`); Alembic up/down/up auf PostgreSQL; pip-audit; ESLint, tsc, Vitest mit Coverage-Schwellen und Build; die ganze Playwright-Suite gegen Seed-Daten (`seed_e2e.py`); Build und Prüfung des Produktions-Stacks.
+- Pre-commit: ruff (check und format), ESLint, shellcheck, YAML.
 
----
+## Architektur
 
-## [x] Modul 2: Authentifizierung & Rechtesystem
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- Modelle: `User`, `Role`, `Permission`, `RolePermission`, `UserRole`, `RefreshToken`, `PushSubscription`
-- 5 System-Rollen mit Berechtigungen seeded: `admin`, `juror`, `reviewer`, `mentor`, `guest`
-- JWT: Access Token (15 min) + Refresh Token (30 Tage, HttpOnly-Cookie)
-- Token-Rotation bei jedem Refresh; Token-Widerruf beim Logout
-- `require_permission()` und `require_any_permission()` FastAPI-Dependencies
-- Web Push Subscriptions: pro Gerät, VAPID, pywebpush
-- Passwort: bcrypt, Änderung mit Bestätigung des alten Passworts
-- E-Mail + Sprache + Theme im User-Profil gespeichert
-- Migration `0002` mit Seed-Daten
+- Modularer Monolith mit statischer Registry: `backend/core/modules.py` und `frontend/src/core/plugins.ts` (Routen, Navigation, Rechte, Modul-Schalter, i18n-Namensräume). Die ungenutzte `manifest.json` und die ungenutzten Dashboard-Widget-Deklarationen sind entfernt.
+- Einheitliches Fehlerformat `{code, message, fieldErrors, requestId}`, `X-Request-ID`, Größenlimit für Requests, Security-Header, Audit jeder erfolgreichen Änderung in `audit_logs`.
+- Redis-Rate-Limits im Backend für Login, Refresh, Passwort, E-Mail, Kontolöschung, Reset und Uploads.
+- Celery-Worker und -Beat: OCR, Drucker-Polling, Outbox, Match- und Deadline-Erinnerungen, Paper-Fristen.
+- Live-Stream über Redis Pub/Sub. Veröffentlicht wird erst nach dem Commit (`publish_after_commit`). Einziger WebSocket ist der öffentliche Event-Stream.
+- Transaktionale Outbox (`notification_events`) mit `FOR UPDATE SKIP LOCKED`, Backoff und maximal 5 Versuchen. Zugestellt gilt nur, was tatsächlich versendet wurde. Abgelaufene Push-Abos werden entfernt. Migrationen `0012`, `0024`.
 
-**Kommuniziert mit:** Allen Modulen (jeder API-Call prüft Token & Berechtigung)
-**Notizen:** Superuser (`is_superuser=True`) hat automatisch alle Rechte ohne explizite Rollenzuweisung.
+## Auth und Konto (`0002`, `0021`, `0027`)
 
----
+- Benutzer, Rollen, Rechte. Fünf Standardrollen mit den Rechten aus `0002`, `0010`, `0012`–`0014`, `0016`, `0017`. Eigene Rollen und editierbare Rechte (`PUT /auth/roles/{id}`, die Admin-Rolle behält ihre kritischen Rechte).
+- JWT mit PyJWT (HS256 fest, `exp`/`sub` Pflicht). Refresh-Token als HttpOnly-Cookie mit Rotation. `token_version` beendet alle Sitzungen bei Passwortänderung, Reset, Deaktivierung und Löschung. Logout setzt das Access-Token auf eine Redis-Sperrliste. python-jose und ecdsa sind entfernt.
+- Passwort-Reset per E-Mail: gehashter Einmal-Token, 1 h gültig. Admins können Passwörter setzen. Passwort-Policy: mindestens 10 Zeichen, kein Wiederholungszeichen, nicht die E-Mail, nicht auf der mitgelieferten Liste häufiger/geleakter Passwörter (`common_passwords.txt`, ohne Groß-/Kleinschreibung).
+- Profil: Anzeigename, Sprache, Theme (im Konto gespeichert), E-Mail-Änderung, Datenexport (`GET /auth/me/export`), Kontolöschung als Anonymisierung, auch durch Admins.
+- Benachrichtigungs-Einstellungen pro Kategorie (`users.notification_preferences`) und Benachrichtigungszentrale mit Lesestatus (`0027`).
+- `create_admin.py --reset` macht niemanden mehr zum Superuser. Dafür gibt es nur noch `--superuser`.
 
-## [x] Modul 3: Saisonverwaltung
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- Modelle: `Season`, `SeasonPhase`, `CompetitionLevel`
-- ECER, GCER, Junior als Competition Levels seeded
-- Phasentypen: seeding, double_seeding, elimination, final
-- Pro Season: Deadline-Felder (Registration, Event, Paper, Print)
-- Aktive Saison eindeutig (SET via `UPDATE ... SET is_active=false` dann gezielte Aktivierung)
-- Migration `0003`
+## Saisons (`0003`, `0009`, `0018`, `0021`)
 
-**Kommuniziert mit:** Teams (Registrierung), Scoring (Phasen), Paper Review (Season-FK), Printing (Season-FK)
+- Saisons mit Modul-Flags, aktiven Kategorien, Terminen, Phasen und Wettbewerbsstufen (Reihenfolge, „qualifiziert aus", `0028`).
+- Lebenszyklus `draft`/`active`/`finished`/`archived`. Zentraler Archiv-Schutz `ensure_writable` in Scoring, Events, Paper, Druck und Registrierungen. Entwürfe sehen nur Organisatoren. Löschen ist nur ohne Daten möglich.
+- `SeasonCreate` beachtet `is_active` und kann das Standard-Event auslassen (Einrichtungsassistent).
+- Klonen (Konfiguration, Termine um die Jahresdifferenz verschoben, Events als leere Entwürfe, Schemas, Formeln, Bracket-Gewichte, Regelwerk mit Tie-Breakern und Referee-Checkliste, Paper-Deadlines, aktive Punkte der Druck-Checkliste) und JSON-Export.
+- Zusätzliche Termine und Deadlines pro Saison (`season_events`, `0018`). Das Anmeldefenster wird für Nicht-Admins durchgesetzt.
 
----
+## Events und Turnier (`0010`, `0024`, `0027`)
 
-## [x] Modul 4: Teamverwaltung
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- Modelle: `Team`, `TeamMember`, `TeamSeasonRegistration`
-- Teams können mehreren Saisons zugeordnet werden (Registrierungen mit Bestätigung)
-- Mitglieder mit Rollen (`mentor` / `member`), optional mit User-Account verknüpft
-- Filter nach Season und Competition Level
-- Migration `0004`
+- Events mit Slug, Zeitzone, Tischen, Status (`draft`, `published`, `live`, `completed`, `archived`), öffentlichen Freigaben und Modulen.
+- **Modul-Aktivierung pro Event:** `active_modules` zusammen mit den Saison-Flags. 404 für abgeschaltete Module in Paper, Druck, Bots, DE, Aerial, Doku und Druck-Checkliste; 409 für deren Phasen. `GET /v1/events/{id}/modules`. Frontend mit `ModuleRoute` und ausgeblendeter Navigation (`0027`).
+- Registrierungen, Phasen (`seeding`, `double_seeding`, `double_elimination`, `alliance`, `final`), Zeitplan-Generator.
+- Double-Elimination-Bracket (`events/brackets.py`):
+  - Standard-Setzreihenfolge, Freilose;
+  - Loser-Bracket mit Minor- und Major-Runden;
+  - Grand Final und Reset-Finale;
+  - automatisches Weiterrücken, auch nach Korrekturen;
+  - DE-Platzierungen landen in `de_results`.
+- Setzliste aus der Seeding-Rangliste. Double Seeding als rotierende Paarungen. Alliance als Partnerpaare mit Summen-Score. Bracket-Labels über A/B hinaus. Bracket-Gewichte pro Event (`0024`).
+- Öffentliche Event-API mit Rangliste, Zeitplan, Bracket, Ergebnissen (ohne Übungsläufe), Ankündigungen, QR-Code und WebSocket. Jede Teilansicht verlangt ihr Freigabe-Flag. Auch `/api/scoring/…/ranking*` und `…/aerial-ranking` sind ohne Login nur bei öffentlichem Event mit `public_scoreboard` lesbar, sonst mit `scoring:read`.
+- Einrichtungsassistent (`/setup`) und Event-Verwaltung mit Modul-Schaltern, Phasen, Teams, Schema-Editor, Regeln, Qualifikation und Ankündigungen.
+- Event-Verwaltung: Phasen bearbeiten und löschen (Typ gesperrt, kein Löschen bei `live`/`completed`), Check-in und Entfernen von Registrierungen, Bracket-Gewichte pro Event und Kategorie mit Rückfall auf die Saison. Der Zeitplan zeigt die Alliance-Wertung jeder Alliance-Phase.
 
-**Kommuniziert mit:** Seasons (Registrierungen), Scoring (Matches), Paper Review (Papers), Printing (Druckjobs)
+## Teams (`0004`, `0016`, `0029`)
 
----
+- Teams und Mitglieder. `TeamMember.user_id` verknüpft Konten (nur `teams:admin`) und ist die Grundlage aller Prüfungen auf das eigene Team (`assert_team_access`).
+- Mentoren pflegen ihr Team selbst (`teams:write`). Teams anlegen und löschen sowie Registrierungen bestätigen braucht `teams:admin` (`0016`).
+- Suche und Filter, Länderliste, Team-Saison-Matrix.
+- Saison-Details: Kategorie, Gebühr, Kit, Paper-Pflicht, Kontakt, Adresse. Saison-Kader. Kontaktdaten sind für andere Teams und Gäste ausgeblendet (`0029`).
+- Versionierte Team-Dokumente (PDF/Bild, inhaltlich geprüft), nur für das eigene Team und die Organisation (`0029`).
+- 3D-Druck-Checkliste pro Saison: Standardregeln, Abhaken durch das Team, Bestätigung durch die Organisation (`0029`).
+- Mehrjahres-Historie mit Diagrammen, Team-Bericht PDF, Historie CSV.
 
-## [x] Modul 5: Scoring-Modul
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- Modelle: `ScoringSchema` (Felder + Multiplikatoren), `Match` (raw_scores als JSONB), `Ranking`
-- Score-Berechnung: `total = Σ(wert × multiplikator)` pro Feld
-- Seed-Score-Formel: Durchschnitt der 2 besten Runs
-- Ranking wird nach jedem Score-Eintrag automatisch neu berechnet und nummeriert
-- Yellow-Card / Red-Card Flags pro Match
-- Bulk-Score-Entry Endpunkt
-- WebSocket Live-Scoreboard: `/api/scoring/scoreboard/ws` (kein Auth, public)
-- Migration `0005`
-- **Score-Sheet-Import (Sub-Modul):**
-  - PDF-Upload → pdftotext → Regex-Parser → OCR-Kandidaten
-  - Admin-UI: Felder bestätigen, Multiplikatoren editieren, auf ScoringSchema anwenden
-  - Modell: `ScoreSheetTemplate` mit OCR-Status
+## Scoring (`0005`, `0011`, `0013`, `0015`, `0025`, `0028`)
 
-**Kommuniziert mit:** Seasons (Phasen-FK), Teams (Match-FK), Frontend (WebSocket)
-**Notizen:** Scoreboard-Endpunkt ist absichtlich ohne Auth für externe Scoreboards/Displays.
+- Versionierte Score-Sheet-Schemas pro Event und Stufe. Jede Wertung speichert eine Kopie des Schemas. Die Summe wird immer serverseitig berechnet. Unbekannte Felder ergeben 422.
+- **Strukturierte Score-Sheets** (`scoring/sheet.py`):
+  - Bereiche mit Multiplikator;
+  - Entweder-oder-Gruppen;
+  - Seiten A/B;
+  - Zähl-, Zahl- und Ja/Nein-Felder mit Maximalwerten.
 
----
+  Vorlagen 2024/2025 vollständig, 2026 als Struktur. Liste der Schemas und „Klonen von". Der Frontend-Rechner nutzt dieselben Fixtures (`0028`).
+- **Regeln pro Saison:** Tie-Breaker-Reihenfolge mit Presets 2024/2025/2026, Finals-Replay, Kontakt-Bonus (25 %), Schiedsrichter-Checkliste vor dem Bestätigen. „Runde verloren" (0 Punkte, keine DQ). Duell-Ergebnis und DE-Platzierung mit dem entscheidenden Tie-Breaker. Parts Challenges mit Oberfläche auf der Wertungsseite (erfassen, stattgeben/abweisen) (`0028`).
+- **Karten und DQ** in „Punkte eintragen": Dialog für gelbe/rote Karte und Disqualifikation mit Begründung und Versionsprüfung, nur `scoring:admin`. Das Backend lehnt diese Felder für Mentoren auch bei eigenen Wertungen ab.
+- **Seeding nach Game Review:**
+  - nur Läufe aus Seeding-Phasen;
+  - DQ und verlorene Runde zählen 0, negative Werte zählen 0;
+  - Ø der besten zwei Läufe;
+  - Ränge je Kategorie mit geteilten Plätzen;
+  - rote Karte ⇒ Team ohne Rang und raus aus dem Feld;
+  - n und Feld kommen aus dem Event (`0025`).
+- **Formel-Engine:**
+  - sicherer AST-Evaluator mit Längen- und Tiefenlimit, maximal 60 Formeln;
+  - Formeln pro Saison und Kategorie;
+  - Presets ECER 2025 (Botball/Open), Regional 2026, GCER 2026 (Doku = nur Onsite), Aerial, JBC;
+  - Vorschau mit echten Daten;
+  - Standard reproduziert die ECER-Ergebnisse 2025 (`0013`).
+- DE-, Aerial- und Doku-Ergebnisse pro Event. Aerial = Ø aller Läufe, Doku 0,2/0,2/0,2/0,4. Audit in `result_revisions` (`0025`).
+- Score-Revisionen bleiben nach dem Löschen einer Wertung erhalten (`match_id` SET NULL, `match_ref`) (`0025`).
+- Übungsläufe (`is_practice`) zählen nirgends für Ranglisten (`0015`). Mentoren erfassen Wertungen fürs eigene Team (`0014`).
+- **Offline-Erfassung:** IndexedDB-Warteschlange mit `idempotency_key`, Abspielen beim Start, beim Wiederverbinden und minütlich; Konfliktanzeige. Service Worker mit NetworkFirst für ausgewählte GETs.
+- Mobile Wertung: Navigation durch die Matches, Wischen, Bestätigungsdialog.
+- Score-Sheet-PDF-Vorlagen (pdftotext im Worker) und lokale OCR von Fotos (OpenCV/Tesseract im Worker) mit Pflicht-Prüfung vor der Übernahme (`0001`, `0011`). Scans sehen nur die Organisation (`scoring:admin`) und das eigene Team. Fehlgeschlagene Scans lassen sich erneut verarbeiten. OCR-Layout-Editor je Vorlage: Rechtecke über einem lokalen Referenzbild aufziehen oder in Prozent eintragen, gespeichert normalisiert. Anker (Passmarken) werden genauso gezeichnet; ab zwei gefundenen Ankern richtet der Worker jeden Scan an ihnen aus, sonst am Blattrand. Prüfregeln (Mindest-Konfidenz, Minimum/Maximum/Ganzzahl je Feld, Summenregeln) entscheiden, welche Werte die Prüfung markiert.
+- Scouting: externe Teams, Notizen und Beobachtungen pro eigenem Team, Gegner-Rangliste, PDF-Bericht (`0028`). Externe Teams bearbeiten (Ersteller und Organisation) und löschen (Organisation).
+- Qualifikation: Stufen-Reihenfolge, manuelle Qualifikation, Registrierung der Qualifizierten. Für qualifizierte Stufen ist eine Qualifikation Pflicht (`0028`).
 
-## [x] Modul 6: Paper-Review-Modul
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- Modelle: `Paper`, `ReviewerAssignment`, `PaperReview`
-- Paper-Status-Workflow: `draft → submitted → under_review → accepted / rejected / revision_requested`
-- Bei `revision_requested` wird `revision_number` automatisch inkrementiert
-- Mehrere Reviewer pro Paper möglich (keine Blind-Review – Reviewer sehen sich gegenseitig)
-- Review-Kriterien: Content, Methodology, Presentation, Originality (0–10, Durchschnitt = total_score)
-- Wenn alle zugewiesenen Reviewer eingereicht haben → Paper wechselt automatisch zu `under_review`
-- PDF-Datei-Upload + Download-Endpunkt
-- Migration `0006`
+## Paper-Review (`0006`, `0012`, `0014`, `0023`, `0029`)
 
-**Kommuniziert mit:** Seasons (Paper-FK), Teams (Paper-FK), Auth (Reviewer-Zuweisung)
+- Ein Paper pro Team und Saison. Jeder Upload wird eine eigene Version, Download pro Version, Text-Diff zwischen Versionen (pypdf).
+- Status `draft` → `submitted` → `under_review` → `revision_requested` → `resubmitted` → `accepted`/`rejected`, dazu `disqualified_ai`. Statushistorie mit Begründung.
+- Deadlines: Paper-Deadline der Saison bis Tagesende in der Event-Zeitzone. Offizielle und interne Deadlines (`paper_deadlines`, `0029`), `papers:admin` darf übersteuern. Erinnerungen 7/3/1 Tage vorher.
+- Reviews:
+  - fünf Kriterien (0–10) mit Kommentaren, Revisionshinweise, private Notizen, Empfehlung;
+  - nach der Abgabe gesperrt, wieder öffnen durch Admins;
+  - Reviewer aus dem eigenen Team oder derselben Schule werden abgelehnt.
+- Automatische Zuweisung mit Vorschau, Reviewer-Auslastung, stündliche Prüfung überfälliger Zuweisungen. Manuelle Erinnerung je Zuweisung und Statusverlauf auf der Paper-Detailseite.
+- Formalabzug und Finalisieren zu `final_score` (0–1). Score-Felder nur über `PUT /papers/{id}/score` (`papers:admin`).
+- Feedback für Teams ohne Identität der Reviewer. Statistik, Paper-Export CSV/PDF, Reviews CSV.
+- Mentoren sehen nur Papers des eigenen Teams.
 
----
+## 3D-Druck (`0007`, `0022`)
 
-## [x] Modul 7: 3D-Druck-Modul
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- Modelle: `Printer`, `PrintJob`, `TeamSeasonPrintQuota`, `FilamentSpool`
-- Drucker-Types: `bambu`, `octoprint`, `generic` (Adapter-Architektur vorbereitet)
-- API-Keys Fernet-verschlüsselt in DB gespeichert (nie im Klartext in API-Responses)
-- Quota-System: `soft_limit_parts` (Warnung) + `max_parts` (Hard-Stop, 409-Fehler)
-- `used_parts` / `used_grams` werden nach Job-Abschluss automatisch aktualisiert
-- Filament-Tracking: Spulen mit `initial_grams` / `remaining_grams`, `consume_filament()`-Endpunkt
-- Druckjob-Status-Flow: `pending → approved → queued → printing → completed / failed / cancelled`
-- Migration `0007`
+- Drucker `bambu` (MQTT), `octoprint` (REST), `generic` (manuell, ohne Adapter). Zugangsdaten Fernet-verschlüsselt. Polling alle 15 s mit Fortschritt, Restzeit und Fehlern.
+- Datei-Upload (STL, 3MF, OBJ, G-Code, bgcode), inhaltlich geprüft, bis `PRINT_UPLOAD_MAX_MB`. Download immer als Anhang.
+- Kontingente pro (Event, Team), eindeutig. Das Hard-Limit zählt offene Jobs mit. Gramm-Limit. Soft-Limit liefert `quota_warning`. Admin-Override wird markiert und protokolliert.
+- Status inklusive `rejected` (mit Begründung). Abbrechen durch das Team (eigener offener Job) oder Admins. Ein laufender Druck wird auch am Drucker gestoppt.
+- Verbrauch und Spule werden beim Abschluss aufs Kontingent und die Spule gebucht. Filament-Spulen.
+- `compliance_warning`, wenn die Druck-Checkliste des Teams unvollständig ist.
 
-**Kommuniziert mit:** Teams (Job-FK), Seasons (Job-FK)
-**Notizen:** Fernet-Key via `PRINTER_CREDENTIAL_ENCRYPTION_KEY` in .env; `make fernet-key` zum Generieren.
+## Dashboard und Analyse (`0008`, `0017`, `0026`)
 
----
+- Ankündigungen mit Zielgruppe. Öffentlich und als Push an alle nur mit Zielgruppe `all`.
+- Rollenbezogene Übersicht (`/dashboard/summary`):
+  - Juror-Warteschlange;
+  - Mentor-Karten je Team;
+  - Orga-Fortschritt X von N;
+  - Deadlines.
 
-## [x] Modul 8: Dashboard & Visualisierung
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- Modell: `Announcement` (mit Audience-Filter: all/teams/reviewers/jurors/internal)
-- Stats-Aggregations-Endpoint: Teams, Matches, Papers, Druckjobs pro Saison
-- Dashboard-Frontend: Stat-Cards, aktive Season-Phasen-Übersicht
-- Audit-Log-Tabelle (migriert in `0008`)
-- Migration `0008`
+  Paper- und Druck-Angaben entfallen, wenn das Modul aus ist.
+- Performance: Teamvergleich, Verlauf mit Übungsläufen, Stärken und Schwächen je Aufgabe, Ranking-Vorschau, Phasen- und Event-Vergleich.
+- Statistik (`scoring:admin`): Boxplots, Heatmap, Trends, Anomalie-Erkennung mit Prüf-Dialog. Änderungsprotokoll des Events aus Score- und Ergebnis-Revisionen, filterbar nach Team und Art.
+- Deadline-Kalender, Saison-Zeitleiste, persönlicher iCal-Feed mit widerrufbarem, gehashtem Token (`0026`).
+- Exporte:
+  - Seeding und Gesamtwertung pro Event als CSV/PDF;
+  - Wertungen CSV;
+  - Paper, Reviews, Druck, Teams;
+  - Team-Bericht, Team-Historie, Mehrjahresvergleich.
 
-**Kommuniziert mit:** Allen Modulen (Daten-Aggregation)
+  CSV mit BOM und Schutz gegen Formel-Injection.
 
----
+## Bot-Galerie (`0019`, `0020`)
 
-## [x] Modul 9: Mobile App / PWA
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- `vite-plugin-pwa` mit Workbox (NetworkFirst für API, offline für statische Assets)
-- Web App Manifest: Name, Icons, Theme-Color, `standalone` Display
-- Web Push: VAPID-basiert, `usePushNotifications` Hook (subscribe/unsubscribe)
-- Push-Subscriptions werden pro Gerät in DB gespeichert (`PushSubscription`-Modell)
-- `core/notifications.py`: `send_push_notification()` über pywebpush
-- Dark/Light/System Theme: Zustand-Store, speichert in localStorage, OS-Präferenz-Listener
+- Bots eigener und externer Teams mit Bild (Magic-Byte-geprüft, Medientyp gespeichert). Unveröffentlichte Bots sehen nur Admins und das eigene Team. Externe Bots pflegt nur `teams:admin`.
 
-**Kommuniziert mit:** Backend (Push-API), Browser Push API
+## PWA
 
----
+- Manifest mit PNG-Icons (192, 512, maskable), apple-touch-icon, Favicon.
+- Web Push mit VAPID. Push-Einstellungen pro Kategorie. Benachrichtigungszentrale im Header.
+- Theme (hell/dunkel/System) wird im Konto gespeichert.
+- Oberfläche vollständig auf Deutsch und Englisch (`useTranslation`, Schlüssel in beiden Sprachen per Test geprüft), Zahlen und Daten über `Intl`. Rückfallsprache Englisch.
 
-## [x] Modul 11: Dokumentation
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- Vollständige Benutzerhandbücher: Admin, Juror, Reviewer, Mentor, Gast
-- Technische Dokumentation: Architektur, API-Referenz, Datenbankschema, Plugin-Dev-Guide, Deployment
-- Installationsanleitungen: Quickstart, Proxmox-Setup, Konfigurationsreferenz, Update-Prozess
-- README.md: Tech-Stack, Schnellstart, Architekturübersicht, API-Übersicht, Rollen-Tabelle
+## Tests
 
----
-
-## [x] Modul 10: Testing
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- `backend/tests/conftest.py`: SQLite in-memory (aiosqlite), `db`/`client`/`admin_token`/`season`/`team` Fixtures
-- Unit-Tests (pytest-asyncio):
-  - `test_scoring.py`: `TestComputeSeedScore` (8 Fälle), `TestComputeMatchTotal` (8 Fälle), `TestRankingLogic` (2 async)
-  - `test_paper_review.py`: `TestPaperStatusTransitions` (6), `TestReviewerAssignment` (3), `TestReviewScores` (3)
-  - `test_printing_quota.py`: `TestPrintQuota` (4), `TestFilamentTracking` (4), `TestCredentialEncryption` (2)
-  - `test_auth.py`: `TestPasswordHashing` (4), `TestJWTTokens` (5), `TestUserCreation` (6)
-- Integrationstests (httpx AsyncClient):
-  - `test_auth_routes.py`: Login/Logout/Refresh/Protected (5+4+1)
-  - `test_scoring_routes.py`: Match-CRUD (5+2)
-  - `test_seasons_teams.py`: Seasons/Teams API (5+4)
-- Frontend (Vitest + @testing-library/react + jsdom):
-  - `authStore.test.ts` (7 Fälle), `themeStore.test.ts` (4 Fälle)
-  - `LoginPage.test.tsx` (4 Fälle inkl. vi.mock für useAuth und react-router)
-- CI/CD GitHub Actions:
-  - `.github/workflows/ci.yml`: ruff lint, pytest+coverage, ESLint, vitest, Vite build check
-  - `.github/workflows/deploy.yml`: Docker buildx → GHCR, SSH-Deploy via appleboy/ssh-action
-
-**Kommuniziert mit:** Allen Modulen (Tests decken alle Kern-Flows ab)
-**Notizen:** SQLite in-memory für Tests (kein echtes PostgreSQL in CI nötig); StaticPool für konsistente Verbindungen.
-
----
-
-## [x] PDF- & CSV-Export
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- `backend/modules/exports/pdf_builder.py`: reportlab A4-PDFs mit Logo-Header und alternierenden Zeilenfarben
-  - `build_ranking_pdf()`, `build_paper_review_pdf()`, `build_print_report_pdf()`, `build_team_list_pdf()`
-- `backend/modules/exports/routes.py`: 7 Export-Endpunkte:
-  - `GET /exports/seasons/{id}/ranking.pdf` + `.csv`
-  - `GET /exports/seasons/{id}/matches.csv`
-  - `GET /exports/seasons/{id}/papers.pdf` + `.csv`
-  - `GET /exports/seasons/{id}/printing.pdf`
-  - `GET /exports/seasons/{id}/teams.pdf` + `.csv`
-- `frontend/src/components/ExportButtons.tsx`: `ExportButton`, `RankingExportButtons`, `PaperExportButtons`, `PrintingExportButtons`, `TeamExportButtons`
-- CSV-Export: UTF-8 mit BOM (Excel-kompatibel)
-- Download via `api.get(url, { responseType: "blob" })` + `URL.createObjectURL` + hidden anchor
-
-**Kommuniziert mit:** Scoring, Paper-Review, Printing, Teams, Seasons
-
----
-
-## [x] Benutzerhandbuch & FAQ
-**Abgeschlossen am:** 2026-03-31
-**Beschreibung:**
-- `docs/documentation/user-manual/index.md`: Übersicht, Navigation, Rollen, Export-Kurzanleitung
-- `docs/documentation/user-manual/admin.md`: Benutzerverwaltung, Rechte, Saisons, alle Module, Exporte, Logs
-- `docs/documentation/user-manual/juror.md`: Score-Eingabe, Korrektur, Cards, Rangliste, Export, Offline
-- `docs/documentation/user-manual/reviewer.md`: Paper-Review-Workflow, Bewertungskategorien, KI-Policy
-- `docs/documentation/user-manual/mentor.md`: Dashboard, Scoring, Paper einreichen, 3D-Druck, Limits
-- `docs/documentation/user-manual/guest.md`: Öffentliches Scoreboard, PWA
-- `docs/documentation/user-manual/faq.md`: 30+ Fragen zu allen Modulen (allgemein, Scoring, Paper, Druck, Benachrichtigungen, Admin)
+- Backend:
+  - pytest, Unit- und Integrationstests für alle Module, dazu Rechte- und Team-Scoping-Regressionstests (z. B. `test_security_scoping.py`, `test_mentor_event_scoping`);
+  - Akzeptanztests ECER 2025;
+  - PostgreSQL-Abhängigkeitstests.
+- Frontend: Vitest mit Testing Library und jest-axe. Der Score-Sheet-Rechner läuft gegen die gemeinsamen Fixtures.
+- Playwright: `platform`, `auth`, `admin-setup`, `gallery`, `scoring`, `scoring-flow`, `paper-flow`, `print-flow`. Die CI führt alle aus, dazu die `@mobile`-Flows auf einem Pixel-7-Profil.
+- Coverage-Schwellen: Backend `fail_under` (`backend/pyproject.toml`), Frontend Vitest-`thresholds` (`frontend/vitest.config.ts`).

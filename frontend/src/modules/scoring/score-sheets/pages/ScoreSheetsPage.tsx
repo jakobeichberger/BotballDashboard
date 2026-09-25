@@ -16,10 +16,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { useScoringScope } from '@/hooks/useScoringScope'
 import { scoreSheetApi, type ScoreSheetTemplateListItem } from '../api/scoreSheets'
 import ScoreSheetUploadForm from '../components/ScoreSheetUploadForm'
 import FieldCandidateEditor from '../components/FieldCandidateEditor'
+import OcrLayoutEditor from '../components/OcrLayoutEditor'
 
 const OCR_STATUS_BADGE: Record<string, string> = {
   pending:    'badge badge-gray',
@@ -29,11 +31,12 @@ const OCR_STATUS_BADGE: Record<string, string> = {
 }
 
 export default function ScoreSheetsPage() {
-  const { t } = useTranslation()
-  const { seasonId, competitionLevelId } = useParams<{
-    seasonId: string
-    competitionLevelId?: string
-  }>()
+  const { t } = useTranslation('scoring')
+  // The page lives under /events/:eventId: templates belong to that event's
+  // season; an optional ?competition_level_id= narrows the list.
+  const { seasonId } = useScoringScope()
+  const [searchParams] = useSearchParams()
+  const competitionLevelId = searchParams.get('competition_level_id') ?? undefined
   const queryClient = useQueryClient()
 
   const [showUpload, setShowUpload] = useState(false)
@@ -117,7 +120,7 @@ export default function ScoreSheetsPage() {
         {/* Left: sheet list */}
         <div className="w-full lg:w-80 shrink-0 flex flex-col gap-2 overflow-y-auto">
           {isLoading && (
-            <p className="text-sm text-gray-500 py-4 text-center">{t('common.loading')}</p>
+            <p className="text-sm text-gray-500 py-4 text-center">{t('common:loading')}</p>
           )}
 
           {!isLoading && sheets.length === 0 && (
@@ -188,7 +191,7 @@ export default function ScoreSheetsPage() {
                       onClick={() => handleDelete(sheet)}
                       className="text-xs text-red-500 hover:underline"
                     >
-                      {t('common.delete')}
+                      {t('common:delete')}
                     </button>
                   </>
                 )}
@@ -206,7 +209,7 @@ export default function ScoreSheetsPage() {
           ) : selectedSheet.ocr_status === 'processing' || selectedSheet.ocr_status === 'pending' ? (
             <div className="flex flex-col items-center justify-center gap-3 h-full text-gray-500">
               <div className="animate-spin h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent" />
-              <p className="text-sm">{t('scoreSheets.ocr.processing')}</p>
+              <p className="text-sm">{t('scoreSheets.ocr.processingHint')}</p>
             </div>
           ) : (
             <div>
@@ -220,6 +223,14 @@ export default function ScoreSheetsPage() {
                   queryClient.invalidateQueries({ queryKey: ['score-sheets', 'detail', selectedId] })
                 }
               />
+              <div className="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
+                <OcrLayoutEditor
+                  template={selectedSheet}
+                  onSaved={() =>
+                    queryClient.invalidateQueries({ queryKey: ['score-sheets', 'detail', selectedId] })
+                  }
+                />
+              </div>
             </div>
           )}
         </div>

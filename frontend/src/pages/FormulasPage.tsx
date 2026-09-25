@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { CATEGORY_LABEL } from "@/lib/teams";
 import { api } from "@/lib/api";
+import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
 import {
   Calculator,
   Plus,
@@ -35,11 +38,20 @@ interface FunctionDoc {
   description: string;
 }
 
+interface FormulaPreset {
+  id: string;
+  label: string;
+  category: string;
+  description: string;
+  formulas: { key: string; expression: string }[];
+}
+
 interface Reference {
   inputs: Record<string, string>;
   row_functions: FunctionDoc[];
   scope_functions: FunctionDoc[];
   defaults: Record<string, { key: string; expression: string }[]>;
+  presets?: FormulaPreset[];
 }
 
 interface PreviewIssue {
@@ -68,6 +80,7 @@ function formatValue(v: number): string {
 }
 
 export default function FormulasPage() {
+  const { t } = useTranslation("scoring");
   const { eventId = "" } = useParams();
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<Category>("botball");
@@ -170,7 +183,7 @@ export default function FormulasPage() {
       queryClient.invalidateQueries({ queryKey: ["formulas", seasonId, category] });
     },
     onError: (err: any) => {
-      setSaveError(err?.response?.data?.detail ?? "Speichern fehlgeschlagen");
+      setSaveError(err?.response?.data?.detail ?? t("formulas.saveFailed"));
     },
   });
 
@@ -219,6 +232,18 @@ export default function FormulasPage() {
     setDirty(true);
   };
 
+  // Presets (ECER, regional, GCER, …) are loaded into the editor as a draft,
+  // so they can be reviewed against the live preview before saving.
+  const presets = (reference?.presets ?? []).filter((p) => p.category === category);
+  const [presetId, setPresetId] = useState("");
+  const loadPreset = (id: string) => {
+    const preset = presets.find((p) => p.id === id);
+    if (!preset) return;
+    setFormulas(preset.formulas.map((f) => ({ key: f.key, expression: f.expression })));
+    setDirty(true);
+    setPresetId("");
+  };
+
   const issuesByKey = useMemo(() => {
     const map: Record<string, PreviewIssue[]> = {};
     for (const issue of preview?.issues ?? []) {
@@ -232,7 +257,7 @@ export default function FormulasPage() {
   if (!seasonId) {
     return (
       <div className="card p-6">
-        <p className="text-gray-600 dark:text-gray-300">Event wird geladen…</p>
+        <p className="text-gray-600 dark:text-gray-300">{t("events:loading")}</p>
       </div>
     );
   }
@@ -243,20 +268,35 @@ export default function FormulasPage() {
         <div className="flex items-center gap-3">
           <Calculator className="w-6 h-6 text-primary-600" />
           <div>
-            <h1 className="text-xl font-semibold">Punkteformeln</h1>
+            <h1 className="text-xl font-semibold">{t("formulas.title")}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Formeln wie im Game Document — jede Saison und Kategorie eigene Regeln.
+              {t("formulas.subtitle")}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {presets.length > 0 && (
+            <select
+              className="input"
+              aria-label={t("formulas.loadPreset")}
+              value={presetId}
+              onChange={(e) => loadPreset(e.target.value)}
+            >
+              <option value="">{t("formulas.loadPresetOption")}</option>
+              {presets.map((p) => (
+                <option key={p.id} value={p.id} title={p.description}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             className="btn-secondary"
             onClick={() => resetMutation.mutate()}
             disabled={resetMutation.isPending}
           >
             <RotateCcw className="w-4 h-4" />
-            Auf Standard zurücksetzen
+            {t("formulas.reset")}
           </button>
           <button
             className="btn-primary"
@@ -264,7 +304,7 @@ export default function FormulasPage() {
             disabled={!dirty || saveMutation.isPending}
           >
             <Save className="w-4 h-4" />
-            Speichern
+            {t("common:save")}
           </button>
         </div>
       </div>
@@ -280,7 +320,7 @@ export default function FormulasPage() {
                 : "btn-secondary"
             }
           >
-            {c.label}
+            {c.key === "open" ? c.label : CATEGORY_LABEL[c.key]}
           </button>
         ))}
       </div>
@@ -299,14 +339,14 @@ export default function FormulasPage() {
         <div className="lg:col-span-2 space-y-4">
           <div className="card p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-medium">Formeln</h2>
+              <h2 className="font-medium">{t("formulas.formulas")}</h2>
               <button className="btn-secondary" onClick={add}>
                 <Plus className="w-4 h-4" />
-                Formel
+                {t("formulas.formula")}
               </button>
             </div>
 
-            {isLoading && <p className="text-sm text-gray-500">Laden...</p>}
+            {isLoading && <p className="text-sm text-gray-500">{t("common:loading")}</p>}
 
             {formulas.map((f, i) => {
               const issues = issuesByKey[f.key] ?? [];
@@ -318,7 +358,7 @@ export default function FormulasPage() {
                   <div className="flex items-center gap-2">
                     <input
                       className="input font-mono max-w-[16rem]"
-                      placeholder="schluessel"
+                      placeholder={t("schema.keyPlaceholder")}
                       value={f.key}
                       onChange={(e) => update(i, { key: e.target.value })}
                     />
@@ -326,21 +366,21 @@ export default function FormulasPage() {
                     <div className="flex-1" />
                     <button
                       className="btn-secondary px-2"
-                      title="Nach oben"
+                      title={t("rules.up")}
                       onClick={() => move(i, -1)}
                     >
                       <ArrowUp className="w-4 h-4" />
                     </button>
                     <button
                       className="btn-secondary px-2"
-                      title="Nach unten"
+                      title={t("rules.down")}
                       onClick={() => move(i, 1)}
                     >
                       <ArrowDown className="w-4 h-4" />
                     </button>
                     <button
                       className="btn-danger px-2"
-                      title="Entfernen"
+                      title={t("formulas.remove")}
                       onClick={() => remove(i)}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -366,7 +406,7 @@ export default function FormulasPage() {
                         </div>
                       ))}
                       {issues.length > 3 && (
-                        <div className="text-xs">+{issues.length - 3} weitere</div>
+                        <div className="text-xs">{t("formulas.more", { count: issues.length - 3 })}</div>
                       )}
                     </div>
                   )}
@@ -376,7 +416,7 @@ export default function FormulasPage() {
           </div>
 
           {/* ── Bracket weights ────────────────────────────────────────────── */}
-          <BracketWeightsCard
+          <BracketWeightsEditor
             weights={bracketWeights ?? {}}
             onSave={(w) => weightsMutation.mutate(w)}
             saving={weightsMutation.isPending}
@@ -385,13 +425,13 @@ export default function FormulasPage() {
           {/* ── Preview ────────────────────────────────────────────────────── */}
           <div className="card p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-medium">Vorschau mit echten Daten</h2>
+              <h2 className="font-medium">{t("formulas.preview")}</h2>
               {previewing ? (
-                <span className="text-sm text-gray-500">Berechne...</span>
+                <span className="text-sm text-gray-500">{t("formulas.calculating")}</span>
               ) : preview?.ok ? (
                 <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
                   <CheckCircle2 className="w-4 h-4" />
-                  {preview.rows.length} Teams berechnet
+                  {t("formulas.calculated", { count: preview.rows.length })}
                 </span>
               ) : null}
             </div>
@@ -412,7 +452,7 @@ export default function FormulasPage() {
                   <thead>
                     <tr className="text-left border-b dark:border-gray-700">
                       <th className="py-2 pr-3">#</th>
-                      <th className="py-2 pr-3">Team</th>
+                      <th className="py-2 pr-3">{t("scouting.team")}</th>
                       {columns.map((c) => (
                         <th key={c} className="py-2 pr-3 font-mono text-xs whitespace-nowrap">
                           {c}
@@ -423,7 +463,7 @@ export default function FormulasPage() {
                   <tbody>
                     {preview.rows.map((r) => (
                       <tr key={r.team_id} className="border-b dark:border-gray-800">
-                        <td className="py-1.5 pr-3 text-gray-500">{r.rank}</td>
+                        <td className="py-1.5 pr-3 text-gray-500">{r.rank ?? "DQ"}</td>
                         <td className="py-1.5 pr-3">{r.team_name ?? r.team_id}</td>
                         {columns.map((c) => (
                           <td key={c} className="py-1.5 pr-3 font-mono text-xs">
@@ -439,7 +479,7 @@ export default function FormulasPage() {
 
             {preview && preview.rows.length === 0 && (
               <p className="text-sm text-gray-500">
-                Keine Teams in dieser Kategorie registriert — nichts zu berechnen.
+                {t("formulas.noTeams")}
               </p>
             )}
           </div>
@@ -448,7 +488,7 @@ export default function FormulasPage() {
         {/* ── Reference ─────────────────────────────────────────────────────── */}
         <div className="space-y-4">
           <div className="card p-4">
-            <h2 className="font-medium mb-2">Variablen</h2>
+            <h2 className="font-medium mb-2">{t("formulas.variables")}</h2>
             <dl className="space-y-1.5 text-sm">
               {Object.entries(reference?.inputs ?? {}).map(([name, desc]) => (
                 <div key={name}>
@@ -462,8 +502,8 @@ export default function FormulasPage() {
           </div>
 
           <div className="card p-4">
-            <h2 className="font-medium mb-2">Funktionen</h2>
-            <p className="text-xs text-gray-500 mb-2">Pro Team</p>
+            <h2 className="font-medium mb-2">{t("formulas.functions")}</h2>
+            <p className="text-xs text-gray-500 mb-2">{t("formulas.perTeam")}</p>
             <dl className="space-y-1.5 text-sm mb-4">
               {(reference?.row_functions ?? []).map((f) => (
                 <div key={f.name}>
@@ -474,7 +514,7 @@ export default function FormulasPage() {
                 </div>
               ))}
             </dl>
-            <p className="text-xs text-gray-500 mb-2">Über alle Teams der Kategorie</p>
+            <p className="text-xs text-gray-500 mb-2">{t("formulas.acrossTeams")}</p>
             <dl className="space-y-1.5 text-sm">
               {(reference?.scope_functions ?? []).map((f) => (
                 <div key={f.name}>
@@ -488,95 +528,15 @@ export default function FormulasPage() {
           </div>
 
           <div className="card p-4">
-            <h2 className="font-medium mb-1">Auswertungsreihenfolge</h2>
+            <h2 className="font-medium mb-1">{t("formulas.order")}</h2>
             <p className="text-xs text-gray-500 mb-2">
-              Formeln dürfen sich gegenseitig verwenden — die Reihenfolge wird automatisch
-              aufgelöst.
+              {t("formulas.orderHint")}
             </p>
             <div className="font-mono text-xs text-gray-600 dark:text-gray-400 break-words">
               {columns.length > 0 ? columns.join(" → ") : "—"}
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function BracketWeightsCard({
-  weights,
-  onSave,
-  saving,
-}: {
-  weights: Record<string, number>;
-  onSave: (w: Record<string, number>) => void;
-  saving: boolean;
-}) {
-  const [draft, setDraft] = useState<[string, string][]>([]);
-
-  useEffect(() => {
-    const entries = Object.entries(weights);
-    setDraft(entries.length > 0 ? entries.map(([k, v]) => [k, String(v)]) : [["A", "1"]]);
-  }, [weights]);
-
-  const commit = () => {
-    const out: Record<string, number> = {};
-    for (const [bracket, value] of draft) {
-      const key = bracket.trim();
-      const num = Number(value);
-      if (key && Number.isFinite(num)) out[key] = num;
-    }
-    onSave(out);
-  };
-
-  return (
-    <div className="card p-4 space-y-3">
-      <div>
-        <h2 className="font-medium">Bracket-Gewichtung</h2>
-        <p className="text-xs text-gray-500">
-          Wird laut Game Review pro Turnier bekanntgegeben. Steht in den Formeln als{" "}
-          <code className="font-mono">bracket_weight</code> zur Verfügung.
-        </p>
-      </div>
-      <div className="space-y-2">
-        {draft.map(([bracket, value], i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              className="input font-mono max-w-[6rem]"
-              placeholder="A"
-              value={bracket}
-              onChange={(e) =>
-                setDraft((p) => p.map((row, idx) => (idx === i ? [e.target.value, row[1]] : row)))
-              }
-            />
-            <span className="text-gray-400">×</span>
-            <input
-              className="input font-mono max-w-[12rem]"
-              placeholder="1.0"
-              value={value}
-              onChange={(e) =>
-                setDraft((p) => p.map((row, idx) => (idx === i ? [row[0], e.target.value] : row)))
-              }
-            />
-            <button
-              className="btn-danger px-2"
-              title="Entfernen"
-              onClick={() => setDraft((p) => p.filter((_, idx) => idx !== i))}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <button className="btn-secondary" onClick={() => setDraft((p) => [...p, ["", "1"]])}>
-          <Plus className="w-4 h-4" />
-          Bracket
-        </button>
-        <button className="btn-primary" onClick={commit} disabled={saving}>
-          <Save className="w-4 h-4" />
-          Gewichtung speichern
-        </button>
       </div>
     </div>
   );

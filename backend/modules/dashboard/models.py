@@ -1,7 +1,17 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -50,7 +60,59 @@ class NotificationEvent(Base):
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending", index=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(Text)
+    # Optional idempotency key: reminders ("match starts soon", deadlines) are
+    # queued by periodic tasks and must reach each recipient only once.
+    dedupe_key: Mapped[str | None] = mapped_column(
+        String(200), nullable=True, unique=True, index=True
+    )
+    # Earliest time of the next delivery attempt after a failed one (backoff).
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CalendarFeedToken(Base):
+    """A per-user secret for subscribing to the deadline iCal feed.
+
+    Calendar apps cannot send a bearer token, so the feed URL carries its own
+    credential. Only a SHA-256 hash is stored: the plain token is shown once
+    when it is created, and rotating or revoking it invalidates every URL that
+    was handed out before. The token grants nothing but the read-only feed.
+    """
+
+    __tablename__ = "calendar_feed_tokens"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class NotificationRead(Base):
+    """Read receipt of one outbox notification for one user (notification center)."""
+
+    __tablename__ = "notification_reads"
+    __table_args__ = (
+        UniqueConstraint("user_id", "notification_id", name="uq_notification_read_user_item"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    notification_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("notification_events.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    read_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

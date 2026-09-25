@@ -3,14 +3,16 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from modules.events.module_access import MODULE_KEYS
+from modules.scoring.sheet_schemas import SheetDefinition
+
 EventStatus = Literal["draft", "published", "live", "completed", "archived"]
 PhaseType = Literal["seeding", "double_seeding", "double_elimination", "alliance", "final"]
 PhaseStatus = Literal["draft", "scheduled", "live", "completed"]
 
 
 def _validate_module_names(value: list[str]) -> list[str]:
-    allowed = {"seeding", "double_elimination", "paper", "documentation", "aerial"}
-    invalid = set(value) - allowed
+    invalid = set(value) - set(MODULE_KEYS)
     if invalid:
         raise ValueError(f"Unknown modules: {', '.join(sorted(invalid))}")
     return list(dict.fromkeys(value))
@@ -26,7 +28,8 @@ class EventCreate(BaseModel):
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     status: EventStatus = "draft"
-    active_modules: list[str] = Field(default_factory=lambda: ["seeding"])
+    # None: derive from the season's module flags (module_access.modules_for_season).
+    active_modules: list[str] | None = None
     public_scoreboard: bool = False
     public_schedule: bool = False
     public_results: bool = False
@@ -36,8 +39,8 @@ class EventCreate(BaseModel):
 
     @field_validator("active_modules")
     @classmethod
-    def validate_modules(cls, value: list[str]) -> list[str]:
-        return _validate_module_names(value)
+    def validate_modules(cls, value: list[str] | None) -> list[str] | None:
+        return None if value is None else _validate_module_names(value)
 
     @model_validator(mode="after")
     def validate_dates(self) -> "EventCreate":
@@ -95,6 +98,18 @@ class EventResponse(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class EventModulesResponse(BaseModel):
+    """Module switches of one event, resolved against its season."""
+
+    event_id: str
+    available_modules: list[str]
+    active_modules: list[str]
+    effective_modules: list[str]
+    # Season-level switches: use_seeding, use_double_elimination,
+    # use_documentation_scoring, use_aerial, use_paper_scoring.
+    season_flags: dict[str, bool]
 
 
 class EventPublicResponse(BaseModel):
@@ -189,6 +204,8 @@ class ScheduleGenerateRequest(BaseModel):
     slot_minutes: int = Field(default=10, ge=3, le=240)
     table_count: int | None = Field(default=None, ge=1, le=100)
     team_ids: list[str] | None = None
+    # Restrict the phase to the teams of one category (default: phase settings).
+    category: Literal["botball", "open", "aerial", "jbc"] | None = None
     replace_existing: bool = False
 
 
@@ -221,9 +238,79 @@ class ScheduledMatchResponse(BaseModel):
     bracket: str | None
     next_winner_match_id: str | None
     next_loser_match_id: str | None
+    next_winner_slot: int | None = None
+    next_loser_slot: int | None = None
+    round_kind: str | None = None
     version: int
     notes: str | None
     participants: list[MatchParticipantResponse]
+
+
+class MatchResultRequest(BaseModel):
+    """Result of a scheduled match.
+
+    Elimination phases need ``winner_team_id``; seeding-like and alliance
+    phases record per-team ``scores`` (team id → score).
+    """
+
+    winner_team_id: str | None = None
+    scores: dict[str, float] = Field(default_factory=dict)
+    expected_version: int | None = Field(default=None, ge=1)
+
+
+class SeedAssignmentRequest(BaseModel):
+    category: Literal["botball", "open", "aerial", "jbc"] | None = None
+    phase_id: str | None = None
+
+
+class BracketPlacement(BaseModel):
+    team_id: str
+    team_name: str
+    team_number: str | None
+    # Bracket placement, shared by teams knocked out in the same round.
+    rank: int
+    # The same order with ties broken by the season's tie-breakers / seeding rank.
+    placement: int | None = None
+    decided_by: str | None = None
+
+
+class BracketPhaseResponse(BaseModel):
+    phase_id: str
+    phase_name: str
+    phase_type: str
+    status: str
+    bracket_label: str
+    matches: list[ScheduledMatchResponse]
+    placements: list[BracketPlacement]
+
+
+class AllianceRun(BaseModel):
+    match_id: str
+    round_number: int
+    score: float
+
+
+class AllianceStanding(BaseModel):
+    rank: int
+    team_ids: list[str]
+    team_names: list[str]
+    runs: list[AllianceRun]
+    best_score: float
+    total_score: float
+
+
+class BracketWeightsUpdate(BaseModel):
+    weights: dict[str, float]
+
+    @field_validator("weights")
+    @classmethod
+    def validate_weights(cls, value: dict[str, float]) -> dict[str, float]:
+        for bracket, weight in value.items():
+            if not 1 <= len(bracket) <= 20:
+                raise ValueError("Bracket labels have 1 to 20 characters")
+            if weight < 0:
+                raise ValueError("Bracket weights cannot be negative")
+        return value
 
 
 class ScheduledMatchUpdate(BaseModel):
@@ -242,6 +329,13 @@ class EventScoreCreate(BaseModel):
     round_number: int = Field(default=1, ge=1)
     table_number: int | None = Field(default=None, ge=1)
     raw_scores: dict = Field(default_factory=dict)
+    # Special round conditions (game review "Tie Breakers & Special Scoring
+    # Conditions"): lose the round → 0 points; end-of-game contact → the
+    # opponent of a head-to-head match receives 25 % of this team's score.
+    round_lost: bool = False
+    round_lost_reason: Literal["never_left_start_box", "motors_running", "other"] | None = None
+    end_contact: bool = False
+    tiebreak_values: dict[str, float | bool | None] = Field(default_factory=dict)
     notes: str | None = None
     idempotency_key: str = Field(min_length=8, max_length=100)
 
@@ -268,9 +362,20 @@ class ScoringFieldDefinition(BaseModel):
 
 
 class ScoringSchemaVersionCreate(BaseModel):
+    """A flat field list, or a structured sheet (`definition`, see scoring.sheet)."""
+
     competition_level_id: str | None = None
-    fields: list[ScoringFieldDefinition] = Field(min_length=1)
+    fields: list[ScoringFieldDefinition] = Field(default_factory=list)
+    definition: SheetDefinition | None = None
     activate: bool = True
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "ScoringSchemaVersionCreate":
+        if self.definition is None and not self.fields:
+            raise ValueError("Either fields or a structured definition is required")
+        if self.definition is not None and self.fields:
+            raise ValueError("Send either fields or a definition, not both")
+        return self
 
 
 class ScoringSchemaResponse(BaseModel):
@@ -281,6 +386,7 @@ class ScoringSchemaResponse(BaseModel):
     event_id: str | None
     competition_level_id: str | None
     fields: list[dict]
+    definition: dict | None = None
     version: int
     is_active: bool
     created_at: datetime

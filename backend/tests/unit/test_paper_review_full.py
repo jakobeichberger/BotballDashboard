@@ -11,8 +11,8 @@ and average-score cases). This file adds coverage for:
   * get_or_create_review idempotency + per-revision isolation
   * save_review update-in-place, single / partial score averaging, rounding,
     recommendation & comment persistence, per-revision reviews
-  * submit -> under_review transition gating (single & multiple reviewers)
-  * revision lifecycle + re-review after revision
+  * review submission (all criteria required, locked afterwards)
+  * revision lifecycle + re-review of the resubmitted version
   * save_file helper writing bytes to disk
 """
 
@@ -35,6 +35,7 @@ from modules.paper_review.service import (
     submit_paper,
     update_paper,
 )
+from tests.paper_helpers import FULL_SCORES, add_version, make_user, submitted_paper
 
 
 @pytest.fixture
@@ -50,19 +51,16 @@ def paper_data(season, team):
 
 
 async def _make_second_user(db, email="reviewer2@test.com"):
-    from modules.auth.models import User
-    from modules.auth.service import hash_password
+    return await make_user(db, email, ("papers:review",))
 
-    user = User(
-        email=email,
-        display_name="Second User",
-        hashed_password=hash_password("pw"),
-        is_active=True,
-        is_superuser=False,
-    )
-    db.add(user)
+
+async def _other_team(db, name="Other Team"):
+    from modules.teams.models import Team
+
+    other = Team(name=name, country="AT")
+    db.add(other)
     await db.flush()
-    return user
+    return other
 
 
 # ── create_paper / get_paper ─────────────────────────────────────────────────
@@ -102,16 +100,26 @@ class TestListPapers:
 
     @pytest.mark.asyncio
     async def test_list_returns_all(self, db, paper_data):
+        other = await _other_team(db)
         await create_paper(db, dict(paper_data, title="A"))
-        await create_paper(db, dict(paper_data, title="B"))
+        await create_paper(db, dict(paper_data, title="B", team_id=other.id))
         await db.flush()
         papers = await list_papers(db)
         assert len(papers) == 2
 
     @pytest.mark.asyncio
+    async def test_second_paper_for_team_and_season_conflicts(self, db, paper_data):
+        await create_paper(db, dict(paper_data, title="A"))
+        with pytest.raises(ConflictError):
+            await create_paper(db, dict(paper_data, title="B"))
+
+    @pytest.mark.asyncio
     async def test_filter_by_status(self, db, paper_data):
+        other = await _other_team(db)
         await create_paper(db, dict(paper_data, title="draft one", status="draft"))
-        await create_paper(db, dict(paper_data, title="accepted one", status="accepted"))
+        await create_paper(
+            db, dict(paper_data, title="accepted one", status="accepted", team_id=other.id)
+        )
         await db.flush()
 
         drafts = await list_papers(db, status="draft")
@@ -236,11 +244,11 @@ class TestSubmitPaper:
     @pytest.mark.asyncio
     async def test_submit_from_revision_requested_allowed(self, db, paper_data, admin_user):
         paper = await create_paper(db, paper_data)
-        await db.flush()
+        await add_version(db, paper.id)
         await set_paper_status(db, paper.id, "revision_requested")
         await db.commit()
         result = await submit_paper(db, paper.id, admin_user.id)
-        assert result.status == "submitted"
+        assert result.status == "resubmitted"
         assert result.submitted_by == admin_user.id
         assert result.submitted_at is not None
 
@@ -361,8 +369,7 @@ class TestGetOrCreateReview:
 
 class TestSaveReview:
     async def _assigned_paper(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await db.flush()
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
         return paper
 
@@ -388,8 +395,8 @@ class TestSaveReview:
             admin_user.id,
             {
                 "score_content": 1.0,
-                "score_methodology": 2.0,
-                "score_presentation": 2.0,
+                "score_implementation": 2.0,
+                "score_results": 2.0,
             },
         )
         await db.commit()
@@ -421,13 +428,13 @@ class TestSaveReview:
         paper = await self._assigned_paper(db, paper_data, admin_user)
         first = await save_review(db, paper.id, admin_user.id, {"score_content": 5.0})
         await db.flush()
-        second = await save_review(db, paper.id, admin_user.id, {"score_methodology": 7.0})
+        second = await save_review(db, paper.id, admin_user.id, {"score_implementation": 7.0})
         await db.commit()
         # same review row, not a new one
         assert first.id == second.id
         # both scores now present -> avg(5,7) = 6.0
         assert second.score_content == 5.0
-        assert second.score_methodology == 7.0
+        assert second.score_implementation == 7.0
         assert second.total_score == 6.0
 
     @pytest.mark.asyncio
@@ -437,38 +444,60 @@ class TestSaveReview:
         await db.commit()
         assert review.is_submitted is False
         assert review.submitted_at is None
-        # paper still in draft – not enough to transition
+        # The first assignment already moved the paper under review.
         refetched = await get_paper(db, paper.id)
-        assert refetched.status == "draft"
+        assert refetched.status == "under_review"
+
+    @pytest.mark.asyncio
+    async def test_draft_paper_is_not_open_for_review(self, db, paper_data, admin_user):
+        paper = await create_paper(db, paper_data)
+        await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
+        with pytest.raises(ConflictError):
+            await save_review(db, paper.id, admin_user.id, {"score_content": 5.0})
 
 
 # ── submit marks the review submitted ────────────────────────────────────────
+
+_SUBMITTABLE = {**FULL_SCORES, "recommendation": "accept"}
 
 
 class TestSubmitReview:
     @pytest.mark.asyncio
     async def test_submit_marks_review_submitted(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await db.flush()
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
-        review = await save_review(db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True)
+        review = await save_review(db, paper.id, admin_user.id, dict(_SUBMITTABLE), submit=True)
         await db.commit()
         assert review.is_submitted is True
         assert review.submitted_at is not None
         assert review.total_score == 8.0
 
     @pytest.mark.asyncio
+    async def test_submit_requires_every_criterion(self, db, paper_data, admin_user):
+        from core.exceptions import ValidationError
+
+        paper = await submitted_paper(db, paper_data, admin_user.id)
+        await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
+        with pytest.raises(ValidationError):
+            await save_review(
+                db,
+                paper.id,
+                admin_user.id,
+                {"score_content": 8.0, "recommendation": "accept"},
+                submit=True,
+            )
+
+    @pytest.mark.asyncio
     async def test_multiple_reviewers_each_get_own_review(self, db, paper_data, admin_user):
         from sqlalchemy import select
 
-        paper = await create_paper(db, paper_data)
-        await db.flush()
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         other = await _make_second_user(db)
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
         await assign_reviewer(db, paper.id, other.id, admin_user.id)
 
-        r1 = await save_review(db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True)
-        r2 = await save_review(db, paper.id, other.id, {"score_content": 6.0}, submit=True)
+        r1 = await save_review(db, paper.id, admin_user.id, dict(_SUBMITTABLE), submit=True)
+        r2 = await save_review(db, paper.id, other.id, dict(_SUBMITTABLE), submit=True)
         await db.commit()
 
         assert r1.id != r2.id
@@ -484,18 +513,12 @@ class TestSubmitReview:
         assert all(r.is_submitted for r in rows)
 
     @pytest.mark.asyncio
-    async def test_resave_after_submit_keeps_submitted(self, db, paper_data, admin_user):
-        paper = await create_paper(db, paper_data)
-        await db.flush()
+    async def test_submitted_review_is_locked(self, db, paper_data, admin_user):
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
-        await save_review(db, paper.id, admin_user.id, {"score_content": 8.0}, submit=True)
-        await db.flush()
-        # editing again (without submit flag) updates the same row; is_submitted
-        # stays True because it is never cleared.
-        again = await save_review(db, paper.id, admin_user.id, {"score_methodology": 4.0})
-        await db.commit()
-        assert again.is_submitted is True
-        assert again.total_score == 6.0  # avg(8, 4)
+        await save_review(db, paper.id, admin_user.id, dict(_SUBMITTABLE), submit=True)
+        with pytest.raises(ConflictError):
+            await save_review(db, paper.id, admin_user.id, {"score_implementation": 4.0})
 
 
 # ── full revision lifecycle ──────────────────────────────────────────────────
@@ -506,27 +529,32 @@ class TestRevisionLifecycle:
     async def test_review_per_revision_isolated(self, db, paper_data, admin_user):
         from sqlalchemy import select
 
-        paper = await create_paper(db, paper_data)
-        await db.flush()
+        paper = await submitted_paper(db, paper_data, admin_user.id)
         await assign_reviewer(db, paper.id, admin_user.id, admin_user.id)
 
-        # Review revision 1
+        # Review revision 1 (version 1)
         rev1_review = await save_review(db, paper.id, admin_user.id, {"score_content": 4.0})
         await db.flush()
         assert rev1_review.revision_number == 1
+        assert rev1_review.version_number == 1
 
-        # Request a revision (bumps to revision 2)
+        # Request a revision (bumps to revision 2); the team uploads version 2
         await set_paper_status(db, paper.id, "revision_requested")
-        await db.flush()
-        paper2 = await get_paper(db, paper.id)
+        await add_version(db, paper.id)
+        paper2 = await submit_paper(db, paper.id, admin_user.id)
         assert paper2.revision_number == 2
+        assert paper2.status == "resubmitted"
+        # The assignment is back to pending, now for version 2.
+        assert [(a.status, a.version_number) for a in paper2.assignments] == [("pending", 2)]
 
         # New review for revision 2 is a *different* row
         rev2_review = await save_review(db, paper.id, admin_user.id, {"score_content": 9.0})
         await db.commit()
         assert rev2_review.id != rev1_review.id
         assert rev2_review.revision_number == 2
+        assert rev2_review.version_number == 2
         assert rev2_review.score_content == 9.0
+        assert (await get_paper(db, paper.id)).status == "under_review"
 
         rows = (
             (await db.execute(select(PaperReview).where(PaperReview.paper_id == paper.id)))

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
+import { useTranslation } from "react-i18next";
 import { Grid3x3, ArrowLeft, Check, Plus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
@@ -25,8 +25,9 @@ interface Registration {
 }
 
 export default function TeamSeasonMatrixPage() {
+  const { t } = useTranslation("teams");
   const qc = useQueryClient();
-  const canEdit = useAuthStore((s) => s.hasRole("admin"));
+  const canEdit = useAuthStore((s) => s.hasPermission("teams:admin"));
 
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["teams"],
@@ -43,7 +44,7 @@ export default function TeamSeasonMatrixPage() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["registrations"] });
   const onError = (e: any) =>
-    alert(e?.response?.data?.detail ?? "Aktion fehlgeschlagen.");
+    alert(e?.response?.data?.detail ?? t("common:actionFailed"));
 
   const registerM = useMutation({
     mutationFn: (v: { team_id: string; season_id: string; competition_level_id: string | null }) =>
@@ -76,44 +77,44 @@ export default function TeamSeasonMatrixPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <EventLink to="/teams" className="btn-secondary text-sm">
-          <ArrowLeft className="w-4 h-4" /> Zurück zu Teams
+          <ArrowLeft className="w-4 h-4" /> {t("detail.back")}
         </EventLink>
       </div>
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Grid3x3 className="w-6 h-6" />
-          Saison-Zuweisung
+          {t("matrix.heading")}
         </h1>
         {!canEdit && (
-          <span className="text-sm text-gray-500">Nur-Lese-Ansicht (Admin zum Bearbeiten)</span>
+          <span className="text-sm text-gray-500">{t("matrix.readOnly")}</span>
         )}
       </div>
 
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-        <span className="flex items-center gap-1"><span className="badge-green"><Check className="w-3 h-3" /></span> Bestätigt</span>
-        <span className="flex items-center gap-1"><span className="badge-yellow">Offen</span> Registriert, nicht bestätigt</span>
-        <span className="flex items-center gap-1"><span className="badge-gray">–</span> Nicht zugewiesen</span>
+        <span className="flex items-center gap-1"><span className="badge-green"><Check className="w-3 h-3" /></span> {t("registrations.confirmed")}</span>
+        <span className="flex items-center gap-1"><span className="badge-yellow">{t("registrations.open")}</span> {t("matrix.registeredUnconfirmed")}</span>
+        <span className="flex items-center gap-1"><span className="badge-gray">–</span> {t("matrix.notAssigned")}</span>
       </div>
 
-      {isLoading && <p className="text-gray-500">Laden...</p>}
+      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400 sticky left-0 bg-gray-50 dark:bg-gray-800 z-10">
-                Team
+                {t("matrix.team")}
               </th>
               {seasons?.map((s) => (
                 <th key={s.id} className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400 min-w-[9rem]">
                   <div className="flex items-center justify-center gap-1">
                     {s.name}
-                    {s.is_active && <span className="badge-green">aktiv</span>}
+                    {s.is_active && <span className="badge-green">{t("matrix.active")}</span>}
                   </div>
                   <div className="text-xs font-normal text-gray-400">
-                    {confirmedCount(s.id)}/{regCount(s.id)} bestätigt
+                    {t("matrix.confirmedCount", { confirmed: confirmedCount(s.id), total: regCount(s.id) })}
                   </div>
                 </th>
               ))}
@@ -142,9 +143,9 @@ export default function TeamSeasonMatrixPage() {
                               registerM.mutate({ team_id: team.id, season_id: s.id, competition_level_id: team.competition_level_id })
                             }
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs text-gray-500 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/30 disabled:opacity-40"
-                            aria-label={`${team.name} für ${s.name} registrieren`}
+                            aria-label={t("matrix.registerLabel", { team: team.name, season: s.name })}
                           >
-                            <Plus className="w-3.5 h-3.5" /> Zuweisen
+                            <Plus className="w-3.5 h-3.5" /> {t("matrix.assign")}
                           </button>
                         ) : (
                           <span className="badge-gray">–</span>
@@ -154,9 +155,9 @@ export default function TeamSeasonMatrixPage() {
                         <div className="inline-flex items-center gap-1.5">
                           <span className={reg.confirmed ? "badge-green" : "badge-yellow"}>
                             {reg.confirmed ? (
-                              <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Bestätigt</span>
+                              <span className="flex items-center gap-1"><Check className="w-3 h-3" /> {t("registrations.confirmed")}</span>
                             ) : (
-                              "Offen"
+                              t("registrations.open")
                             )}
                           </span>
                           {canEdit && !reg.confirmed && (
@@ -164,8 +165,8 @@ export default function TeamSeasonMatrixPage() {
                               disabled={busy}
                               onClick={() => confirmM.mutate(reg.id)}
                               className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"
-                              aria-label="Bestätigen"
-                              title="Bestätigen"
+                              aria-label={t("matrix.confirm")}
+                              title={t("matrix.confirm")}
                             >
                               <Check className="w-3.5 h-3.5" />
                             </button>
@@ -175,8 +176,8 @@ export default function TeamSeasonMatrixPage() {
                               disabled={busy}
                               onClick={() => removeM.mutate(reg.id)}
                               className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40"
-                              aria-label="Zuweisung entfernen"
-                              title="Entfernen"
+                              aria-label={t("matrix.removeAssignment")}
+                              title={t("detail.remove")}
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -191,7 +192,7 @@ export default function TeamSeasonMatrixPage() {
             {teams?.length === 0 && (
               <tr>
                 <td colSpan={(seasons?.length ?? 0) + 1} className="px-4 py-8 text-center text-gray-400">
-                  Noch keine Teams angelegt
+                  {t("empty")}
                 </td>
               </tr>
             )}

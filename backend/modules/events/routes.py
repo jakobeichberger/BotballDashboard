@@ -2,13 +2,18 @@ from fastapi import APIRouter, Depends, Query, Response, WebSocket
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import assert_team_access, require_permission
+from core.auth import assert_team_access, has_elevated_access, require_permission
 from core.database import get_db
 from core.domain_events import emit_event
-from core.live import publish_live_event, stream_live_events
+from core.live import publish_after_commit, stream_live_events
 from modules.events import service
+from modules.events.module_access import MODULE_KEYS, SEASON_FLAGS, effective_modules
 from modules.events.schemas import (
+    AllianceStanding,
+    BracketPhaseResponse,
+    BracketWeightsUpdate,
     EventCreate,
+    EventModulesResponse,
     EventPhaseCreate,
     EventPhaseResponse,
     EventPhaseUpdate,
@@ -19,6 +24,7 @@ from modules.events.schemas import (
     EventResponse,
     EventScoreCreate,
     EventUpdate,
+    MatchResultRequest,
     PublicAnnouncementResponse,
     PublicRankingResponse,
     PublicResultResponse,
@@ -27,9 +33,11 @@ from modules.events.schemas import (
     ScheduleGenerateRequest,
     ScoringSchemaResponse,
     ScoringSchemaVersionCreate,
+    SeedAssignmentRequest,
 )
 from modules.scoring import service as scoring_service
 from modules.scoring.schemas import MatchResponse, RankingResponse
+from modules.seasons.models import Season
 from modules.teams.models import Team
 
 router = APIRouter(prefix="/v1/events", tags=["events"])
@@ -40,10 +48,15 @@ public_router = APIRouter(prefix="/v1/public/events", tags=["public-events"])
 async def list_events(
     season_id: str | None = Query(None),
     status: str | None = Query(None),
-    _=Depends(require_permission("events:read")),
+    current_user=Depends(require_permission("events:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_events(db, season_id, status)
+    return await service.list_events(
+        db,
+        season_id,
+        status,
+        include_drafts=await has_elevated_access(db, current_user, "events:write"),
+    )
 
 
 @router.post("", response_model=EventResponse, status_code=201)
@@ -58,10 +71,14 @@ async def create_event(
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(
     event_id: str,
-    _=Depends(require_permission("events:read")),
+    current_user=Depends(require_permission("events:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_event(db, event_id)
+    return await service.get_event(
+        db,
+        event_id,
+        include_drafts=await has_elevated_access(db, current_user, "events:write"),
+    )
 
 
 @router.patch("/{event_id}", response_model=EventResponse)
@@ -81,6 +98,25 @@ async def delete_event(
     db: AsyncSession = Depends(get_db),
 ):
     await service.delete_event(db, event_id)
+
+
+@router.get("/{event_id}/modules", response_model=EventModulesResponse)
+async def get_event_modules(
+    event_id: str,
+    _=Depends(require_permission("events:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Which modules the event uses — drives the navigation and route guards."""
+    event = await service.get_event(db, event_id)
+    season = await db.get(Season, event.season_id)
+    flags = (*SEASON_FLAGS.values(), "use_paper_scoring")
+    return EventModulesResponse(
+        event_id=event.id,
+        available_modules=list(MODULE_KEYS),
+        active_modules=list(event.active_modules or []),
+        effective_modules=effective_modules(event, season),
+        season_flags={flag: bool(getattr(season, flag, False)) for flag in flags},
+    )
 
 
 @router.get("/{event_id}/registrations", response_model=list[EventRegistrationResponse])
@@ -190,18 +226,86 @@ async def generate_schedule(
     db: AsyncSession = Depends(get_db),
 ):
     schedule = await service.generate_schedule(db, event_id, body.model_dump())
-    await publish_live_event(event_id, "schedule_updated")
+    # Live screens refresh right after the commit; the outbox row only carries
+    # the push notification (publishing it live as well would be a duplicate).
+    publish_after_commit(db, event_id, "schedule_updated")
     await emit_event(
         db,
         "schedule_updated",
         event_id=event_id,
-        payload={
-            "message": "The event schedule was regenerated.",
-            "publicLive": True,
-            "broadcast": True,
-        },
+        payload={"message": "The event schedule was regenerated.", "broadcast": True},
     )
     return schedule
+
+
+@router.post(
+    "/{event_id}/registrations/seeds-from-seeding", response_model=list[EventRegistrationResponse]
+)
+async def assign_seeds_from_seeding(
+    event_id: str,
+    body: SeedAssignmentRequest,
+    _=Depends(require_permission("events:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fill the registration seeds (per category) from the seeding ranking."""
+    return await service.assign_seeds_from_seeding(db, event_id, body.category, body.phase_id)
+
+
+@router.post("/{event_id}/schedule/{match_id}/result", response_model=ScheduledMatchResponse)
+async def record_match_result(
+    event_id: str,
+    match_id: str,
+    body: MatchResultRequest,
+    _=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Record a match result; elimination winners and losers advance automatically."""
+    match = await service.record_match_result(db, event_id, match_id, body.model_dump())
+    publish_after_commit(db, event_id, "schedule_updated", {"matchId": match.id})
+    publish_after_commit(db, event_id, "ranking_updated")
+    return match
+
+
+@router.get("/{event_id}/bracket", response_model=list[BracketPhaseResponse])
+async def get_bracket(
+    event_id: str,
+    _=Depends(require_permission("events:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.get_brackets(db, event_id)
+
+
+@router.get("/{event_id}/phases/{phase_id}/alliances", response_model=list[AllianceStanding])
+async def get_alliance_standings(
+    event_id: str,
+    phase_id: str,
+    _=Depends(require_permission("events:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.alliance_standings(db, event_id, phase_id)
+
+
+@router.get("/{event_id}/bracket-weights", response_model=dict[str, float])
+async def get_bracket_weights(
+    event_id: str,
+    category: str = Query("botball"),
+    _=Depends(require_permission("events:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.get_bracket_weights(db, event_id, category)
+
+
+@router.put("/{event_id}/bracket-weights", response_model=dict[str, float])
+async def set_bracket_weights(
+    event_id: str,
+    body: BracketWeightsUpdate,
+    category: str = Query("botball"),
+    _=Depends(require_permission("events:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    weights = await service.set_bracket_weights(db, event_id, category, body.weights)
+    publish_after_commit(db, event_id, "ranking_updated")
+    return weights
 
 
 @router.patch("/{event_id}/schedule/{match_id}", response_model=ScheduledMatchResponse)
@@ -215,18 +319,24 @@ async def update_scheduled_match(
     match = await service.update_scheduled_match(
         db, event_id, match_id, body.model_dump(exclude_unset=True)
     )
-    await publish_live_event(event_id, "schedule_updated", {"matchId": match.id})
-    await emit_event(
-        db,
-        "schedule_updated",
-        event_id=event_id,
-        payload={
-            "matchId": match.id,
-            "message": "A match time changed.",
-            "publicLive": True,
-            "broadcast": True,
-        },
-    )
+    publish_after_commit(db, event_id, "schedule_updated", {"matchId": match.id})
+    team_ids = [p.team_id for p in match.participants if p.team_id]
+    from modules.events.notifications import team_member_user_ids
+
+    user_ids = await team_member_user_ids(db, team_ids)
+    if user_ids:
+        # Only the teams playing this match need to hear about its new slot.
+        await emit_event(
+            db,
+            "schedule_updated",
+            event_id=event_id,
+            payload={
+                "matchId": match.id,
+                "title": f"Match {match.code} changed",
+                "message": "A match of your team was rescheduled.",
+                "userIds": user_ids,
+            },
+        )
     return match
 
 
@@ -257,7 +367,12 @@ async def create_event_score(
     data = body.model_dump()
     data.update({"event_id": event.id, "season_id": event.season_id})
     match = await scoring_service.create_match(db, data, current_user.id)
-    await publish_live_event(event_id, "ranking_updated", {"matchId": match.id})
+    if match.scheduled_match_id:
+        # A head-to-head score records the scheduled match's result as well.
+        publish_after_commit(
+            db, event_id, "schedule_updated", {"matchId": match.scheduled_match_id}
+        )
+    publish_after_commit(db, event_id, "ranking_updated", {"matchId": match.id})
     return match
 
 
@@ -313,6 +428,7 @@ async def create_event_scoring_schema(
         body.competition_level_id,
         [field.model_dump() for field in body.fields],
         body.activate,
+        body.definition.to_dict() if body.definition else None,
     )
 
 
@@ -330,6 +446,16 @@ async def get_public_schedule(slug: str, db: AsyncSession = Depends(get_db)):
 
         raise NotFoundError("Public schedule is disabled")
     return await service.list_scheduled_matches(db, event.id)
+
+
+@public_router.get("/{slug}/bracket", response_model=list[BracketPhaseResponse])
+async def get_public_bracket(slug: str, db: AsyncSession = Depends(get_db)):
+    event = await service.get_public_event(db, slug)
+    if not event.public_schedule:
+        from core.exceptions import NotFoundError
+
+        raise NotFoundError("Public schedule is disabled")
+    return await service.get_brackets(db, event.id)
 
 
 @public_router.get("/{slug}/ranking", response_model=list[PublicRankingResponse])

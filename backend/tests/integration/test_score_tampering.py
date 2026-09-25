@@ -18,7 +18,12 @@ class TestPaperScoreIsAdminOnly:
         assert "paper_rank" not in PaperUpdate.model_fields
 
     def test_admin_schema_carries_it(self):
-        assert set(PaperScoreUpdate.model_fields) == {"final_score", "paper_rank"}
+        assert set(PaperScoreUpdate.model_fields) == {
+            "final_score",
+            "paper_rank",
+            "format_deduction",
+            "format_deduction_reason",
+        }
 
     def test_extra_keys_are_rejected_not_silently_kept(self):
         parsed = PaperUpdate(title="T", final_score=1.0)

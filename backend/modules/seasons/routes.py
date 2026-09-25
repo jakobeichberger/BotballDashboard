@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Depends
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission
+from core.auth import get_current_user, has_elevated_access, require_permission
 from core.database import get_db
-from modules.seasons import service
+from modules.seasons import portability, service
 from modules.seasons.schemas import (
     CompetitionLevelCreate,
     CompetitionLevelResponse,
     CompetitionLevelUpdate,
+    SeasonClone,
     SeasonCreate,
     SeasonEventCreate,
     SeasonEventResponse,
@@ -19,11 +22,16 @@ from modules.seasons.schemas import (
 router = APIRouter(prefix="/seasons", tags=["seasons"])
 
 
+async def _sees_drafts(db: AsyncSession, user) -> bool:
+    """Draft seasons are work in progress – only season editors see them."""
+    return await has_elevated_access(db, user, "seasons:write")
+
+
 @router.get("", response_model=list[SeasonListItem])
 async def list_seasons(
-    _=Depends(require_permission("seasons:read")), db: AsyncSession = Depends(get_db)
+    current_user=Depends(require_permission("seasons:read")), db: AsyncSession = Depends(get_db)
 ):
-    return await service.list_seasons(db)
+    return await service.list_seasons(db, include_drafts=await _sees_drafts(db, current_user))
 
 
 @router.get("/active", response_model=SeasonResponse | None)
@@ -38,17 +46,46 @@ async def create_season(
     db: AsyncSession = Depends(get_db),
 ):
     phases = [p.model_dump() for p in body.phases]
-    data = body.model_dump(exclude={"phases"})
-    return await service.create_season(db, data, phases)
+    data = body.model_dump(exclude={"phases", "create_default_event"})
+    return await service.create_season(db, data, phases, body.create_default_event)
 
 
 @router.get("/{season_id}", response_model=SeasonResponse)
 async def get_season(
     season_id: str,
-    _=Depends(require_permission("seasons:read")),
+    current_user=Depends(require_permission("seasons:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_season(db, season_id)
+    return await service.get_season(
+        db, season_id, include_drafts=await _sees_drafts(db, current_user)
+    )
+
+
+@router.post("/{season_id}/clone", response_model=SeasonResponse, status_code=201)
+async def clone_season(
+    season_id: str,
+    body: SeasonClone,
+    _=Depends(require_permission("seasons:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Copy a season's configuration (not its results) into a new draft season."""
+    return await portability.clone_season(db, season_id, body.name, body.year)
+
+
+@router.get("/{season_id}/export.json")
+async def export_season(
+    season_id: str,
+    _=Depends(require_permission("seasons:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Complete JSON snapshot of the season (events, registrations, results, …)."""
+    data = await portability.export_season(db, season_id)
+    return JSONResponse(
+        jsonable_encoder(data),
+        headers={
+            "Content-Disposition": f'attachment; filename="season-{season_id}.json"',
+        },
+    )
 
 
 @router.patch("/{season_id}", response_model=SeasonResponse)
@@ -112,9 +149,10 @@ async def update_competition_level(
     _=Depends(require_permission("seasons:write")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.update_competition_level(
-        db, level_id, **body.model_dump(exclude_none=True)
-    )
+    data = body.model_dump(exclude_none=True)
+    if "qualifies_from_level_id" in body.model_fields_set:
+        data["qualifies_from_level_id"] = body.qualifies_from_level_id
+    return await service.update_competition_level(db, level_id, **data)
 
 
 @router.delete("/competition-levels/{level_id}", status_code=204)
@@ -132,9 +170,10 @@ async def delete_competition_level(
 @router.get("/{season_id}/events", response_model=list[SeasonEventResponse])
 async def list_season_events(
     season_id: str,
-    _=Depends(require_permission("seasons:read")),
+    current_user=Depends(require_permission("seasons:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    await service.get_season(db, season_id, include_drafts=await _sees_drafts(db, current_user))
     return await service.list_events(db, season_id)
 
 

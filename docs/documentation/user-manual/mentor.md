@@ -1,132 +1,171 @@
 # Mentor-Handbuch
 
-Dieses Handbuch richtet sich an Team-Betreuer (Mentoren), die eines oder mehrere Teams betreuen und den Fortschritt im Dashboard verfolgen.
+Für Team-Betreuerinnen und -Betreuer. Die Rolle `mentor` hat folgende Rechte:
+
+- `teams:read`/`teams:write`, `scoring:read`/`scoring:write`, `papers:read`/`papers:write`, `printing:read`/`printing:write`;
+- `seasons:read`, `events:read`, `dashboard:read`.
+
+Alles Schreibende gilt **nur für das eigene Team**.
 
 ---
 
-## Übersicht Mentor-Funktionen
+## Inhaltsverzeichnis
 
-| Funktion | Wo |
-|---|---|
-| Team-Scores einsehen | Scoring → Mein Team |
-| Testlauf-Entwicklung verfolgen | Scoring → Vorbereitungsphase |
-| Paper einreichen | Paper-Review → Paper einreichen |
-| Paper-Status verfolgen | Paper-Review → Meine Papers |
-| Revision einreichen | Paper-Review → Meine Papers → Paper → Neue Version hochladen |
-| Druckjob beantragen | 3D-Druck → Neuer Druckjob |
-| Druckjob-Status verfolgen | 3D-Druck → Meine Jobs |
-| Deadlines im Blick behalten | Dashboard → Saison-Übersicht |
-
----
-
-## Dashboard – Saison-Übersicht
-
-Die Startseite zeigt nach dem Login alle relevanten Informationen auf einen Blick:
-
-- **Aktuelle Phase:** Welche Phase ist gerade aktiv (Vorbereitung / Turnier / GCER)?
-- **Nächste Deadlines:** Alle kommenden Deadlines (Paper, Turnier, intern) mit Tagen-Countdown
-- **Team-Status:** Letzter Testlauf-Score, Paper-Status, offene Druckjobs
-- **Announcements:** Aktuelle Mitteilungen des Organisationsteams
-- **Benachrichtigungen:** Ungelesene Nachrichten (Druckjob genehmigt, Paper-Revision angefordert, ...)
+1. [Voraussetzung: Konto mit dem Team verknüpfen](#voraussetzung-konto-mit-dem-team-verknüpfen)
+2. [Dashboard](#dashboard)
+3. [Eigenes Team pflegen](#eigenes-team-pflegen)
+4. [Wertungen und Übungsläufe](#wertungen-und-übungsläufe)
+5. [Performance](#performance)
+6. [Scouting](#scouting)
+7. [Paper einreichen](#paper-einreichen)
+8. [3D-Druck](#3d-druck)
+9. [Bot-Galerie](#bot-galerie)
+10. [Deadlines und Kalender](#deadlines-und-kalender)
 
 ---
 
-## Scoring – Vorbereitungsphase
+## Voraussetzung: Konto mit dem Team verknüpfen
 
-Während der internen Testläufe können Mentoren die Entwicklung ihres Teams verfolgen:
-
-1. **Scoring → Vorbereitungsphase → Mein Team**
-2. Alle bisher dokumentierten Testläufe mit Datum und Score
-3. **Verlaufsgraph:** Score-Entwicklung über alle Testläufe
-4. **Segmentanalyse:** Welche Aufgabenbereiche laufen gut, welche schlecht?
-5. Kommentare der Jurors zu jedem Lauf lesbar
-
-> Scores anderer Teams in der Vorbereitungsphase sind nicht sichtbar – nur die eigenen.
+Ein Team gilt als dein „eigenes Team", wenn dein Benutzerkonto dort als **Mitglied verknüpft** ist. Die Verknüpfung setzt die Organisation auf der Team-Detailseite („Konto verknüpfen", Recht `teams:admin`). Ohne Verknüpfung kannst du lesen, aber nichts für ein Team einreichen. Die Oberfläche bietet dir in Auswahllisten nur deine eigenen Teams an.
 
 ---
 
-## Paper-Review
+## Dashboard
 
-### Paper einreichen
+Pro eigenem Team zeigt das Dashboard eine Karte mit:
 
-1. **Paper-Review → Paper einreichen**
-2. PDF-Datei hochladen (max. 5 Seiten, IEEE-Format)
-3. Kategorie auswählen (z.B. Multi Agent Systems, Engineering, ...)
-4. Absenden → Paper erhält Status `Eingereicht`
+- Seeding-Rang und Seed-Score;
+- den nächsten Matches;
+- den letzten Wertungen (bestätigt oder nicht);
+- dem Paper-Status;
+- offenen und fertigen Druckaufträgen.
 
-**Voraussetzungen:**
-- PDF-Format, IEEE A4-Template
-- Max. 5 Seiten inkl. Abbildungen und Referenzen
-- Pflichtabschnitte: Abstract, Introduction, Concept/Design, Implementation, Results/Conclusion
+Dazu kommen anstehende Deadlines und Ankündigungen. Paper- und Druck-Angaben fehlen, wenn das Event diese Module nicht nutzt.
 
-### Paper-Status verfolgen
+---
 
-| Status | Bedeutung | Aktion nötig? |
-|---|---|---|
-| `Eingereicht` | Wartet auf Zuweisung zu Reviewer | Nein |
-| `In Review` | Reviewer bewertet gerade | Nein |
-| `Revision angefordert` | Feedback vorhanden, Überarbeitung nötig | ✓ Ja |
-| `Überarbeitung eingereicht` | Wartet auf erneuten Review | Nein |
-| `Akzeptiert` | Paper angenommen | Nein |
-| `Abgelehnt` | Paper nicht angenommen | – |
+## Eigenes Team pflegen
 
-### Revision einreichen
+Auf der **Team-Detailseite** (Teams → dein Team):
 
-1. Push-Benachrichtigung oder E-Mail: „Revision angefordert"
-2. **Paper-Review → Meine Papers → Paper → Feedback lesen**
-3. Paper überarbeiten (außerhalb des Systems)
-4. **Überarbeitete Version hochladen**
-5. Status wechselt zu `Überarbeitung eingereicht`
+- **Stammdaten und Mitglieder** bearbeiten. Mitglieder hinzufügen oder entfernen. Konten verknüpfen kann nur die Organisation.
+- **Saison-Teilnahme:** Kontaktperson, E-Mail, Telefon und Adresse pflegst du selbst. Kategorie, Gebühr und Kit-Status pflegt die Organisation. Den **Saison-Kader** legst du mit Rollen pro Saison fest.
+- **Dokumente:** Projektplan, Präsentation, Code-Dokumentation und Sonstiges als PDF oder Bild hochladen. Jeder weitere Upload wird eine **neue Version**, ältere Versionen bleiben im Archiv. Dokumente sehen nur dein Team und die Organisation.
+- **3D-Druck-Checkliste** der Saison: die Regeln für gedruckte Teile abhaken. Die Organisation bestätigt die vollständige Liste. Änderst du danach einen Haken, fällt die Bestätigung weg.
+- **Historie:** Ergebnisse über alle Saisons mit Diagrammen, dazu **Teambericht PDF** und **Historie CSV**. Übungswerte sieht nur das eigene Team.
 
-> Es gibt keine feste Anzahl an Revisions-Runden – der Prozess wiederholt sich bis zur Annahme oder Ablehnung.
+Kontaktdaten und Mitglieder-E-Mails anderer Teams sind für dich ausgeblendet.
+
+---
+
+## Wertungen und Übungsläufe
+
+**Punkte eintragen** (`/events/…/scoring/entry`) hat zwei Modi:
+
+- **Vorbereitung (Übungsläufe):** Eure Trainingsläufe erfassen. Sie zählen **nie** für Ranglisten oder die Gesamtwertung. Andere Teams sehen sie nicht.
+- **Wettbewerb:** Wertungen des eigenen Teams selbst erfassen, z. B. beim Regionalturnier ohne eigene Jury am Tisch. Vor dem Absenden kommt eine Zusammenfassung zum Bestätigen. Solche Wertungen landen in der Warteschlange der Jury und werden dort bestätigt.
+
+Zusätzlich gibt es die mobile **Wertung** (`/events/…/scoring`) entlang des Zeitplans und die **OCR-Prüfung**. Dort lädst du ein Foto des Papier-Score-Sheets hoch, prüfst die erkannten Werte und übernimmst sie. Beides geht nur für das eigene Team.
+
+**Offline:** Ohne Netz werden Wertungen und Übungsläufe auf dem Gerät gespeichert und später automatisch übertragen (siehe [Benutzerhandbuch](index.md#offline-und-handy-pwa)).
+
+Die offizielle Rangliste (Seeding je Kategorie, DE, Gesamtwertung) steht unter **Rangliste & Ergebnisse**.
+
+---
+
+## Performance
+
+**Performance** (`/events/…/performance`) zeigt nur eure eigenen Teams:
+
+- Kennzahlen: bester Lauf, Durchschnitt, Abstand zum nächsten Seeding-Rang;
+- **Score-Verlauf** mit Übungsläufen als eigener, gestrichelter Linie;
+- **Stärken & Schwächen je Aufgabe**: Punkte pro Aufgabe gegenüber dem Durchschnitt des Teilnehmerfelds;
+- **Ranking-Vorschau**: wo das Team stünde, wenn das Event jetzt endete;
+- Vergleich der Phasen und der Events der Saison.
+
+---
+
+## Scouting
+
+**Scouting** (`/events/…/scouting`) hilft bei der Vorbereitung auf Gegner, z. B. bei ECER oder GCER:
+
+- **Externe Teams** erfassen: Name, Nummer, Land, Schule.
+- **Beobachtete Scores** je Team und Phase notieren.
+- **Notizen** mit Einschätzung, etwa Stärken, Schwächen und Strategie, jeweils für eines deiner Teams.
+- **Gegner-Rangliste:** deine Teams (offizielles Seeding) und die beobachteten externen Teams gemeinsam gereiht.
+- **Scouting-Bericht (PDF).**
+
+Externe Teams, die du selbst angelegt hast, kannst du über den Stift bearbeiten (Name, Nummer, Land, Schule, Notizen). Löschen kann nur die Organisation.
+
+Deine Notizen und Beobachtungen sehen nur dein Team und die Organisation.
+
+---
+
+## Paper einreichen
+
+Den Bereich gibt es nur, wenn das Modul **Paper** im Event aktiv ist. Pro Team und Saison gibt es **ein** Paper.
+
+1. **Paper-Review → Paper einreichen:** Team, Titel und Abstract angeben. Das Paper wird als Entwurf angelegt.
+2. Auf der Paper-Detailseite **Neue Version (PDF)** hochladen. Du kannst beliebig oft hochladen, jeder Upload wird eine neue Version.
+3. **Einreichen.** Danach ist das Paper gesperrt: „Abgegeben und gesperrt. Änderungen nur nach Freigabe durch die Organisation."
+
+**Deadlines:** Das Deadline-Banner zeigt einen Countdown bis zur Einreichungsfrist.
+
+- Die Frist gilt bis Tagesende in der Zeitzone des Events. Danach sind Anlegen, Hochladen und Einreichen gesperrt („Einreichungsfrist abgelaufen").
+- Überarbeitete Versionen richten sich nach der offiziellen Final-Deadline.
+- Interne Deadlines der Organisation erscheinen nur als Warnung.
+
+**Revision:** Fordert die Organisation eine Überarbeitung an (Status „Zu überarbeiten"):
+
+1. Das **Feedback** lesen: Kriterien, Kommentare, Revisionshinweise, ohne Namen der Reviewer.
+2. Eine neue Version hochladen.
+3. Erneut einreichen. Status wird `resubmitted`.
+
+**Ergebnis:** `accepted` oder `rejected`, danach das Endergebnis (0–1). Es fließt in die Doku- bzw. Gesamtwertung ein, wenn die Saison das vorsieht.
 
 ---
 
 ## 3D-Druck
 
-### Druckjob beantragen
+Den Bereich gibt es nur, wenn das Modul **3D-Druck** im Event aktiv ist.
 
-1. **3D-Druck → Neuer Druckjob**
-2. STL- oder 3MF-Datei hochladen
-3. Material angeben (PLA, PETG, ...)
-4. Kommentar (optional): z.B. „Bitte 0.15mm Layer Height, Infill 20%"
-5. Absenden → Job erhält Status `Angefragt`
+1. **Druckauftrag erstellen:** Team, Datei, Material, Farbe, geschätzte Gramm und Minuten, Notizen.
+   - Erlaubte Dateien: STL, 3MF, OBJ, G-Code, bgcode.
+   - Die Größe ist begrenzt durch `PRINT_UPLOAD_MAX_MB`, Standard 100 MB.
+2. **Kontingent** pro Event und Team:
+   - **Soft-Limit:** Warnung, der Auftrag wird trotzdem angenommen.
+   - **Hard-Limit:** Teile, optional Gramm. Offene Aufträge zählen mit. Darüber wird abgelehnt.
+3. **Checkliste:** Ist die 3D-Druck-Checkliste deines Teams unvollständig, warnt die Seite vor dem Absenden. Der Auftrag wird trotzdem angenommen.
+4. **Status verfolgen:** `pending` → `approved`/`queued` → `printing` → `completed`. Andere Ausgänge sind `rejected` (mit Begründung), `failed` und `cancelled`. Bei laufendem Druck siehst du Fortschritt und Restzeit. Die Liste aktualisiert sich selbst. Push-Meldungen gibt es in der Kategorie „Druckaufträge".
+5. **Zurückziehen:** Einen eigenen, noch nicht freigegebenen Auftrag kannst du selbst abbrechen.
 
-**Wichtige Hinweise (Wettbewerbs-Regeln 2026):**
-- Für Roboterteile: STL-Datei muss auch in der Perioddokumentation (Periode 3) eingereicht werden
-- Max. 6 Teile zwischen beiden Robotern, PLA oder PETG, grauskalig
-- Maximalgröße pro Teil: 220 × 220 × 250 mm (Ender 3 V3 SE Druckvolumen)
-
-### Druckjob-Status verfolgen
-
-| Status | Bedeutung |
-|---|---|
-| `Angefragt` | Wartet auf Admin-Freigabe |
-| `Genehmigt` | Freigegeben, wartet auf Drucker-Zuweisung |
-| `In Queue` | Drucker zugewiesen, wartet auf freien Slot |
-| `Wird gedruckt` | Druck läuft – Fortschritt in % sichtbar |
-| `Fertig` | Druck abgeschlossen, abholen |
-| `Fehlgeschlagen` | Druckfehler – neuen Job beantragen |
-| `Abgelehnt` | Abgelehnt durch Admin (Begründung sichtbar) |
-
-**Live-Fortschritt:** Während des Drucks wird Fortschritt in % und geschätzte Restzeit angezeigt.
-
-### Drucklimits
-
-Pro Saison gibt es konfigurierbare Limits:
-- **Soft Limit (Warnung):** Hinweis erscheint, Drucken noch möglich
-- **Hard Limit (Stopp):** Neue Jobs können nicht mehr beantragt werden
-
-Aktuellen Verbrauch einsehen: **3D-Druck → Mein Verbrauch**
+Die Druckerliste siehst du ohne technische Details wie Adresse oder Seriennummer.
 
 ---
 
-## Benachrichtigungen
+## Bot-Galerie
 
-Als Mentor erhältst du Benachrichtigungen bei:
-- Paper-Revision angefordert
-- Paper akzeptiert / abgelehnt
-- Druckjob genehmigt / fertig / fehlgeschlagen / abgelehnt
-- Deadline in 7 Tagen / 3 Tagen / 1 Tag
+Nur wenn das Modul **Bot-Galerie** aktiv ist. Die Galerie zeigt Roboter eigener und externer Teams:
 
-Benachrichtigungseinstellungen: **Profil → Benachrichtigungen**
+- Funktionsweise, Antrieb, Sensorik, Saison und Bild;
+- filterbar nach Saison und Team.
+
+Die Bots deines Teams legst du selbst an und bearbeitest sie. Ein Bild lädst du nach dem Anlegen auf der Detailseite hoch. Unveröffentlichte Bots sehen nur dein Team und die Organisation. Bots externer Teams pflegt die Organisation.
+
+---
+
+## Deadlines und Kalender
+
+**Deadlines** (`/events/…/calendar`):
+
+- Liste und Monatsansicht aller für dich relevanten Termine: Anmeldung, Turniere, offizielle und interne Paper-Deadlines, Zusatztermine der Saison;
+- **Saison-Timeline**.
+
+**Kalender-Abo (iCal):** Hier erzeugst du einen persönlichen Link, z. B. für Google Calendar, Outlook oder Apple Kalender.
+
+- Der Link wird **nur einmal** angezeigt.
+- Du kannst ihn jederzeit neu erzeugen. Der alte Link wird dann ungültig.
+- Du kannst das Abo widerrufen.
+- Alternativ lädst du die `.ics`-Datei herunter.
+
+Erinnerungen 7, 3 und 1 Tag vor Deadlines kommen per Push. Ist ein Mailserver eingerichtet, gehen sie auch per E-Mail an die Teammitglieder.

@@ -23,6 +23,9 @@ class ModuleDefinition:
     key: str
     router: APIRouter
     permissions: tuple[str, ...] = ()
+    # Per-event module switch (modules.events.module_access) that gates every
+    # route of this router; None for core modules that are always on.
+    event_module: str | None = None
 
 
 MODULES: tuple[ModuleDefinition, ...] = (
@@ -37,11 +40,15 @@ MODULES: tuple[ModuleDefinition, ...] = (
         "papers",
         paper_router,
         ("papers:read", "papers:write", "papers:review", "papers:admin"),
+        event_module="paper",
     ),
     ModuleDefinition(
-        "printing", printing_router, ("printing:read", "printing:write", "printing:admin")
+        "printing",
+        printing_router,
+        ("printing:read", "printing:write", "printing:admin"),
+        event_module="printing",
     ),
     ModuleDefinition("dashboard", dashboard_router, ("dashboard:read", "dashboard:write")),
     ModuleDefinition("exports", exports_router),
-    ModuleDefinition("bots", bots_router, ("teams:read", "teams:write")),
+    ModuleDefinition("bots", bots_router, ("teams:read", "teams:write"), event_module="bots"),
 )

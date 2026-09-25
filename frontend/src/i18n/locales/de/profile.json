@@ -1,0 +1,53 @@
+{
+  "title": "Mein Profil",
+  "data": "Profildaten",
+  "displayName": "Anzeigename",
+  "language": "Sprache",
+  "theme": "Darstellung",
+  "saved": "Gespeichert",
+  "changeEmail": "E-Mail-Adresse ändern",
+  "newEmail": "Neue E-Mail-Adresse",
+  "currentPassword": "Aktuelles Passwort",
+  "changeEmailButton": "E-Mail ändern",
+  "emailChanged": "E-Mail-Adresse geändert.",
+  "notifications": "Benachrichtigungen",
+  "pushOnDevice": "Push auf diesem Gerät:",
+  "pushOn": "aktiv",
+  "pushOff": "aus",
+  "pushDisable": "Push deaktivieren",
+  "pushHint": "Welche Meldungen als Push kommen sollen. Alle Meldungen bleiben zusätzlich im Benachrichtigungscenter (Glocke oben) sichtbar.",
+  "preference": {
+    "match_soon": {
+      "label": "Match beginnt bald",
+      "hint": "Aufruf und Zeitplanänderungen deiner Matches"
+    },
+    "score_corrected": {
+      "label": "Score korrigiert",
+      "hint": "Wenn eine Wertung nachträglich geändert wird"
+    },
+    "deadlines": {
+      "label": "Deadlines & Erinnerungen",
+      "hint": "Abgabefristen und Review-Erinnerungen"
+    },
+    "paper_status": {
+      "label": "Paper-Status",
+      "hint": "Einreichung, Zuweisung und Entscheidungen zu Papers"
+    },
+    "print_status": {
+      "label": "Druckaufträge",
+      "hint": "Genehmigt, gestartet, fertig oder fehlgeschlagen"
+    },
+    "announcements": {
+      "label": "Ankündigungen",
+      "hint": "Veröffentlichte Ankündigungen der Organisation"
+    }
+  },
+  "changePassword": "Passwort ändern",
+  "passwordChanged": "Passwort geändert. Alle anderen Sitzungen wurden beendet.",
+  "privacy": "Datenschutz",
+  "privacyHint": "Lade alle Daten herunter, die zu deinem Konto gespeichert sind, oder lösche dein Konto. Beim Löschen werden deine persönlichen Daten entfernt; erfasste Ergebnisse bleiben anonym erhalten.",
+  "export": "Meine Daten exportieren",
+  "confirmPassword": "Passwort zur Bestätigung",
+  "confirmDelete": "Konto endgültig löschen? Das kann nicht rückgängig gemacht werden.",
+  "deleteAccount": "Konto löschen"
+}

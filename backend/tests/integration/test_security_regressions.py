@@ -16,6 +16,7 @@ from modules.auth.models import Permission, Role, RolePermission, User, UserRole
 from modules.auth.service import hash_password
 from modules.scoring.models import ScoringSchema
 from modules.teams.models import Team, TeamMember
+from tests.paper_helpers import FULL_SCORES, api_upload_and_submit
 
 
 async def _mentor(db, team):
@@ -92,6 +93,54 @@ class TestMentorCannotTouchOtherTeams:
             f"/api/scoring/matches/{match_id}", headers=headers, json={"is_disqualified": True}
         )
         assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field", ["is_disqualified", "yellow_card", "red_card"])
+    async def test_cannot_set_penalties_on_own_match(
+        self, client, db, season, team, auth_headers, field
+    ):
+        created = await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"pts": 10}},
+        )
+        match_id = created.json()["id"]
+        await db.commit()
+
+        _, headers = await _mentor(db, team)
+        resp = await client.patch(
+            f"/api/scoring/matches/{match_id}", headers=headers, json={field: False}
+        )
+        assert resp.status_code == 403
+        # The own-team score itself stays editable for the mentor.
+        resp = await client.patch(
+            f"/api/scoring/matches/{match_id}", headers=headers, json={"notes": "fixed"}
+        )
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_juror_sets_cards_and_disqualification(self, client, season, team, auth_headers):
+        created = await client.post(
+            f"/api/scoring/seasons/{season.id}/matches",
+            headers=auth_headers,
+            json={"team_id": team.id, "round_number": 1, "raw_scores": {"pts": 10}},
+        )
+        match = created.json()
+        resp = await client.patch(
+            f"/api/scoring/matches/{match['id']}",
+            headers=auth_headers,
+            json={
+                "yellow_card": True,
+                "is_disqualified": True,
+                "expected_version": match["version"],
+                "correction_reason": "Robot left the board",
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["yellow_card"] is True and body["is_disqualified"] is True
+        # A penalty is a score change: it gets its own audit revision.
+        assert body["version"] == match["version"] + 1
 
     @pytest.mark.asyncio
     async def test_cannot_patch_another_teams_paper(
@@ -177,8 +226,10 @@ class TestDisqualificationUpdatesRanking:
         after = (
             await client.get(f"/api/scoring/seasons/{season.id}/ranking", headers=auth_headers)
         ).json()[0]
-        assert after["rounds_played"] == 1, "disqualified match still counted"
+        # Game review: a disqualified round is a 0, it still is a round played.
+        assert after["rounds_played"] == 2
         assert after["best_score"] == 10, "disqualified score still counted"
+        assert after["seed_score"] == 5, "seed = (10 + 0) / 2"
 
 
 class TestReviewScoreBounds:
@@ -190,6 +241,7 @@ class TestReviewScoreBounds:
             json={"season_id": season.id, "team_id": team.id, "title": "P"},
         )
         pid = paper.json()["id"]
+        await api_upload_and_submit(client, auth_headers, pid)
         reviewer = User(
             email="rev-bounds@test.com",
             display_name="Rev",
@@ -221,12 +273,7 @@ class TestReviewScoreBounds:
         ok = await client.put(
             f"/api/papers/{pid}/reviews?submit=true",
             headers=headers,
-            json={
-                "score_content": 8,
-                "score_methodology": 8,
-                "score_presentation": 8,
-                "score_originality": 8,
-            },
+            json={**FULL_SCORES, "recommendation": "accept"},
         )
         assert ok.status_code == 200
         await db.commit()

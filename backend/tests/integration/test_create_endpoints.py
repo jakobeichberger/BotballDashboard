@@ -125,7 +125,7 @@ class TestUserRoleAssignment:
             json={
                 "email": "mentor@test.com",
                 "display_name": "Mentor",
-                "password": "password123",
+                "password": "mentor-pass-1234",
                 "role_ids": [role.id],
             },
         )

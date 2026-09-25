@@ -1,99 +1,121 @@
 # Update-Anleitung
 
-Das BotballDashboard ist so gebaut, dass Updates **ohne Datenverlust** durchgeführt werden können. Nur die Programmkomponenten (Backend, Frontend) werden aktualisiert — Datenbank und Uploads bleiben immer erhalten.
+Ein Update tauscht nur die Programmteile aus (Backend-, Worker- und Frontend-Images). Datenbank, Uploads, Backups und Zertifikate liegen in Volumes bzw. unter `/data` und bleiben erhalten.
 
 ---
 
-## Prinzip: Migrate → Then Start
+## Prinzip
+
+`docker-compose.yml` baut die Anwendungs-Images **lokal** aus dem Checkout. Ein `docker compose pull` allein aktualisiert daher nur PostgreSQL, Redis, Traefik und die Monitoring-Images, aber nicht die Anwendung. Ein Update besteht immer aus:
 
 ```
-1. Proxmox-Snapshot erstellen (Sicherheit)
-2. Neues Docker-Image pullen
-3. Datenbank-Migrationen automatisch ausführen
-4. Neue Version starten
+1. Backup + Proxmox-Snapshot
+2. git pull (neuer Code)
+3. Images neu bauen (backend, worker, beat, backup, frontend)
+4. docker compose up -d  → das Backend spielt beim Start ausstehende Migrationen ein
+5. Prüfen (scripts/verify-deployment.sh)
 ```
 
-Das Backend führt beim Start automatisch alle ausstehenden Datenbankmigrationen aus (`migrate-then-start`-Strategie). Das System prüft ob Backend-Version und DB-Schema-Version kompatibel sind und verhindert einen Start bei Inkompatibilität.
+Beim Start führt das Backend `alembic upgrade head` aus (`migrate-then-start.sh`). Eine Prüfung, ob Code und Datenbankschema zueinander passen, gibt es darüber hinaus **nicht**. Wer älteren Code auf eine neuere Datenbank startet, bekommt Fehler zur Laufzeit. Deshalb gehört zum Rollback das Downgrade der Migrationen (siehe unten).
 
 ---
 
 ## Standard-Update (empfohlen)
 
 ```bash
-# 1. In das Projektverzeichnis wechseln
 cd /opt/botballdashboard
-
-# 2. Neueste Änderungen holen
-git pull origin main
-
-# 3. Neue Images bauen und starten
-docker compose build --pull
-docker compose up -d
-
-# 4. Logs prüfen
-docker compose logs backend --tail=50
+./scripts/update.sh
 ```
 
-Der Build aktualisiert Backend und Frontend. `docker compose up -d` ersetzt anschließend nur geänderte Container. Das DB-Volume `pgdata` wird dabei nicht angefasst.
+Das Skript:
+
+1. speichert den laufenden Commit und die Alembic-Revision in `.deploy-state` (für den Rollback),
+2. holt mit `git pull --ff-only` den neuen Stand (`--ref v1.4` für einen Tag/Branch, `--no-pull` baut nur neu),
+3. baut die Backend-Images (`backend`, `worker`, `beat`, `backup`) mit aktuellen Basis-Images neu,
+4. baut das Frontend: mit `pnpm` auf dem Host (wie beim Proxmox-Setup, `frontend/Dockerfile.prebuilt`), ohne `pnpm` per `docker compose build frontend`. Die Wahl lässt sich mit `FRONTEND_BUILD=host|docker` erzwingen.
+5. startet mit `docker compose up -d --remove-orphans` neu und wartet auf das gesunde Backend,
+6. führt `scripts/verify-deployment.sh` aus und endet mit Fehlercode, wenn eine Prüfung fehlschlägt.
+
+Manuell entspricht das:
+
+```bash
+git pull --ff-only
+docker compose build --pull backend worker beat backup
+# Frontend: entweder im Container …
+docker compose build --pull frontend
+# … oder (Proxmox-LXC) auf dem Host:
+(cd frontend && pnpm install --frozen-lockfile && VITE_API_URL=/api VITE_VAPID_PUBLIC_KEY=<aus .env> pnpm build)
+docker build -f frontend/Dockerfile.prebuilt -t botballdashboard-frontend:local frontend
+docker compose up -d --remove-orphans
+./scripts/verify-deployment.sh
+```
+
+Updates lassen sich auch aus GitHub starten: Actions → **Deploy** → *Run workflow* (per SSH wird `scripts/update.sh --ref <ref>` auf dem Server ausgeführt, siehe [Deployment](../technical/deployment.md#deploy-aus-github)).
 
 ---
 
-## Vor einem Update: Snapshot & Backup
+## Vor einem Update: Backup und Snapshot
 
 ```bash
-# Datenbank-Backup (manuell vor dem Update)
-docker compose exec db pg_dump -U botball botball \
-  | gzip > /data/backups/pre-update-$(date +%Y%m%d-%H%M).sql.gz
+# Verschlüsseltes Backup (Datenbank + Uploads) sofort erstellen
+make backup-now            # = docker compose exec backup python scripts/backup_scheduler.py once
 
-# Proxmox-Snapshot (über Proxmox-WebUI oder CLI)
-pvesh create /nodes/proxmox/qemu/100/snapshot \
-  --snapname "pre-update-$(date +%Y%m%d)" \
-  --description "Before update to $(git log -1 --format='%h %s')"
+# Proxmox-Snapshot der LXC/VM (auf dem Proxmox-Host; ID anpassen)
+pct snapshot 105 pre-update-$(date +%Y%m%d)        # LXC
+# qm snapshot 105 pre-update-$(date +%Y%m%d)       # VM
 ```
 
 ---
 
 ## Rollback nach fehlgeschlagenem Update
 
-### Option 1: Proxmox-Snapshot wiederherstellen (einfachste Methode)
+### Option 1: Proxmox-Snapshot zurückspielen (einfachste Methode)
 
 ```bash
-# Über Proxmox WebUI: VM → Snapshots → Snapshot auswählen → Rollback
-# Oder via CLI:
-pvesh create /nodes/proxmox/qemu/100/snapshot/pre-update-20240315/rollback
+pct rollback 105 pre-update-20260315      # LXC   (qm rollback … für eine VM)
 ```
 
-### Option 2: Datenbank-Rollback + altes Docker-Image
+Setzt Code, Images **und** Daten auf den Stand des Snapshots zurück. Alles, was seit dem Snapshot erfasst wurde, geht dabei verloren.
+
+### Option 2: Alten Code wiederherstellen, Daten behalten
+
+Nur möglich, wenn die neuen Migrationen ein funktionierendes `downgrade` haben. `.deploy-state` enthält den vorherigen Commit und die vorherige Alembic-Revision.
 
 ```bash
-# Alte Datenbankversion wiederherstellen
-gunzip < /data/backups/pre-update-20240315.sql.gz \
-  | docker compose exec -T db psql -U botball botball
+cd /opt/botballdashboard
+cat .deploy-state          # PREVIOUS_COMMIT=…  PREVIOUS_ALEMBIC_REVISION=…
 
-# Altes Docker-Image starten (Tag aus Git-History)
-git checkout v1.2.3
-docker compose up -d
+# 1. Migrationen zurückrollen, SOLANGE der neue Code läuft:
+#    Nur der neue Code kennt die neuen Revisionen und ihre downgrade()-Schritte.
+docker compose exec backend alembic downgrade <PREVIOUS_ALEMBIC_REVISION>
+
+# 2. Alten Code auschecken und die Images NEU BAUEN – ein bloßes
+#    `docker compose up -d` würde die neuen Images weiterverwenden.
+git checkout <PREVIOUS_COMMIT>
+./scripts/update.sh --no-pull
+
+# 3. Später zurück auf den Branch:  git checkout main
 ```
+
+Einschränkungen:
+- Datenmigrationen oder gelöschte Spalten lassen sich per `downgrade` nicht immer verlustfrei umkehren. Im Zweifel Option 1 oder Option 3 verwenden.
+- Ist das Backend nach dem Update gar nicht gestartet, wurden die Migrationen evtl. nur teilweise eingespielt: `docker compose run --rm backend alembic current` zeigt den Stand.
+
+### Option 3: Backup von vor dem Update wiederherstellen
+
+Alten Code auschecken und neu bauen (Schritt 2 oben), dann das Backup von vor dem Update einspielen, siehe [Betrieb → Wiederherstellung](../../operations.md#restore-in-production). Das Backend führt danach beim Start die Migrationen bis zum Stand des alten Codes aus.
 
 ---
 
 ## Datenbank-Migrationen manuell ausführen
 
-Normalerweise werden Migrationen automatisch beim Start ausgeführt. Falls manuell nötig:
+Normalerweise laufen die Migrationen automatisch beim Start. Falls manuell nötig:
 
 ```bash
 docker compose exec backend alembic upgrade head
-```
-
-Migrationshistorie anzeigen:
-```bash
+docker compose exec backend alembic current   # aktueller Stand
+docker compose exec backend alembic heads     # Stand, den der Code erwartet
 docker compose exec backend alembic history
-docker compose exec backend alembic current
-```
-
-Downgrade (eine Version zurück):
-```bash
-docker compose exec backend alembic downgrade -1
 ```
 
 ---
@@ -101,12 +123,10 @@ docker compose exec backend alembic downgrade -1
 ## Update-Checkliste
 
 ```
+[ ] make backup-now erfolgreich
 [ ] Proxmox-Snapshot angelegt
-[ ] Datenbank-Backup erstellt
-[ ] git pull ausgeführt
-[ ] docker compose pull ausgeführt
-[ ] docker compose up -d ausgeführt
-[ ] docker compose logs backend geprüft → keine Fehler
-[ ] Im Browser getestet → Login funktioniert
-[ ] Backup-Snapshot kann gelöscht werden (nach 48h)
+[ ] ./scripts/update.sh ohne Fehler durchgelaufen
+[ ] verify-deployment.sh: keine FAIL-Zeile
+[ ] Im Browser getestet → Login, Scoreboard, Live-Updates funktionieren
+[ ] Snapshot nach 48 h löschen
 ```

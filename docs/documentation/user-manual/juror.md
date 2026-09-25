@@ -1,145 +1,174 @@
 # Juror-Handbuch
 
-Dieses Handbuch richtet sich an Schiedsrichter (Jurors), die während Testläufen und beim offiziellen Turnier Scores eingeben und verwalten.
+Für Schiedsrichter und Jury am Spieltisch. Die Rolle `juror` hat folgende Rechte:
+
+- `scoring:read`, `scoring:write`, `scoring:admin`: Wertungen erfassen, bestätigen und korrigieren; DE, Aerial und Doku; Statistik;
+- `events:read`, `events:write`: Event-Verwaltung und Zeitplan bearbeiten;
+- `teams:read`, `seasons:read`, `dashboard:read`.
+
+Zeitplan erzeugen, Setzliste und Formeln sind der Organisation vorbehalten.
 
 ---
 
-## Übersicht Juror-Funktionen
+## Inhaltsverzeichnis
 
-| Funktion | Wo |
+1. [Überblick](#überblick)
+2. [Wertung am Spieltisch](#wertung-am-spieltisch)
+3. [Sonderregeln, Tie-Breaker, Duelle](#sonderregeln-tie-breaker-duelle)
+4. [Bestätigen und korrigieren](#bestätigen-und-korrigieren)
+5. [Karten und Disqualifikation](#karten-und-disqualifikation)
+6. [Score-Sheet-Fotos (OCR)](#score-sheet-fotos-ocr)
+7. [Brackets und Ergebnisse](#brackets-und-ergebnisse)
+8. [DE, Aerial, Dokumentation](#de-aerial-dokumentation)
+9. [Rangliste und Seeding-Regeln](#rangliste-und-seeding-regeln)
+10. [Statistik und auffällige Läufe](#statistik-und-auffällige-läufe)
+11. [Offline-Betrieb](#offline-betrieb)
+
+---
+
+## Überblick
+
+| Seite | Wofür |
 |---|---|
-| Score eingeben | Scoring → Aktuelles Match |
-| Match-Liste einsehen | Scoring → Turnier |
-| Score korrigieren | Scoring → Match → Score → Bearbeiten |
-| Yellow/Red Card vergeben | Scoring → Turnier → Team → Karte vergeben |
-| Rangliste einsehen | Scoring → Rangliste |
-| Rangliste exportieren | Scoring → Rangliste → PDF / CSV |
+| **Dashboard** | Juror-Warteschlange: unbestätigte und von Mentoren erfasste Scores, nächste Matches, offene OCR-Scans |
+| **Wertung** (`/events/…/scoring`) | Mobile Erfassung entlang des Zeitplans |
+| **Zeitplan** | Matches, Tische, Zeiten, Bracket mit Sieger-Buttons |
+| **OCR-Prüfung** | Fotos von Score-Sheets hochladen und prüfen |
+| **Rangliste & Ergebnisse** | Seeding, DE, Aerial, Gesamtwertung, Exporte; Link „Wertung erfassen" |
+| **Punkte eintragen** (`/events/…/scoring/entry`) | Liste der erfassten Wertungen mit **Bestätigen**, **Bearbeiten**, **Löschen** |
+| **Statistik & Anomalien** | Verteilungen und auffällige Läufe |
 
 ---
 
-## Score eingeben
+## Wertung am Spieltisch
 
-### Seeding-Runde
+**Wertung** öffnen (`/events/…/scoring`). Die Seite ist fürs Handy gebaut:
 
-1. **Scoring → Turnier → Seeding → Runde auswählen**
-2. Team aus der Liste auswählen (oder per QR-Code am Tisch scannen)
-3. Score-Sheet-Felder eingeben:
-   - Jedes Feld ist nach dem Spielbereich benannt (z.B. „Warehouse Floor – Sorted Cubes")
-   - Zahlenwerte eingeben oder Ja/Nein-Felder anklicken
-   - Das System berechnet den Gesamtscore automatisch in Echtzeit (Formel: `Σ Feldwert × Multiplikator`)
-4. Optionales Kommentarfeld: Besonderheiten notieren (z.B. „Roboter hat sich vor Ende gestoppt")
-5. **Absenden** → Score wird sofort gespeichert und in der Rangliste aktualisiert
+1. **Match wählen:** Die Seite geht die geplanten Matches in Spielreihenfolge durch. Weiter geht es mit „Vorheriges/Nächstes Match" oder durch Wischen. Das Team ist vorausgewählt. Wertungen ohne geplantes Match („Ohne Zuordnung") sind ebenfalls möglich.
+2. **Score-Sheet ausfüllen:** Das Sheet ist nach Bereichen gegliedert wie das Papier-Sheet, mit Zählern, Zahlen und Ja/Nein-Feldern. Entweder-oder-Felder schließen sich gegenseitig aus. Seite A und B werden getrennt erfasst. Maximalwerte werden geprüft. Die berechnete Gesamtwertung mit Aufschlüsselung je Bereich ist immer sichtbar.
+3. **Sonderbedingungen** setzen, falls zutreffend (siehe unten).
+4. **„Prüfen & absenden":** Eine Zusammenfassung zeigt jedes Feld, seine Punkte und die Summe. Danach **Offiziell speichern**.
 
-> **Tipp:** Auf Mobilgeräten erscheint bei Nummernfeldern automatisch der Nummernblock.
-
-### Double-Elimination-Match
-
-1. **Scoring → Turnier → Double Elimination → Match auswählen**
-2. Beide Teams sind vorbelegt (aus dem Bracket)
-3. Scores für beide Seiten eingeben
-4. Gewinner wird automatisch ermittelt (höherer Score gewinnt)
-5. Bei Gleichstand: Tiebreaker-Reihenfolge wird angezeigt
-6. **Absenden** → Bracket aktualisiert sich automatisch
+Die Summe berechnet der Server aus dem aktiven Schema. Es zählt also nicht, was das Gerät anzeigt, sondern das Schema. Wer nur `scoring:read` hat, sieht die Seite schreibgeschützt.
 
 ---
 
-## Score korrigieren
+## Sonderregeln, Tie-Breaker, Duelle
 
-Wenn ein Score falsch eingegeben wurde:
+Welche Regeln gelten, legt die Organisation pro Saison fest. Voreinstellungen stammen aus den Game Reviews 2024–2026.
 
-1. **Scoring → Match → Score → Bearbeiten**
-2. Korrekten Wert eingeben
-3. **Korrekturgrund angeben** (Pflichtfeld) – z.B. „Ablese-Fehler bei Warehouse Floor"
-4. Speichern
-
-> Der ursprüngliche Score bleibt im Audit-Log erhalten. Korrekturen sind für Admins vollständig nachvollziehbar.
-
----
-
-## Yellow/Red Card vergeben
-
-Bei schwerwiegendem Fehlverhalten eines Teams:
-
-1. **Scoring → Turnier → Team → Karte vergeben**
-2. Kartentyp auswählen: **Gelb** (Verwarnung) oder **Rot** (sofortige DQ)
-3. Begründung eingeben (Pflichtfeld)
-4. Bestätigen
-
-**Automatische Logik:**
-- 2. Gelbe Karte → System schlägt automatisch Rote Karte vor
-- Rote Karte → Team wird aus allen weiteren Runden und Awards ausgeschlossen
+- **Runde verloren (0 Punkte, keine DQ).** Gründe: Startbox nie verlassen, Motoren/Servos am Ende nicht gestoppt, anderer Grund.
+- **Absichtlicher Kontakt mit der gegnerischen Seite am Spielende:** Der Gegner erhält den eingestellten Bonus, Standard +25 % seines Scores.
+- **Tie-Breaker-Angaben:** nur nötig, wenn ein Tie-Breaker-Wert nicht aus dem Score-Sheet kommt, z. B. ein gemessener Abstand.
+- **Replay:** markiert ein wiederholtes Match.
+- **Ergebnis des Duells** (Double Seeding, DE, Alliance): Sobald beide Seiten erfasst sind, zeigt die Seite den Sieger und was entschieden hat: höhere Punktzahl, Tie-Breaker, Disqualifikation oder verlorene Runde. Entscheidet kein Tie-Breaker, heißt es „Wiederholung nötig". Im Finale wird statt Tie-Breaker wiederholt, wenn die Saison das so einstellt.
 
 ---
 
-## Turnier-Ablauf-Checkliste (am Spieltisch)
+## Bestätigen und korrigieren
 
-Das System zeigt für jedes Match eine Schritt-für-Schritt-Checkliste:
+**Punkte eintragen** (`/events/…/scoring/entry`) listet die erfassten Wertungen.
 
-**Seeding-Runde:**
-```
-[ ] Team am Tisch
-[ ] Roboter aufgestellt
-[ ] Setup-Phase gestartet (2 min)
-    → Falls Fehler: [ ] 1. Fault notieren  [ ] 2. Fault → DQ
-[ ] Judge hat Setup geprüft → OK
-[ ] Hands-Off-Phase
-[ ] Spiel gestartet
-[ ] Score eingetragen
-[ ] Team hat Score quittiert (Initial)
-```
+- **Bestätigen:** Hat die Saison eine **Schiedsrichter-Checkliste**, öffnet sich der Dialog „Schiedsrichter-Checkliste". Pflichtpunkte müssen abgehakt sein, bevor „Score bestätigen" geht. Die Haken werden mit der Wertung gespeichert.
+- **Bearbeiten:** Werte ändern und speichern. Jede Änderung erzeugt eine **Revision** mit altem und neuem Wert, Zeit und Person. Teams mit Push bekommen „Score korrigiert".
+- **Löschen:** Die Wertung verschwindet, ihre Revisionen bleiben erhalten (Audit-Trail je Event).
 
-**Double Elimination:**
-```
-[ ] Beide Teams am Tisch
-[ ] Parts Challenge? → [ ] Ja: Head Judge rufen  [ ] Nein: weiter
-[ ] Setup-Phase (2 min)
-    → Falls Fehler: [ ] 1. Fault  [ ] 2. Fault → DQ
-[ ] Judge hat Setup geprüft → OK
-[ ] Hands-Off-Phase
-[ ] Spiel gestartet
-[ ] Scores für beide Seiten eingetragen
-[ ] Gewinner bestimmt
-[ ] Beide Teams haben Score quittiert
-```
+Von Mentoren selbst erfasste Wertungen erscheinen im Dashboard in der Juror-Warteschlange und sollten bestätigt werden.
 
 ---
 
-## Rangliste & Live-Scoreboard
+## Karten und Disqualifikation
 
-- **Scoring → Rangliste**: Aktuelle Seeding-Rangliste
-  - Zeigt: Rang, Team, Seed-Score (Ø Top-2-Läufe), Best-Score, Durchschnitt, Anzahl Runden
-  - **Export:** PDF-Button (druckfertige Rangliste) oder CSV-Button (für Excel)
-- **Scoring → Bracket**: Double-Elimination-Bracket (interaktiv, zeigt aktuellen Stand)
-- **Scoring → Live-Scoreboard**: Vollbildansicht für Großbildschirm (URL separat abrufbar)
+Gelbe und rote Karte sowie „disqualifiziert" sind Felder jeder Wertung. In **Punkte eintragen** öffnet das Fahnen-Symbol einer Wertung den Dialog **Karten & Disqualifikation** (nur mit `scoring:admin`). Häkchen setzen oder entfernen, eine **Begründung** angeben und **Entscheidung speichern**. Die Entscheidung wird wie eine Korrektur als Revision protokolliert. Die Liste zeigt „Gelb", „Rot" und „DQ" neben dem Status. Mentoren können diese Felder auch bei eigenen Wertungen nicht ändern. Ihre Wirkung:
 
-### Seed-Score-Formel
+- Eine disqualifizierte Runde zählt im Seeding als 0.
+- Eine **rote Karte** irgendwo im Event disqualifiziert das Team: kein Rang, Anzeige „DQ", raus aus dem Formel-Feld.
 
-Der Seed-Score ergibt sich aus dem **Durchschnitt der zwei besten Läufe** eines Teams:
-
-```
-Seed-Score = (bester Lauf + zweitbester Lauf) / 2
-```
-
-Teams mit nur einem Lauf erhalten diesen als Seed-Score.
+**Parts Challenges** stehen unten auf der Seite **Wertung** (`/events/…/scoring`). Alle mit Leserecht sehen die Liste. Mit `scoring:admin` erfasst du eine Challenge (Match optional, anfechtendes und angefochtenes Team, Beschreibung) und entscheidest sie mit **Stattgeben** oder **Abweisen**, optional mit Begründung. Die unterlegene Seite wird für das Match disqualifiziert: bei „Stattgeben" das angefochtene Team, bei „Abweisen" das anfechtende. Ohne Match ändert die Entscheidung keine Wertung.
 
 ---
 
-## Rangliste exportieren
+## Score-Sheet-Fotos (OCR)
 
-1. **Scoring → Rangliste**
-2. **PDF**-Button: A4-PDF mit Logo-Header, Rang, Team, Scores – druckfertig
-3. **CSV**-Button: Tabelle mit allen Wertungen für Excel/Sheets
+**OCR-Prüfung** (`/events/…/scans`):
 
-Der Export enthält immer den Stand zum Zeitpunkt des Klickens.
+1. **Vorlage** (Score-Sheet der Saison) und **Team** wählen. Das Team wird nach Seed, Name und Nummer angezeigt.
+2. **Foto aufnehmen** (öffnet am Handy die Kamera) oder Datei wählen, dann **Hochladen**.
+3. Der Server liest die Felder im Hintergrund lokal aus. Es werden keine Bilder an externe Dienste geschickt. Der Scan wechselt auf **Review erforderlich**.
+4. Erkannte Werte mit den Bildausschnitten vergleichen, korrigieren und mit **Geprüft übernehmen** als Wertung speichern.
+
+Unsichere Werte sind gelb markiert, mit Konfidenz und Grund. Schlägt die Erkennung ganz fehl (z. B. weil der Vorlage noch das OCR-Layout fehlte), schickt **Erneut verarbeiten** den Scan noch einmal an den Worker. Das geht bei fehlgeschlagenen und hängenden Scans in der Warteschlange.
 
 ---
 
-## Offline-Nutzung
+## Brackets und Ergebnisse
 
-Falls die Internetverbindung am Spieltisch abbricht:
+**Zeitplan** (`/events/…/schedule`):
 
-1. Scores werden lokal im Browser gespeichert (IndexedDB)
-2. Sobald Verbindung wiederhergestellt: automatische Synchronisation
-3. Hinweis-Banner oben: „Offline – Daten werden lokal gespeichert"
+- Mit `events:write` Zeiten, Tische und Status einzelner Matches ändern. Die betroffenen Teams bekommen einen Push.
+- **Bracket:** Winner-Bracket, Loser-Bracket (Minor/Major), Grand Final, Reset-Finale, falls nötig, und Platzierungen. Mit `scoring:admin` trägst du per Button „*Team* gewinnt *Match*" den Sieger ein. Sieger und Verlierer rücken automatisch in ihre nächsten Matches. Korrekturen werden nachgezogen.
 
-> Empfehlung: BotballDashboard als PWA installieren → bessere Offline-Unterstützung
+Hat das Event eine **Alliance-Phase**, zeigt der Zeitplan darunter die Alliance-Wertung: je Alliance die Läufe (Summe beider Teams), den besten Lauf und die Summe aller Läufe.
+
+Zeitplan erzeugen und die Setzliste aus dem Seeding übernehmen braucht `events:admin`, liegt also bei der Organisation.
+
+---
+
+## DE, Aerial, Dokumentation
+
+Diese Seiten gibt es nur, wenn das Modul im Event aktiv ist. Mit `scoring:admin` öffnest du sie direkt:
+
+- `/events/…/scoring/de`: DE-Rang und Bracket-Score (0–1) je Team; Platzierung mit Tie-Breakern aus dem Bracket.
+- `/events/…/scoring/aerial`: bis zu vier Aerial-Läufe; gewertet wird der Ø aller Läufe.
+- `/events/…/scoring/doc`: Doku-Teile 1–3 und Onsite (0–1), dazu die Paper-Ergebnisse. Angezeigt werden der Doku-Score und der Wert aus dem Formel-Set.
+
+Admins sehen dafür Buttons auf **Rangliste & Ergebnisse**. Jede Änderung wird als Ergebnis-Revision protokolliert.
+
+---
+
+## Rangliste und Seeding-Regeln
+
+**Rangliste & Ergebnisse** zeigt Seeding, Double Elimination, Aerial und die Gesamtwertung, je nach aktiven Modulen. Für das Seeding gilt:
+
+- Nur Läufe aus **Seeding-Phasen** zählen. DE-, Alliance- und Finalmatches zählen nicht, Übungsläufe nie.
+- Eine disqualifizierte Runde zählt 0, negative Scores zählen 0.
+- Ränge gelten **je Kategorie**, Gleichstände teilen sich den Platz (1, 2, 2, 4). Die Reihenfolge innerhalb eines Gleichstands entscheiden die Tie-Breaker der Saison. Die Tabelle zeigt, welcher Tie-Breaker entschieden hat.
+- Die Seeding-Rangliste nutzt den **Ø der zwei besten Seeding-Läufe**. Eine verlorene Runde zählt wie eine disqualifizierte als 0 und als gespielter Lauf.
+- Für die Gesamtwertung rechnet das Formel-Set der Saison den Seeding-Wert. Im Standard-Set ECER 2025 ist das `3/4 · (n − Rang + 1)/n + 1/4 · Seed-Schnitt / bester Lauf im Feld`.
+
+Die Gesamtwertung rechnet die Formel-Engine aus Seeding, DE, Doku, Paper und Aerial, wie in den Punkteformeln hinterlegt.
+
+---
+
+## Statistik und auffällige Läufe
+
+**Statistik & Anomalien** (`/events/…/statistics`):
+
+- Boxplots je Runde und je Aufgabe;
+- Heatmap Team × Aufgabe;
+- Trends je Team.
+
+Unter **Auffällige Läufe** stehen Läufe, die man prüfen sollte:
+
+- unmögliche oder ungültige Werte;
+- Summe passt nicht;
+- Ausreißer gegenüber dem eigenen Team oder dem Feld;
+- Sprünge;
+- unbestätigt.
+
+Ein Klick zeigt Rohwerte und Revisionen und erlaubt das Bestätigen. „Läufe CSV" exportiert alle Wertungen des Events.
+
+Das **Änderungsprotokoll** am Ende der Seite listet jede Änderung im Event, neueste zuerst: unter „Wertungen" Erfassungen, Korrekturen (geänderte Werte als „alt → neu"), Karten, DQs und gelöschte Läufe mit Begründung und Person; unter „Ergebnisse" die Änderungen an DE-, Aerial- und Dokumentationsergebnissen. Beides lässt sich nach Team filtern.
+
+---
+
+## Offline-Betrieb
+
+Fällt am Spieltisch das Netz aus:
+
+- Wertungen weiter erfassen. Sie werden auf dem Gerät gespeichert („Offline gespeichert – wird synchronisiert, sobald eine Verbindung besteht").
+- Die Kopfzeile zeigt, wie viele Wertungen warten. Übertragen wird automatisch beim Wiederverbinden, beim App-Start und jede Minute. Jede Wertung hat einen eindeutigen Schlüssel, Duplikate entstehen also nicht.
+- **Konflikt** heißt: Das Team bzw. Match wurde inzwischen schon gewertet. Dann den Eintrag prüfen und **erneut senden**, **trotzdem speichern** oder **verwerfen**.
+- Bestätigen, Korrigieren und alle anderen Änderungen gehen erst wieder mit Verbindung.
+
+Wichtig: Gespeicherte Wertungen überträgt nur die Person, die sie erfasst hat, und nur auf diesem Gerät. Vor dem Abmelden also synchronisieren lassen.

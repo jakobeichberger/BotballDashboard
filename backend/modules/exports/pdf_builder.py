@@ -5,6 +5,7 @@ All exports return bytes that can be streamed as a Response.
 
 from datetime import datetime
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -154,10 +155,13 @@ def build_paper_review_pdf(
         "accepted": "Angenommen",
         "rejected": "Abgelehnt",
         "revision_requested": "Überarbeitung",
+        "resubmitted": "Neu eingereicht",
+        "disqualified_ai": "Disqualifiziert (KI)",
     }
     status_colors = {
         "accepted": GREEN,
         "rejected": RED,
+        "disqualified_ai": RED,
         "revision_requested": YELLOW,
     }
 
@@ -298,6 +302,165 @@ def build_team_list_pdf(
 
     col_widths = [0.8 * cm, 4 * cm, 2 * cm, 3.5 * cm, 2.5 * cm, 1.5 * cm, 1.8 * cm]
     table = Table(data, colWidths=col_widths)
+    table.setStyle(_table_style())
+    elements.append(table)
+
+    doc.build(elements)
+    return buf.getvalue()
+
+
+# ── Overall Ranking PDF (formula engine) ──────────────────────────────────────
+
+
+def _fmt(value, digits: int = 2) -> str:
+    return f"{value:.{digits}f}" if isinstance(value, int | float) else "—"
+
+
+def build_overall_ranking_pdf(
+    event_name: str,
+    season_name: str,
+    entries: list[dict],
+) -> bytes:
+    """entries: OverallRankingEntry dicts from the formula engine, grouped by
+    category in the order given."""
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=1.5 * cm,
+        rightMargin=1.5 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
+    elements: list = []
+    _header(elements, "Gesamtwertung", f"{event_name} – {season_name}")
+
+    if not entries:
+        elements.append(Paragraph("Keine Einträge vorhanden.", BODY))
+    categories: list[str] = []
+    for entry in entries:
+        if (entry.get("category") or "") not in categories:
+            categories.append(entry.get("category") or "")
+    for category in categories:
+        rows = [e for e in entries if (e.get("category") or "") == category]
+        if category:
+            elements.append(Paragraph(category.capitalize(), H2))
+        data = [["#", "Team", "Gesamt", "Seeding", "DE", "Doku", "Paper"]]
+        for e in rows:
+            data.append(
+                [
+                    str(e.get("rank") or "—"),
+                    Paragraph(escape(str(e.get("team_name") or e.get("team_id", ""))[:60]), BODY),
+                    _fmt(e.get("overall_score"), 3),
+                    _fmt(e.get("seeding_score"), 3),
+                    _fmt(e.get("de_score"), 3),
+                    _fmt(e.get("doc_score"), 3),
+                    _fmt(e.get("paper_score"), 3),
+                ]
+            )
+        col_widths = [1 * cm, 6 * cm, 2.2 * cm, 2.2 * cm, 2 * cm, 2 * cm, 2 * cm]
+        table = Table(data, colWidths=col_widths, repeatRows=1)
+        table.setStyle(_table_style())
+        elements.append(table)
+        elements.append(Spacer(1, 0.4 * cm))
+
+    elements.append(
+        Paragraph("Werte aus der Formel-Engine der Saison (Stand zum Exportzeitpunkt).", SMALL)
+    )
+    doc.build(elements)
+    return buf.getvalue()
+
+
+# ── Team Report PDF ───────────────────────────────────────────────────────────
+
+
+def build_team_report_pdf(team: dict, history: list[dict]) -> bytes:
+    """A team's results at every event, oldest first, with a season summary.
+
+    team: name, team_number, school, city, country
+    history: rows as returned by the dashboard history analytics
+    """
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=1.5 * cm,
+        rightMargin=1.5 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
+    elements: list = []
+    location = ", ".join(p for p in (team.get("city"), team.get("country")) if p)
+    subtitle = " · ".join(
+        str(part)
+        for part in (
+            f"#{team['team_number']}" if team.get("team_number") else None,
+            team.get("school"),
+            location,
+        )
+        if part
+    )
+    _header(elements, f"Teambericht: {escape(team['name'])}", escape(subtitle))
+
+    if not history:
+        elements.append(Paragraph("Das Team hat noch an keinem Event teilgenommen.", BODY))
+        doc.build(elements)
+        return buf.getvalue()
+
+    # Summary per season.
+    elements.append(Paragraph("Saisonübersicht", H2))
+    seasons: dict[int, list[dict]] = {}
+    for row in history:
+        seasons.setdefault(row["season_year"], []).append(row)
+    summary = [["Saison", "Events", "Bester Seeding-Rang", "Bester Gesamtrang", "Bester Lauf"]]
+    for year, rows in sorted(seasons.items()):
+        seeding_ranks = [r["seeding_rank"] for r in rows if r.get("seeding_rank")]
+        overall_ranks = [r["overall_rank"] for r in rows if r.get("overall_rank")]
+        best = [r["best_score"] for r in rows if r.get("best_score") is not None]
+        summary.append(
+            [
+                Paragraph(escape(f"{rows[0]['season_name']} ({year})"), BODY),
+                str(len(rows)),
+                str(min(seeding_ranks)) if seeding_ranks else "—",
+                str(min(overall_ranks)) if overall_ranks else "—",
+                _fmt(max(best)) if best else "—",
+            ]
+        )
+    table = Table(summary, colWidths=[5.5 * cm, 1.8 * cm, 3.5 * cm, 3.5 * cm, 2.5 * cm])
+    table.setStyle(_table_style())
+    elements.append(table)
+    elements.append(Spacer(1, 0.5 * cm))
+
+    # Every event.
+    elements.append(Paragraph("Ergebnisse pro Event", H2))
+    with_practice = any("practice_runs" in r for r in history)
+    header = ["Saison", "Event", "Seeding", "Seed-Score", "Gesamt", "Gesamt-Score", "Läufe"]
+    if with_practice:
+        header.append("Übung Ø")
+    data: list[list] = [header]
+    for r in history:
+        seeding = f"{r['seeding_rank']}/{r['seeding_teams']}" if r.get("seeding_rank") else "—"
+        overall = f"{r['overall_rank']}/{r['overall_teams']}" if r.get("overall_rank") else "—"
+        line = [
+            str(r["season_year"]),
+            Paragraph(escape(str(r["event_name"])[:80]), BODY),
+            seeding,
+            _fmt(r.get("seeding_score")),
+            overall,
+            _fmt(r.get("overall_score"), 3),
+            str(r.get("official_runs", 0)),
+        ]
+        if with_practice:
+            line.append(
+                f"{_fmt(r.get('practice_avg'), 1)} ({r.get('practice_runs', 0)})"
+                if r.get("practice_runs")
+                else "—"
+            )
+        data.append(line)
+    widths = [1.4 * cm, 5 * cm, 1.8 * cm, 2 * cm, 1.8 * cm, 2.2 * cm, 1.3 * cm]
+    if with_practice:
+        widths = [1.3 * cm, 4.2 * cm, 1.7 * cm, 1.9 * cm, 1.7 * cm, 2.1 * cm, 1.2 * cm, 2 * cm]
+    table = Table(data, colWidths=widths, repeatRows=1)
     table.setStyle(_table_style())
     elements.append(table)
 

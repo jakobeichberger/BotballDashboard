@@ -1,0 +1,59 @@
+# Manual production deploy: SSH to the Docker host and run scripts/update.sh
+# there (git checkout → build images locally → docker compose up -d → verify).
+# Images are built on the host because docker-compose.yml builds them from the
+# checkout; there is no registry push/pull step.
+#
+# Required secrets (Settings → Environments → production):
+#   DEPLOY_HOST              host name or IP of the Docker host / LXC
+#   DEPLOY_USER              SSH user allowed to run docker (e.g. root)
+#   DEPLOY_SSH_KEY           private key (ed25519) of a dedicated deploy key
+#   DEPLOY_HOST_FINGERPRINT  SHA256 host key fingerprint
+#                            (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub)
+# Optional secrets:
+#   DEPLOY_PORT              SSH port (default 22)
+#   DEPLOY_PATH              install dir (default /opt/botballdashboard)
+#
+# The host needs git access to this repository (public clone or a deploy key)
+# and a filled .env – see docs/documentation/installation/update.md.
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or commit to deploy"
+        required: true
+        default: main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          DEPLOY_REF: ${{ inputs.ref }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/botballdashboard' }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+          command_timeout: 40m
+          envs: DEPLOY_REF,DEPLOY_PATH
+          script: |
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+            # update.sh records the previous commit/migration in .deploy-state,
+            # rebuilds all local images, restarts and runs verify-deployment.sh.
+            ./scripts/update.sh --ref "$DEPLOY_REF"
+            echo "Deployed $(git rev-parse --short HEAD) at $(date -u +%FT%TZ)"

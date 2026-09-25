@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 class PrinterCreate(BaseModel):
     name: str
     model: str | None = None
-    printer_type: Literal["bambu", "octoprint"] = "bambu"
+    # generic = manually operated printer without an adapter (never polled)
+    printer_type: Literal["bambu", "octoprint", "generic"] = "bambu"
     api_url: str | None = None
     device_id: str | None = None
     api_key: str | None = None  # plain text – will be encrypted on save
@@ -24,19 +25,27 @@ class PrinterUpdate(BaseModel):
     notes: str | None = None
 
 
-class PrinterResponse(BaseModel):
+class PrinterPublicResponse(BaseModel):
+    """Read-only printer status for mentors: no connection details."""
+
     model_config = {"from_attributes": True}
 
     id: str
     name: str
     model: str | None
     printer_type: str
-    api_url: str | None
-    device_id: str | None
     is_active: bool
     is_online: bool
     last_seen: datetime | None
-    notes: str | None
+    current_state: str | None = None
+    status_message: str | None = None
+
+
+class PrinterResponse(PrinterPublicResponse):
+    # Only filled for printing:admin; mentors get the public subset above.
+    api_url: str | None = None
+    device_id: str | None = None
+    notes: str | None = None
     # api_key_encrypted never returned
 
 
@@ -50,14 +59,18 @@ class PrintJobCreate(BaseModel):
     estimated_grams: float | None = Field(default=None, ge=0)
     estimated_minutes: int | None = Field(default=None, ge=0)
     notes: str | None = None
+    # printing:admin only: submit although the team's hard limit is reached.
+    quota_override: bool = False
 
 
 class PrintJobUpdate(BaseModel):
     printer_id: str | None = None
+    # "rejected" needs a reason and goes through PUT /jobs/{id}/reject.
     status: (
         Literal["pending", "approved", "queued", "printing", "completed", "failed", "cancelled"]
         | None
     ) = None
+    spool_id: str | None = None
     actual_grams: float | None = Field(default=None, ge=0)
     actual_minutes: int | None = Field(default=None, ge=0)
     notes: str | None = None
@@ -74,6 +87,8 @@ class PrintJobResponse(BaseModel):
     event_id: str | None
     submitted_by: str | None
     file_name: str
+    file_url: str | None = None
+    file_size_bytes: int | None = None
     material: str
     color: str | None
     estimated_grams: float | None
@@ -84,6 +99,11 @@ class PrintJobResponse(BaseModel):
     priority: int
     progress: float | None
     status_message: str | None
+    remaining_seconds: int | None = None
+    error_message: str | None = None
+    rejection_reason: str | None = None
+    quota_override: bool = False
+    spool_id: str | None = None
     external_job_id: str | None
     last_polled_at: datetime | None
     notes: str | None
@@ -94,12 +114,36 @@ class PrintJobResponse(BaseModel):
     created_at: datetime
 
 
+class PrintJobCreateResponse(PrintJobResponse):
+    # Set when the job takes the team past its soft limit (it is still accepted).
+    quota_warning: str | None = None
+    # Set when the team's 3D-print compliance checklist for the season is not
+    # complete (the job is still accepted).
+    compliance_warning: str | None = None
+
+
+class PrintJobCancelResponse(PrintJobResponse):
+    # sent | failed | not_applicable – whether a running print was also
+    # aborted on the printer itself.
+    printer_cancel: str = "not_applicable"
+    printer_message: str | None = None
+
+
+class PrintJobReject(BaseModel):
+    reason: str = Field(min_length=1, max_length=2000)
+
+
 class QuotaUpsert(BaseModel):
     team_id: str
     season_id: str
-    max_parts: int | None = None
-    soft_limit_parts: int | None = None
-    max_grams: float | None = None
+    # Quotas are per event; omitted means the season's default event.
+    event_id: str | None = None
+    max_parts: int | None = Field(default=None, ge=0)
+    soft_limit_parts: int | None = Field(default=None, ge=0)
+    max_grams: float | None = Field(default=None, ge=0)
+    # max_grams=None means "leave unchanged"; this removes the gram limit.
+    clear_max_grams: bool = False
+    notes: str | None = None
 
 
 class QuotaResponse(BaseModel):
@@ -108,12 +152,17 @@ class QuotaResponse(BaseModel):
     id: str
     team_id: str
     season_id: str
+    event_id: str | None = None
     max_parts: int
     soft_limit_parts: int
     max_grams: float | None
     used_parts: int
     used_grams: float
+    # Submitted but unfinished jobs; they count toward the hard limit too.
+    open_parts: int = 0
+    open_grams: float = 0.0
     notes: str | None
+    team_name: str | None = None  # only in the per-event listing
 
 
 class FilamentSpoolCreate(BaseModel):

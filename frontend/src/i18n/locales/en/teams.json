@@ -1,0 +1,166 @@
+{
+  "season": "Season",
+  "category": {
+    "botball": "Botball",
+    "open": "Open",
+    "aerial": "Aerial",
+    "jbc": "JBC"
+  },
+  "fee": {
+    "pending": "open",
+    "paid": "paid",
+    "waived": "waived"
+  },
+  "kit": {
+    "not_sent": "not shipped",
+    "sent": "shipped",
+    "received": "received"
+  },
+  "documentCategory": {
+    "project_plan": "Project plan",
+    "presentation": "Presentation",
+    "code_documentation": "Code documentation",
+    "other": "Other"
+  },
+  "compliance": {
+    "incompleteHint": "The team's 3D-printing checklist is incomplete ({{open}} of {{total}} items open). The job is accepted anyway.",
+    "loading": "Loading checklist...",
+    "progress": "{{checked}} of {{total}} items confirmed",
+    "verified": "verified by the organizers",
+    "completePending": "complete, verification pending",
+    "incomplete": "incomplete",
+    "unverify": "Withdraw verification",
+    "verify": "Mark as verified",
+    "none": "No 3D-printing checklist has been set up for this season yet.",
+    "useDefaults": "Use default rules",
+    "itemVerified": "verified",
+    "newItemPlaceholder": "Add another item, e.g. “Max. 6 parts (2026)”",
+    "newItem": "New checklist item"
+  },
+  "documents": {
+    "title": "Documents ({{count}})",
+    "season": "Season: {{season}}",
+    "hideArchive": "Hide archive",
+    "versions": "Versions ({{count}})",
+    "newVersion": "New version",
+    "newVersionOf": "New version of {{title}}",
+    "deleteLabel": "Delete {{title}}",
+    "confirmDelete": "Delete document \"{{title}}\" with all versions?",
+    "empty": "No documents yet",
+    "titleLabel": "Title",
+    "category": "Type",
+    "file": "File (PDF/image)"
+  },
+  "roster": {
+    "label": "Roster:",
+    "edit": "Edit roster",
+    "inSeason": "{{name}} in this season",
+    "rolePlaceholder": "Role, e.g. programmer",
+    "roleOf": "Role of {{name}}",
+    "save": "Save roster"
+  },
+  "registrations": {
+    "title": "Season participations ({{count}})",
+    "confirmed": "Confirmed",
+    "open": "Open",
+    "feeBadge": "Fee {{status}}",
+    "kitBadge": "Kit {{status}}",
+    "teamType": "Team type",
+    "fee": "Participation fee",
+    "kit": "Kit shipping",
+    "contact": "Contact person",
+    "phone": "Phone",
+    "address": "Address (kit shipping, invoice)",
+    "internalNotes": "Notes (internal)",
+    "empty": "No registrations"
+  },
+  "title": "Teams",
+  "matrix": {
+    "title": "Team-season matrix",
+    "team": "Team",
+    "heading": "Season assignment",
+    "readOnly": "Read-only view (admin required to edit)",
+    "registeredUnconfirmed": "Registered, not confirmed",
+    "notAssigned": "Not assigned",
+    "active": "active",
+    "confirmedCount": "{{confirmed}}/{{total}} confirmed",
+    "registerLabel": "Register {{team}} for {{season}}",
+    "assign": "Assign",
+    "confirm": "Confirm",
+    "removeAssignment": "Remove assignment"
+  },
+  "add": "+ Add team",
+  "filter": {
+    "search": "Search",
+    "searchPlaceholder": "Name, number, school or city",
+    "country": "Country",
+    "all": "All",
+    "archived": "Archived",
+    "reset": "Reset filters"
+  },
+  "editLabel": "Edit {{name}}",
+  "levelLabel": "Category: {{level}}",
+  "noneFound": "No teams found",
+  "empty": "No teams created yet",
+  "form": {
+    "editTitle": "Edit team",
+    "addTitle": "Add team",
+    "loadingDetails": "Loading team details...",
+    "field": {
+      "name": "Name *",
+      "team_number": "Team number",
+      "school": "School",
+      "city": "City",
+      "country": "Country *"
+    },
+    "level": "Category",
+    "noLevel": "No category",
+    "isActive": "Team is active",
+    "saveFailed": "The team could not be saved.",
+    "saveChanges": "Save changes",
+    "create": "Create"
+  },
+  "members": {
+    "title": "Team members",
+    "role": {
+      "member": "Member",
+      "student": "Student",
+      "mentor": "Mentor",
+      "coach": "Coach"
+    },
+    "remove": "Remove {{name}}",
+    "empty": "No members yet.",
+    "roleLabel": "Role",
+    "addFailed": "The member could not be added.",
+    "add": "Add member"
+  },
+  "detail": {
+    "accountLinked": "Account linked",
+    "accountFor": "User account for {{name}}",
+    "noAccount": "— no account —",
+    "linkedAccount": "Linked account",
+    "back": "Back to teams",
+    "notFound": "Team not found.",
+    "confirmDelete": "Really delete team \"{{name}}\"?",
+    "teamNumber": "Team no.",
+    "school": "School",
+    "city": "City",
+    "level": "Competition level",
+    "performance": "Performance dashboard",
+    "members": "Members ({{count}})",
+    "account": "User account",
+    "mentor": "Mentor",
+    "remove": "Remove",
+    "noMembers": "No members",
+    "newMember": "New member",
+    "checklist": "3D-printing checklist {{season}}",
+    "papers": "Papers ({{count}})",
+    "noPapers": "No papers",
+    "printJobs": "Print jobs ({{count}})",
+    "quota": "Quota: {{used}}/{{max}} parts · {{grams}} g used",
+    "editQuota": "edit",
+    "maxParts": "max. parts",
+    "maxGrams": "max. g",
+    "noPrintJobs": "No print jobs"
+  }
+}

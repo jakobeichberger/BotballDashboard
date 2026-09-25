@@ -12,7 +12,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -22,6 +22,7 @@ from core.config import get_settings
 from core.logging import configure_logging
 from core.metrics import observe_request, render_metrics
 from core.modules import MODULES
+from modules.events.module_access import require_module
 
 settings = get_settings()
 configure_logging()
@@ -51,6 +52,9 @@ def _request_id(request: Request) -> str:
     return candidate if re.fullmatch(r"[A-Za-z0-9._-]{1,64}", candidate) else str(uuid.uuid4())
 
 
+_PRINT_UPLOAD_PATH = re.compile(r"/api/printing/jobs/[^/]+/file")
+
+
 @app.middleware("http")
 async def request_context_and_security(request: Request, call_next):
     request.state.request_id = _request_id(request)
@@ -58,10 +62,14 @@ async def request_context_and_security(request: Request, call_next):
         content_length = int(request.headers.get("content-length", "0") or 0)
     except ValueError:
         content_length = 0
-    if (
-        request.method in {"POST", "PUT", "PATCH"}
-        and content_length > (settings.max_upload_size_mb + 1) * 1024 * 1024
-    ):
+    # Print job files have their own, larger limit (PRINT_UPLOAD_MAX_MB); the
+    # upload route enforces it exactly while streaming the file to disk.
+    limit_mb = (
+        settings.print_upload_max_mb
+        if _PRINT_UPLOAD_PATH.fullmatch(request.url.path)
+        else settings.max_upload_size_mb
+    )
+    if request.method in {"POST", "PUT", "PATCH"} and content_length > (limit_mb + 1) * 1024 * 1024:
         return JSONResponse(
             status_code=413,
             content={
@@ -195,8 +203,11 @@ app.add_middleware(
 )
 
 # Register all modules from one explicit, static registry.
+# Feature modules carry a per-event switch; their guard answers 404 for events
+# that have the module disabled.
 for module in MODULES:
-    app.include_router(module.router, prefix="/api")
+    guards = [Depends(require_module(module.event_module))] if module.event_module else []
+    app.include_router(module.router, prefix="/api", dependencies=guards)
 
 
 @app.get("/api/system/health", tags=["system"])

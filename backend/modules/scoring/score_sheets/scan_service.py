@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import UploadFile
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +18,7 @@ from core.exceptions import ConflictError, NotFoundError, ValidationError
 from modules.events.models import Event, EventRegistration, ScheduledMatch
 from modules.scoring import service as scoring_service
 from modules.scoring.score_sheets.models import ScoreSheetScan, ScoreSheetTemplate
+from modules.scoring.score_sheets.schemas import OcrValidationRules
 from modules.teams.models import Team
 
 
@@ -88,9 +90,15 @@ async def get_scan(db: AsyncSession, event_id: str, scan_id: str) -> ScoreSheetS
 
 
 async def list_scans(
-    db: AsyncSession, event_id: str, status: str | None = None
+    db: AsyncSession,
+    event_id: str,
+    status: str | None = None,
+    team_ids: set[str] | None = None,
 ) -> list[ScoreSheetScan]:
+    """Scans of an event; ``team_ids`` (when given) restricts them to those teams."""
     query = select(ScoreSheetScan).where(ScoreSheetScan.event_id == event_id)
+    if team_ids is not None:
+        query = query.where(ScoreSheetScan.team_id.in_(team_ids))
     if status:
         query = query.where(ScoreSheetScan.status == status)
     result = await db.execute(query.order_by(ScoreSheetScan.created_at.desc()))
@@ -112,7 +120,28 @@ def _rasterize(path: Path, output_directory: Path) -> Path:
     return target.with_suffix(".png")
 
 
-def _align_page(image, width: int, height: int):
+# Anchors are searched this far (fraction of the page) around their expected box.
+ANCHOR_SEARCH_MARGIN = 0.1
+# A found anchor mark may be this much smaller or larger (area) than configured.
+ANCHOR_AREA_TOLERANCE = 4.0
+# Anchor alignment is rejected when a mark ends up further than this (fraction
+# of the page diagonal) from its configured position.
+ANCHOR_MAX_RESIDUAL = 0.02
+# Search-and-correct rounds; each one starts from the previous correction.
+ANCHOR_PASSES = 2
+
+
+def _page_box(box: dict, width: int, height: int) -> tuple[float, float, float, float]:
+    """A stored box in page pixels; normalized boxes (all values ≤ 1) are scaled."""
+    x, y = float(box.get("x", 0)), float(box.get("y", 0))
+    box_width, box_height = float(box.get("width", 0)), float(box.get("height", 0))
+    if max(x, y, box_width, box_height) <= 1:
+        return x * width, y * height, box_width * width, box_height * height
+    return x, y, box_width, box_height
+
+
+def _contour_transform(image, width: int, height: int):
+    """Homography mapping the largest quadrilateral (the sheet edge) onto the page."""
     import cv2
     import numpy as np
 
@@ -140,16 +169,229 @@ def _align_page(image, width: int, height: int):
             [[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]],
             dtype="float32",
         )
-        matrix = cv2.getPerspectiveTransform(source, destination)
-        return cv2.warpPerspective(image, matrix, (width, height))
-    return cv2.resize(image, (width, height))
+        return cv2.getPerspectiveTransform(source, destination)
+    return None
+
+
+def _locate_anchor(gray, box: tuple[float, float, float, float]) -> tuple[float, float] | None:
+    """Centre of the solid dark mark near ``box`` in a roughly aligned page, if any."""
+    import cv2
+    import numpy as np
+
+    page_height, page_width = gray.shape[:2]
+    x, y, box_width, box_height = box
+    margin_x = max(box_width, ANCHOR_SEARCH_MARGIN * page_width)
+    margin_y = max(box_height, ANCHOR_SEARCH_MARGIN * page_height)
+    x1, y1 = max(0, int(x - margin_x)), max(0, int(y - margin_y))
+    x2 = min(page_width, int(x + box_width + margin_x))
+    y2 = min(page_height, int(y + box_height + margin_y))
+    window = gray[y1:y2, x1:x2]
+    if window.size == 0:
+        return None
+    otsu, _ = cv2.threshold(window, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # Capped, so an empty (all white) window does not turn paper grain into marks.
+    mask = np.where(window < min(otsu, 160), 255, 0).astype("uint8")
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    expected = box_width * box_height
+    best: tuple[float, tuple[float, float]] | None = None
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if not expected / ANCHOR_AREA_TOLERANCE <= area <= expected * ANCHOR_AREA_TOLERANCE:
+            continue
+        left, top, bound_width, bound_height = cv2.boundingRect(contour)
+        # Anchors are filled marks; text and ruled lines fill little of their box.
+        if area / max(1, bound_width * bound_height) < 0.6:
+            continue
+        # A mark cut off by the search window would give a skewed centre; the
+        # next pass (after the first correction) finds it whole.
+        cut_x = (left == 0 and x1 > 0) or (
+            left + bound_width >= window.shape[1] and x2 < page_width
+        )
+        cut_y = (top == 0 and y1 > 0) or (
+            top + bound_height >= window.shape[0] and y2 < page_height
+        )
+        if cut_x or cut_y:
+            continue
+        moments = cv2.moments(contour)
+        if not moments["m00"]:
+            continue
+        centre = (x1 + moments["m10"] / moments["m00"], y1 + moments["m01"] / moments["m00"])
+        score = abs(float(np.log(area / expected)))
+        if best is None or score < best[0]:
+            best = (score, centre)
+    return best[1] if best else None
+
+
+def _anchor_transform(page, anchors: list[dict], width: int, height: int):
+    """Correction that moves the anchor marks found in ``page`` onto their boxes.
+
+    Four or more marks give a perspective correction, three an affine one and
+    two a similarity (shift, rotation, scale). Returns None when fewer than two
+    marks are found or the found marks do not fit together.
+    """
+    import cv2
+    import numpy as np
+
+    gray = cv2.cvtColor(page, cv2.COLOR_BGR2GRAY)
+    found: list[tuple[float, float]] = []
+    expected: list[tuple[float, float]] = []
+    for anchor in anchors:
+        box = _page_box(anchor, width, height)
+        centre = _locate_anchor(gray, box)
+        if centre is not None:
+            found.append(centre)
+            expected.append((box[0] + box[2] / 2, box[1] + box[3] / 2))
+    if len(found) < 2:
+        return None
+    source = np.array(found, dtype="float32")
+    target = np.array(expected, dtype="float32")
+    if len(found) >= 4:
+        matrix, _ = cv2.findHomography(source, target, 0)
+    else:
+        if len(found) == 3:
+            affine = cv2.getAffineTransform(source, target)
+        else:
+            affine, _ = cv2.estimateAffinePartial2D(source, target)
+        matrix = None if affine is None else np.vstack([affine, [0, 0, 1]])
+    if matrix is None or abs(np.linalg.det(matrix)) < 1e-6:
+        return None
+    projected = cv2.perspectiveTransform(source.reshape(-1, 1, 2), matrix).reshape(-1, 2)
+    residual = float(np.linalg.norm(projected - target, axis=1).max())
+    if residual > ANCHOR_MAX_RESIDUAL * float(np.hypot(width, height)):
+        return None
+    return matrix
+
+
+def _align_page(image, width: int, height: int, anchors: list[dict] | None = None):
+    """Warp a scan onto the template page; returns ``(page, method)``.
+
+    With anchors, the scan is first roughly aligned (sheet edge, else a plain
+    resize) and then corrected so the printed marks land on their configured
+    boxes. Without anchors, or when too few marks are found, the sheet edge
+    (largest quadrilateral) is used. ``method`` is "anchors", "contour" or
+    "resize".
+    """
+    import cv2
+    import numpy as np
+
+    image_height, image_width = image.shape[:2]
+    contour = _contour_transform(image, width, height)
+    resize = np.array(
+        [[width / image_width, 0, 0], [0, height / image_height, 0], [0, 0, 1]],
+        dtype="float64",
+    )
+
+    def warp(matrix):
+        # Areas outside the scan become white paper, not dark blobs that could
+        # pass for marks or ink.
+        return cv2.warpPerspective(image, matrix, (width, height), borderValue=(255, 255, 255))
+
+    if anchors:
+        for rough in (contour, resize):
+            if rough is None:
+                continue
+            matrix, corrected = rough, False
+            # The second pass searches around the corrected positions, so marks
+            # that were too far off (or cut off) at first are found as well.
+            for _ in range(ANCHOR_PASSES):
+                correction = _anchor_transform(warp(matrix), anchors, width, height)
+                if correction is None:
+                    break
+                matrix, corrected = correction @ matrix, True
+            if corrected:
+                return warp(matrix), "anchors"
+    if contour is not None:
+        return cv2.warpPerspective(image, contour, (width, height)), "contour"
+    return cv2.resize(image, (width, height)), "resize"
+
+
+def _validation_rules(template: ScoreSheetTemplate) -> OcrValidationRules:
+    try:
+        return OcrValidationRules.model_validate(template.validation_rules or {})
+    except PydanticValidationError:
+        # Rules stored before the editor existed may not validate; the defaults
+        # still flag empty, unreadable and out-of-range values.
+        return OcrValidationRules()
+
+
+def apply_validation_rules(
+    values: list[dict],
+    fields: dict[str, dict],
+    rules: OcrValidationRules,
+    *,
+    anchors_missing: bool = False,
+) -> list[dict]:
+    """Set ``reasons`` and ``requiresReview`` on OCR candidates (in place).
+
+    Reasons: empty, low_confidence, below_minimum, above_maximum, not_integer,
+    sum_out_of_range and anchors_not_found (anchors are configured but the scan
+    could not be aligned by them, so every box may be off). Field and rule
+    limits combine: the stricter one wins.
+    """
+    field_rules = {rule.key: rule for rule in rules.fields}
+    for item in values:
+        field = fields.get(item["key"], {})
+        rule = field_rules.get(item["key"])
+        value = item.get("value")
+        reasons: list[str] = []
+        if value is None:
+            reasons.append("empty")
+        threshold = rules.min_confidence
+        if rule and rule.min_confidence is not None:
+            threshold = rule.min_confidence
+        if item.get("confidence", 0.0) < threshold:
+            reasons.append("low_confidence")
+        if value is not None and field.get("type") != "boolean":
+            minimums = [field.get("min_value"), rule.min_value if rule else None]
+            maximums = [field.get("max_value"), rule.max_value if rule else None]
+            minimum = max((float(v) for v in minimums if v is not None), default=None)
+            maximum = min((float(v) for v in maximums if v is not None), default=None)
+            if minimum is not None and float(value) < minimum:
+                reasons.append("below_minimum")
+            if maximum is not None and float(value) > maximum:
+                reasons.append("above_maximum")
+            if rule and rule.integer and not float(value).is_integer():
+                reasons.append("not_integer")
+        if anchors_missing:
+            reasons.append("anchors_not_found")
+        item["reasons"] = reasons
+    by_key = {item["key"]: item for item in values}
+    for sum_rule in rules.sums:
+        members = [by_key[key] for key in sum_rule.keys if key in by_key]
+        total = sum(float(item["value"]) for item in members if item.get("value") is not None)
+        too_low = sum_rule.min_value is not None and total < sum_rule.min_value
+        too_high = sum_rule.max_value is not None and total > sum_rule.max_value
+        if too_low or too_high:
+            for item in members:
+                if "sum_out_of_range" not in item["reasons"]:
+                    item["reasons"].append("sum_out_of_range")
+    for item in values:
+        item["requiresReview"] = bool(item["reasons"])
+    return values
+
+
+def _read_number(crop) -> tuple[float | None, str, float]:
+    """Tesseract single-line digit read: ``(value, raw text, confidence 0–1)``."""
+    import pytesseract
+    from pytesseract import Output
+
+    data = pytesseract.image_to_data(
+        crop,
+        config="--psm 7 -c tessedit_char_whitelist=0123456789.,-",
+        output_type=Output.DICT,
+    )
+    tokens = [text.strip() for text in data["text"] if text.strip()]
+    confidences = [float(c) for c in data["conf"] if float(c) >= 0]
+    raw_text = "".join(tokens).replace(",", ".")
+    match = re.search(r"-?\d+(?:\.\d+)?", raw_text)
+    value = float(match.group()) if match else None
+    confidence = (max(confidences) / 100.0) if confidences else 0.0
+    return value, raw_text, confidence
 
 
 def run_local_ocr(scan: ScoreSheetScan, template: ScoreSheetTemplate) -> list[dict]:
     """CPU-only OpenCV/Tesseract provider. No image data leaves the installation."""
     import cv2
-    import pytesseract
-    from pytesseract import Output
 
     crop_directory = Path(scan.file_url).parent / scan.id / "crops"
     crop_directory.mkdir(parents=True, exist_ok=True)
@@ -159,7 +401,8 @@ def run_local_ocr(scan: ScoreSheetScan, template: ScoreSheetTemplate) -> list[di
         raise RuntimeError("Uploaded score sheet is not a readable image")
     width = template.page_width or image.shape[1]
     height = template.page_height or image.shape[0]
-    aligned = _align_page(image, width, height)
+    anchors = template.anchors or []
+    aligned, method = _align_page(image, width, height, anchors)
     regions = template.field_regions or [
         {"key": field.get("key"), **(field.get("region") or {})}
         for field in (template.confirmed_fields or [])
@@ -173,11 +416,7 @@ def run_local_ocr(scan: ScoreSheetScan, template: ScoreSheetTemplate) -> list[di
         key = region.get("key")
         if not key:
             continue
-        x, y = region.get("x", 0), region.get("y", 0)
-        region_width, region_height = region.get("width", 0), region.get("height", 0)
-        if max(x, y, region_width, region_height) <= 1:
-            x, region_width = x * width, region_width * width
-            y, region_height = y * height, region_height * height
+        x, y, region_width, region_height = _page_box(region, width, height)
         x1, y1 = max(0, int(x)), max(0, int(y))
         x2, y2 = min(width, int(x + region_width)), min(height, int(y + region_height))
         crop = aligned[y1:y2, x1:x2]
@@ -193,28 +432,7 @@ def run_local_ocr(scan: ScoreSheetScan, template: ScoreSheetTemplate) -> list[di
             confidence = 0.8
             raw_text = "marked" if value else "unmarked"
         else:
-            data = pytesseract.image_to_data(
-                crop,
-                config="--psm 7 -c tessedit_char_whitelist=0123456789.,-",
-                output_type=Output.DICT,
-            )
-            tokens = [text.strip() for text in data["text"] if text.strip()]
-            confidences = [float(c) for c in data["conf"] if float(c) >= 0]
-            raw_text = "".join(tokens).replace(",", ".")
-            match = re.search(r"-?\d+(?:\.\d+)?", raw_text)
-            value = float(match.group()) if match else None
-            confidence = (max(confidences) / 100.0) if confidences else 0.0
-        reasons = []
-        if value is None:
-            reasons.append("empty")
-        if confidence < 0.85:
-            reasons.append("low_confidence")
-        minimum = field.get("min_value")
-        maximum = field.get("max_value")
-        if value is not None and minimum is not None and float(value) < float(minimum):
-            reasons.append("below_minimum")
-        if value is not None and maximum is not None and float(value) > float(maximum):
-            reasons.append("above_maximum")
+            value, raw_text, confidence = _read_number(crop)
         values.append(
             {
                 "key": key,
@@ -225,11 +443,14 @@ def run_local_ocr(scan: ScoreSheetScan, template: ScoreSheetTemplate) -> list[di
                     f"/api/v1/events/{scan.event_id}/score-sheet-scans/"
                     f"{scan.id}/crops/{crop_path.name}"
                 ),
-                "requiresReview": bool(reasons),
-                "reasons": reasons,
             }
         )
-    return values
+    return apply_validation_rules(
+        values,
+        fields,
+        _validation_rules(template),
+        anchors_missing=bool(anchors) and method != "anchors",
+    )
 
 
 async def accept_scan(

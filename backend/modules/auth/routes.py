@@ -1,21 +1,34 @@
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission
+from core.auth import get_current_user, permissions_of, require_permission
 from core.config import get_settings
 from core.database import get_db
+from core.logging import get_logger
+from core.mail_templates import render
 from core.rate_limit import rate_limit
 from modules.auth import service
 from modules.auth.schemas import (
+    AccountDelete,
+    AdminPasswordSet,
     CurrentUserResponse,
+    EmailChange,
     LoginRequest,
     MeUpdate,
+    NotificationPreferences,
+    NotificationPreferencesUpdate,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     PermissionResponse,
     PushSubscriptionCreate,
     RoleCreate,
     RoleDetailResponse,
+    RolePermissionsUpdate,
     TokenResponse,
     UserCreate,
     UserListItem,
@@ -23,11 +36,59 @@ from modules.auth.schemas import (
     UserResponse,
     UserUpdate,
 )
+from modules.dashboard.notifications import normalize_preferences
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
+logger = get_logger(__name__)
 
 REFRESH_COOKIE = "refresh_token"
+
+
+def _mail_enabled() -> bool:
+    # Same rule as the account-creation mail: no real mail in development.
+    return bool(settings.smtp_host) and not settings.is_dev
+
+
+async def send_password_reset_email(
+    email: str, display_name: str, token: str, language: str | None = None
+) -> None:
+    """Mail the single-use reset link in the user's language (background task)."""
+    link = f"{settings.app_base_url.rstrip('/')}/reset-password?token={quote(token)}"
+    if not _mail_enabled():
+        # Development: there is no mail server, so the link goes to the log.
+        logger.info("password_reset_link", email=email, link=link)
+        return
+    from core.notifications import send_email
+
+    message = render("password_reset", language, display_name=display_name, link=link)
+    await send_email(email, message.subject, message.html, message.text)
+
+
+async def send_account_created_email(email: str, display_name: str, language: str | None) -> None:
+    """Tell a new user about their account, in their language (background task)."""
+    from core.notifications import send_email
+
+    message = render(
+        "account_created",
+        language,
+        display_name=display_name,
+        email=email,
+        login_url=f"{settings.app_base_url.rstrip('/')}/login",
+    )
+    await send_email(email, message.subject, message.html, message.text)
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    response.set_cookie(
+        REFRESH_COOKIE,
+        refresh_token,
+        httponly=True,
+        secure=not settings.is_dev,
+        samesite="strict",
+        max_age=settings.jwt_refresh_token_expire_days * 86400,
+        path="/api/auth",
+    )
 
 
 # ── Login / Logout ────────────────────────────────────────────────────────────
@@ -101,6 +162,12 @@ async def logout(
     token = request.cookies.get(REFRESH_COOKIE)
     if token:
         await service.revoke_refresh_token(db, token)
+    # The access token presented with the logout would otherwise stay valid
+    # until it expires; deny it. Only this session ends, other devices stay
+    # signed in (a password change ends all of them via token_version).
+    authorization = request.headers.get("authorization", "")
+    if authorization.lower().startswith("bearer "):
+        await service.deny_access_token(authorization.split(" ", 1)[1])
     response.delete_cookie(REFRESH_COOKIE, path="/api/auth")
 
 
@@ -144,17 +211,113 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
 ):
     await service.change_password(db, current_user.id, body.current_password, body.new_password)
-    # All refresh tokens were revoked; keep only this device signed in.
+    # All sessions were revoked (the current access token included); keep only
+    # this device signed in. The client picks up a fresh access token through
+    # /auth/refresh with this cookie.
     _access_token, refresh_token = await service.create_tokens(db, current_user)
-    response.set_cookie(
-        REFRESH_COOKIE,
-        refresh_token,
-        httponly=True,
-        secure=not settings.is_dev,
-        samesite="strict",
-        max_age=settings.jwt_refresh_token_expire_days * 86400,
-        path="/api/auth",
+    _set_refresh_cookie(response, refresh_token)
+
+
+@router.post(
+    "/me/email",
+    response_model=UserResponse,
+    dependencies=[Depends(rate_limit("email-change", 10, 60))],
+)
+async def change_email(
+    body: EmailChange,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.change_email(
+        db, current_user.id, str(body.new_email), body.current_password
     )
+
+
+@router.get("/me/export")
+async def export_my_data(
+    current_user=Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """All personal data stored about the caller (DSGVO Art. 15/20)."""
+    data = await service.export_user_data(db, current_user.id)
+    return JSONResponse(
+        jsonable_encoder(data),
+        headers={"Content-Disposition": 'attachment; filename="my-botball-data.json"'},
+    )
+
+
+@router.delete(
+    "/me",
+    status_code=204,
+    dependencies=[Depends(rate_limit("account-delete", 5, 60))],
+)
+async def delete_my_account(
+    body: AccountDelete,
+    response: Response,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete (anonymise) the caller's account. Requires the current password."""
+    await service.delete_own_account(db, current_user.id, body.current_password)
+    response.delete_cookie(REFRESH_COOKIE, path="/api/auth")
+
+
+# ── Password reset (public) ───────────────────────────────────────────────────
+
+
+@router.post(
+    "/password-reset/request",
+    status_code=204,
+    dependencies=[Depends(rate_limit("password-reset", 5, 900))],
+)
+async def request_password_reset(
+    body: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """Always 204, whether or not the address belongs to an account."""
+    issued = await service.request_password_reset(db, body.email)
+    if issued:
+        user, token = issued
+        background_tasks.add_task(
+            send_password_reset_email,
+            user.email,
+            user.display_name,
+            token,
+            language=user.preferred_language,
+        )
+
+
+@router.post(
+    "/password-reset/confirm",
+    status_code=204,
+    dependencies=[Depends(rate_limit("password-reset-confirm", 10, 900))],
+)
+async def confirm_password_reset(body: PasswordResetConfirm, db: AsyncSession = Depends(get_db)):
+    await service.confirm_password_reset(db, body.token, body.new_password)
+
+
+# ── Notification preferences ──────────────────────────────────────────────────
+
+
+@router.get("/me/notification-preferences", response_model=NotificationPreferences)
+async def get_notification_preferences(current_user=Depends(get_current_user)):
+    return normalize_preferences(current_user.notification_preferences)
+
+
+@router.put("/me/notification-preferences", response_model=NotificationPreferences)
+async def update_notification_preferences(
+    body: NotificationPreferencesUpdate,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    merged = {
+        **normalize_preferences(current_user.notification_preferences),
+        **body.model_dump(exclude_none=True),
+    }
+    # Reassign (not mutate) so SQLAlchemy notices the JSON change.
+    current_user.notification_preferences = merged
+    await db.flush()
+    return merged
 
 
 # ── Push subscriptions ────────────────────────────────────────────────────────
@@ -188,7 +351,12 @@ async def unsubscribe_push(
 async def list_users(
     _=Depends(require_permission("users:read")), db: AsyncSession = Depends(get_db)
 ):
-    return await service.list_users(db)
+    return [
+        UserListItem.model_validate(user).model_copy(
+            update={"permissions": sorted(permissions_of(user))}
+        )
+        for user in await service.list_users(db)
+    ]
 
 
 @router.post("/users", response_model=UserResponse, status_code=201)
@@ -201,15 +369,9 @@ async def create_user(
     user = await service.create_user(
         db, body.email, body.display_name, body.password, body.role_ids
     )
-    if settings.smtp_host and not settings.is_dev:
-        from core.notifications import send_email
-
+    if _mail_enabled():
         background_tasks.add_task(
-            send_email,
-            body.email,
-            "BotballDashboard account created",
-            f"<p>Hello {body.display_name},</p><p>Your BotballDashboard account was created.</p>",
-            f"Hello {body.display_name}, your BotballDashboard account was created.",
+            send_account_created_email, user.email, user.display_name, user.preferred_language
         )
     return user
 
@@ -231,6 +393,28 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
 ):
     return await service.update_user(db, user_id, **body.model_dump(exclude_none=True))
+
+
+@router.post("/users/{user_id}/password", status_code=204)
+async def admin_set_password(
+    user_id: str,
+    body: AdminPasswordSet,
+    _=Depends(require_permission("users:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set a user's password (e.g. after a lost password) and end their sessions."""
+    user = await service.get_user(db, user_id)
+    await service.set_password(db, user, body.new_password)
+
+
+@router.delete("/users/{user_id}", status_code=204)
+async def admin_delete_user(
+    user_id: str,
+    current_user=Depends(require_permission("users:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete (anonymise) a user account; its history stays attributed to it."""
+    await service.admin_delete_user(db, current_user.id, user_id)
 
 
 # ── Admin: Roles ──────────────────────────────────────────────────────────────
@@ -257,3 +441,16 @@ async def create_role(
     db: AsyncSession = Depends(get_db),
 ):
     return await service.create_role(db, body.name, body.description, body.permission_names)
+
+
+@router.put("/roles/{role_id}", response_model=RoleDetailResponse)
+async def update_role(
+    role_id: str,
+    body: RolePermissionsUpdate,
+    _=Depends(require_permission("roles:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace a role's permissions (the admin role keeps its critical ones)."""
+    return await service.update_role_permissions(
+        db, role_id, body.permission_names, body.description
+    )

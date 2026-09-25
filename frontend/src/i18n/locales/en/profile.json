@@ -1,0 +1,53 @@
+{
+  "title": "My profile",
+  "data": "Profile data",
+  "displayName": "Display name",
+  "language": "Language",
+  "theme": "Appearance",
+  "saved": "Saved",
+  "changeEmail": "Change email address",
+  "newEmail": "New email address",
+  "currentPassword": "Current password",
+  "changeEmailButton": "Change email",
+  "emailChanged": "Email address changed.",
+  "notifications": "Notifications",
+  "pushOnDevice": "Push on this device:",
+  "pushOn": "on",
+  "pushOff": "off",
+  "pushDisable": "Disable push",
+  "pushHint": "Which messages arrive as push notifications. All messages also remain visible in the notification center (bell at the top).",
+  "preference": {
+    "match_soon": {
+      "label": "Match starting soon",
+      "hint": "Calls and schedule changes for your matches"
+    },
+    "score_corrected": {
+      "label": "Score corrected",
+      "hint": "When a score is changed afterwards"
+    },
+    "deadlines": {
+      "label": "Deadlines & reminders",
+      "hint": "Submission deadlines and review reminders"
+    },
+    "paper_status": {
+      "label": "Paper status",
+      "hint": "Submission, assignment and decisions on papers"
+    },
+    "print_status": {
+      "label": "Print jobs",
+      "hint": "Approved, started, finished or failed"
+    },
+    "announcements": {
+      "label": "Announcements",
+      "hint": "Announcements published by the organizers"
+    }
+  },
+  "changePassword": "Change password",
+  "passwordChanged": "Password changed. All other sessions have been signed out.",
+  "privacy": "Privacy",
+  "privacyHint": "Download all data stored for your account, or delete your account. Deleting removes your personal data; recorded results are kept anonymously.",
+  "export": "Export my data",
+  "confirmPassword": "Password to confirm",
+  "confirmDelete": "Delete the account permanently? This cannot be undone.",
+  "deleteAccount": "Delete account"
+}

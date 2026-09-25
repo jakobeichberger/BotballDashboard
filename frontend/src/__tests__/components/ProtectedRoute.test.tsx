@@ -30,6 +30,13 @@ describe("ProtectedRoute permissions", () => {
     expect(screen.getByText("Home")).toBeInTheDocument();
   });
 
+  it("waits for the profile instead of redirecting while it loads", () => {
+    useAuthStore.setState({ accessToken: "token", user: null });
+    renderRoute();
+    expect(screen.queryByText("Home")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
   it("renders the form for a user with the concrete permission", () => {
     useAuthStore.setState({ accessToken: "token", user: { id: "u", is_superuser: false, roles: [], permissions: ["scoring:write"] } as any });
     renderRoute();

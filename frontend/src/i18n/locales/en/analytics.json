@@ -1,0 +1,261 @@
+{
+  "noData": "No data.",
+  "boxplot": {
+    "summary": "min {{min}}, Q1 {{q1}}, median {{median}}, Q3 {{q3}}, max {{max}}"
+  },
+  "review": {
+    "title": "Check run: {{team}}, round {{round}}",
+    "reasons": "Anomalies",
+    "values": "Entered values (total {{total}})",
+    "changes": "Changes",
+    "revision": "Rev. {{revision}}:",
+    "viewInSchedule": "View in schedule",
+    "confirmed": "Confirmed",
+    "confirm": "Value is correct – confirm"
+  },
+  "history": {
+    "title": "History & multi-year comparison ({{count}})",
+    "empty": "No event participations yet.",
+    "scoreChart": "Seeding score per event",
+    "seedingScore": "Seeding score",
+    "rankChart": "Placement per event (higher = better)",
+    "seedingRank": "Seeding rank",
+    "overallRank": "Overall rank",
+    "caption": "The team's results per event",
+    "col": {
+      "season": "Season",
+      "event": "Event",
+      "seeding": "Seeding",
+      "seedScore": "Seed score",
+      "overall": "Overall",
+      "overallScore": "Overall score",
+      "runs": "Runs",
+      "bestRun": "Best run",
+      "practiceAvg": "Practice avg.",
+      "team": "Team"
+    }
+  },
+  "deadlines": {
+    "done": "done",
+    "past": "over",
+    "today": "today",
+    "running": "ongoing",
+    "tomorrow": "tomorrow",
+    "inDays_one": "in {{count}} day",
+    "inDays_other": "in {{count}} days",
+    "none": "No upcoming deadlines.",
+    "label": "Deadlines",
+    "kind": {
+      "paper": "Paper",
+      "review": "Review",
+      "printing": "3D printing",
+      "registration": "Registration",
+      "competition": "Competition",
+      "event": "Event",
+      "phase": "Phase",
+      "deadline": "Deadline",
+      "milestone": "Date"
+    }
+  },
+  "calendar": {
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "weekday": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "timeline": {
+    "status": {
+      "planned": "planned",
+      "active": "active",
+      "finished": "finished"
+    },
+    "noDate": "no date",
+    "noEvents": "No events have been created for this season yet.",
+    "label": "Timeline {{season}}"
+  },
+  "feed": {
+    "intro": "Subscribe to your deadlines in Outlook, Google or Apple Calendar. The address is personal – anyone who knows it can see your dates.",
+    "download": "Download .ics",
+    "rotate": "Create a new subscription address",
+    "create": "Create subscription address",
+    "revoke": "Revoke subscription",
+    "activeSince": "Subscription active since {{date}}",
+    "lastUsed": ", last fetched {{date}}",
+    "shownOnce": ". For security reasons the address is only shown once.",
+    "address": "Subscription address",
+    "copied": "Copied",
+    "copy": "Copy"
+  },
+  "calendarPage": {
+    "title": "Deadlines & season timeline",
+    "season": "Season",
+    "allRelevant": "All relevant to me",
+    "timeline": "Season timeline {{season}}",
+    "deadlineCalendar": "Deadline calendar",
+    "showPast": "Show past",
+    "view": "View",
+    "list": "List",
+    "month": "Month",
+    "legend": "Legend",
+    "legendItem": {
+      "red": "Paper (official)",
+      "orange": "Paper internal / reviews / deadlines",
+      "blue": "ECER / tournament",
+      "purple": "GCER",
+      "green": "3D printing",
+      "gray": "Registration"
+    },
+    "ical": "Calendar subscription (iCal)"
+  },
+  "practice": "Practice",
+  "round": "Round {{round}}",
+  "roundShort": "R{{round}}",
+  "reason": {
+    "out_of_range": "Impossible value",
+    "invalid_value": "Invalid value",
+    "total_mismatch": "Total does not match",
+    "team_outlier": "Outlier (team)",
+    "field_outlier": "Outlier (field)",
+    "jump": "Jump"
+  },
+  "heatmap": {
+    "caption": "Average points per team and task; colour relative to the best team of the task",
+    "ofBest": "{{percent}}% of the best team",
+    "hint": "Darker = closer to the best team of this task. Light rows show weak task areas."
+  },
+  "anomalies": {
+    "none": "No anomalous runs.",
+    "label": "Anomalous runs",
+    "error": "Error",
+    "warning": "Warning",
+    "summary": "{{team}} · round {{round}} · {{points}} points",
+    "confirmed": "confirmed",
+    "check": "Check"
+  },
+  "statistics": {
+    "title": "Statistics & anomalies",
+    "includePractice": "Include practice runs",
+    "loadFailed": "Statistics could not be loaded.",
+    "overview": "Overview",
+    "teams": "Teams",
+    "unconfirmed": "Unconfirmed",
+    "anomalous": "Anomalous",
+    "toCheck": "Runs to check ({{count}})",
+    "checksHint": "Checked are impossible values, totals that do not match the individual values, outliers compared with the team's other runs (robust z-score) and with all runs (3×IQR), and implausible jumps.",
+    "perRound": "Distribution per round",
+    "perRoundLabel": "Box plots per round",
+    "perField": "Distribution per task (points)",
+    "perFieldLabel": "Box plots per task",
+    "heatmap": "Heatmap: points per team and task",
+    "trend": "Trend across rounds",
+    "mean": "Mean",
+    "median": "Median",
+    "trendPerTeam": "Trend per team",
+    "scores": "Scores",
+    "trendPerRun": "Trend / run"
+  },
+  "trend": {
+    "flat": "steady",
+    "up": "rising",
+    "down": "falling"
+  },
+  "performance": {
+    "title": "Performance dashboard",
+    "noRuns": "No runs yet.",
+    "run": "Run",
+    "official": "Competition",
+    "practiceInternal": "Practice (internal)",
+    "noFields": "No individual scores available.",
+    "fieldAvg": "Avg. all teams",
+    "fieldsCaption": "Points per task: team vs. all teams",
+    "task": "Task",
+    "teamAvg": "Team avg.",
+    "fieldAvgShort": "Field avg.",
+    "strength": "Strength",
+    "weakness": "Weakness",
+    "metrics": "Performance metrics",
+    "officialAvg": "Avg. competition",
+    "officialAvgShort": "Competition avg.",
+    "practiceAvg": "Avg. practice",
+    "trendPerRun": "Trend per run",
+    "preview": "Ranking preview – if the event ended now",
+    "of": "of {{total}}",
+    "score": "Score {{score}}",
+    "overall": "Overall ranking ({{category}})",
+    "gap": "Gap to the next seeding rank",
+    "gapHint": "Points in the seeding average",
+    "scoreTrend": "Score history",
+    "practiceHint": "Practice runs (dashed) are internal and do not count towards the ranking.",
+    "strengths": "Strengths & weaknesses per task",
+    "phases": "Phase comparison",
+    "phasesCaption": "Scores per phase",
+    "phase": "Phase",
+    "seasonEvents": "Events of this season (preparation ↔ tournament)",
+    "seasonEventsCaption": "Comparison of the season's events",
+    "comparison": "Team comparison",
+    "noTeams": "No teams with data – mentors only see their own team here.",
+    "comparisonCaption": "Teams by current average",
+    "best": "Best",
+    "trend": "Trend",
+    "detailsFor": "Details {{team}}",
+    "details": "Details",
+    "includePractice": "Include practice runs in strengths/weaknesses",
+    "noAccess": "No permission for this team or no data."
+  },
+  "audit": {
+    "title": "Audit trail",
+    "hint": "Every change to this event's scores (including deleted runs, cards and disqualifications) and to its DE, aerial and documentation results, newest first.",
+    "tab": {
+      "scores": "Scores",
+      "results": "Results"
+    },
+    "team": "Team",
+    "allTeams": "All teams",
+    "kind": "Kind",
+    "allKinds": "All kinds",
+    "kindLabel": {
+      "de": "Double elimination",
+      "aerial": "Aerial",
+      "doc": "Documentation"
+    },
+    "col": {
+      "time": "Time",
+      "team": "Team",
+      "what": "Change",
+      "changes": "Values",
+      "by": "By"
+    },
+    "scoreKind": {
+      "created": "Entered",
+      "updated": "Changed",
+      "deleted": "Deleted"
+    },
+    "revision": "rev. {{revision}}",
+    "total": "Total {{total}}",
+    "noChange": "no value changed",
+    "system": "System",
+    "yes": "yes",
+    "no": "no",
+    "empty": "No changes.",
+    "loadFailed": "The audit trail could not be loaded.",
+    "field": {
+      "total_score": "Total",
+      "sheet_score": "Score sheet",
+      "bonus_score": "Bonus",
+      "is_disqualified": "Disqualified",
+      "yellow_card": "Yellow card",
+      "red_card": "Red card",
+      "round_lost": "Round lost",
+      "round_lost_reason": "Reason",
+      "end_contact": "End contact",
+      "notes": "Note"
+    }
+  }
+}

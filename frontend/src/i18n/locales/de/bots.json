@@ -1,0 +1,45 @@
+{
+  "title": "Bot-Galerie",
+  "createFailed": "Anlegen fehlgeschlagen.",
+  "filter": {
+    "season": "Saison filtern",
+    "allSeasons": "Alle Saisons",
+    "teams": "Teams filtern",
+    "allTeams": "Alle Teams",
+    "ownTeams": "Eigene Teams",
+    "externalTeams": "Externe Teams"
+  },
+  "add": "+ Bot anlegen",
+  "form": {
+    "namePlaceholder": "z. B. RoboLion X1",
+    "owner": "Zugehörigkeit",
+    "ownTeam": "Eigenes Team",
+    "externalTeam": "Externes Team",
+    "team": "Team",
+    "chooseTeam": "— Team wählen —",
+    "externalPlaceholder": "z. B. Team Zürich",
+    "season": "Saison",
+    "noSeason": "— keine —",
+    "drive": "Antrieb",
+    "drivePlaceholder": "z. B. Differential",
+    "sensors": "Sensorik",
+    "sensorsPlaceholder": "z. B. 2x IR, Kamera",
+    "description": "Kurzbeschreibung",
+    "functionality": "Funktionsweise",
+    "functionalityPlaceholder": "Wie funktioniert der Roboter? Aufbau, Antrieb, Strategie …",
+    "create": "Bot anlegen",
+    "imageHint": "Bild kann nach dem Anlegen auf der Detailseite hochgeladen werden."
+  },
+  "own": "Eigenes",
+  "external": "Extern",
+  "empty": "Noch keine Bots in der Galerie",
+  "detail": {
+    "back": "Zurück zur Galerie",
+    "notFound": "Bot nicht gefunden.",
+    "confirmDelete": "Bot \"{{name}}\" wirklich löschen?",
+    "noFunctionality": "Keine Beschreibung der Funktionsweise vorhanden.",
+    "noImage": "Kein Bild hochgeladen",
+    "imageTypes": "PNG, JPEG, GIF oder WebP",
+    "uploadImage": "Bild hochladen"
+  }
+}

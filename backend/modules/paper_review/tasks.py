@@ -35,3 +35,16 @@ def process_review_deadlines() -> None:
             await db.commit()
 
     asyncio.run(run())
+
+
+@celery_app.task(name="papers.deadline_reminders")
+def paper_deadline_reminders() -> None:
+    """Remind teams (and reviewers) 7, 3 and 1 day(s) before paper deadlines."""
+    from modules.paper_review.deadlines import queue_paper_deadline_reminders
+
+    async def run() -> None:
+        async with AsyncSessionLocal() as db:
+            await queue_paper_deadline_reminders(db)
+            await db.commit()
+
+    asyncio.run(run())

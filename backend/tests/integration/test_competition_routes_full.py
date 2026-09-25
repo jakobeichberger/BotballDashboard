@@ -99,7 +99,9 @@ class TestDERoutes:
         assert second.json()["bracket"] == "B"
         assert second.json()["de_rank"] == 5
 
-        rows = await comp_svc.get_de_results(db, comp_season.id)
+        from modules.scoring.service import get_default_event
+
+        rows = await comp_svc.get_de_results(db, await get_default_event(db, comp_season.id))
         assert len(rows) == 1  # updated in place, not duplicated
         assert rows[0].bracket == "B"
         assert rows[0].de_rank == 5
@@ -129,9 +131,10 @@ class TestDERoutes:
         )
         assert resp.status_code == 200
         by_team = {r["team_id"]: r for r in resp.json()}
-        assert by_team[t1.id]["bracket_score"] == 1.0
-        assert by_team[t2.id]["bracket_score"] == 0.5
-        assert by_team[t3.id]["bracket_score"] == 0.0
+        # Game review: (n − DERank + 1) / n with n = 3.
+        assert by_team[t1.id]["bracket_score"] == pytest.approx(1.0)
+        assert by_team[t2.id]["bracket_score"] == pytest.approx(2 / 3)
+        assert by_team[t3.id]["bracket_score"] == pytest.approx(1 / 3)
 
     @pytest.mark.asyncio
     async def test_requires_auth(self, client, comp_season, team):
@@ -155,7 +158,7 @@ class TestDERoutes:
 
 class TestAerialRoutes:
     @pytest.mark.asyncio
-    async def test_upsert_best_two_score(self, client, auth_headers, comp_season, team):
+    async def test_upsert_mean_of_all_runs(self, client, auth_headers, comp_season, team):
         resp = await client.put(
             f"/api/scoring/seasons/{comp_season.id}/aerial-results/{team.id}",
             headers=auth_headers,
@@ -164,7 +167,7 @@ class TestAerialRoutes:
         assert resp.status_code == 200
         data = resp.json()
         assert data["team_id"] == team.id
-        assert data["score"] == 9.0  # (10 + 8) / 2
+        assert data["score"] == 6.0  # (10 + 4 + 8 + 2) / 4
 
     @pytest.mark.asyncio
     async def test_bulk_and_ranking(self, client, auth_headers, comp_season, db):
@@ -178,12 +181,17 @@ class TestAerialRoutes:
                 {"team_id": t2.id, "run1": 10.0, "run2": 8.0},
             ],
         )
-        ranking = await client.get(f"/api/scoring/seasons/{comp_season.id}/aerial-ranking")
+        ranking = await client.get(
+            f"/api/scoring/seasons/{comp_season.id}/aerial-ranking", headers=auth_headers
+        )
         assert ranking.status_code == 200
         rows = ranking.json()
         assert rows[0]["team_id"] == t2.id
         assert rows[0]["rank"] == 1
         assert rows[0]["team_name"] == "High"
+        # The season's event is a draft: no anonymous access.
+        anonymous = await client.get(f"/api/scoring/seasons/{comp_season.id}/aerial-ranking")
+        assert anonymous.status_code == 401
 
     @pytest.mark.asyncio
     async def test_list_aerial_results(self, client, auth_headers, comp_season, team):
@@ -213,7 +221,8 @@ class TestDocRoutes:
         assert resp.status_code == 200
         data = resp.json()
         assert data["team_id"] == team.id
-        assert data["doc_score"] == pytest.approx(0.6)
+        # 0.2·0.9 + 0.2·0.6 + 0.2·0.3 + 0.4·0 (onsite missing counts 0)
+        assert data["doc_score"] == pytest.approx(0.36)
 
     @pytest.mark.asyncio
     async def test_bulk_doc_ranking(self, client, auth_headers, comp_season, db):
@@ -274,7 +283,9 @@ class TestOverallRankingRoute:
             headers=auth_headers,
             json={"part1": 10.0},
         )
-        resp = await client.get(f"/api/scoring/seasons/{comp_season.id}/ranking/overall")
+        resp = await client.get(
+            f"/api/scoring/seasons/{comp_season.id}/ranking/overall", headers=auth_headers
+        )
         assert resp.status_code == 200
         entries = resp.json()
         by_team = {e["team_id"]: e for e in entries}
@@ -295,6 +306,7 @@ class TestOverallRankingRoute:
         resp = await client.get(
             f"/api/scoring/seasons/{comp_season.id}/ranking/overall",
             params={"category": "open"},  # no team registered as 'open'
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json() == []

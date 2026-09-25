@@ -20,6 +20,7 @@ from modules.auth.models import Permission, Role, RolePermission, User, UserRole
 from modules.auth.service import hash_password
 from modules.scoring.models import ScoringSchema
 from modules.teams.models import Team, TeamMember
+from tests.paper_helpers import api_upload_and_submit
 
 GIF = b"GIF87a" + b"\x00" * 32
 
@@ -133,6 +134,15 @@ class TestScoreCannotBeForged:
 
 
 class TestOrganizerOnlyResultRoutes:
+    @pytest.fixture(autouse=True)
+    async def _modules_enabled(self, db, season, event):
+        # The result routes answer 404 for events without these modules.
+        season.use_double_elimination = True
+        season.use_documentation_scoring = True
+        season.use_aerial = True
+        event.active_modules = ["seeding", "double_elimination", "documentation", "aerial"]
+        await db.commit()
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "path,payload",
@@ -170,6 +180,7 @@ class TestReviewsAreNotLeakedByGetPaper:
             json={"season_id": season.id, "team_id": team.id, "title": "P"},
         )
         pid = paper.json()["id"]
+        await api_upload_and_submit(client, auth_headers, pid)
         reviewer = User(
             email="rev2@test.com",
             display_name="Rev",

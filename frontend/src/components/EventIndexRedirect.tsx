@@ -1,13 +1,15 @@
 import { Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useEvents } from "@/hooks/useEvents";
 
 export default function EventIndexRedirect() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useEvents();
-  if (isLoading) return <div className="grid min-h-screen place-items-center">Events werden geladen…</div>;
+  if (isLoading) return <div className="grid min-h-screen place-items-center">{t("eventsLoading")}</div>;
   if (isError) {
     return (
       <div className="grid min-h-screen place-items-center text-center">
-        <div><p>Events konnten nicht geladen werden.</p><button className="btn-primary mt-3" onClick={() => refetch()}>Erneut versuchen</button></div>
+        <div><p>{t("eventsLoadFailed")}</p><button className="btn-primary mt-3" onClick={() => refetch()}>{t("retry")}</button></div>
       </div>
     );
   }

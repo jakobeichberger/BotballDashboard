@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
+import { useScoringScope } from "@/hooks/useScoringScope";
+import { regionalDocScore } from "@/lib/scoring";
 import { EventLink } from "@/components/EventLink";
 import { FileText, ArrowLeft, Save } from "lucide-react";
+import { formatNumber } from "@/i18n/format";
+import { PAPER_STATUS_LABEL } from "@/modules/papers/paperMeta";
+
+const fourDecimals = { minimumFractionDigits: 4, maximumFractionDigits: 4 };
 
 interface DocEntry {
   team_id: string;
@@ -21,6 +27,11 @@ interface PaperEntry {
   paper_rank?: number | null;
 }
 
+interface OverallEntry {
+  team_id: string;
+  values: Record<string, number>;
+}
+
 interface Team {
   id: string;
   name: string;
@@ -28,16 +39,11 @@ interface Team {
 }
 
 export default function DocScoringPage() {
-  const [searchParams] = useSearchParams();
-  const sid = searchParams.get("season_id") ?? "";
+  const { t } = useTranslation("scoring");
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"doc" | "paper">("doc");
-
-  const { data: season } = useQuery({
-    queryKey: ["seasons", "active"],
-    queryFn: async () => { const { data } = await api.get("/seasons/active"); return data; },
-  });
-  const seasonId = sid || season?.id;
+  // Results belong to the event of the current route, not the season's first event.
+  const { base, seasonId, season } = useScoringScope();
 
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["teams"],
@@ -47,10 +53,20 @@ export default function DocScoringPage() {
   // ── Documentation ────────────────────────────────────────────────────────
 
   const { data: existingDoc } = useQuery<DocEntry[]>({
-    queryKey: ["doc-scores", seasonId],
-    queryFn: async () => { const { data } = await api.get(`/scoring/seasons/${seasonId}/doc-scores`); return data; },
-    enabled: !!seasonId,
+    queryKey: ["doc-scores", base],
+    queryFn: async () => { const { data } = await api.get(`${base}/doc-scores`); return data; },
+    enabled: !!base,
   });
+
+  // The documentation score the overall ranking actually uses comes from the
+  // season's formula set (ECER: P1–P3 only, GCER: onsite only, …).
+  const { data: overall } = useQuery<OverallEntry[]>({
+    queryKey: ["overall-ranking", base, "doc"],
+    queryFn: async () => { const { data } = await api.get(`${base}/ranking/overall`); return data; },
+    enabled: !!base,
+  });
+  const formulaDocScore = (tid: string): number | undefined =>
+    overall?.find((o) => o.team_id === tid)?.values?.doc_score;
 
   const [docDraft, setDocDraft] = useState<Record<string, Partial<DocEntry>>>({});
 
@@ -65,16 +81,17 @@ export default function DocScoringPage() {
 
   const saveDocMutation = useMutation({
     mutationFn: async (entries: DocEntry[]) => {
-      await api.put(`/scoring/seasons/${seasonId}/doc-scores`, entries);
+      await api.put(`${base}/doc-scores`, entries);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["doc-scores", seasonId] });
+      queryClient.invalidateQueries({ queryKey: ["doc-scores", base] });
+      queryClient.invalidateQueries({ queryKey: ["overall-ranking"] });
       setDocDraft({});
     },
   });
 
   const handleSaveDoc = () => {
-    if (!teams || !seasonId) return;
+    if (!teams || !base) return;
     const entries = teams
       .filter((t) => {
         const e = effectiveDoc(t.id);
@@ -142,12 +159,12 @@ export default function DocScoringPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <EventLink to="/scoreboard" aria-label="Zurück zur Rangliste" className="text-gray-400 hover:text-gray-600">
+          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-gray-400 hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
           </EventLink>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="w-6 h-6 text-purple-500" />
-            Dokumentation & Paper – Scoring
+            {t("doc.title")}
           </h1>
         </div>
         <button
@@ -160,7 +177,7 @@ export default function DocScoringPage() {
           className="btn-primary text-sm flex items-center gap-2"
         >
           <Save className="w-4 h-4" />
-          Speichern
+          {t("common:save")}
         </button>
       </div>
 
@@ -175,7 +192,7 @@ export default function DocScoringPage() {
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            Dokumentation (P1/P2/P3 + Onsite)
+            {t("doc.tabDoc")}
           </button>
         )}
         {showPaper && (
@@ -187,10 +204,16 @@ export default function DocScoringPage() {
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            Paper-Score (0–1)
+            {t("doc.tabPaper")}
           </button>
         )}
       </div>
+
+      {activeTab === "doc" && showDoc && (
+        <p className="text-sm text-gray-500 mb-4">
+          {t("doc.hint")}
+        </p>
+      )}
 
       {/* Documentation Tab */}
       {activeTab === "doc" && showDoc && (
@@ -198,19 +221,21 @@ export default function DocScoringPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
-                {["Teil 1", "Teil 2", "Teil 3", "Onsite"].map((h) => (
+                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+                {[t("doc.part", { number: 1 }), t("doc.part", { number: 2 }), t("doc.part", { number: 3 }), t("doc.onsite")].map((h) => (
                   <th key={h} className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{h} (0–100)</th>
                 ))}
-                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">Doku-Score (0–1)</th>
+                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("doc.docScore")}</th>
+                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("doc.formulaValue")}</th>
               </tr>
             </thead>
             <tbody className="divide-y dark:divide-gray-800">
               {teams?.map((team) => {
                 const e = effectiveDoc(team.id);
                 const dirty = !!docDraft[team.id];
-                const parts = [e.part1, e.part2, e.part3, e.onsite].filter((v): v is number => v != null);
-                const docScore = parts.length > 0 ? (parts.reduce((a, b) => a + b, 0) / parts.length / 100).toFixed(4) : "–";
+                const regional = regionalDocScore([e.part1, e.part2, e.part3, e.onsite]);
+                const docScore = regional == null ? "–" : formatNumber(regional, fourDecimals);
+                const formulaValue = formulaDocScore(team.id);
                 return (
                   <tr key={team.id} className={dirty ? "bg-yellow-50 dark:bg-yellow-900/10" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}>
                     <td className="px-4 py-2">
@@ -223,7 +248,7 @@ export default function DocScoringPage() {
                           type="number" min={0} max={100} step={0.5}
                           value={e[f] ?? ""}
                           onChange={(ev) => setDocField(team.id, f, ev.target.value === "" ? null : Number(ev.target.value))}
-                          aria-label={`${f} für ${team.name}`}
+                          aria-label={t("doc.fieldFor", { field: f, team: team.name })}
                           className="input text-sm w-24 text-center"
                           placeholder="–"
                         />
@@ -231,6 +256,9 @@ export default function DocScoringPage() {
                     ))}
                     <td className="px-4 py-2 text-center font-bold text-gray-700 dark:text-gray-300">
                       {docScore}
+                    </td>
+                    <td className="px-4 py-2 text-center text-gray-500" title={t("doc.formulaValueHint")}>
+                      {formulaValue == null ? "–" : formatNumber(formulaValue, fourDecimals)}
                     </td>
                   </tr>
                 );
@@ -246,10 +274,10 @@ export default function DocScoringPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Paper-Titel</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">Final-Score (0–1)</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("doc.paperTitle")}</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:status")}</th>
+                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("doc.finalScore")}</th>
               </tr>
             </thead>
             <tbody className="divide-y dark:divide-gray-800">
@@ -261,7 +289,7 @@ export default function DocScoringPage() {
                     <td className="px-4 py-2 font-mono text-xs text-gray-500">{paper.team_id}</td>
                     <td className="px-4 py-2 text-gray-900 dark:text-white">{paper.title}</td>
                     <td className="px-4 py-2">
-                      <span className="badge-blue">{paper.status}</span>
+                      <span className="badge-blue">{PAPER_STATUS_LABEL[paper.status] ?? paper.status}</span>
                     </td>
                     <td className="px-4 py-2 text-center">
                       <input
@@ -273,7 +301,7 @@ export default function DocScoringPage() {
                             [paper.team_id]: { final_score: ev.target.value === "" ? null : Number(ev.target.value) },
                           }))
                         }
-                        aria-label={`Final-Score für ${paper.title}`}
+                        aria-label={t("doc.finalScoreFor", { title: paper.title })}
                         className="input text-sm w-28 text-center"
                         placeholder="–"
                       />
@@ -283,7 +311,7 @@ export default function DocScoringPage() {
               })}
               {(!papers || papers.length === 0) && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Keine Papers eingereicht</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-400">{t("doc.noPapers")}</td>
                 </tr>
               )}
             </tbody>

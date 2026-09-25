@@ -7,9 +7,6 @@ import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn() } }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (k: string) => k }),
-}));
 
 const SEASON = { id: "s1", name: "Saison 2026", year: 2026, phases: [] };
 
@@ -62,7 +59,7 @@ describe("DashboardPage (role-adaptive)", () => {
   });
 
   it("renders the reviewer dashboard for the reviewer role", async () => {
-    setUser({ id: "u2", display_name: "Rita", is_superuser: false, roles: [{ name: "reviewer" }] });
+    setUser({ id: "u2", display_name: "Rita", is_superuser: false, roles: [{ name: "reviewer" }], permissions: ["papers:review"] });
     renderPage();
     expect(await screen.findByTestId("reviewer-dashboard")).toBeInTheDocument();
     expect(screen.getByText("Reviewer")).toBeInTheDocument();

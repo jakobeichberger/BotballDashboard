@@ -1,0 +1,223 @@
+{
+  "status": {
+    "draft": "Entwurf",
+    "submitted": "Eingereicht",
+    "under_review": "In Prüfung",
+    "revision_requested": "Überarbeitung",
+    "resubmitted": "Neu eingereicht",
+    "accepted": "Angenommen",
+    "rejected": "Abgelehnt",
+    "disqualified_ai": "Disqualifiziert (KI)"
+  },
+  "recommendation": {
+    "accept": "Annehmen",
+    "revision_minor": "Kleine Überarbeitung",
+    "revision_major": "Große Überarbeitung",
+    "reject": "Ablehnen"
+  },
+  "criterion": {
+    "content": {
+      "label": "Inhalt",
+      "hint": "Concept / Design"
+    },
+    "implementation": {
+      "label": "Technische Umsetzung",
+      "hint": "Implementation"
+    },
+    "results": {
+      "label": "Ergebnisse",
+      "hint": "Results / Conclusion"
+    },
+    "language": {
+      "label": "Sprache",
+      "hint": "Sprachliche Qualität"
+    },
+    "format": {
+      "label": "Formales",
+      "hint": "IEEE-Format, max. 5 Seiten"
+    }
+  },
+  "deadlineType": {
+    "official_submission": "Offizielle Einreichung",
+    "official_final": "Offizielle finale Abgabe",
+    "internal_draft": "Interner Entwurf",
+    "internal_review": "Interne Review-Frist",
+    "internal_revision": "Interne Überarbeitung",
+    "internal_final": "Interne finale Abgabe"
+  },
+  "countdown": {
+    "days": "{{days}} T {{hours}} Std",
+    "hours": "{{hours}} Std {{mins}} Min",
+    "minutes": "{{mins}} Min"
+  },
+  "deadlineBanner": {
+    "internalPassed": "Interne Frist abgelaufen:",
+    "uploadStillPossible": ". Hochladen bleibt möglich.",
+    "deadline": "Einreichungsfrist:",
+    "remaining": "noch {{remaining}}",
+    "passedAt": "Einreichungsfrist abgelaufen am",
+    "canOverride": "Als Organisator kannst du trotzdem hochladen und einreichen.",
+    "locked": "Hochladen und Einreichen sind gesperrt.",
+    "override": "Admin-Override",
+    "lockedBadge": "Gesperrt"
+  },
+  "diff": {
+    "from": "Von",
+    "to": "nach",
+    "compare": "Versionen vergleichen",
+    "pickTwo": "Zwei verschiedene Versionen wählen",
+    "comparing": "Vergleiche...",
+    "pages": "{{count}} S.",
+    "added": "+{{count}} Zeilen",
+    "removed": "−{{count}} Zeilen",
+    "truncated": "(gekürzt)",
+    "noDifference": "Kein Unterschied im Text.",
+    "label": "Textunterschiede",
+    "noText": "Kein Textvergleich möglich: {{reason}}. Verglichen werden nur Dateiname, Größe und Upload-Zeit."
+  },
+  "autoAssign": {
+    "title": "Reviewer automatisch zuweisen",
+    "perPaper": "Reviewer pro Paper",
+    "preview": "Vorschau",
+    "previewFirst": "Erst eine Vorschau erstellen",
+    "assign": "Zuweisen",
+    "previewResult": "Vorschau: {{count}} Zuweisung(en)",
+    "assignedResult": "Zugewiesen: {{count}} Zuweisung(en)",
+    "unfilled": "Nicht genug passende Reviewer für: {{papers}}",
+    "missing": "{{title}} ({{count}} fehlen)"
+  },
+  "deadlines": {
+    "title": "Fristen",
+    "blocksUploads": "sperrt Uploads",
+    "passedWarning": "abgelaufen (nur Warnung)",
+    "passed": "abgelaufen",
+    "deleteLabel": "Frist {{name}} löschen",
+    "empty": "Noch keine Fristen hinterlegt.",
+    "type": "Art",
+    "label": "Bezeichnung",
+    "blockAfter": "Uploads danach sperren",
+    "create": "Frist anlegen"
+  },
+  "title": "Paper Review",
+  "reviewsCsv": "Reviews CSV",
+  "deadlinePassed": "Einreichungsfrist abgelaufen",
+  "submitNew": "+ Paper einreichen",
+  "stats": {
+    "title": "Statistik",
+    "total": "Paper gesamt",
+    "acceptanceRate": "Annahmequote",
+    "avgFinal": "Ø Endergebnis",
+    "avgReview": "Ø Review-Score",
+    "openReviews": "Offene Reviews",
+    "decisions": "{{accepted}} angenommen · {{rejected}} abgelehnt · {{disqualified}} disqualifiziert ·",
+    "perCriterion": "Ø je Kriterium:"
+  },
+  "workload": {
+    "title": "Reviewer-Auslastung",
+    "summary": "{{open}} offen · {{overdue}} überfällig · {{completed}} erledigt"
+  },
+  "col": {
+    "title": "Titel",
+    "round": "Runde",
+    "version": "Version",
+    "submitted": "Eingereicht"
+  },
+  "empty": "Noch keine Paper eingereicht",
+  "create": {
+    "title": "Paper einreichen",
+    "hint": "Pro Team und Saison gibt es ein Paper. Überarbeitungen werden später als neue Version hochgeladen.",
+    "team": "Team *",
+    "titleLabel": "Titel *",
+    "abstract": "Kurzfassung",
+    "pdf": "PDF (ohne PDF bleibt das Paper ein Entwurf)",
+    "failed": "Paper konnte nicht angelegt werden.",
+    "submit": "Einreichen",
+    "draft": "Als Entwurf anlegen"
+  },
+  "assignment": {
+    "pending": "Ausstehend",
+    "in_progress": "In Arbeit",
+    "completed": "Abgegeben",
+    "overdue": "Überfällig"
+  },
+  "detail": {
+    "total": "Gesamt",
+    "overallComment": "Gesamtkommentar",
+    "toRevise": "Zu überarbeiten",
+    "reviewerFallback": "Reviewer {{id}}",
+    "fileUnavailable": "Datei ist nicht verfügbar.",
+    "back": "Zurück zu Paper Review",
+    "notFound": "Paper nicht gefunden.",
+    "team": "Team",
+    "level": "Stufe",
+    "reviewRound": "Review-Runde",
+    "currentVersion": "Aktuelle Version",
+    "avgReviewerScore": "Ø Reviewer-Score",
+    "submittedCount": "({{count}} abgegeben)",
+    "formatDeduction": "Formalabzug",
+    "deductionPoints": "−{{points}} Punkte",
+    "finalResult": "Endergebnis",
+    "rank": "Rang #{{rank}}",
+    "disqualifiedAi": "Das Paper wurde wegen KI-Missbrauchs disqualifiziert (0 Punkte, keine Überarbeitung möglich).",
+    "abstract": "Abstract",
+    "noAbstract": "Kein Abstract vorhanden.",
+    "versions": "Versionen ({{count}})",
+    "round": "Runde {{round}}",
+    "uploadedAt": "hochgeladen {{date}}",
+    "submittedAt": "eingereicht {{date}}",
+    "notSubmitted": "nicht eingereicht",
+    "downloadVersion": "Version {{version}} herunterladen",
+    "noFile": "Noch keine Datei hochgeladen",
+    "newVersionPdf": "Neue Version (PDF)",
+    "uploadVersion": "Neue Version hochladen",
+    "uploadFirst": "Zuerst ein PDF hochladen",
+    "resubmit": "v{{version}} erneut einreichen",
+    "versionsLocked": "Neue Versionen sind nur im Entwurf oder nach angeforderter Überarbeitung möglich.",
+    "feedback": "Feedback der Reviewer",
+    "reviewNumber": "Review {{number}}",
+    "feedbackPending": "Das Feedback wird freigegeben, sobald über die Review-Runde entschieden ist.",
+    "admin": "Verwaltung (Admin)",
+    "changeStatus": "Status ändern",
+    "choose": "— wählen —",
+    "reason": "Begründung",
+    "reasonOptional": "Begründung (optional)",
+    "confirmDisqualify": "Paper wegen KI-Missbrauchs disqualifizieren? Es erhält 0 Punkte und kann nicht mehr überarbeitet werden.",
+    "apply": "Anwenden",
+    "assignReviewer": "Reviewer zuweisen",
+    "chooseReviewer": "— Reviewer wählen —",
+    "conflictHint": "Mitglieder des Teams und Personen derselben Schule werden abgelehnt.",
+    "deductionLabel": "Formalabzug (Punkte, 0–100)",
+    "deductionReason": "Grund des Abzugs",
+    "deductionReasonPlaceholder": "Grund, z. B. 6 Seiten",
+    "deductionHint": "Wird beim Finalisieren vom Ergebnis abgezogen.",
+    "finalize": "Bewertung finalisieren",
+    "finalizeHint": "Mittelt die abgegebenen Reviews der aktuellen Runde (fünf Kriterien, 0–10), zieht den Formalabzug ab, sperrt die Reviews und aktualisiert das Ranking.",
+    "lastFinalized": "Zuletzt finalisiert: {{date}}.",
+    "myReview": "Meine Bewertung",
+    "reviewSubmitted": "Abgegeben",
+    "reviewDraft": "Entwurf",
+    "lockedSubmitted": "Abgegeben und gesperrt. Änderungen nur nach Freigabe durch die Organisation.",
+    "notOpen": "Das Paper ist derzeit nicht zur Begutachtung offen.",
+    "commentFor": "Kommentar {{criterion}}",
+    "comment": "Kommentar",
+    "recommendation": "Empfehlung",
+    "feedbackPlaceholder": "Feedback für das Team…",
+    "revisionNotes": "Überarbeitungshinweise",
+    "revisionNotesPlaceholder": "Was konkret geändert werden soll…",
+    "privateNotes": "Private Notizen (nur Organisation)",
+    "saveDraft": "Entwurf speichern",
+    "confirmSubmitReview": "Bewertung verbindlich abgeben? Danach ist sie gesperrt.",
+    "submitReview": "Bewertung abgeben",
+    "submitReviewHint": "Zum Abgeben müssen alle fünf Kriterien und eine Empfehlung gesetzt sein.",
+    "allReviews": "Alle Reviews ({{count}})",
+    "myReviews": "Meine Reviews ({{count}})",
+    "reopen": "Wieder öffnen",
+    "noReviews": "Noch keine Reviews",
+    "assignedReviewers": "Zugewiesene Reviewer ({{count}})",
+    "noAssignments": "Keine Zuweisungen",
+    "remind": "Erinnern",
+    "remindReviewer": "{{name}} an das Review erinnern",
+    "remindedAt": "erinnert am {{date}}",
+    "statusHistory": "Statusverlauf"
+  }
+}

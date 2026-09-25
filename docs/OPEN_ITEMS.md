@@ -1,51 +1,63 @@
-# Offene Punkte
+# Offene Punkte – aktueller Stand
 
-Stand: 2026-07-15 · Branch `feature/detail-pages-and-review-workflow` (gepusht)
+Stand: 2026-09-25 · Commit `aa61752` (integrierter Stand nach PR #20, #22, #23 und den Paketen der Audit-Nacharbeit) · Migrationen `0001`–`0029`, eine lineare Kette.
 
-Ausgangslage war ein weitgehend **read-only** Frontend (ca. die Hälfte der API ungenutzt).
-Aktuell: **98 / 106 Endpoints genutzt** — die verbleibenden sind redundante
-Alternativen zu bereits verdrahteten Endpoints. Es gibt keine substanziell
-offenen Features mehr.
+Die Befunde aus [audit-2026-09.md](audit-2026-09.md) sind bis auf die dort als offen markierten Punkte umgesetzt. Die vollständige Liste offener Aufgaben steht in [todo.md](todo.md). Diese Seite fasst den Stand zusammen.
 
-## ✅ Umgesetzt
-- Detailseiten (Team, Paper, Druckauftrag) + klickbare Navigation
-- Team ↔ Saison-Zuweisungsmatrix
-- Kompletter Paper-Review-Workflow (Reviewer-Formular, Zuweisung, Status, Upload, Finalisierung + Ranking)
-- Team-Self-Service: Papers, Wertungen und Druckaufträge selbst einreichen (eigenes Team erzwungen)
-- Vorbereitungs-/Übungspunkte (getrennt von der offiziellen Rangliste)
-- Team-Selbstverwaltung (Team + Mitglieder bearbeiten)
-- **Saison-Deadlines & Events**: pro Saison beliebige Deadlines/Events anlegen/löschen, Termin-Felder editieren, Phasen aktivieren
-- Admin-Settings: Benutzer (inkl. Rollen bearbeiten), Saisons (CRUD), Saison-Details, Saison-Module, **Wettbewerbsstufen (CRUD)**, Drucker, Filament-Spulen, Ankündigungen
-- Team anlegen, Profilseite (Name/Sprache/Passwort), **Druck-Kontingent anzeigen + bearbeiten**
-- Einzelne Wertung bearbeiten, `matches.csv`-Export
-- **Benutzerdefinierte Rollen** anlegen (`GET /auth/permissions` + `POST /auth/roles`) mit Rechte-Auswahl
-- **Bot-Galerie** (`/bots`, Migration 0015): Roboter eigener **und externer** Teams mit Funktionsweise, Antrieb, Sensorik, Saison und Bild (Magic-Byte-validiert). Mentoren pflegen die Bots ihres Teams, externe Bots sind Organisator-Sache.
-- 4 latente Berechtigungs-Bugs behoben (Migrationen 0010–0014)
-- **Dependabot: alle Alerts behoben** — Frontend `pnpm audit` meldet „No known vulnerabilities" (axios/vitest/vite/react-router/postcss + pnpm-overrides für Transitives), Backend cryptography 48.0.1, aiosmtplib 5.1.1, pytest 9.0.3
-- **Login-Bug behoben**: zwei Logins desselben Users in derselben Sekunde erzeugten ein identisches Refresh-JWT → Hash-Kollision → **409**. Refresh-Tokens haben jetzt eine `jti`.
-- **Tests**: **587 Backend**, **94 Frontend-Unit**, **11 Playwright-E2E**
+---
 
-## 🟢 Keine substanziell offenen Features mehr
-Alle ursprünglich offenen Punkte sind abgearbeitet.
+## Zusammenfassung
 
-## 🐞 Bekannte Bugs (bestehend, bewusst nicht in diesem Branch gefixt)
-- [ ] **Doppelte Ränge bei gemischten Wettbewerbsstufen** – `scoring/service.py::_refresh_ranks` filtert nur nach `competition_level_id`, wenn dieses gesetzt ist. `Ranking.competition_level_id` wird zudem nur beim Anlegen der Zeile gesetzt. Folge: Ein Team ohne Stufe und eines mit Stufe können beide **Rang 1** haben, und die Reihenfolge hängt davon ab, welches Match zuletzt erfasst wurde. Braucht eine Produktentscheidung: Ist die Rangliste **global** oder **pro Stufe**? (Aktuell nutzt die Erfassung durchgängig `competition_level_id=None`, daher im Alltag unauffällig.)
-- [ ] **Race beim Quota-Upsert** – `team_season_print_quotas` hat nur einen **nicht-eindeutigen** Index auf `(team_id, season_id)` (Migration 0007). `_get_or_create_quota` macht check-then-insert; zwei parallele Requests können zwei Zeilen anlegen, danach wirft `scalar_one_or_none()` dauerhaft `MultipleResultsFound` (500). Verschärfend: `GET /printing/quotas` legt Zeilen an. Fix wäre ein Unique-Constraint per Migration + Upsert.
+- **Turnierbetrieb:**
+  - eventzentrierte Wertung mit strukturierten Score-Sheets, Tie-Breakern, Sonderregeln, Brackets mit automatischem Weiterrücken, Formel-Engine und Offline-Erfassung;
+  - Worker und Beat laufen in jeder Installation mit.
+- **Sicherheit:**
+  - Prüfungen auf das eigene Team für Papers, Druck, Wertungen, Scans, Dokumente, Bots und Scouting;
+  - Archiv-Schutz, Token-Widerruf, Passwort-Reset, DSGVO-Export und Kontolöschung.
 
-## ⚪ Bewusst nicht umgesetzt (redundant zu bereits Genutztem)
-- `GET /scoring/seasons/{id}/ranking` – Basis-Rangliste; Frontend nutzt `ranking/extended`.
-- `POST /scoring/seasons/{id}/matches/bulk` – Bulk-Eingabe; Einzeleingabe ist verdrahtet.
-- `PUT /scoring/seasons/{id}/{de|aerial|doc}-results/{team_id}` – Einzel-Varianten; Bulk-`PUT` ist verdrahtet.
-- `GET /scoring/matches/{id}` – Einzelabruf; die Bearbeitung nutzt die Listendaten.
-- `GET /papers/{id}/reviews` – Reviews sind bereits in `GET /papers/{id}` enthalten.
-- `GET /auth/users/{id}` – Einzelabruf; die Benutzerliste wird verwendet.
+  Restrisiken siehe [SECURITY.md](SECURITY.md#residual-risks).
+- **Dokumentation:** API-Referenz, Datenbankschema, Architektur und Handbücher entsprechen dem Code (dieser Stand).
 
-## ⚠️ Bekannte Einschränkungen / Hinweise
-- **`.local`-E-Mails**: `UserCreate.email` (`EmailStr`) lehnt reservierte TLDs wie `.local` ab. Die Seed-Logins (`@test.local`) funktionieren nur, weil das Seed-Script die Validierung umgeht. Im Formular echte Domains verwenden.
-- **E2E-Tests ausführen**: Der Playwright-Suite braucht den laufenden Dev-Stack (`make dev`) **mit Seed-Daten**, weil sie gegen die echten Test-Logins prüft:
+## Früher gemeldete Bugs
+
+| Befund | Stand |
+|---|---|
+| Doppelte Ränge bei gemischten Wettbewerbsstufen (`_refresh_ranks`) | **Behoben.** Ränge werden pro Event, pro Stufe (`competition_level_id`, `NULL` als eigene Gruppe) und pro Kategorie berechnet, mit geteilten Plätzen. Die Produktfrage „global oder pro Stufe" ist damit zugunsten „pro Stufe und Kategorie" entschieden. |
+| Race beim Quota-Upsert | **Behoben.** `team_season_print_quotas` ist eindeutig pro `(event_id, team_id)`. Constraint seit Migration `0010`. Außerdem löst `printing/service.py::set_quota` Kontingente immer pro Event auf, auch bei Saisons mit mehreren Events. |
+
+## Nur per API, ohne Oberfläche
+
+Siehe [todo.md → Funktionen](todo.md#funktionen). Betroffen sind:
+
+- Karten und DQ;
+- Parts Challenges;
+- Event-Check-in;
+- Bracket-Gewichte pro Event;
+- Event-Audit-Trail;
+- Phasen bearbeiten oder löschen;
+- Alliance-Paare;
+- externe Teams bearbeiten;
+- Paper-Statushistorie;
+- manuelle Reviewer-Erinnerung;
+- OCR-Retry und OCR-Layout.
+
+Einige Endpunkte sind bewusst Alternativen zu bereits verdrahteten und werden deshalb vom Frontend nicht aufgerufen:
+
+- `POST /scoring/seasons/{id}/matches/bulk`;
+- die Einzel-`PUT`s `…/{de-results|aerial-results|doc-scores}/{team_id}`;
+- `GET /scoring/matches/{id}`;
+- `GET /papers/{id}/reviews`;
+- `GET /auth/users/{id}`.
+
+## Bekannte Einschränkungen
+
+- **`.local`-Adressen:** `EmailStr` lehnt reservierte TLDs wie `.local` ab. Die Dev- und Seed-Konten (`admin@dev.local`) legen Skripte an, die die Validierung umgehen. Im Formular echte Domains verwenden.
+- **E2E-Tests** brauchen den laufenden Stack mit Seed-Daten:
+
   ```bash
-  cd frontend && pnpm install && npx playwright install chromium
-  pnpm test:e2e            # bzw. npx playwright test --ui
+  cd frontend && pnpm install && pnpm exec playwright install chromium
+  E2E_BASE_URL=http://localhost:5173 pnpm e2e
   ```
-  Die Specs laufen gegen `http://localhost:5173` (überschreibbar via `E2E_BASE_URL`).
-- **Tests**: 587 Backend · 94 Frontend-Unit · 11 E2E. Die E2E-Suite läuft noch **nicht in CI** (bräuchte dort Stack + Seed).
+
+  In der CI läuft nur `e2e/platform.spec.ts` gegen `backend/scripts/seed_e2e.py`.
+- **i18n:** Viele Seiten sind nur auf Deutsch (siehe todo.md).
