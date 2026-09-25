@@ -40,11 +40,13 @@ logger = get_logger("api")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from core.live import drain_pending_publishes
+    from core.task_queue import drain_pending_tasks
 
     get_logger("startup").info("BotballDashboard API starting", env=settings.app_env)
     yield
-    # Live events queued by the last commits are still being published.
+    # Live events and Celery tasks queued by the last commits are still being sent.
     await drain_pending_publishes()
+    await drain_pending_tasks()
     get_logger("shutdown").info("BotballDashboard API stopped")
 
 
@@ -56,9 +58,13 @@ app = FastAPI(
     openapi_url="/api/openapi.json" if settings.is_dev else None,
     lifespan=lifespan,
 )
-# Registered first, so it runs inside request_context_and_security and sees the
-# request id that middleware assigns.
-app.add_middleware(AccessLogMiddleware)
+
+# Middleware, outermost first (Starlette runs the last one added outermost):
+#   CORSMiddleware                 CORS headers, also on errors and 413s
+#   AuditMiddleware                records successful mutations
+#   request_context_and_security   request id, Content-Length limit, security headers
+#   AccessLogMiddleware            binds the request id to every log line, logs the request
+#   BodySizeLimitMiddleware        counts streamed body bytes, 413 past the limit
 
 
 def _request_id(request: Request) -> str:
@@ -70,6 +76,9 @@ def _request_id(request: Request) -> str:
 # Content-Length). Added first, so it is the innermost middleware: its 413 goes
 # through the regular error handler with request id and CORS headers.
 app.add_middleware(BodySizeLimitMiddleware)
+# Inside request_context_and_security, so it sees the request id that
+# middleware assigns; outside the body limit, so a 413 is logged as well.
+app.add_middleware(AccessLogMiddleware)
 
 
 @app.middleware("http")

@@ -166,6 +166,41 @@ async def test_probe_requests_are_logged_at_debug(access_log):
     assert len(context["request_id"]) == 36
 
 
+async def test_a_streamed_oversize_body_is_logged_with_its_request_id(access_log, monkeypatch):
+    from core.config import get_settings
+
+    recorder, client = access_log
+    monkeypatch.setattr(get_settings(), "max_upload_size_mb", 0)  # limit: 1 MiB of framing
+
+    async def chunks():
+        for _ in range(3):
+            yield b"x" * 512 * 1024
+
+    response = await client.post("/api/teams", content=chunks(), headers={"X-Request-ID": "big-1"})
+    assert response.status_code == 413
+    [(_, _, fields, context)] = recorder.entries
+    assert fields["status"] == 413
+    assert context["request_id"] == "big-1"
+
+
+def test_middleware_order():
+    """Outermost first: CORS, audit, request context, access log, body limit."""
+    from fastapi.middleware.cors import CORSMiddleware
+    from starlette.middleware.base import BaseHTTPMiddleware
+
+    from core.audit import AuditMiddleware
+    from core.request_limits import BodySizeLimitMiddleware
+
+    stack = [m.cls for m in main.app.user_middleware]
+    assert stack == [
+        CORSMiddleware,
+        AuditMiddleware,
+        BaseHTTPMiddleware,  # request_context_and_security
+        app_logging.AccessLogMiddleware,
+        BodySizeLimitMiddleware,
+    ]
+
+
 # ── IntegrityError handler ────────────────────────────────────────────────────
 
 
@@ -302,3 +337,24 @@ async def test_worker_ping_is_cached(probe, monkeypatch):
     monkeypatch.setattr(main, "_WORKER_CHECK_TTL", 0.0)
     await _readiness()
     assert probe["pings"] == 2
+
+
+# ── Shutdown ──────────────────────────────────────────────────────────────────
+
+
+async def test_shutdown_waits_for_publishes_and_queued_tasks(monkeypatch):
+    from core import live, task_queue
+
+    drained: list[str] = []
+
+    async def publishes():
+        drained.append("publishes")
+
+    async def tasks():
+        drained.append("tasks")
+
+    monkeypatch.setattr(live, "drain_pending_publishes", publishes)
+    monkeypatch.setattr(task_queue, "drain_pending_tasks", tasks)
+    async with main.lifespan(main.app):
+        assert drained == []
+    assert drained == ["publishes", "tasks"]
