@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
@@ -35,6 +35,7 @@ import { useEvent, useEvents } from "@/hooks/useEvents";
 import { isModuleEnabled, useEventModules } from "@/hooks/useEventModules";
 import { useOfflineSync } from "@/hooks/useOfflineQueue";
 import NotificationCenter from "@/components/NotificationCenter";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import i18n, { localized } from "@/i18n/config";
 import { navigationRoutes } from "@/core/plugins";
 import { api } from "@/lib/api";
@@ -68,7 +69,43 @@ export default function Layout() {
   const { data: modules } = useEventModules(eventId);
   // Queued offline scores are replayed on app start and on reconnect.
   const sync = useOfflineSync();
+  const offlineSession = useAuthStore((state) => state.offlineSession);
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Mobile drawer: focus moves into it, Tab stays inside, Escape closes it and
+  // focus returns to the menu button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const drawer = drawerRef.current;
+    drawer?.querySelector<HTMLElement>("button, a[href], select")?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !drawer) return;
+      const items = Array.from(drawer.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], select:not([disabled])"));
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const menuButton = menuButtonRef.current;
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      menuButton?.focus();
+    };
+  }, [menuOpen]);
 
   const handleLogout = async () => {
     await logout();
@@ -92,13 +129,13 @@ export default function Layout() {
     (item) => hasPermission(item.permission) && isModuleEnabled(modules, item.module),
   );
 
-  const sidebar = (
+  const sidebar = (variant: "desktop" | "drawer") => (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="flex h-16 items-center justify-between border-b px-5 dark:border-gray-800">
         <span className="font-bold text-primary-700 dark:text-primary-400">{t("app_name")}</span>
         <button
           type="button"
-          className="md:hidden"
+          className="-mr-2 grid h-11 w-11 place-items-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
           onClick={() => setMenuOpen(false)}
           aria-label={t("closeMenu")}
         >
@@ -107,13 +144,13 @@ export default function Layout() {
       </div>
       <div className="border-b p-3 dark:border-gray-800">
         <label
-          htmlFor="event-switcher"
+          htmlFor={`event-switcher-${variant}`}
           className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500"
         >
           {t("event")}
         </label>
         <select
-          id="event-switcher"
+          id={`event-switcher-${variant}`}
           className="input w-full"
           value={eventId}
           onChange={(changeEvent) => navigate(`/events/${changeEvent.target.value}/dashboard`)}
@@ -212,25 +249,33 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
-      <div className="hidden md:block">{sidebar}</div>
+      <div className="hidden md:block">{sidebar("desktop")}</div>
       {menuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <button
-            type="button"
-            aria-label={t("closeMenu")}
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div className="relative h-full">{sidebar}</div>
+          {/* The backdrop is a mouse/touch target only; keyboard users close with Escape or the X button. */}
+          <div aria-hidden="true" className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
+          <div
+            ref={drawerRef}
+            id="mobile-navigation"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("mainNavigation")}
+            className="relative h-full w-72 max-w-[85vw]"
+          >
+            {sidebar("drawer")}
+          </div>
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
           <button
+            ref={menuButtonRef}
             type="button"
-            className="md:hidden"
+            className="-ml-2 grid h-11 w-11 place-items-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
             onClick={() => setMenuOpen(true)}
             aria-label={t("openMenu")}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-navigation"
           >
             <Menu aria-hidden="true" />
           </button>
@@ -250,7 +295,7 @@ export default function Layout() {
           )}
           <NotificationCenter />
         </header>
-        {!online && (
+        {(!online || offlineSession) && (
           <div
             role="alert"
             className="bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900"
@@ -259,7 +304,12 @@ export default function Layout() {
           </div>
         )}
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <Outlet />
+          {/* A broken page keeps the navigation usable; switching pages clears the error. */}
+          <ErrorBoundary resetKey={location.pathname}>
+            <Suspense fallback={<div className="p-6 text-gray-500" role="status">{t("loadingEllipsis")}</div>}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>
