@@ -61,7 +61,10 @@ mkdir "${work_dir}/data"
 tar -xzf "${work_dir}/backup.tar.gz" -C "${work_dir}/data"
 [ -f "${work_dir}/data/database.dump" ] || { echo "ERROR: archive contains no database.dump" >&2; exit 1; }
 if [ -f "${work_dir}/data/uploads.sha256" ]; then
-  (cd "${work_dir}/data" && sha256sum --quiet -c uploads.sha256)
+  # sha256sum -c rejects an empty manifest; a backup without uploads has one.
+  if [ -s "${work_dir}/data/uploads.sha256" ]; then
+    (cd "${work_dir}/data" && sha256sum --quiet -c uploads.sha256)
+  fi
 fi
 restored_uploads="${work_dir}/data/${upload_dir#/}"
 [ -d "$restored_uploads" ] || { echo "ERROR: archive has no ${upload_dir#/} directory" >&2; exit 1; }

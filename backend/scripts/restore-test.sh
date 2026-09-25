@@ -55,7 +55,10 @@ pg psql --dbname="$restore_db" --command='SELECT COUNT(*) AS restored_events FRO
 
 if [ -f "${work_dir}/data/uploads.sha256" ]; then
   upload_count="$(wc -l < "${work_dir}/data/uploads.sha256")"
-  (cd "${work_dir}/data" && sha256sum --quiet -c uploads.sha256)
+  # sha256sum -c rejects an empty manifest; a backup without uploads has one.
+  if [ -s "${work_dir}/data/uploads.sha256" ]; then
+    (cd "${work_dir}/data" && sha256sum --quiet -c uploads.sha256)
+  fi
   echo "Uploads verified: ${upload_count} files match the manifest"
 else
   # Archives from before the manifest was introduced only carry the files.
