@@ -1,11 +1,8 @@
 name: CI
 
+# Manual only: start it under Actions → CI → "Run workflow" (any branch).
 on:
   workflow_dispatch:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
 
 jobs:
   # ── Backend ────────────────────────────────────────────────────────────────
