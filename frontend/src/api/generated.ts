@@ -5326,6 +5326,8 @@ export interface components {
             source: string;
             /** Notes */
             notes: string | null;
+            /** Created By */
+            created_by?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -6149,10 +6151,11 @@ export interface components {
              */
             created_at: string;
         };
-        /** OcrAnchor */
+        /**
+         * OcrAnchor
+         * @description A printed reference mark (a filled square) the worker aligns every scan by.
+         */
         OcrAnchor: {
-            /** Name */
-            name: string;
             /** X */
             x: number;
             /** Y */
@@ -6161,11 +6164,11 @@ export interface components {
             width: number;
             /** Height */
             height: number;
+            /** Name */
+            name: string;
         };
         /** OcrFieldRegion */
         OcrFieldRegion: {
-            /** Key */
-            key: string;
             /** X */
             x: number;
             /** Y */
@@ -6174,6 +6177,59 @@ export interface components {
             width: number;
             /** Height */
             height: number;
+            /** Key */
+            key: string;
+        };
+        /**
+         * OcrFieldRule
+         * @description Plausibility check for one field, on top of the field's own min/max.
+         */
+        OcrFieldRule: {
+            /** Key */
+            key: string;
+            /** Min Value */
+            min_value?: number | null;
+            /** Max Value */
+            max_value?: number | null;
+            /**
+             * Integer
+             * @default false
+             */
+            integer: boolean;
+            /** Min Confidence */
+            min_confidence?: number | null;
+        };
+        /**
+         * OcrSumRule
+         * @description The read values of several fields must add up to a plausible total.
+         */
+        OcrSumRule: {
+            /** Label */
+            label: string;
+            /** Keys */
+            keys: string[];
+            /** Min Value */
+            min_value?: number | null;
+            /** Max Value */
+            max_value?: number | null;
+        };
+        /**
+         * OcrValidationRules
+         * @description How the OCR worker decides which read values a human must double-check.
+         *
+         *     Every value is shown in the review anyway; these rules only decide which
+         *     ones are flagged. Unknown keys from older layouts are ignored.
+         */
+        OcrValidationRules: {
+            /**
+             * Min Confidence
+             * @default 0.85
+             */
+            min_confidence: number;
+            /** Fields */
+            fields?: components["schemas"]["OcrFieldRule"][];
+            /** Sums */
+            sums?: components["schemas"]["OcrSumRule"][];
         };
         /** OpponentRankingEntry */
         OpponentRankingEntry: {
@@ -7998,10 +8054,7 @@ export interface components {
             anchors?: components["schemas"]["OcrAnchor"][];
             /** Field Regions */
             field_regions: components["schemas"]["OcrFieldRegion"][];
-            /** Validation Rules */
-            validation_rules?: {
-                [key: string]: unknown;
-            };
+            validation_rules?: components["schemas"]["OcrValidationRules"];
         };
         /**
          * ScoreSheetTemplateListItem
