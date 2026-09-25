@@ -33,7 +33,7 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
       <button
         onClick={handleClick}
         disabled={loading}
-        className={`btn-secondary gap-1.5 text-xs ${
+        className={`btn-secondary gap-1.5 text-sm ${
           variant === "csv" ? "opacity-80" : ""
         } disabled:opacity-50 disabled:cursor-not-allowed`}
         title={t("export.downloadTitle", { label })}

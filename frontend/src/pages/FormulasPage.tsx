@@ -264,16 +264,14 @@ export default function FormulasPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Calculator className="w-6 h-6 text-akzent" />
-          <div>
-            <h1 className="page-title">{t("formulas.title")}</h1>
-            <p className="text-sm text-leise">
-              {t("formulas.subtitle")}
-            </p>
-          </div>
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="page-header !mb-0">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <Calculator className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("formulas.title")}
+          </h1>
+          <p className="page-subtitle">{t("formulas.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {presets.length > 0 && (

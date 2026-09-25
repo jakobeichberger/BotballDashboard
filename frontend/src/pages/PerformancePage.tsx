@@ -125,10 +125,15 @@ export function TeamPerformanceView({ perf }: { perf: TeamPerformance }) {
       <StatGrid
         ariaLabel={t("performance.metrics")}
         items={[
-          { label: t("performance.officialAvg"), value: `${fmtNum(s.official_avg)} (${s.official_runs})`, icon: Activity },
-          { label: t("history.col.bestRun"), value: fmtNum(s.official_best), icon: TrendingUp },
-          { label: t("performance.practiceAvg"), value: `${fmtNum(s.practice_avg)} (${s.practice_runs})`, icon: Activity },
-          { label: t("performance.trendPerRun"), value: s.trend_per_run == null ? "—" : `${s.trend_per_run > 0 ? "+" : ""}${fmtNum(s.trend_per_run)}`, icon: TrendingUp },
+          { label: t("performance.officialAvg"), value: `${fmtNum(s.official_avg)} (${s.official_runs})`, icon: Activity, tone: "primary" },
+          { label: t("history.col.bestRun"), value: fmtNum(s.official_best), icon: TrendingUp, tone: "success" },
+          { label: t("performance.practiceAvg"), value: `${fmtNum(s.practice_avg)} (${s.practice_runs})`, icon: Activity, tone: "info" },
+          {
+            label: t("performance.trendPerRun"),
+            value: s.trend_per_run == null ? "—" : `${s.trend_per_run > 0 ? "+" : ""}${fmtNum(s.trend_per_run)}`,
+            icon: TrendingUp,
+            tone: s.trend_per_run != null && s.trend_per_run < 0 ? "warning" : "neutral",
+          },
         ]}
       />
 

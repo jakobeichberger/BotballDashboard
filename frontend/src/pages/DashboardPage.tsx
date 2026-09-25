@@ -12,7 +12,7 @@ import UserDashboard from "./dashboard/UserDashboard";
 import { useDashboardSummary } from "@/api/analytics";
 import PageHeader from "@/components/ui/PageHeader";
 import { ShortcutGrid } from "./dashboard/widgets";
-import { navigationRoutes } from "@/core/plugins";
+import { NAV_GROUPS, navigationRoutes } from "@/core/plugins";
 import { NAV_ICONS } from "@/core/navIcons";
 import { isModuleEnabled, useEventModules } from "@/hooks/useEventModules";
 import { localized } from "@/i18n/config";
@@ -104,6 +104,8 @@ export default function DashboardPage() {
   // Phone home screen (mobil-startseite): the modules as a two-column tile grid.
   const moduleTiles = navigationRoutes
     .filter((route) => route.path !== "dashboard" && hasPermission(route.permission) && isModuleEnabled(modules, route.module))
+    // Same order as the sidebar sections (competition, scoring, administration).
+    .sort((a, b) => NAV_GROUPS.indexOf(a.group ?? "event") - NAV_GROUPS.indexOf(b.group ?? "event"))
     .map((route) => ({
       to: `${eventBase}/${route.path.replace(/\/\*$/, "")}`,
       label: localized(route.label),

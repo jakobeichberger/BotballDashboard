@@ -192,7 +192,6 @@ export default function Layout() {
         })}
       </nav>
       <div className="space-y-3 border-t border-white/[0.07] px-3 pb-4 pt-3">
-        {variant === "desktop" && syncChip}
         {user && (
           <NavLink
             to={profilePath}
@@ -271,12 +270,13 @@ export default function Layout() {
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Phone top bar (mobil-startseite): menu, logo badge, status, bell, profile. */}
-        <header className="flex h-16 shrink-0 items-center gap-1 border-b border-rand bg-flaeche px-2 md:hidden">
+        {/* Phone top bar (mobil-startseite): menu, logo badge, status, bell, profile.
+            On wide screens a slim context line: current event, venue, sync state. */}
+        <header className="flex h-16 shrink-0 items-center gap-1 border-b border-rand bg-flaeche px-2 md:h-12 md:gap-3 md:bg-transparent md:px-8">
           <button
             ref={menuButtonRef}
             type="button"
-            className="btn-icon border-transparent"
+            className="btn-icon border-transparent md:hidden"
             onClick={() => setMenuOpen(true)}
             aria-label={t("openMenu")}
             aria-expanded={menuOpen}
@@ -289,9 +289,11 @@ export default function Layout() {
             className="flex min-w-0 flex-1 items-center gap-2 rounded-eng"
             aria-label={t("layout.home")}
           >
-            <LogoBadge size="sm" />
+            <LogoBadge size="sm" className="md:hidden" />
             <span className="truncate font-ui text-sm font-semibold tracking-ui text-fg">{event?.name}</span>
+            {event?.venue && <span className="hidden truncate text-sm text-leise md:inline">· {event.venue}</span>}
           </NavLink>
+          <span className="hidden md:contents">{syncChip}</span>
           {online && !offlineSession ? (
             <span className="grid h-11 w-9 place-items-center text-success" title={t("layout.online")}>
               <CheckCircle2 className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
@@ -303,8 +305,10 @@ export default function Layout() {
               <span className="sr-only">{t("layout.offline")}</span>
             </span>
           )}
-          <NotificationCenter variant="header" />
-          <NavLink to={profilePath} className="btn-icon border-transparent" aria-label={t("nav.profile")}>
+          <div className="md:hidden">
+            <NotificationCenter variant="header" />
+          </div>
+          <NavLink to={profilePath} className="btn-icon border-transparent md:hidden" aria-label={t("nav.profile")}>
             <UserRound className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
           </NavLink>
         </header>

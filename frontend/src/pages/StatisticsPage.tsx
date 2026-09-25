@@ -112,10 +112,10 @@ export default function StatisticsPage() {
           <StatGrid
             ariaLabel={t("statistics.overview")}
             items={[
-              { label: t("history.col.runs"), value: stats.overview.runs, icon: ListChecks },
-              { label: t("statistics.teams"), value: stats.overview.teams, icon: Users },
-              { label: t("statistics.unconfirmed"), value: stats.overview.unconfirmed, icon: ClipboardCheck },
-              { label: t("statistics.anomalous"), value: stats.anomalies.length, icon: AlertTriangle },
+              { label: t("history.col.runs"), value: stats.overview.runs, icon: ListChecks, tone: "info" },
+              { label: t("statistics.teams"), value: stats.overview.teams, icon: Users, tone: "neutral" },
+              { label: t("statistics.unconfirmed"), value: stats.overview.unconfirmed, icon: ClipboardCheck, tone: stats.overview.unconfirmed > 0 ? "warning" : "success" },
+              { label: t("statistics.anomalous"), value: stats.anomalies.length, icon: AlertTriangle, tone: stats.anomalies.length > 0 ? "primary" : "success" },
             ]}
           />
 

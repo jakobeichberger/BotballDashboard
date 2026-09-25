@@ -929,7 +929,7 @@ export default function SettingsPage() {
         <aside className="md:w-48 md:shrink-0">
           <nav aria-label={t("title")} className="-mx-1 flex gap-1 overflow-x-auto pb-1 md:mx-0 md:block md:space-y-1 md:overflow-visible">
             {NAV.map(({ to, icon: Icon, label }) => (
-              <NavLink key={to} to={to} className={({ isActive }) => clsx("flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-3 py-2 rounded-lg text-sm", isActive ? "bg-primary/10 text-akzent" : "text-leise hover:bg-flaeche-2")}>
+              <NavLink key={to} to={to} className={({ isActive }) => clsx("flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-eng border px-3 py-2 font-ui text-sm tracking-ui transition-colors", isActive ? "border-primary/30 bg-primary/[0.08] font-semibold text-akzent shadow-[inset_3px_0_0_theme(colors.primary.DEFAULT)]" : "border-transparent text-leise hover:bg-flaeche-2 hover:text-fg")}>
                 <Icon className="w-4 h-4" aria-hidden="true" />{t(`nav.${label}`)}
               </NavLink>
             ))}
