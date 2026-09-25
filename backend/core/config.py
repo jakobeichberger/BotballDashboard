@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 from cryptography.fernet import Fernet
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     app_secret_key: str = "change-me"
     app_base_url: str = "http://localhost:8000"
     allowed_origins: str = "http://localhost:5173"
+    # Log level for the API, worker and beat (DEBUG, INFO, WARNING, ...).
+    # Empty means DEBUG in development and INFO otherwise.
+    log_level: str = ""
 
     # Database – individual components so passwords with special characters
     # are never embedded in a URL string (avoids URL-encoding pitfalls).
@@ -33,6 +36,10 @@ class Settings(BaseSettings):
     # Where logged-out access tokens are remembered until they expire:
     # "redis" (shared by all API instances) or "memory" (one process; tests).
     token_denylist_backend: str = "redis"
+    # bcrypt work factor for new password hashes. 12 is the production value;
+    # the test suite lowers it (tests/conftest.py) because hashing dominates
+    # its runtime. Existing hashes keep the factor they were created with.
+    bcrypt_rounds: int = Field(default=12, ge=4, le=31)
 
     # Email – an empty SMTP_HOST disables SMTP (SendGrid is still tried when
     # SENDGRID_API_KEY is set).
@@ -47,7 +54,6 @@ class Settings(BaseSettings):
 
     # Web Push
     vapid_private_key: str = ""
-    vapid_public_key: str = ""
     vapid_admin_email: str = "admin@example.com"
 
     # 3D Print – Fernet key (urlsafe base64 of 32 bytes). Required in production.
@@ -93,6 +99,9 @@ class Settings(BaseSettings):
                 "`python3 -c 'from cryptography.fernet import Fernet; "
                 "print(Fernet.generate_key().decode())'` (or `make fernet-key`)."
             )
+        if self.bcrypt_rounds < 10:
+            # Only the test suite may use cheap hashes (tests/conftest.py).
+            raise ValueError("Unsafe production configuration: BCRYPT_ROUNDS must be at least 10.")
         return self
 
     @property

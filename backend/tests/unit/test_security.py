@@ -98,7 +98,7 @@ class TestUploadTraversal:
 # ── Secret validation in production ──────────────────────────────────────────
 class TestSecretValidation:
     def test_production_rejects_default_jwt_secret(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             Settings(
                 app_env="production",
                 app_secret_key="a" * 32,
@@ -107,7 +107,7 @@ class TestSecretValidation:
             )
 
     def test_production_rejects_short_secret(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             Settings(
                 app_env="production",
                 app_secret_key="short",
@@ -122,9 +122,23 @@ class TestSecretValidation:
             jwt_secret_key="B" * 40,
             postgres_password="C" * 40,
             printer_credential_encryption_key=Fernet.generate_key().decode(),
+            bcrypt_rounds=12,
             _env_file=None,
         )
         assert s.app_env == "production"
+
+    def test_production_rejects_cheap_bcrypt_rounds(self):
+        # The suite hashes with 4 rounds (conftest); production must not.
+        with pytest.raises(ValueError, match="BCRYPT_ROUNDS"):
+            Settings(
+                app_env="production",
+                app_secret_key="A" * 40,
+                jwt_secret_key="B" * 40,
+                postgres_password="C" * 40,
+                printer_credential_encryption_key=Fernet.generate_key().decode(),
+                bcrypt_rounds=4,
+                _env_file=None,
+            )
 
     def test_production_rejects_non_fernet_printer_key(self):
         # 40 random characters pass the length check but would crash the first
