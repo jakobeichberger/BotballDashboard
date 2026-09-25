@@ -1,7 +1,8 @@
 from functools import lru_cache
+from typing import Literal
 
 from cryptography.fernet import Fernet
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -9,8 +10,10 @@ from sqlalchemy.engine import URL
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Application
-    app_env: str = "production"
+    # Application – only these three values. Everything except "development"
+    # is held to the production secret check below; before, any other value
+    # ("prod", "staging", "Production") silently skipped it.
+    app_env: Literal["development", "test", "production"] = "production"
     app_secret_key: str = "change-me"
     app_base_url: str = "http://localhost:8000"
     allowed_origins: str = "http://localhost:5173"
@@ -61,9 +64,14 @@ class Settings(BaseSettings):
     # accept at least max(MAX_UPLOAD_SIZE_MB, PRINT_UPLOAD_MAX_MB) + 1 MB.
     print_upload_max_mb: int = 100
 
+    @field_validator("app_env", mode="before")
+    @classmethod
+    def normalise_app_env(cls, value: object) -> object:
+        return value.strip().lower() if isinstance(value, str) else value
+
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
-        if self.app_env != "production":
+        if self.app_env == "development":
             return self
 
         invalid: list[str] = []
