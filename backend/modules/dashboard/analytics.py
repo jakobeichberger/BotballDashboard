@@ -535,8 +535,21 @@ async def event_statistics(
             fields_for_run = _run_fields(m, schema_fields)
             recomputed: float | None = None
             if fields_for_run and m.raw_scores:
+                snapshot = m.schema_snapshot if isinstance(m.schema_snapshot, dict) else {}
                 try:
-                    recomputed = compute_match_total(m.raw_scores, fields_for_run)
+                    # Same rule as the score service: the sheet total plus the
+                    # end-contact bonus, 0 for a lost round.
+                    recomputed = (
+                        0.0
+                        if m.round_lost
+                        else round(
+                            compute_match_total(
+                                m.raw_scores, fields_for_run, snapshot.get("definition")
+                            )
+                            + float(m.bonus_score or 0.0),
+                            2,
+                        )
+                    )
                 except Exception:  # noqa: BLE001 - range problems are reported per field
                     recomputed = None
             samples.append(

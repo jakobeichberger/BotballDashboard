@@ -1,0 +1,1100 @@
+{
+  "schemas": {
+    "botball_2024": {
+      "definition": {
+        "sides": [
+          "A",
+          "B"
+        ],
+        "sections": [
+          {
+            "key": "area1",
+            "label": "Area 1",
+            "fields": [
+              {
+                "key": "area1_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "area1_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "area1_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "small_rover_bay",
+            "label": "Small Rover Bay",
+            "fields": [
+              {
+                "key": "small_rover_bay_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "small_rover_bay_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "small_rover_bay_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "large_rover_bay",
+            "label": "Large Rover Bay",
+            "fields": [
+              {
+                "key": "large_rover_bay_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "large_rover_bay_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "large_rover_bay_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "area2",
+            "label": "Area 2",
+            "fields": [
+              {
+                "key": "area2_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "area2_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "area2_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "area3",
+            "label": "Area 3",
+            "fields": [
+              {
+                "key": "area3_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "area3_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "area3_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "area4",
+            "label": "Area 4",
+            "fields": [
+              {
+                "key": "area4_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "area4_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "area4_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "area5",
+            "label": "Area 5",
+            "fields": [
+              {
+                "key": "area5_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "area5_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "area5_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "area6",
+            "label": "Area 6",
+            "fields": [
+              {
+                "key": "area6_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "area6_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "area6_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "rock_heap",
+            "label": "Rock Heap",
+            "fields": [
+              {
+                "key": "rock_heap_only_rocks",
+                "label": "Only Rocks",
+                "type": "count",
+                "multiplier": 6,
+                "min_value": 0,
+                "max_value": 12,
+                "required": false
+              },
+              {
+                "key": "rock_heap_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "rock_heap_botguy_cube",
+                "label": "Botguy or Cube in Zone",
+                "type": "boolean",
+                "factor": 5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "solar_panel",
+            "label": "Solar Panel",
+            "fields": [
+              {
+                "key": "solar_panel_flipped",
+                "label": "Solar Panel Flipped",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "solar_robots_back",
+                "label": "Robots Back in Start Box (×n+1)",
+                "type": "count",
+                "factor": 1,
+                "offset": 1,
+                "min_value": 0,
+                "max_value": 2
+              }
+            ]
+          },
+          {
+            "key": "lava_tube",
+            "label": "Lava Tube Area",
+            "fields": [
+              {
+                "key": "lava_purple_in_area",
+                "label": "Purple Noodles in Area",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 4,
+                "required": false
+              },
+              {
+                "key": "lava_purple_in_tubes",
+                "label": "Purple Noodles in Tubes",
+                "type": "count",
+                "multiplier": 100,
+                "min_value": 0,
+                "max_value": 4,
+                "required": false
+              },
+              {
+                "key": "lava_tube_cap",
+                "label": "Lava Tube Cap",
+                "type": "count",
+                "multiplier": 25,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "lava_deepest_tube",
+                "label": "Deepest Lava Tube (1, 2 or 3)",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 3
+              }
+            ]
+          },
+          {
+            "key": "moon_base",
+            "label": "Moon Base",
+            "fields": [
+              {
+                "key": "moon_air_lock_open",
+                "label": "Air Lock Open",
+                "type": "count",
+                "multiplier": 25,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              },
+              {
+                "key": "moon_light_blue_poms",
+                "label": "Light Blue Poms in Air Lock",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              },
+              {
+                "key": "moon_dark_blue_poms",
+                "label": "Dark Blue Poms in Air Lock",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 8,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "moon_air_lock_closed",
+                "label": "Air Lock Closed",
+                "type": "boolean",
+                "factor": 3,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "habitat",
+            "label": "Habitat Construction",
+            "fields": [
+              {
+                "key": "habitat_noodles",
+                "label": "Red or Green Noodles",
+                "type": "count",
+                "multiplier": 8,
+                "min_value": 0,
+                "max_value": 40,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "habitat_posts",
+                "label": "# of Posts with Habitats",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": null
+              }
+            ]
+          },
+          {
+            "key": "astronauts",
+            "label": "Astronauts",
+            "fields": [
+              {
+                "key": "astronauts_in_stations",
+                "label": "Astronauts In Stations",
+                "type": "count",
+                "multiplier": 25,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              },
+              {
+                "key": "astronauts_flag_raised",
+                "label": "Flag Raised",
+                "type": "count",
+                "multiplier": 25,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              },
+              {
+                "key": "astronauts_flipped_switch",
+                "label": "Flipped Switch",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "astronauts_areas",
+                "label": "# Areas with Astronaut",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": null
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "botball_2025": {
+      "definition": {
+        "sides": [
+          "A",
+          "B"
+        ],
+        "sections": [
+          {
+            "key": "prep_station",
+            "label": "Starting Box / Prep Station",
+            "fields": [
+              {
+                "key": "prep_vegetables",
+                "label": "Vegetables",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 4,
+                "required": false
+              },
+              {
+                "key": "prep_botguy",
+                "label": "Botguy",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "prep_botguy_multiplier",
+                "label": "Botguy (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "kitchen_floor",
+            "label": "Kitchen Floor",
+            "fields": [
+              {
+                "key": "kitchen_any_piece",
+                "label": "Any Game Piece",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "kitchen_botguy",
+                "label": "Botguy",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": []
+          },
+          {
+            "key": "condiment_stations",
+            "label": "Condiment Stations",
+            "fields": [
+              {
+                "key": "condiment_unsorted_poms",
+                "label": "Unsorted Poms",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 36,
+                "required": false
+              },
+              {
+                "key": "condiment_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 36,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "condiment_sorted_stations",
+                "label": "# of Sorted Stations",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 3
+              }
+            ]
+          },
+          {
+            "key": "serving_station",
+            "label": "Serving Station",
+            "fields": [
+              {
+                "key": "serving_red_pom",
+                "label": "One Red Pom in Tray",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 6,
+                "required": false
+              },
+              {
+                "key": "serving_orange_pom",
+                "label": "One Orange Pom in Tray",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 6,
+                "required": false
+              },
+              {
+                "key": "serving_yellow_pom",
+                "label": "One Yellow Pom in Tray",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 6,
+                "required": false
+              },
+              {
+                "key": "serving_side",
+                "label": "One Side in Tray",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 6,
+                "required": false
+              },
+              {
+                "key": "serving_entree",
+                "label": "One Entree in Tray",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 6,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "serving_bonus",
+                "label": "# of Full Pom Sets in Trays or # of Full Trays ×2",
+                "either": [
+                  {
+                    "key": "serving_full_pom_sets",
+                    "label": "# of Full Pom Sets in Trays",
+                    "type": "count",
+                    "factor": 1,
+                    "offset": 0,
+                    "min_value": 0,
+                    "max_value": 6
+                  },
+                  {
+                    "key": "serving_full_trays",
+                    "label": "# of Full Trays (×2)",
+                    "type": "count",
+                    "factor": 2,
+                    "offset": 0,
+                    "min_value": 0,
+                    "max_value": 6
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "cups",
+            "label": "Cups",
+            "fields": [
+              {
+                "key": "cups_ice",
+                "label": "Ice",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "cups_wrong_drink",
+                "label": "Wrong Drink Color",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              },
+              {
+                "key": "cups_matching_drink",
+                "label": "Matching Drink Color",
+                "type": "count",
+                "multiplier": 30,
+                "min_value": 0,
+                "max_value": null,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "cups_full_cup",
+                "label": "Full Cup (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              },
+              {
+                "key": "cups_two_plus_in_beverage",
+                "label": "2+ Cups in Beverage Station (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "fry_station",
+            "label": "Fry Station",
+            "fields": [
+              {
+                "key": "fry_potato",
+                "label": "Potato",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 2,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "fry_no_fries",
+                "label": "No Fries on Game Surface (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "beverage_station",
+            "label": "Beverage Station",
+            "fields": [
+              {
+                "key": "beverage_cups",
+                "label": "Cups",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 6,
+                "required": false
+              },
+              {
+                "key": "beverage_water_bottles",
+                "label": "Water Bottles",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 12,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "beverage_bottle_bonus",
+                "label": "5 Water Bottles ×3 or 6 Water Bottles ×6",
+                "either": [
+                  {
+                    "key": "beverage_five_bottles",
+                    "label": "5 Water Bottles (×3)",
+                    "type": "boolean",
+                    "factor": 3,
+                    "max_value": 1
+                  },
+                  {
+                    "key": "beverage_six_bottles",
+                    "label": "6 Water Bottles (×6)",
+                    "type": "boolean",
+                    "factor": 6,
+                    "max_value": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "flat_legacy": {
+      "fields": [
+        {
+          "key": "a",
+          "label": "A",
+          "type": "count",
+          "multiplier": 5,
+          "max_value": 10
+        },
+        {
+          "key": "b",
+          "label": "B",
+          "type": "count",
+          "multiplier": 2,
+          "section": "Other"
+        },
+        {
+          "key": "c",
+          "label": "C",
+          "type": "boolean",
+          "multiplier": 25,
+          "section": "Other"
+        }
+      ]
+    },
+    "none": {},
+    "single_side": {
+      "definition": {
+        "sides": [],
+        "sections": [
+          {
+            "key": "zone",
+            "label": "Zone",
+            "fields": [
+              {
+                "key": "pieces",
+                "label": "Pieces",
+                "multiplier": 3
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "bonus",
+                "label": "Bonus",
+                "type": "boolean",
+                "factor": 2
+              },
+              {
+                "key": "level",
+                "label": "Level",
+                "type": "count",
+                "factor": 0.5,
+                "offset": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "2025 seeding sheet, both sides filled",
+      "schema": "botball_2025",
+      "raw": {
+        "A.prep_vegetables": 2,
+        "A.prep_botguy": 1,
+        "A.prep_botguy_multiplier": true,
+        "A.kitchen_any_piece": 7,
+        "A.condiment_unsorted_poms": 3,
+        "A.condiment_sorted_poms": 4,
+        "A.condiment_sorted_stations": 2,
+        "A.serving_red_pom": 2,
+        "A.serving_orange_pom": 2,
+        "A.serving_yellow_pom": 1,
+        "A.serving_side": 1,
+        "A.serving_entree": 1,
+        "A.serving_full_pom_sets": 1,
+        "A.serving_full_trays": 1,
+        "A.cups_ice": 2,
+        "A.cups_matching_drink": 2,
+        "A.cups_full_cup": true,
+        "A.fry_potato": 1,
+        "A.fry_no_fries": true,
+        "A.beverage_cups": 2,
+        "A.beverage_water_bottles": 5,
+        "A.beverage_five_bottles": true,
+        "B.kitchen_any_piece": 4,
+        "B.condiment_unsorted_poms": 2,
+        "B.beverage_water_bottles": 6,
+        "B.beverage_five_bottles": true,
+        "B.beverage_six_bottles": true
+      },
+      "total": 1019,
+      "side_totals": {
+        "A": 653,
+        "B": 366
+      },
+      "sections": {
+        "A.prep_station": [
+          25,
+          2,
+          50
+        ],
+        "A.condiment_stations": [
+          23,
+          2,
+          46
+        ],
+        "A.serving_station": [
+          55,
+          2,
+          110
+        ],
+        "A.cups": [
+          80,
+          2,
+          160
+        ],
+        "A.beverage_station": [
+          60,
+          3,
+          180
+        ],
+        "B.condiment_stations": [
+          2,
+          1,
+          2
+        ],
+        "B.beverage_station": [
+          60,
+          6,
+          360
+        ]
+      }
+    },
+    {
+      "name": "2025 either-or takes the larger alternative",
+      "schema": "botball_2025",
+      "raw": {
+        "A.serving_red_pom": 3,
+        "A.serving_orange_pom": 3,
+        "A.serving_yellow_pom": 3,
+        "A.serving_full_pom_sets": 3,
+        "A.serving_full_trays": 1
+      },
+      "total": 135,
+      "side_totals": {
+        "A": 135,
+        "B": 0
+      },
+      "sections": {
+        "A.serving_station": [
+          45,
+          3,
+          135
+        ]
+      }
+    },
+    {
+      "name": "2025 empty sheet scores 0",
+      "schema": "botball_2025",
+      "raw": {},
+      "total": 0,
+      "side_totals": {
+        "A": 0,
+        "B": 0
+      }
+    },
+    {
+      "name": "2025 value above the sheet maximum is rejected",
+      "schema": "botball_2025",
+      "raw": {
+        "A.fry_potato": 3
+      },
+      "error": true
+    },
+    {
+      "name": "2024 moon base sheet with area multipliers",
+      "schema": "botball_2024",
+      "raw": {
+        "A.area1_sorted_poms": 3,
+        "A.area1_other_pieces": 2,
+        "A.area1_botguy_cube": true,
+        "A.rock_heap_only_rocks": 4,
+        "A.solar_panel_flipped": 1,
+        "A.solar_robots_back": 2,
+        "A.lava_purple_in_area": 1,
+        "A.lava_purple_in_tubes": 1,
+        "A.lava_tube_cap": 1,
+        "A.lava_deepest_tube": 3,
+        "A.moon_light_blue_poms": 2,
+        "A.moon_dark_blue_poms": 1,
+        "A.moon_air_lock_closed": true,
+        "A.habitat_noodles": 3,
+        "A.habitat_posts": 2,
+        "A.astronauts_in_stations": 2,
+        "A.astronauts_flag_raised": 1,
+        "A.astronauts_flipped_switch": 1,
+        "A.astronauts_areas": 2,
+        "B.solar_panel_flipped": 1,
+        "B.solar_robots_back": 0,
+        "B.large_rover_bay_other_pieces": 5
+      },
+      "total": 1317,
+      "side_totals": {
+        "A": 1262,
+        "B": 55
+      },
+      "sections": {
+        "A.area1": [
+          17,
+          5,
+          85
+        ],
+        "A.solar_panel": [
+          50,
+          3,
+          150
+        ],
+        "A.lava_tube": [
+          175,
+          3,
+          525
+        ],
+        "A.moon_base": [
+          80,
+          3,
+          240
+        ],
+        "A.habitat": [
+          24,
+          2,
+          48
+        ],
+        "A.astronauts": [
+          95,
+          2,
+          190
+        ],
+        "B.solar_panel": [
+          50,
+          1,
+          50
+        ]
+      }
+    },
+    {
+      "name": "flat legacy schema: sum of value x multiplier, unknown keys ignored",
+      "schema": "flat_legacy",
+      "raw": {
+        "a": 3,
+        "b": 4,
+        "c": true,
+        "unknown": 100
+      },
+      "total": 48
+    },
+    {
+      "name": "flat legacy schema: max_value enforced",
+      "schema": "flat_legacy",
+      "raw": {
+        "a": 11
+      },
+      "error": true
+    },
+    {
+      "name": "no schema: values are summed as-is",
+      "schema": "none",
+      "raw": {
+        "x": 3,
+        "y": 4.5
+      },
+      "total": 7.5
+    },
+    {
+      "name": "single-sided sheet: multipliers multiply, count below 1 is neutral",
+      "schema": "single_side",
+      "raw": {
+        "pieces": 5,
+        "bonus": true,
+        "level": 4
+      },
+      "total": 90,
+      "sections": {
+        "zone": [
+          15,
+          6,
+          90
+        ]
+      }
+    },
+    {
+      "name": "single-sided sheet: fractional count multiplier",
+      "schema": "single_side",
+      "raw": {
+        "pieces": 3,
+        "level": 1
+      },
+      "total": 13.5,
+      "sections": {
+        "zone": [
+          9,
+          1.5,
+          13.5
+        ]
+      }
+    }
+  ]
+}

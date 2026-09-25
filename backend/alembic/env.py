@@ -10,6 +10,7 @@ import modules.events.models  # noqa: F401
 import modules.paper_review.models  # noqa: F401
 import modules.printing.models  # noqa: F401
 import modules.scoring.competition_models  # noqa: F401
+import modules.scoring.extras_models  # noqa: F401
 import modules.scoring.formula_models  # noqa: F401
 import modules.scoring.models  # noqa: F401
 import modules.scoring.score_sheets.models  # noqa: F401

@@ -128,6 +128,8 @@ class TeamRankingEntry(BaseModel):
     best_score: float
     average_score: float
     rounds_played: int
+    # Tie-breaker that placed the team against an equal seed score, if any.
+    tiebreaker: str | None = None
 
 
 class ResultRevisionResponse(BaseModel):

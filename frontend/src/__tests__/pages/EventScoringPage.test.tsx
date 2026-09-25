@@ -46,6 +46,9 @@ function renderPage() {
     if (url.endsWith("/registrations")) return Promise.resolve({ data: registrations });
     if (url.endsWith("/schedule")) return Promise.resolve({ data: schedule });
     if (url.endsWith("/scoring-schema")) return Promise.resolve({ data: schema });
+    if (url === `/v1/events/${EVENT}`) return Promise.resolve({ data: { id: EVENT, season_id: "s1", name: "Regional" } });
+    if (url.endsWith("/rules")) return Promise.resolve({ data: { tiebreakers: [], end_contact_bonus_percent: 25 } });
+    if (url.endsWith("/outcome")) return Promise.resolve({ data: { reason: "incomplete", winner: null, replay: false, decided_by: null, sides: [] } });
     return Promise.resolve({ data: [] });
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -110,7 +113,8 @@ describe("EventScoringPage (mobile scoring)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "nextMatch" }));
     await waitFor(() => expect((screen.getByLabelText("team") as HTMLSelectElement).value).toBe("t1"));
     fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "4" } });
-    fireEvent.click(screen.getByRole("checkbox"));
+    // The first checkbox is the sheet field "Geparkt"; the special-rule flags follow it.
+    fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: /reviewScore/ }));
 
     const dialog = await screen.findByRole("dialog");

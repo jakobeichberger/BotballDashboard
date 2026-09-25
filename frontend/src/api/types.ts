@@ -1,3 +1,5 @@
+import type { SheetDefinition } from "@/modules/scoring/sheet/calculator";
+
 export interface EventSummary {
   id: string;
   season_id: string;
@@ -77,7 +79,11 @@ export interface BracketPlacement {
   team_id: string;
   team_name: string;
   team_number: string | null;
+  /** Bracket placement, shared by teams knocked out in the same round. */
   rank: number;
+  /** Placement with ties broken by the season's tie-breakers / seeding rank. */
+  placement?: number | null;
+  decided_by?: string | null;
 }
 
 /** One elimination phase as returned by /events/{id}/bracket (and the public variant). */
@@ -101,6 +107,8 @@ export interface RankingEntry {
   best_score: number;
   average_score: number;
   rounds_played: number;
+  /** Label of the tie-breaker that placed the team against an equal seed score. */
+  tiebreaker?: string | null;
   updated_at: string;
 }
 
@@ -134,6 +142,8 @@ export interface ScoringSchema {
   event_id: string | null;
   competition_level_id: string | null;
   fields: ScoringField[];
+  /** Structured sheet (sections, area multipliers, sides A/B); null for flat schemas. */
+  definition?: SheetDefinition | null;
   version: number;
   is_active: boolean;
 }

@@ -10,6 +10,9 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useAuthStore } from "@/store/authStore";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import clsx from "clsx";
+import { computeSheet, normalize } from "@/modules/scoring/sheet/calculator";
+import ChecklistConfirmDialog from "@/modules/scoring/extras/ChecklistConfirmDialog";
+import type { RuleSet } from "@/modules/scoring/extras/types";
 
 interface Field {
   key: string;
@@ -67,8 +70,16 @@ export default function ScoreEntryPage() {
   const [round, setRound] = useState(1);
   const [scores, setScores] = useState<Record<string, number>>({});
 
+  const { data: rules } = useQuery<RuleSet>({
+    queryKey: ["scoring-rules", sid],
+    queryFn: async () => (await api.get(`/scoring/seasons/${sid}/rules`)).data,
+    enabled: !!sid,
+  });
+
   const fields: Field[] = schema?.fields ?? [];
-  const preview = fields.reduce((sum, f) => sum + (Number(scores[f.key] || 0) * f.multiplier), 0);
+  // Same calculation as the backend (area multipliers, either-or, sides A/B).
+  const sheet = computeSheet(scores, normalize(schema?.fields, schema?.definition));
+  const preview = sheet.total;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["matches", sid, eventId] });
   const onError = (e: any) => alert(e?.response?.data?.detail ?? "Aktion fehlgeschlagen.");
@@ -119,10 +130,20 @@ export default function ScoreEntryPage() {
     setRound(m.round_number);
     setScores({ ...m.raw_scores });
   };
+  const checklist = rules?.referee_checklist ?? [];
+  const [checklistMatchId, setChecklistMatchId] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState("");
   const confirmM = useMutation({
-    mutationFn: (mid: string) => api.put(`/scoring/matches/${mid}/confirm`),
-    onSuccess: invalidate, onError,
+    mutationFn: ({ mid, items }: { mid: string; items?: Record<string, boolean> }) =>
+      api.put(`/scoring/matches/${mid}/confirm`, items ? { checklist: items } : undefined),
+    onSuccess: () => { setChecklistMatchId(null); setConfirmError(""); invalidate(); },
+    onError: (e: any) => {
+      if (checklistMatchId) setConfirmError(e?.response?.data?.detail ?? "Bestätigung fehlgeschlagen.");
+      else onError(e);
+    },
   });
+  // With a referee checklist configured the juror ticks it before confirming.
+  const startConfirm = (mid: string) => (checklist.length ? setChecklistMatchId(mid) : confirmM.mutate({ mid }));
   const deleteM = useMutation({
     mutationFn: (mid: string) => api.delete(`/scoring/matches/${mid}`),
     onSuccess: invalidate, onError,
@@ -219,6 +240,7 @@ export default function ScoreEntryPage() {
               <div className="text-sm">
                 <div className="text-gray-500">Punkte (Vorschau)</div>
                 <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{preview}</div>
+                {sheet.errors.length > 0 && <div role="alert" className="text-xs text-red-600">{sheet.errors[0]}</div>}
               </div>
             </div>
           </div>
@@ -314,7 +336,7 @@ export default function ScoreEntryPage() {
                               className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
                               title="Bearbeiten"><Pencil className="w-4 h-4" /></button>
                       {!isPractice && !m.confirmed_by && (
-                        <button onClick={() => confirmM.mutate(m.id)} disabled={confirmM.isPending}
+                        <button onClick={() => startConfirm(m.id)} disabled={confirmM.isPending}
                                 className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"
                                 title="Bestätigen"><Check className="w-4 h-4" /></button>
                       )}
@@ -334,6 +356,14 @@ export default function ScoreEntryPage() {
           </tbody>
         </table>
       </section>
+      <ChecklistConfirmDialog
+        open={!!checklistMatchId}
+        items={checklist}
+        pending={confirmM.isPending}
+        error={confirmError}
+        onCancel={() => { setChecklistMatchId(null); setConfirmError(""); }}
+        onConfirm={(items) => checklistMatchId && confirmM.mutate({ mid: checklistMatchId, items })}
+      />
     </div>
   );
 }

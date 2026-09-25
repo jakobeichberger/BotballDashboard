@@ -4,7 +4,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -143,6 +143,7 @@ async def add_registration(db: AsyncSession, event_id: str, data: dict) -> Event
     level_id = data.get("competition_level_id")
     if level_id and not await db.get(CompetitionLevel, level_id):
         raise NotFoundError("Competition level not found")
+    await _assert_qualified(db, event, team.id, level_id)
 
     registration = EventRegistration(event_id=event.id, **data)
     db.add(registration)
@@ -153,6 +154,15 @@ async def add_registration(db: AsyncSession, event_id: str, data: dict) -> Event
         raise ConflictError("Team is already registered for this event") from exc
     await db.refresh(registration, ["team"])
     return registration
+
+
+async def _assert_qualified(
+    db: AsyncSession, event: Event, team_id: str, level_id: str | None
+) -> None:
+    """A level that qualifies from another (GCER <- ECER) admits qualified teams only."""
+    from modules.scoring.extras_service import assert_qualified
+
+    await assert_qualified(db, event.season_id, team_id, level_id)
 
 
 async def ensure_legacy_default_registration(
@@ -220,6 +230,11 @@ async def update_registration(
     if not registration:
         raise NotFoundError("Event registration not found")
     checked_in = data.pop("checked_in", None)
+    level_id = data.get("competition_level_id")
+    if level_id and level_id != registration.competition_level_id:
+        if not await db.get(CompetitionLevel, level_id):
+            raise NotFoundError("Competition level not found")
+        await _assert_qualified(db, await get_event(db, event_id), registration.team_id, level_id)
     for key, value in data.items():
         setattr(registration, key, value)
     if checked_in is not None:
@@ -861,6 +876,84 @@ async def phase_placements(db: AsyncSession, phase: EventPhase) -> dict[str, int
     return brackets.elimination_placements(outcomes, len(teams))
 
 
+async def tiebroken_placements(
+    db: AsyncSession, event: Event, places: dict[str, int], phase_ids: set[str]
+) -> list[dict[str, Any]]:
+    """Order teams that share a DE placement by the season's tie-breakers.
+
+    ``places`` are the shared placements of one bracket (5-6, 7-8, … as
+    elimination_placements computes them, or the manual DE entry). Teams on
+    the same placement are ordered by the tie-breakers — each criterion summed
+    over the team's scored runs in ``phase_ids`` — and then by seeding rank.
+    Teams nothing separates keep sharing their placement.
+
+    This is the one DE placement implementation: the bracket view and the
+    scoring DE placement (/scoring/events/{id}/de-placement) both use it.
+    Returns ``{team_id, de_rank, placement, decided_by}`` rows, best first.
+    """
+    if not places:
+        return []
+    from modules.scoring import rules_service, tiebreak
+
+    criteria = (await rules_service.get_rules(db, event.season_id)).tiebreakers
+    team_ids = set(places)
+    per_team: dict[str, list[dict[str, float | None]]] = {}
+    if criteria and phase_ids:
+        in_phase = select(ScheduledMatch.id).where(ScheduledMatch.phase_id.in_(phase_ids))
+        runs = await db.execute(
+            select(Match).where(
+                Match.event_id == event.id,
+                Match.team_id.in_(team_ids),
+                Match.is_practice.is_(False),
+                or_(Match.event_phase_id.in_(phase_ids), Match.scheduled_match_id.in_(in_phase)),
+            )
+        )
+        for run in runs.scalars():
+            if run.is_disqualified or run.round_lost:
+                continue  # a DQ'd or lost round scores nothing, tie-breakers included
+            per_team.setdefault(run.team_id, []).append(
+                tiebreak.match_values(
+                    criteria,
+                    run.raw_scores,
+                    run.tiebreak_values,
+                    rules_service.snapshot_definition(run),
+                )
+            )
+
+    seed_ranks: dict[str, int] = {}
+    ranking_rows = await db.execute(
+        select(Ranking.team_id, Ranking.rank).where(
+            Ranking.event_id == event.id,
+            Ranking.event_phase_id.is_(None),
+            Ranking.team_id.in_(team_ids),
+            Ranking.rank.is_not(None),
+        )
+    )
+    for team_id, rank in ranking_rows.tuples().all():
+        if rank is not None:
+            seed_ranks[team_id] = min(rank, seed_ranks.get(team_id, rank))
+
+    items = [
+        tiebreak.RankedItem(
+            id=team_id,
+            # Lower placement is better; rank_with_tiebreakers sorts high → low.
+            score=-float(place),
+            values=tiebreak.sum_values(per_team.get(team_id, [])),
+            fallback=float(seed_ranks[team_id]) if team_id in seed_ranks else None,
+        )
+        for team_id, place in sorted(places.items(), key=lambda item: (item[1], item[0]))
+    ]
+    return [
+        {
+            "team_id": item.id,
+            "de_rank": places[item.id],
+            "placement": item.rank,
+            "decided_by": item.decided_by,
+        }
+        for item in tiebreak.rank_with_tiebreakers(items, criteria, fallback_label="Seeding rank")
+    ]
+
+
 async def _complete_if_decided(db: AsyncSession, phase: EventPhase) -> dict[str, int]:
     places = await phase_placements(db, phase)
     if 1 in places.values():
@@ -919,9 +1012,11 @@ async def get_brackets(db: AsyncSession, event_id: str) -> list[dict]:
                     participant.team.name,
                     participant.team.team_number,
                 )
+    event = await get_event(db, event_id)
     output = []
     for phase in phases:
         places = await phase_placements(db, phase)
+        ordered = await tiebroken_placements(db, event, places, {phase.id})
         output.append(
             {
                 "phase_id": phase.id,
@@ -933,18 +1028,19 @@ async def get_brackets(db: AsyncSession, event_id: str) -> list[dict]:
                     (match for match in all_matches if match.phase_id == phase.id),
                     key=lambda match: match.sequence_number,
                 ),
-                "placements": sorted(
-                    (
-                        {
-                            "team_id": team_id,
-                            "team_name": names.get(team_id, ("", None))[0],
-                            "team_number": names.get(team_id, ("", None))[1],
-                            "rank": rank,
-                        }
-                        for team_id, rank in places.items()
-                    ),
-                    key=lambda item: (item["rank"], item["team_name"]),
-                ),
+                # `rank` is the bracket placement (shared by teams knocked out
+                # in the same round); `placement` orders them by tie-breakers.
+                "placements": [
+                    {
+                        "team_id": row["team_id"],
+                        "team_name": names.get(row["team_id"], ("", None))[0],
+                        "team_number": names.get(row["team_id"], ("", None))[1],
+                        "rank": row["de_rank"],
+                        "placement": row["placement"],
+                        "decided_by": row["decided_by"],
+                    }
+                    for row in ordered
+                ],
             }
         )
     return output

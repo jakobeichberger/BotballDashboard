@@ -6186,6 +6186,7 @@
           "scoring"
         ],
         "summary": "Confirm Match",
+        "description": "Confirm a score; the season's required referee checklist items must be ticked.",
         "operationId": "confirm_match_api_scoring_matches__match_id__confirm_put",
         "security": [
           {
@@ -6203,6 +6204,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MatchConfirm"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -9011,6 +9029,1511 @@
                     "type": "number"
                   },
                   "title": "Response Set Bracket Weights Api Scoring Formulas Seasons  Season Id   Category  Bracket Weights Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/seasons/{season_id}/rules": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Get Rules",
+        "description": "Tie-breaker order, finals replay rule, contact bonus and referee checklist.",
+        "operationId": "get_rules_api_scoring_seasons__season_id__rules_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Put Rules",
+        "operationId": "put_rules_api_scoring_seasons__season_id__rules_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleSetUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/tiebreaker-presets": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "List Tiebreaker Presets",
+        "description": "Tie-breaker lists transcribed from the 2024/2025/2026 game reviews.",
+        "operationId": "list_tiebreaker_presets_api_scoring_tiebreaker_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TiebreakerPreset"
+                  },
+                  "type": "array",
+                  "title": "Response List Tiebreaker Presets Api Scoring Tiebreaker Presets Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/scoring/schema-templates": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "List Schema Templates",
+        "description": "Score sheets 2024/2025 (complete) and 2026 (structure) as starting points.",
+        "operationId": "list_schema_templates_api_scoring_schema_templates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SchemaTemplateResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Schema Templates Api Scoring Schema Templates Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/scoring/schemas": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "List Schemas",
+        "description": "Active schema versions of every event/level \u2014 sources for \"clone from\".",
+        "operationId": "list_schemas_api_scoring_schemas_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Season Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SchemaListEntry"
+                  },
+                  "title": "Response List Schemas Api Scoring Schemas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/scoring-schema/clone": {
+      "post": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Clone Schema",
+        "description": "Copy another event's/level's schema (e.g. ECER \u2192 GCER) as a new version.",
+        "operationId": "clone_schema_api_scoring_events__event_id__scoring_schema_clone_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaClone"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/modules__scoring__schemas__ScoringSchemaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/scheduled-matches/{scheduled_match_id}/outcome": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Get Head To Head Outcome",
+        "description": "Winner of a head-to-head match and what decided it (score, tie-breaker, \u2026).",
+        "operationId": "get_head_to_head_outcome_api_scoring_scheduled_matches__scheduled_match_id__outcome_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scheduled_match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scheduled Match Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadToHeadOutcome"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/de-placement": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Get De Placement",
+        "operationId": "get_de_placement_api_scoring_events__event_id__de_placement_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DEPlacementEntry"
+                  },
+                  "title": "Response Get De Placement Api Scoring Events  Event Id  De Placement Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/parts-challenges": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "List Parts Challenges",
+        "operationId": "list_parts_challenges_api_scoring_events__event_id__parts_challenges_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PartsChallengeResponse"
+                  },
+                  "title": "Response List Parts Challenges Api Scoring Events  Event Id  Parts Challenges Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Create Parts Challenge",
+        "operationId": "create_parts_challenge_api_scoring_events__event_id__parts_challenges_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartsChallengeCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartsChallengeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/parts-challenges/{challenge_id}/ruling": {
+      "put": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Rule Parts Challenge",
+        "operationId": "rule_parts_challenge_api_scoring_parts_challenges__challenge_id__ruling_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "challenge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Challenge Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartsChallengeRuling"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartsChallengeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/seasons/{season_id}/external-teams": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "List External Teams",
+        "operationId": "list_external_teams_api_scoring_seasons__season_id__external_teams_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalTeamResponse"
+                  },
+                  "title": "Response List External Teams Api Scoring Seasons  Season Id  External Teams Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/external-teams": {
+      "post": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Create External Team",
+        "operationId": "create_external_team_api_scoring_external_teams_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalTeamCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalTeamResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/scoring/external-teams/{external_team_id}": {
+      "patch": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Update External Team",
+        "operationId": "update_external_team_api_scoring_external_teams__external_team_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "external_team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "External Team Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalTeamUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalTeamResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Delete External Team",
+        "operationId": "delete_external_team_api_scoring_external_teams__external_team_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "external_team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "External Team Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/scouting/notes": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "List Scouting Notes",
+        "description": "Organizers see all notes, everybody else only their own teams' notes.",
+        "operationId": "list_scouting_notes_api_scoring_events__event_id__scouting_notes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "external_team_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "External Team Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScoutingNoteResponse"
+                  },
+                  "title": "Response List Scouting Notes Api Scoring Events  Event Id  Scouting Notes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Create Scouting Note",
+        "operationId": "create_scouting_note_api_scoring_events__event_id__scouting_notes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoutingNoteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoutingNoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/scouting/notes/{note_id}": {
+      "patch": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Update Scouting Note",
+        "operationId": "update_scouting_note_api_scoring_scouting_notes__note_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoutingNoteUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoutingNoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Delete Scouting Note",
+        "operationId": "delete_scouting_note_api_scoring_scouting_notes__note_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/scouting/observations": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "List Observations",
+        "operationId": "list_observations_api_scoring_events__event_id__scouting_observations_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "external_team_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "External Team Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ObservationResponse"
+                  },
+                  "title": "Response List Observations Api Scoring Events  Event Id  Scouting Observations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Create Observation",
+        "operationId": "create_observation_api_scoring_events__event_id__scouting_observations_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/scouting/observations/{observation_id}": {
+      "delete": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Delete Observation",
+        "operationId": "delete_observation_api_scoring_scouting_observations__observation_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "observation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Observation Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/opponent-ranking": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Get Opponent Ranking",
+        "description": "Own teams (official seeding) and external teams (observed scores) ranked together.",
+        "operationId": "get_opponent_ranking_api_scoring_events__event_id__opponent_ranking_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OpponentRankingEntry"
+                  },
+                  "title": "Response Get Opponent Ranking Api Scoring Events  Event Id  Opponent Ranking Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/scouting/report.pdf": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Export Scouting Report",
+        "operationId": "export_scouting_report_api_scoring_events__event_id__scouting_report_pdf_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/seasons/{season_id}/qualifications": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "List Qualifications",
+        "operationId": "list_qualifications_api_scoring_seasons__season_id__qualifications_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "level_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QualificationResponse"
+                  },
+                  "title": "Response List Qualifications Api Scoring Seasons  Season Id  Qualifications Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/seasons/{season_id}/qualification-status": {
+      "get": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Get Qualification Status",
+        "description": "Candidates for a level and whether each is already qualified.",
+        "operationId": "get_qualification_status_api_scoring_seasons__season_id__qualification_status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Season Id"
+            }
+          },
+          {
+            "name": "level_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Level Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QualificationStatusEntry"
+                  },
+                  "title": "Response Get Qualification Status Api Scoring Seasons  Season Id  Qualification Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/levels/{level_id}/qualify": {
+      "post": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Qualify Teams",
+        "description": "Admin: mark teams as qualified for this level (manual, with a note).",
+        "operationId": "qualify_teams_api_scoring_levels__level_id__qualify_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "level_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Level Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QualifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QualificationResponse"
+                  },
+                  "title": "Response Qualify Teams Api Scoring Levels  Level Id  Qualify Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/qualifications/{qualification_id}": {
+      "delete": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Revoke Qualification",
+        "operationId": "revoke_qualification_api_scoring_qualifications__qualification_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "qualification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Qualification Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scoring/events/{event_id}/register-qualified": {
+      "post": {
+        "tags": [
+          "scoring-extras"
+        ],
+        "summary": "Register Qualified Teams",
+        "description": "Register every team qualified for the level at this (e.g. GCER) event.",
+        "operationId": "register_qualified_teams_api_scoring_events__event_id__register_qualified_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterQualifiedRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RegisteredTeam"
+                  },
+                  "title": "Response Register Qualified Teams Api Scoring Events  Event Id  Register Qualified Post"
                 }
               }
             }
@@ -15558,6 +17081,28 @@
           "rank": {
             "type": "integer",
             "title": "Rank"
+          },
+          "placement": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
           }
         },
         "type": "object",
@@ -15624,6 +17169,33 @@
         ],
         "title": "CalendarFeedStatus"
       },
+      "ChecklistItem": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "ChecklistItem"
+      },
       "CompetitionLevelCreate": {
         "properties": {
           "name": {
@@ -15644,6 +17216,24 @@
               }
             ],
             "title": "Description"
+          },
+          "order": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Order",
+            "default": 0
+          },
+          "qualifies_from_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualifies From Level Id"
           }
         },
         "type": "object",
@@ -15681,6 +17271,22 @@
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order",
+            "default": 0
+          },
+          "qualifies_from_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualifies From Level Id"
           }
         },
         "type": "object",
@@ -15738,6 +17344,30 @@
               }
             ],
             "title": "Is Active"
+          },
+          "order": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order"
+          },
+          "qualifies_from_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualifies From Level Id"
           }
         },
         "type": "object",
@@ -16142,6 +17772,65 @@
           "permissions"
         ],
         "title": "CurrentUserResponse"
+      },
+      "DEPlacementEntry": {
+        "properties": {
+          "bracket": {
+            "type": "string",
+            "title": "Bracket"
+          },
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "de_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "De Rank"
+          },
+          "placement": {
+            "type": "integer",
+            "title": "Placement"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bracket",
+          "team_id",
+          "team_name",
+          "de_rank",
+          "placement",
+          "decided_by"
+        ],
+        "title": "DEPlacementEntry"
       },
       "DEResultResponse": {
         "properties": {
@@ -17660,6 +19349,49 @@
             "type": "object",
             "title": "Raw Scores"
           },
+          "round_lost": {
+            "type": "boolean",
+            "title": "Round Lost",
+            "default": false
+          },
+          "round_lost_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "never_left_start_box",
+                  "motors_running",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Lost Reason"
+          },
+          "end_contact": {
+            "type": "boolean",
+            "title": "End Contact",
+            "default": false
+          },
+          "tiebreak_values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Tiebreak Values"
+          },
           "notes": {
             "anyOf": [
               {
@@ -17936,6 +19668,247 @@
         },
         "type": "object",
         "title": "EventUpdate"
+      },
+      "ExternalTeamCreate": {
+        "properties": {
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "school": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "official"
+            ],
+            "title": "Source",
+            "default": "observed"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "season_id",
+          "name"
+        ],
+        "title": "ExternalTeamCreate"
+      },
+      "ExternalTeamResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "school": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "season_id",
+          "name",
+          "number",
+          "country",
+          "school",
+          "source",
+          "notes",
+          "created_at"
+        ],
+        "title": "ExternalTeamResponse"
+      },
+      "ExternalTeamUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "school": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "observed",
+                  "official"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "ExternalTeamUpdate"
       },
       "ExtractedFieldCandidate": {
         "properties": {
@@ -18631,6 +20604,133 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HeadToHeadOutcome": {
+        "properties": {
+          "scheduled_match_id": {
+            "type": "string",
+            "title": "Scheduled Match Id"
+          },
+          "winner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winner"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "replay": {
+            "type": "boolean",
+            "title": "Replay"
+          },
+          "sides": {
+            "items": {
+              "$ref": "#/components/schemas/HeadToHeadSide"
+            },
+            "type": "array",
+            "title": "Sides"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scheduled_match_id",
+          "winner",
+          "reason",
+          "decided_by",
+          "replay",
+          "sides"
+        ],
+        "title": "HeadToHeadOutcome"
+      },
+      "HeadToHeadSide": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "sheet_score": {
+            "type": "number",
+            "title": "Sheet Score"
+          },
+          "bonus_score": {
+            "type": "number",
+            "title": "Bonus Score"
+          },
+          "total_score": {
+            "type": "number",
+            "title": "Total Score"
+          },
+          "is_disqualified": {
+            "type": "boolean",
+            "title": "Is Disqualified"
+          },
+          "round_lost": {
+            "type": "boolean",
+            "title": "Round Lost"
+          },
+          "round_lost_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Lost Reason"
+          },
+          "end_contact": {
+            "type": "boolean",
+            "title": "End Contact"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "team_id",
+          "team_name",
+          "sheet_score",
+          "bonus_score",
+          "total_score",
+          "is_disqualified",
+          "round_lost",
+          "round_lost_reason",
+          "end_contact"
+        ],
+        "title": "HeadToHeadSide"
+      },
       "Heatmap": {
         "properties": {
           "fields": {
@@ -18796,6 +20896,20 @@
         ],
         "title": "LoginRequest"
       },
+      "MatchConfirm": {
+        "properties": {
+          "checklist": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Checklist"
+          }
+        },
+        "type": "object",
+        "title": "MatchConfirm",
+        "description": "Referee checklist ticked by the juror, {item_key: checked}."
+      },
       "MatchCreate": {
         "properties": {
           "season_id": {
@@ -18877,6 +20991,49 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Raw Scores"
+          },
+          "round_lost": {
+            "type": "boolean",
+            "title": "Round Lost",
+            "default": false
+          },
+          "round_lost_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "never_left_start_box",
+                  "motors_running",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Lost Reason"
+          },
+          "end_contact": {
+            "type": "boolean",
+            "title": "End Contact",
+            "default": false
+          },
+          "tiebreak_values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Tiebreak Values"
           },
           "is_practice": {
             "type": "boolean",
@@ -19079,6 +21236,54 @@
             "type": "number",
             "title": "Total Score"
           },
+          "sheet_score": {
+            "type": "number",
+            "title": "Sheet Score",
+            "default": 0.0
+          },
+          "bonus_score": {
+            "type": "number",
+            "title": "Bonus Score",
+            "default": 0.0
+          },
+          "round_lost": {
+            "type": "boolean",
+            "title": "Round Lost",
+            "default": false
+          },
+          "round_lost_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Lost Reason"
+          },
+          "end_contact": {
+            "type": "boolean",
+            "title": "End Contact",
+            "default": false
+          },
+          "tiebreak_values": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Tiebreak Values"
+          },
+          "checklist": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checklist"
+          },
           "is_disqualified": {
             "type": "boolean",
             "title": "Is Disqualified"
@@ -19261,6 +21466,68 @@
               }
             ],
             "title": "Is Disqualified"
+          },
+          "round_lost": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Lost"
+          },
+          "round_lost_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "never_left_start_box",
+                  "motors_running",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Lost Reason"
+          },
+          "end_contact": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Contact"
+          },
+          "tiebreak_values": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tiebreak Values"
           },
           "yellow_card": {
             "anyOf": [
@@ -19848,6 +22115,161 @@
         "type": "object",
         "title": "NotificationReadRequest"
       },
+      "ObservationCreate": {
+        "properties": {
+          "external_team_id": {
+            "type": "string",
+            "title": "External Team Id"
+          },
+          "owner_team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Team Id"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "seeding",
+              "double_seeding",
+              "double_elimination",
+              "alliance",
+              "other"
+            ],
+            "title": "Phase",
+            "default": "seeding"
+          },
+          "round_number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Number"
+          },
+          "score": {
+            "type": "number",
+            "maximum": 100000.0,
+            "minimum": -10000.0,
+            "title": "Score"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "external_team_id",
+          "score"
+        ],
+        "title": "ObservationCreate"
+      },
+      "ObservationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "external_team_id": {
+            "type": "string",
+            "title": "External Team Id"
+          },
+          "owner_team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Team Id"
+          },
+          "author_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Id"
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          },
+          "round_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Number"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "external_team_id",
+          "owner_team_id",
+          "author_id",
+          "phase",
+          "round_number",
+          "score",
+          "notes",
+          "created_at"
+        ],
+        "title": "ObservationResponse"
+      },
       "OcrAnchor": {
         "properties": {
           "name": {
@@ -19925,6 +22347,88 @@
           "height"
         ],
         "title": "OcrFieldRegion"
+      },
+      "OpponentRankingEntry": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "internal",
+              "external"
+            ],
+            "title": "Kind"
+          },
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "team_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Number"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "seed_score": {
+            "type": "number",
+            "title": "Seed Score"
+          },
+          "best_score": {
+            "type": "number",
+            "title": "Best Score"
+          },
+          "runs": {
+            "type": "integer",
+            "title": "Runs"
+          },
+          "official_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Rank"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "kind",
+          "team_id",
+          "team_name",
+          "team_number",
+          "country",
+          "seed_score",
+          "best_score",
+          "runs"
+        ],
+        "title": "OpponentRankingEntry"
       },
       "OverallRankingEntry": {
         "properties": {
@@ -21215,6 +23719,167 @@
           "submitted_at"
         ],
         "title": "PaperVersionResponse"
+      },
+      "PartsChallengeCreate": {
+        "properties": {
+          "scheduled_match_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled Match Id"
+          },
+          "challenger_team_id": {
+            "type": "string",
+            "title": "Challenger Team Id"
+          },
+          "challenged_team_id": {
+            "type": "string",
+            "title": "Challenged Team Id"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "challenger_team_id",
+          "challenged_team_id",
+          "description"
+        ],
+        "title": "PartsChallengeCreate"
+      },
+      "PartsChallengeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "scheduled_match_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled Match Id"
+          },
+          "challenger_team_id": {
+            "type": "string",
+            "title": "Challenger Team Id"
+          },
+          "challenged_team_id": {
+            "type": "string",
+            "title": "Challenged Team Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "upheld": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upheld"
+          },
+          "ruling_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ruling Note"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "scheduled_match_id",
+          "challenger_team_id",
+          "challenged_team_id",
+          "description",
+          "upheld",
+          "ruling_note",
+          "decided_by",
+          "decided_at",
+          "created_at"
+        ],
+        "title": "PartsChallengeResponse"
+      },
+      "PartsChallengeRuling": {
+        "properties": {
+          "upheld": {
+            "type": "boolean",
+            "title": "Upheld"
+          },
+          "ruling_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ruling Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upheld"
+        ],
+        "title": "PartsChallengeRuling"
       },
       "PasswordResetConfirm": {
         "properties": {
@@ -23562,6 +26227,192 @@
         ],
         "title": "PushSubscriptionCreate"
       },
+      "QualificationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "level_id": {
+            "type": "string",
+            "title": "Level Id"
+          },
+          "from_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Level Id"
+          },
+          "source_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Event Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "qualified_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualified By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "season_id",
+          "team_id",
+          "level_id",
+          "from_level_id",
+          "source_event_id",
+          "note",
+          "qualified_by",
+          "created_at"
+        ],
+        "title": "QualificationResponse"
+      },
+      "QualificationStatusEntry": {
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "qualified": {
+            "type": "boolean",
+            "title": "Qualified"
+          },
+          "qualification_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualification Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "team_id",
+          "team_name",
+          "qualified",
+          "qualification_id",
+          "note"
+        ],
+        "title": "QualificationStatusEntry"
+      },
+      "QualifyRequest": {
+        "properties": {
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "team_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Team Ids"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "source_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Event Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "season_id",
+          "team_ids"
+        ],
+        "title": "QualifyRequest"
+      },
       "QuotaResponse": {
         "properties": {
           "id": {
@@ -23873,6 +26724,17 @@
             "type": "integer",
             "title": "Rounds Played"
           },
+          "tiebreaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tiebreaker"
+          },
           "updated_at": {
             "type": "string",
             "format": "date-time",
@@ -23891,6 +26753,76 @@
           "updated_at"
         ],
         "title": "RankingResponse"
+      },
+      "RegisterQualifiedRequest": {
+        "properties": {
+          "level_id": {
+            "type": "string",
+            "title": "Level Id"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "botball",
+              "open",
+              "aerial",
+              "jbc"
+            ],
+            "title": "Category",
+            "default": "botball"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level_id"
+        ],
+        "title": "RegisterQualifiedRequest"
+      },
+      "RegisteredTeam": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "competition_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition Level Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "team_id",
+          "team_name",
+          "competition_level_id",
+          "category"
+        ],
+        "title": "RegisteredTeam",
+        "description": "An event registration created by \"register qualified teams\"."
       },
       "ResultRevisionResponse": {
         "properties": {
@@ -24956,6 +27888,81 @@
         ],
         "title": "RoundDistribution"
       },
+      "RuleSetResponse": {
+        "properties": {
+          "tiebreakers": {
+            "items": {
+              "$ref": "#/components/schemas/TiebreakerCriterion"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Tiebreakers"
+          },
+          "finals_replay": {
+            "type": "boolean",
+            "title": "Finals Replay",
+            "default": false
+          },
+          "end_contact_bonus_percent": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "End Contact Bonus Percent",
+            "default": 25.0
+          },
+          "referee_checklist": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItem"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Referee Checklist"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "season_id"
+        ],
+        "title": "RuleSetResponse"
+      },
+      "RuleSetUpdate": {
+        "properties": {
+          "tiebreakers": {
+            "items": {
+              "$ref": "#/components/schemas/TiebreakerCriterion"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Tiebreakers"
+          },
+          "finals_replay": {
+            "type": "boolean",
+            "title": "Finals Replay",
+            "default": false
+          },
+          "end_contact_bonus_percent": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "End Contact Bonus Percent",
+            "default": 25.0
+          },
+          "referee_checklist": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItem"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Referee Checklist"
+          }
+        },
+        "type": "object",
+        "title": "RuleSetUpdate"
+      },
       "ScheduleGenerateRequest": {
         "properties": {
           "phase_id": {
@@ -25278,6 +28285,172 @@
           "expected_version"
         ],
         "title": "ScheduledMatchUpdate"
+      },
+      "SchemaClone": {
+        "properties": {
+          "source_schema_id": {
+            "type": "string",
+            "title": "Source Schema Id"
+          },
+          "competition_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition Level Id"
+          },
+          "activate": {
+            "type": "boolean",
+            "title": "Activate",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_schema_id"
+        ],
+        "title": "SchemaClone"
+      },
+      "SchemaListEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "season_id": {
+            "type": "string",
+            "title": "Season Id"
+          },
+          "season_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Name"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "event_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Name"
+          },
+          "competition_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition Level Id"
+          },
+          "competition_level_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition Level Name"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "structured": {
+            "type": "boolean",
+            "title": "Structured"
+          },
+          "field_count": {
+            "type": "integer",
+            "title": "Field Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "season_id",
+          "season_name",
+          "event_id",
+          "event_name",
+          "competition_level_id",
+          "competition_level_name",
+          "version",
+          "structured",
+          "field_count"
+        ],
+        "title": "SchemaListEntry"
+      },
+      "SchemaTemplateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "complete": {
+            "type": "boolean",
+            "title": "Complete"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Definition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "year",
+          "complete",
+          "source",
+          "notes",
+          "definition"
+        ],
+        "title": "SchemaTemplateResponse"
       },
       "ScoreBulkEntry": {
         "properties": {
@@ -26126,8 +29299,17 @@
               "$ref": "#/components/schemas/ScoringFieldDefinition"
             },
             "type": "array",
-            "minItems": 1,
             "title": "Fields"
+          },
+          "definition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SheetDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "activate": {
             "type": "boolean",
@@ -26136,10 +29318,160 @@
           }
         },
         "type": "object",
+        "title": "ScoringSchemaVersionCreate",
+        "description": "A flat field list, or a structured sheet (`definition`, see scoring.sheet)."
+      },
+      "ScoutingNoteCreate": {
+        "properties": {
+          "external_team_id": {
+            "type": "string",
+            "title": "External Team Id"
+          },
+          "owner_team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Team Id"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Body"
+          },
+          "threat_level": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threat Level"
+          }
+        },
+        "type": "object",
         "required": [
-          "fields"
+          "external_team_id",
+          "body"
         ],
-        "title": "ScoringSchemaVersionCreate"
+        "title": "ScoutingNoteCreate"
+      },
+      "ScoutingNoteResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "external_team_id": {
+            "type": "string",
+            "title": "External Team Id"
+          },
+          "owner_team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Team Id"
+          },
+          "author_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Id"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "threat_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threat Level"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "external_team_id",
+          "owner_team_id",
+          "author_id",
+          "body",
+          "threat_level",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ScoutingNoteResponse"
+      },
+      "ScoutingNoteUpdate": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "threat_level": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threat Level"
+          }
+        },
+        "type": "object",
+        "title": "ScoutingNoteUpdate"
       },
       "SeasonClone": {
         "properties": {
@@ -27067,6 +30399,245 @@
         },
         "type": "object",
         "title": "SeedAssignmentRequest"
+      },
+      "SheetDefinition": {
+        "properties": {
+          "sides": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Sides"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SheetSection"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Sections"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sections"
+        ],
+        "title": "SheetDefinition",
+        "description": "A structured score sheet: sections per side, \"Total = A + B\"."
+      },
+      "SheetEitherMultiplier": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "either": {
+            "items": {
+              "$ref": "#/components/schemas/SheetMultiplier"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 2,
+            "title": "Either"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "either"
+        ],
+        "title": "SheetEitherMultiplier",
+        "description": "Alternatives of which only the best counts, e.g. \"# full pom sets or # full trays \u00d72\"."
+      },
+      "SheetField": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "count",
+              "number",
+              "boolean"
+            ],
+            "title": "Type",
+            "default": "count"
+          },
+          "multiplier": {
+            "type": "number",
+            "title": "Multiplier",
+            "default": 1.0
+          },
+          "min_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Value"
+          },
+          "max_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Value"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "SheetField",
+        "description": "One itemised line: value \u00d7 multiplier."
+      },
+      "SheetMultiplier": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "boolean",
+              "count",
+              "number"
+            ],
+            "title": "Type",
+            "default": "boolean"
+          },
+          "factor": {
+            "type": "number",
+            "title": "Factor",
+            "default": 1.0
+          },
+          "offset": {
+            "type": "number",
+            "title": "Offset",
+            "default": 0.0
+          },
+          "min_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Value"
+          },
+          "max_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "SheetMultiplier",
+        "description": "A value applied to a section subtotal.\n\nboolean: checked \u2192 \u00d7 factor. count/number: \u00d7 (value \u00d7 factor + offset).\nA result below 1 leaves the subtotal unchanged."
+      },
+      "SheetSection": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/SheetField"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Fields"
+          },
+          "multipliers": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SheetMultiplier"
+                },
+                {
+                  "$ref": "#/components/schemas/SheetEitherMultiplier"
+                }
+              ]
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Multipliers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "fields"
+        ],
+        "title": "SheetSection"
       },
       "StatsOverview": {
         "properties": {
@@ -28279,6 +31850,17 @@
           "rounds_played": {
             "type": "integer",
             "title": "Rounds Played"
+          },
+          "tiebreaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tiebreaker"
           }
         },
         "type": "object",
@@ -28883,6 +32465,90 @@
         "type": "object",
         "title": "TeamUpdate"
       },
+      "TiebreakerCriterion": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "max",
+              "min"
+            ],
+            "title": "Direction",
+            "default": "max"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "sheet",
+              "entry"
+            ],
+            "title": "Source",
+            "default": "entry"
+          },
+          "sheet_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Sheet Keys"
+          },
+          "replay_only": {
+            "type": "boolean",
+            "title": "Replay Only",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "TiebreakerCriterion"
+      },
+      "TiebreakerPreset": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "finals_replay": {
+            "type": "boolean",
+            "title": "Finals Replay"
+          },
+          "tiebreakers": {
+            "items": {
+              "$ref": "#/components/schemas/TiebreakerCriterion"
+            },
+            "type": "array",
+            "title": "Tiebreakers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "finals_replay",
+          "tiebreakers"
+        ],
+        "title": "TiebreakerPreset"
+      },
       "TimelineEvent": {
         "properties": {
           "id": {
@@ -29474,6 +33140,18 @@
             "type": "array",
             "title": "Fields"
           },
+          "definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition"
+          },
           "version": {
             "type": "integer",
             "title": "Version"
@@ -29528,6 +33206,17 @@
             "type": "string",
             "title": "Season Id"
           },
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
           "competition_level_id": {
             "anyOf": [
               {
@@ -29543,6 +33232,18 @@
             "items": {},
             "type": "array",
             "title": "Fields"
+          },
+          "definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition"
           },
           "version": {
             "type": "integer",

@@ -7,6 +7,7 @@ import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
 import { EventRankingExportButtons, RankingExportButtons } from "@/components/ExportButtons";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useScoringScope } from "@/hooks/useScoringScope";
+import DEPlacementPanel from "@/modules/scoring/extras/DEPlacementPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,8 @@ interface SeedingEntry {
   best_score: number;
   average_score: number;
   rounds_played: number;
+  /** Tie-breaker that separated the team from an equal seed score. */
+  tiebreaker?: string | null;
 }
 
 interface DEEntry {
@@ -198,7 +201,10 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
                     <span className="badge-blue">{CATEGORY_LABELS[e.category] ?? e.category}</span>
                   </td>
                 )}
-                <td className="px-4 py-3 text-right font-bold">{fmt(e.seed_score)}</td>
+                <td className="px-4 py-3 text-right font-bold">
+                  {fmt(e.seed_score)}
+                  {e.tiebreaker && <div className="text-xs font-normal text-gray-500" title="Tie-Breaker">{e.tiebreaker}</div>}
+                </td>
                 <td className="px-4 py-3 text-right">{fmt(e.best_score)}</td>
                 <td className="px-4 py-3 text-right">{fmt(e.average_score)}</td>
                 <td className="px-4 py-3 text-right text-gray-500">{e.rounds_played}</td>
@@ -219,6 +225,7 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
 // ── DE Tab ────────────────────────────────────────────────────────────────────
 
 function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
+  const { eventId } = useParams();
   const { data: deData, isLoading } = useQuery<DEEntry[]>({
     queryKey: ["de-results", base],
     queryFn: async () => {
@@ -286,6 +293,8 @@ function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
           </div>
         </div>
       ))}
+      {/* Equal DE ranks ordered by the season's tie-breakers (event pages only). */}
+      {eventId && <DEPlacementPanel eventId={eventId} />}
     </div>
   );
 }

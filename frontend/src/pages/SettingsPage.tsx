@@ -676,6 +676,8 @@ function LevelsSettings() {
   });
   const toggleM = useMutation({ mutationFn: (l: any) => api.patch(`/seasons/competition-levels/${l.id}`, { is_active: !l.is_active }), onSuccess: invalidate, onError: onErr });
   const delM = useMutation({ mutationFn: (id: string) => api.delete(`/seasons/competition-levels/${id}`), onSuccess: invalidate, onError: onErr });
+  // Order (ECER = 1, GCER = 2) and the level teams qualify from (GCER ← ECER).
+  const patchM = useMutation({ mutationFn: ({ id, ...body }: { id: string; order?: number; qualifies_from_level_id?: string | null }) => api.patch(`/seasons/competition-levels/${id}`, body), onSuccess: invalidate, onError: onErr });
 
   return (
     <div>
@@ -689,6 +691,7 @@ function LevelsSettings() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">Name</th><th className="px-4 py-3 text-left font-medium">Code</th>
+            <th className="px-4 py-3 text-left font-medium">Reihenfolge</th><th className="px-4 py-3 text-left font-medium">Qualifiziert aus</th>
             <th className="px-4 py-3 text-left font-medium">Status</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">Aktionen</span></th>
           </tr></thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -696,6 +699,8 @@ function LevelsSettings() {
               <tr key={l.id}>
                 <td className="px-4 py-3 font-medium">{l.name}</td>
                 <td className="px-4 py-3 text-gray-500 font-mono">{l.code}</td>
+                <td className="px-4 py-3"><input type="number" min={0} max={100} aria-label={`Reihenfolge ${l.name}`} className="input w-20" defaultValue={l.order ?? 0} onBlur={(e) => Number(e.target.value) !== (l.order ?? 0) && patchM.mutate({ id: l.id, order: Number(e.target.value) })} /></td>
+                <td className="px-4 py-3"><select aria-label={`${l.name} qualifiziert aus`} className="input" value={l.qualifies_from_level_id ?? ""} onChange={(e) => patchM.mutate({ id: l.id, qualifies_from_level_id: e.target.value || null })}><option value="">– offen –</option>{levels?.filter((other: any) => other.id !== l.id).map((other: any) => <option key={other.id} value={other.id}>{other.name}</option>)}</select></td>
                 <td className="px-4 py-3"><span className={l.is_active ? "badge-green" : "badge-gray"}>{l.is_active ? "Aktiv" : "Inaktiv"}</span></td>
                 <td className="px-4 py-3 text-right space-x-2">
                   <button className="btn-secondary text-xs" disabled={toggleM.isPending} onClick={() => toggleM.mutate(l)}>{l.is_active ? "Deaktivieren" : "Aktivieren"}</button>

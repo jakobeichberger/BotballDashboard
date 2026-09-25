@@ -26,6 +26,7 @@ from modules.scoring.competition_schemas import (
     TeamRankingEntry,
 )
 from modules.scoring.schemas import (
+    MatchConfirm,
     MatchCreate,
     MatchResponse,
     MatchUpdate,
@@ -61,6 +62,13 @@ _DOC = [Depends(require_season_event_module("documentation"))]
 async def _broadcast_ranking_update(db: AsyncSession, event_id: str) -> None:
     # Sent after the commit, so clients re-fetching the ranking see the new score.
     publish_after_commit(db, event_id, "ranking_updated")
+
+
+def _broadcast_schedule_update(db: AsyncSession, event_id: str, scheduled_match_id: str | None):
+    """A head-to-head score also records the scheduled match's result (and may
+    advance a bracket), so schedule and bracket views refresh too."""
+    if scheduled_match_id:
+        publish_after_commit(db, event_id, "schedule_updated", {"matchId": scheduled_match_id})
 
 
 async def _season_event(db: AsyncSession, season_id: str, event_id: str | None) -> Event:
@@ -117,6 +125,7 @@ async def create_match(
     data = body.model_dump()
     data["season_id"] = season_id
     match = await service.create_match(db, data, current_user.id)
+    _broadcast_schedule_update(db, match.event_id, match.scheduled_match_id)
     await _broadcast_ranking_update(db, match.event_id)
     return match
 
@@ -137,7 +146,9 @@ async def bulk_create_matches(
         await assert_team_access(db, current_user, entry.team_id, "scoring:admin")
         data = entry.model_dump()
         data["season_id"] = season_id
-        results.append(await service.create_match(db, data, current_user.id))
+        match = await service.create_match(db, data, current_user.id)
+        _broadcast_schedule_update(db, match.event_id, match.scheduled_match_id)
+        results.append(match)
     for event_id in {m.event_id for m in results}:
         await _broadcast_ranking_update(db, event_id)
     return results
@@ -169,6 +180,7 @@ async def update_match(
         changed_by=current_user.id,
         **body.model_dump(exclude_none=True),
     )
+    _broadcast_schedule_update(db, match.event_id, match.scheduled_match_id)
     await _broadcast_ranking_update(db, match.event_id)
     if match.version != version_before:
         # The score actually changed: let the team know (push to its members).
@@ -193,10 +205,14 @@ async def list_score_revisions(
 @router.put("/matches/{match_id}/confirm", response_model=MatchResponse)
 async def confirm_match(
     match_id: str,
+    body: MatchConfirm | None = None,
     current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.confirm_match(db, match_id, current_user.id)
+    """Confirm a score; the season's required referee checklist items must be ticked."""
+    return await service.confirm_match(
+        db, match_id, current_user.id, body.checklist if body else None
+    )
 
 
 @router.delete("/matches/{match_id}", status_code=204)
@@ -208,7 +224,9 @@ async def delete_match(
 ):
     match = await service.get_match(db, match_id)
     event_id = match.event_id
+    scheduled_match_id = match.scheduled_match_id
     await service.delete_match(db, match_id, deleted_by=current_user.id, reason=reason)
+    _broadcast_schedule_update(db, event_id, scheduled_match_id)
     await _broadcast_ranking_update(db, event_id)
 
 
@@ -278,6 +296,7 @@ async def _extended_ranking(
             best_score=r.best_score,
             average_score=r.average_score,
             rounds_played=r.rounds_played,
+            tiebreaker=r.tiebreaker,
         )
         for r in rankings
     ]

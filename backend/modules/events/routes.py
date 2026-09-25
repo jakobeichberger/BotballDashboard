@@ -367,6 +367,11 @@ async def create_event_score(
     data = body.model_dump()
     data.update({"event_id": event.id, "season_id": event.season_id})
     match = await scoring_service.create_match(db, data, current_user.id)
+    if match.scheduled_match_id:
+        # A head-to-head score records the scheduled match's result as well.
+        publish_after_commit(
+            db, event_id, "schedule_updated", {"matchId": match.scheduled_match_id}
+        )
     publish_after_commit(db, event_id, "ranking_updated", {"matchId": match.id})
     return match
 
@@ -423,6 +428,7 @@ async def create_event_scoring_schema(
         body.competition_level_id,
         [field.model_dump() for field in body.fields],
         body.activate,
+        body.definition.to_dict() if body.definition else None,
     )
 
 
