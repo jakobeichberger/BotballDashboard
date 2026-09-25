@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Timer, Trash2 } from "lucide-react";
+import clsx from "clsx";
+import { Plus, Timer, Trash2 } from "lucide-react";
+import { TONE_ICON } from "@/components/ui/tones";
 import { api } from "@/lib/api";
 import { formatDateTime } from "@/i18n/format";
 import { useAuthStore } from "@/store/authStore";
@@ -43,12 +45,17 @@ export default function TimeoutCardsPanel({ eventId, registrations }: { eventId:
   const revoke = useMutation({ mutationFn: async (id: string) => api.delete(`/scoring/events/${eventId}/timeouts/${id}`), onSuccess: refresh, onError: (error) => toast.apiError(error) });
 
   return (
-    <section className="card p-4" aria-labelledby="timeouts-title">
-      <h2 id="timeouts-title" className="mb-1 flex items-center gap-2 text-lg font-semibold"><Timer className="h-5 w-5" />{t("timeouts.title")}</h2>
-      <p className="mb-3 text-sm text-gray-500">{t("timeouts.hint")}</p>
+    <section className="card p-5" aria-labelledby="timeouts-title">
+      <div className="mb-4 flex items-start gap-3">
+        <span className={clsx("stat-icon", TONE_ICON.warning)}><Timer className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /></span>
+        <div className="min-w-0">
+          <h2 id="timeouts-title" className="section-title">{t("timeouts.title")}</h2>
+          <p className="mt-0.5 text-sm text-leise">{t("timeouts.hint")}</p>
+        </div>
+      </div>
       {canRecord && (
-        <form className="mb-3 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (teamId) record.mutate(); }}>
-          <select aria-label={t("timeouts.team")} className="input min-w-0 flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+        <form className="mb-4 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (teamId) record.mutate(); }}>
+          <select aria-label={t("timeouts.team")} className="input min-w-[12rem] flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
             <option value="">{t("timeouts.team")}</option>
             {registrations.filter((r) => !used.has(r.team_id)).map((r) => <option key={r.team_id} value={r.team_id}>{r.team_name}</option>)}
           </select>
@@ -57,17 +64,21 @@ export default function TimeoutCardsPanel({ eventId, registrations }: { eventId:
             <option value="before_hands_off">{t("timeouts.beforeHandsOff")}</option>
             <option value="inspection">{t("timeouts.inspection")}</option>
           </select>
-          <button className="btn-secondary" disabled={!teamId || record.isPending}>{t("timeouts.record")}</button>
+          <button className="btn-secondary" disabled={!teamId || record.isPending}><Plus className="h-4 w-4" aria-hidden="true" />{t("timeouts.record")}</button>
         </form>
       )}
-      <ul className="space-y-1 text-sm">
+      <ul className="divide-y divide-rand text-sm">
         {(timeouts.data ?? []).map((card) => (
-          <li key={card.id} className="flex items-center justify-between gap-2">
-            <span>{card.team_name}{card.round_number ? ` · ${t("timeouts.roundN", { round: card.round_number })}` : ""} · {card.reason === "inspection" ? t("timeouts.inspection") : t("timeouts.beforeHandsOff")} <span className="text-xs text-gray-500">{formatDateTime(card.used_at)}</span></span>
-            {canRevoke && <button type="button" className="btn-secondary px-2" aria-label={t("timeouts.revoke", { team: card.team_name })} onClick={() => revoke.mutate(card.team_id)}><Trash2 className="h-4 w-4" /></button>}
+          <li key={card.id} className="flex items-center justify-between gap-3 py-2">
+            <span className="min-w-0">
+              <span className="font-medium text-fg">{card.team_name}{card.round_number ? ` · ${t("timeouts.roundN", { round: card.round_number })}` : ""}</span>
+              <span className="ml-2 badge-yellow">{card.reason === "inspection" ? t("timeouts.inspection") : t("timeouts.beforeHandsOff")}</span>
+              <span className="ml-2 text-xs text-leise">{formatDateTime(card.used_at)}</span>
+            </span>
+            {canRevoke && <button type="button" className="btn-icon" aria-label={t("timeouts.revoke", { team: card.team_name })} onClick={() => revoke.mutate(card.team_id)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
           </li>
         ))}
-        {timeouts.data?.length === 0 && <li className="text-gray-500">{t("timeouts.none")}</li>}
+        {timeouts.data?.length === 0 && <li className="py-2 text-leise">{t("timeouts.none")}</li>}
       </ul>
     </section>
   );

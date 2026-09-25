@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import PublicEventPage from "@/pages/PublicEventPage";
@@ -38,9 +38,10 @@ function calls(path: string) {
   return (api.get as ReturnType<typeof vi.fn>).mock.calls.filter(([url]) => url === path);
 }
 
-function renderPage() {
+function renderPage(extra: Record<string, unknown> = {}) {
   (api.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
     if (url === "/v1/public/events/live") return Promise.resolve({ data: event });
+    if (url in extra) return Promise.resolve({ data: extra[url] });
     if (url.endsWith("/ranking")) {
       return Promise.resolve({
         data: [{ rank: 1, team_id: "t1", team_name: "Alpha", team_number: "1", seed_score: 10, best_score: 10, rounds_played: 1 }],
@@ -77,6 +78,29 @@ describe("PublicEventPage", () => {
     await waitFor(() => expect(calls("/v1/public/events/live/results")).toHaveLength(1));
     expect(calls("/v1/public/events/live/results")[0][1]).toEqual({ params: { limit: 12, order: "desc" } });
     expect(calls("/v1/public/events/live/schedule")[0][1]).toEqual({ params: { upcoming: true, limit: 10 } });
+  });
+
+  it("shows published awards as a panel of their own", async () => {
+    renderPage({
+      "/v1/public/events/live/awards": [
+        {
+          key: "botball_overall",
+          label: "Botball – Overall",
+          results: [
+            { team_id: "t1", team_name: "Alpha", team_number: "26-0001", place: 1, course: null },
+            { team_id: "t2", team_name: "Beta", team_number: null, place: 2, course: "Course A" },
+          ],
+        },
+      ],
+    });
+    await screen.findByText("Alpha");
+    fireEvent.click(await screen.findByRole("button", { name: "Awards anzeigen" }));
+    const panel = await screen.findByRole("heading", { name: "Awards" });
+    const section = panel.closest("section")!;
+    expect(within(section).getByRole("heading", { name: "Botball – Overall" })).toBeInTheDocument();
+    expect(within(section).getByText("1. Platz")).toBeInTheDocument();
+    expect(within(section).getByText("Beta")).toBeInTheDocument();
+    expect(within(section).getByText("Course A")).toBeInTheDocument();
   });
 
   it("re-fetches once per burst of live events and only what is on screen", async () => {

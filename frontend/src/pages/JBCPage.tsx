@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Puzzle, Save } from "lucide-react";
+import clsx from "clsx";
+import { ArrowLeft, CheckCircle2, Puzzle, Save, Trophy, Users } from "lucide-react";
+import { StatGrid } from "@/pages/dashboard/widgets";
 import { api } from "@/lib/api";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import { useSeasonCategories } from "@/lib/categories";
@@ -58,40 +60,53 @@ export default function JBCPage() {
     onError: (error) => toast.apiError(error),
   });
 
+  const withPoints = teams.map((team) => saved(team.team_id)?.points).filter((points): points is number => points != null);
+
   return (
     <div className="p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-gray-400 hover:text-gray-600"><ArrowLeft className="h-5 w-5" /></EventLink>
-          <h1 className="flex items-center gap-2 text-2xl font-bold"><Puzzle className="h-6 w-6 text-primary-600" />{t("jbc.title")}</h1>
+      <div className="page-header items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="btn-icon"><ArrowLeft className="h-5 w-5" aria-hidden="true" /></EventLink>
+          <h1 className="page-title flex items-center gap-2"><Puzzle className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{t("jbc.title")}</h1>
         </div>
-        <button className="btn-primary text-sm" disabled={save.isPending || Object.keys(draft).length === 0} onClick={() => save.mutate()}><Save className="h-4 w-4" />{t("common:save")}</button>
+        <button className="btn-primary" disabled={save.isPending || Object.keys(draft).length === 0} onClick={() => save.mutate()}><Save className="h-5 w-5" aria-hidden="true" />{t("common:save")}</button>
       </div>
-      <p className="mb-4 text-sm text-gray-500">{t("jbc.hint")}</p>
+      <StatGrid
+        ariaLabel={t("jbc.kpi.label")}
+        items={[
+          { label: t("jbc.kpi.teams"), value: teams.length, icon: Users, tone: "info" },
+          { label: t("jbc.kpi.scored"), value: withPoints.length, icon: CheckCircle2, tone: "success" },
+          { label: t("jbc.kpi.best"), value: withPoints.length ? formatNumber(Math.max(...withPoints)) : "–", icon: Trophy, tone: "primary" },
+        ]}
+      />
+      <p className="mb-4 text-sm text-leise">{t("jbc.hint")}</p>
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("jbc.points")}</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("jbc.rank")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-center font-semibold">{t("jbc.points")}</th>
+              <th className="px-4 py-3 text-center font-semibold">{t("jbc.rank")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {teams.map((team) => {
               const result = saved(team.team_id);
               const value = team.team_id in draft ? draft[team.team_id] : result?.points ?? null;
               return (
-                <tr key={team.team_id} className={team.team_id in draft ? "bg-yellow-50 dark:bg-yellow-900/10" : undefined}>
-                  <td className="px-4 py-2"><div className="font-medium">{team.team_name}</div><div className="font-mono text-xs text-gray-400">{team.team_number ?? ""}</div></td>
+                <tr key={team.team_id} className={team.team_id in draft ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
+                  <td className="px-4 py-2"><div className="font-medium text-fg">{team.team_name}</div><div className="font-mono text-xs text-leise">{team.team_number ?? ""}</div></td>
                   <td className="px-4 py-2 text-center">
-                    <input type="number" min={0} step={0.5} className="input w-24 text-center text-sm" aria-label={t("jbc.pointsFor", { team: team.team_name })} value={value ?? ""} disabled={!!result?.challenges?.length} title={result?.challenges?.length ? t("jbc.fromChallenges") : undefined} onChange={(e) => setDraft((prev) => ({ ...prev, [team.team_id]: e.target.value === "" ? null : Number(e.target.value) }))} />
+                    <input type="number" min={0} step={0.5} className="input mx-auto w-24 text-center text-sm" aria-label={t("jbc.pointsFor", { team: team.team_name })} value={value ?? ""} disabled={!!result?.challenges?.length} title={result?.challenges?.length ? t("jbc.fromChallenges") : undefined} onChange={(e) => setDraft((prev) => ({ ...prev, [team.team_id]: e.target.value === "" ? null : Number(e.target.value) }))} />
                   </td>
-                  <td className="px-4 py-2 text-center font-bold">{result?.rank ?? "–"}{result?.points != null && <span className="ml-2 text-xs font-normal text-gray-400">({formatNumber(result.points)})</span>}</td>
+                  <td className="px-4 py-2 text-center">
+                    <span className={clsx("font-display text-lg font-extrabold tabular-nums", result?.rank != null && result.rank <= 3 ? "text-akzent" : "text-fg")}>{result?.rank ?? "–"}</span>
+                    {result?.points != null && <span className="ml-2 text-xs tabular-nums text-leise">({formatNumber(result.points)})</span>}
+                  </td>
                 </tr>
               );
             })}
-            {teams.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400">{t("jbc.noTeams")}</td></tr>}
+            {teams.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-leise">{t("jbc.noTeams")}</td></tr>}
           </tbody>
         </table>
       </div>

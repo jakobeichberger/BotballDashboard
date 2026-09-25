@@ -217,7 +217,7 @@ function MultiplierRow({ value, fields, onChange, onRemove }: { value: SheetMult
       <button type="button" className="btn-secondary px-2" aria-label={t("schema.removeMultiplier")} onClick={onRemove}><Trash2 className="h-4 w-4" /></button>
     </div>
     {!counted && fields && (
-      <label className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+      <label className="flex flex-wrap items-center gap-2 text-xs text-leise">
         {t("schema.triggeredBy")}
         <select aria-label={t("schema.triggeredBy")} className="input w-auto text-xs" value={value.source ?? ""} onChange={(e) => { const next = { ...value }; if (e.target.value) next.source = e.target.value; else delete next.source; onChange(next); }}>
           <option value="">{t("schema.triggeredByCheckbox")}</option>

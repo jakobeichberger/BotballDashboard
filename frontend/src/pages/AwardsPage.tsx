@@ -2,13 +2,16 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Award, Calculator, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import clsx from "clsx";
+import { Calculator, CheckCircle2, Clock, Eye, EyeOff, Gavel, Plus, Trash2, Trophy, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import { confirmAction } from "@/lib/confirm";
 import { useAuthStore } from "@/store/authStore";
 import { ExportButton } from "@/components/ExportButtons";
-import { formatNumber } from "@/i18n/format";
+import { StatGrid } from "@/pages/dashboard/widgets";
+import { TONE_ICON } from "@/components/ui/tones";
+import { formatDateTime, formatNumber } from "@/i18n/format";
 
 // Local API shapes (modules.awards); not yet part of the generated client.
 interface AwardResult { team_id: string; team_name: string | null; team_number: string | null; place: number; course: string | null; score: number | null; note: string | null }
@@ -51,36 +54,77 @@ export default function AwardsPage() {
   const publish = useMutation({ mutationFn: async (published: boolean) => api.put(`/awards/events/${eventId}/publish`, { published }), onSuccess: refresh, onError });
 
   const data = awards.data;
+  const list = data?.awards ?? [];
+  const decided = list.filter((award) => award.results.length > 0).length;
+
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold"><Award className="h-6 w-6 text-yellow-500" />{t("awards.title")}</h1>
-          <p className="text-sm text-gray-500">{t("awards.subtitle")}</p>
+    <div className="p-6">
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <Trophy className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("awards.title")}
+          </h1>
+          <p className="page-subtitle">{t("awards.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ExportButton url={`/awards/events/${eventId}/export.pdf`} filename="awards.pdf" label="PDF" variant="pdf" />
+          <ExportButton url={`/awards/events/${eventId}/export.csv`} filename="awards.csv" label="CSV" variant="csv" />
           {canManage && (
             <>
-              <button className="btn-secondary text-sm" disabled={applyTemplate.isPending} onClick={() => applyTemplate.mutate("ecer")}><Plus className="h-4 w-4" />{t("awards.templateEcer")}</button>
-              <button className="btn-secondary text-sm" disabled={applyTemplate.isPending} onClick={() => applyTemplate.mutate("gcer")}><Plus className="h-4 w-4" />{t("awards.templateGcer")}</button>
-              <button className="btn-primary text-sm" disabled={compute.isPending || !data?.awards.length} onClick={() => compute.mutate()}><Calculator className="h-4 w-4" />{t("awards.compute")}</button>
-              <button className="btn-secondary text-sm" disabled={publish.isPending || !data} onClick={() => publish.mutate(!data?.published)}>
-                {data?.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              <button className="btn-secondary" disabled={publish.isPending || !data} onClick={() => publish.mutate(!data?.published)}>
+                {data?.published ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
                 {data?.published ? t("awards.unpublish") : t("awards.publish")}
+              </button>
+              <button className="btn-primary" disabled={compute.isPending || !list.length} onClick={() => compute.mutate()}>
+                <Calculator className="h-5 w-5" aria-hidden="true" />
+                {t("awards.compute")}
               </button>
             </>
           )}
-          <ExportButton url={`/awards/events/${eventId}/export.pdf`} filename="awards.pdf" label="PDF" variant="pdf" />
-          <ExportButton url={`/awards/events/${eventId}/export.csv`} filename="awards.csv" label="CSV" variant="csv" />
         </div>
       </div>
 
-      {data && <p role="status" className={data.published ? "badge-green" : "badge-gray"}>{data.published ? t("awards.published") : t("awards.notPublished")}</p>}
-      {awards.isLoading && <p className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
-      {data && data.awards.length === 0 && <div className="card p-8 text-center text-gray-500">{t("awards.empty")}</div>}
+      {list.length > 0 && (
+        <StatGrid
+          ariaLabel={t("awards.kpi.label")}
+          items={[
+            { label: t("awards.kpi.total"), value: list.length, icon: Trophy, tone: "primary" },
+            { label: t("awards.kpi.decided"), value: decided, icon: CheckCircle2, tone: "success" },
+            { label: t("awards.kpi.open"), value: list.length - decided, icon: Clock, tone: "warning" },
+            { label: t("awards.kpi.nominations"), value: list.reduce((sum, award) => sum + award.nominations.length, 0), icon: Users, tone: "info" },
+          ]}
+        />
+      )}
+
+      {data && (
+        <div className="filter-bar items-center justify-between">
+          <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-leise">
+            <span className={data.published ? "badge-green" : "badge-gray"}>
+              {data.published ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
+              {data.published ? t("awards.published") : t("awards.notPublished")}
+            </span>
+            {data.published && data.published_at && <span>{formatDateTime(data.published_at)}</span>}
+          </p>
+          {canManage && (
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-secondary btn-sm" disabled={applyTemplate.isPending} onClick={() => applyTemplate.mutate("ecer")}><Plus className="h-4 w-4" aria-hidden="true" />{t("awards.templateEcer")}</button>
+              <button className="btn-secondary btn-sm" disabled={applyTemplate.isPending} onClick={() => applyTemplate.mutate("gcer")}><Plus className="h-4 w-4" aria-hidden="true" />{t("awards.templateGcer")}</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {awards.isLoading && <p className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
+      {data && list.length === 0 && (
+        <div className="card flex flex-col items-center gap-3 p-10 text-center text-leise">
+          <span className={clsx("stat-icon", TONE_ICON.neutral)}><Trophy className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /></span>
+          {t("awards.empty")}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {data?.awards.map((award) => (
+        {list.map((award) => (
           <AwardCard key={award.id} award={award} teams={teams} canManage={canManage} canNominate={canNominate} onChange={refresh} />
         ))}
       </div>
@@ -104,62 +148,83 @@ function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: 
     onError,
   });
   const remove = useMutation({ mutationFn: async () => api.delete(`/awards/${award.id}`), onSuccess: onChange, onError });
+  const KindIcon = award.kind === "computed" ? Calculator : Gavel;
 
   return (
-    <section className="card space-y-3 p-4" aria-labelledby={`award-${award.id}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 id={`award-${award.id}`} className="font-semibold">{award.label}</h2>
-          <p className="text-xs text-gray-500">
-            {award.kind === "computed" ? t("awards.computedFrom", { source: t(`awards.source.${award.source}`) }) : t("awards.judged")}
-            {" · "}{t("awards.places", { count: award.places })}{award.per_course ? ` · ${t("awards.perCourse")}` : ""}
-          </p>
+    <section className={clsx("card-interactive flex flex-col gap-4 p-5", award.results.length > 0 && "border-success/40")} aria-labelledby={`award-${award.id}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className={clsx("stat-icon", award.results.length > 0 ? TONE_ICON.success : TONE_ICON.neutral)}>
+            <KindIcon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 id={`award-${award.id}`} className="section-title">{award.label}</h2>
+            <p className="mt-0.5 text-sm text-leise">
+              {award.kind === "computed" ? t("awards.computedFrom", { source: t(`awards.source.${award.source}`) }) : t("awards.judged")}
+              {" · "}{t("awards.places", { count: award.places })}{award.per_course ? ` · ${t("awards.perCourse")}` : ""}
+            </p>
+          </div>
         </div>
         {canManage && (
-          <button type="button" className="btn-secondary px-2" aria-label={t("awards.remove", { label: award.label })} onClick={async () => { if (await confirmAction({ message: t("awards.confirmRemove", { label: award.label }), tone: "danger" })) remove.mutate(); }}><Trash2 className="h-4 w-4" /></button>
+          <button type="button" className="btn-icon" aria-label={t("awards.remove", { label: award.label })} onClick={async () => { if (await confirmAction({ message: t("awards.confirmRemove", { label: award.label }), tone: "danger" })) remove.mutate(); }}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>
         )}
       </div>
 
       {award.results.length > 0 ? (
-        <ol className="space-y-1 text-sm">
+        <ol className="divide-y divide-rand overflow-hidden rounded-eng border border-rand">
           {award.results.map((result) => (
-            <li key={`${result.course}-${result.team_id}`} className="flex items-center justify-between gap-2">
-              <span><strong>{result.course ? `${result.course} · ` : ""}{t("awards.place", { place: result.place })}</strong> {result.team_name ?? result.team_id}{result.team_number ? ` (${result.team_number})` : ""}</span>
-              {result.score != null && <span className="text-xs text-gray-500">{formatNumber(result.score, { maximumFractionDigits: 4 })}</span>}
+            <li key={`${result.course}-${result.team_id}`} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+              <span className={clsx("grid h-9 w-9 shrink-0 place-items-center rounded-eng font-display text-lg font-extrabold tabular-nums", result.place === 1 ? TONE_ICON.primary : TONE_ICON.neutral)}>
+                <span className="sr-only">{t("awards.place", { place: result.place })}</span>
+                <span aria-hidden="true">{result.place}</span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="font-ui font-semibold text-fg">{result.team_name ?? result.team_id}</span>
+                {result.team_number && <span className="ml-2 font-mono text-xs text-leise">{result.team_number}</span>}
+              </span>
+              {result.course && <span className="badge-gray">{result.course}</span>}
+              {result.score != null && <span className="tabular-nums text-leise">{formatNumber(result.score, { maximumFractionDigits: 4 })}</span>}
             </li>
           ))}
         </ol>
-      ) : <p className="text-sm text-gray-500">{t("awards.noResult")}</p>}
+      ) : <p className="rounded-eng border border-dashed border-rand px-3 py-4 text-center text-sm text-leise">{t("awards.noResult")}</p>}
 
       {award.kind === "judged" && (
-        <div className="space-y-2 border-t pt-3 dark:border-gray-800">
-          <h3 className="text-sm font-medium">{t("awards.nominations", { count: award.nominations.length })}</h3>
-          <ul className="space-y-1 text-sm">
-            {award.nominations.map((nomination) => (
-              <li key={nomination.id} className="flex flex-wrap items-center gap-2">
-                <span className="min-w-0 flex-1">{nomination.team_name ?? nomination.team_id}{nomination.note ? <span className="text-xs text-gray-500"> – {nomination.note}</span> : null}</span>
-                {canManage && (
-                  <select aria-label={t("awards.placeFor", { team: nomination.team_name ?? nomination.team_id })} className="input w-24 text-xs" value={places[nomination.team_id] ?? ""} onChange={(e) => setPlaces((prev) => ({ ...prev, [nomination.team_id]: e.target.value }))}>
-                    <option value="">–</option>
-                    {Array.from({ length: award.places }, (_, i) => <option key={i} value={i + 1}>{t("awards.place", { place: i + 1 })}</option>)}
-                  </select>
-                )}
-                {canNominate && <button type="button" className="btn-secondary px-2 text-xs" aria-label={t("awards.withdraw", { team: nomination.team_name ?? nomination.team_id })} onClick={() => withdraw.mutate(nomination.team_id)}><Trash2 className="h-3 w-3" /></button>}
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-3 border-t border-rand pt-4">
+          <h3 className="font-ui text-sm font-semibold tracking-ui text-fg">{t("awards.nominations", { count: award.nominations.length })}</h3>
+          {award.nominations.length > 0 && (
+            <ul className="divide-y divide-rand text-sm">
+              {award.nominations.map((nomination) => (
+                <li key={nomination.id} className="flex flex-wrap items-center gap-2 py-2">
+                  <span className="min-w-0 flex-1">
+                    <span className="font-medium text-fg">{nomination.team_name ?? nomination.team_id}</span>
+                    {nomination.note ? <span className="block text-xs text-leise">{nomination.note}</span> : null}
+                  </span>
+                  {canManage && (
+                    <select aria-label={t("awards.placeFor", { team: nomination.team_name ?? nomination.team_id })} className="input w-32" value={places[nomination.team_id] ?? ""} onChange={(e) => setPlaces((prev) => ({ ...prev, [nomination.team_id]: e.target.value }))}>
+                      <option value="">–</option>
+                      {Array.from({ length: award.places }, (_, i) => <option key={i} value={i + 1}>{t("awards.place", { place: i + 1 })}</option>)}
+                    </select>
+                  )}
+                  {canNominate && <button type="button" className="btn-icon" aria-label={t("awards.withdraw", { team: nomination.team_name ?? nomination.team_id })} onClick={() => withdraw.mutate(nomination.team_id)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
+                </li>
+              ))}
+            </ul>
+          )}
           {canNominate && (
             <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (teamId) nominate.mutate(); }}>
-              <select aria-label={t("awards.nominateTeam")} className="input min-w-0 flex-1 text-sm" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+              <select aria-label={t("awards.nominateTeam")} className="input min-w-[10rem] flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">{t("awards.nominateTeam")}</option>
                 {teams.map((team) => <option key={team.team_id} value={team.team_id}>{team.team_name}</option>)}
               </select>
-              <input aria-label={t("awards.reason")} className="input min-w-0 flex-1 text-sm" placeholder={t("awards.reason")} value={note} onChange={(e) => setNote(e.target.value)} />
-              <button className="btn-secondary text-sm" disabled={!teamId || nominate.isPending}>{t("awards.nominate")}</button>
+              <input aria-label={t("awards.reason")} className="input min-w-[10rem] flex-1" placeholder={t("awards.reason")} value={note} onChange={(e) => setNote(e.target.value)} />
+              <button className="btn-secondary" disabled={!teamId || nominate.isPending}><Plus className="h-4 w-4" aria-hidden="true" />{t("awards.nominate")}</button>
             </form>
           )}
           {canManage && award.nominations.length > 0 && (
-            <button type="button" className="btn-primary text-sm" disabled={decide.isPending} onClick={() => decide.mutate()}>{t("awards.decide")}</button>
+            <div className="flex justify-end">
+              <button type="button" className="btn-primary" disabled={decide.isPending} onClick={() => decide.mutate()}><CheckCircle2 className="h-5 w-5" aria-hidden="true" />{t("awards.decide")}</button>
+            </div>
           )}
         </div>
       )}

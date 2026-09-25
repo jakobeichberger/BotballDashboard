@@ -39,27 +39,27 @@ export default function CategoryRegistryEditor({ seasonId }: { seasonId: string 
     <div className="card p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("categories.title")}</h3>
-          <p className="text-xs text-gray-500">{t("categories.hint")}</p>
+          <h3 className="text-sm font-semibold text-fg">{t("categories.title")}</h3>
+          <p className="text-xs text-leise">{t("categories.hint")}</p>
         </div>
-        <button type="button" className="btn-primary text-sm" disabled={invalid || save.isPending || !rows.length} onClick={() => save.mutate()}><Save className="h-4 w-4" />{t("common:save")}</button>
+        <button type="button" className="btn-primary btn-sm" disabled={invalid || save.isPending || !rows.length} onClick={() => save.mutate()}><Save className="h-4 w-4" />{t("common:save")}</button>
       </div>
-      <div className="table-scroll">
+      <div className="table-scroll rounded-eng border border-rand">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-gray-500">
-              <th className="px-2 py-1">{t("categories.key")}</th>
-              <th className="px-2 py-1">{t("categories.labelDe")}</th>
-              <th className="px-2 py-1">{t("categories.labelEn")}</th>
-              <th className="px-2 py-1">{t("categories.kind")}</th>
-              <th className="px-2 py-1">{t("categories.preset")}</th>
-              <th className="px-2 py-1">{t("categories.runs")}</th>
-              <th className="px-2 py-1">{t("categories.countedRuns")}</th>
-              <th className="px-2 py-1">{t("categories.perCourse")}</th>
-              <th className="px-2 py-1"><span className="sr-only">{t("categories.remove")}</span></th>
+          <thead className="bg-flaeche-2">
+            <tr className="text-left font-ui text-xs font-semibold text-fg">
+              <th className="px-2 py-2">{t("categories.key")}</th>
+              <th className="px-2 py-2">{t("categories.labelDe")}</th>
+              <th className="px-2 py-2">{t("categories.labelEn")}</th>
+              <th className="px-2 py-2">{t("categories.kind")}</th>
+              <th className="px-2 py-2">{t("categories.preset")}</th>
+              <th className="px-2 py-2">{t("categories.runs")}</th>
+              <th className="px-2 py-2">{t("categories.countedRuns")}</th>
+              <th className="px-2 py-2">{t("categories.perCourse")}</th>
+              <th className="px-2 py-2"><span className="sr-only">{t("categories.remove")}</span></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-rand">
             {rows.map((row, index) => (
               <tr key={index} className="align-top">
                 <td className="px-2 py-1"><input aria-label={t("categories.key")} className="input w-32 font-mono text-xs" value={row.key} onChange={(e) => update(index, { key: e.target.value })} aria-invalid={!KEY_PATTERN.test(row.key)} /></td>
@@ -79,13 +79,13 @@ export default function CategoryRegistryEditor({ seasonId }: { seasonId: string 
                 <td className="px-2 py-1"><input aria-label={t("categories.runs")} type="number" min={1} max={20} className="input w-20" disabled={row.kind !== "aerial"} value={row.run_count ?? ""} onChange={(e) => update(index, { run_count: number(e.target.value) })} /></td>
                 <td className="px-2 py-1"><input aria-label={t("categories.countedRuns")} type="number" min={1} max={20} className="input w-20" disabled={row.kind !== "aerial"} placeholder={t("categories.allRuns")} value={row.counted_runs ?? ""} onChange={(e) => update(index, { counted_runs: number(e.target.value) })} /></td>
                 <td className="px-2 py-1 text-center"><input aria-label={t("categories.perCourse")} type="checkbox" className="h-4 w-4" checked={row.rank_per_bracket} onChange={(e) => update(index, { rank_per_bracket: e.target.checked })} /></td>
-                <td className="px-2 py-1"><button type="button" className="btn-secondary px-2" aria-label={t("categories.remove")} onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></button></td>
+                <td className="px-2 py-1"><button type="button" className="btn-icon" aria-label={t("categories.remove")} onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" aria-hidden="true" /></button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <button type="button" className="btn-secondary text-sm" onClick={() => setRows((prev) => [...prev, { key: "", label_de: "", label_en: "", kind: "custom", formula_preset: null, run_count: null, counted_runs: null, rank_per_bracket: false }])}><Plus className="h-4 w-4" />{t("categories.add")}</button>
+      <button type="button" className="btn-secondary btn-sm" onClick={() => setRows((prev) => [...prev, { key: "", label_de: "", label_en: "", kind: "custom", formula_preset: null, run_count: null, counted_runs: null, rank_per_bracket: false }])}><Plus className="h-4 w-4" />{t("categories.add")}</button>
     </div>
   );
 }
