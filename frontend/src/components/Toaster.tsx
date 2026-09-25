@@ -35,14 +35,20 @@ export default function Toaster() {
             key={item.id}
             role={item.tone === "error" ? "alert" : "status"}
             className={clsx(
-              "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border p-3 text-sm shadow-lg",
-              item.tone === "error" && "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100",
-              item.tone === "success" && "border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-100",
-              item.tone === "info" && "border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+              "reveal pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-karte border border-l-4 bg-flaeche p-3 pl-3.5 text-sm text-fg shadow-tief",
+              item.tone === "error" && "border-danger/40 border-l-danger",
+              item.tone === "success" && "border-success/40 border-l-success",
+              item.tone === "info" && "border-rand border-l-info",
             )}
           >
-            <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <p className="min-w-0 flex-1 break-words">{item.message}</p>
+            <Icon
+              className={clsx(
+                "mt-0.5 h-4 w-4 shrink-0",
+                item.tone === "error" ? "text-danger" : item.tone === "success" ? "text-success" : "text-info",
+              )}
+              aria-hidden="true"
+            />
+            <p className="min-w-0 flex-1 break-words font-medium">{item.message}</p>
             <button
               type="button"
               onClick={() => dismiss(item.id)}

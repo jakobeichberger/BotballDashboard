@@ -189,11 +189,11 @@ export interface AutoAssignResult {
 
 /** CSS class of one unified-diff line. */
 export function diffLineClass(line: string): string {
-  if (line.startsWith("+++") || line.startsWith("---")) return "text-gray-500";
-  if (line.startsWith("@@")) return "text-blue-600 dark:text-blue-400";
-  if (line.startsWith("+")) return "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200";
-  if (line.startsWith("-")) return "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200";
-  return "text-gray-600 dark:text-gray-400";
+  if (line.startsWith("+++") || line.startsWith("---")) return "text-leise";
+  if (line.startsWith("@@")) return "text-info";
+  if (line.startsWith("+")) return "bg-success/10 text-success";
+  if (line.startsWith("-")) return "bg-danger/10 text-danger";
+  return "text-leise";
 }
 
 export interface PaperDetail {

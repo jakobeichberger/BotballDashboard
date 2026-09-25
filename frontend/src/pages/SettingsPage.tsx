@@ -77,7 +77,7 @@ function UsersSettings() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div><label htmlFor="settingspage-f1" className="label">{t("common:name")}</label><input id="settingspage-f1" className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
             <div><label htmlFor="settingspage-f2" className="label">{t("common:email")}</label><input id="settingspage-f2" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-            <div><label htmlFor="settingspage-f3" className="label">{t("auth:login.password")}</label><input id="settingspage-f3" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><p className={clsx("mt-1 text-xs", createPwProblem ? "text-red-600" : "text-gray-500")}>{createPwProblem ?? passwordHint()}</p></div>
+            <div><label htmlFor="settingspage-f3" className="label">{t("auth:login.password")}</label><input id="settingspage-f3" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><p className={clsx("mt-1 text-xs", createPwProblem ? "text-red-600" : "text-leise")}>{createPwProblem ?? passwordHint()}</p></div>
           </div>
           <div role="group" aria-labelledby="new-user-roles">
             <p id="new-user-roles" className="label">{t("users.roles")}</p>
@@ -87,7 +87,7 @@ function UsersSettings() {
                 return (
                   <button key={r.id} type="button" aria-pressed={on}
                     onClick={() => setRoleIds((prev) => on ? prev.filter((x) => x !== r.id) : [...prev, r.id])}
-                    className={clsx("min-h-11 px-3 py-1 rounded-full text-sm border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
+                    className={clsx("min-h-11 px-3 py-1 rounded-full text-sm border", on ? "bg-primary/10 border-primary/40 text-akzent" : "bg-flaeche-2 border-rand text-leise")}>
                     {r.name}
                   </button>
                 );
@@ -104,7 +104,7 @@ function UsersSettings() {
         <div className="card p-4 mb-4 space-y-3">
           <h3 className="text-sm font-semibold">{t("users.newPasswordFor", { email: pwUser.email })}</h3>
           <input className="input" type="password" aria-label={t("auth:reset.newPassword")} value={pwUser.password} onChange={(e) => setPwUser({ ...pwUser, password: e.target.value })} />
-          <p className={clsx("text-xs", pwUserProblem ? "text-red-600" : "text-gray-500")}>{pwUserProblem ?? passwordHint()}</p>
+          <p className={clsx("text-xs", pwUserProblem ? "text-red-600" : "text-leise")}>{pwUserProblem ?? passwordHint()}</p>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary text-sm" onClick={() => setPwUser(null)}>{t("common:cancel")}</button>
             <button className="btn-primary text-sm disabled:opacity-40" disabled={!pwUser.password || !!pwUserProblem || setPasswordM.isPending} onClick={() => setPasswordM.mutate()}>{t("auth:reset.submit")}</button>
@@ -112,21 +112,21 @@ function UsersSettings() {
         </div>
       )}
 
-      {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise text-sm">{t("common:loading")}</p>}
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+          <thead className="bg-flaeche-2"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("common:email")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("users.roles")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th>
             <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {users?.map((user: any) => (
               <tr key={user.id}>
                 <td className="px-4 py-3 font-medium">{user.display_name}</td>
-                <td className="px-4 py-3 text-gray-500">{user.email}</td>
+                <td className="px-4 py-3 text-leise">{user.email}</td>
                 <td className="px-4 py-3">
                   {editUser && editUser.id === user.id ? (
                     <div className="flex flex-wrap gap-1" role="group" aria-label={t("users.roles")}>
@@ -135,7 +135,7 @@ function UsersSettings() {
                         return (
                           <button key={r.id} type="button" aria-pressed={on}
                             onClick={() => setEditUser({ id: user.id, roleIds: on ? editUser.roleIds.filter((x) => x !== r.id) : [...editUser.roleIds, r.id] })}
-                            className={clsx("px-2 py-0.5 rounded-full text-xs border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
+                            className={clsx("px-2 py-0.5 rounded-full text-xs border", on ? "bg-primary/10 border-primary/40 text-akzent" : "bg-flaeche-2 border-rand text-leise")}>
                             {r.name}
                           </button>
                         );
@@ -242,7 +242,7 @@ function SeasonsSettings() {
       {cloneOf && (
         <div className="card p-4 mb-4 space-y-3">
           <h3 className="text-sm font-semibold">{t("seasons.cloneTitle")}</h3>
-          <p className="text-xs text-gray-500">{t("seasons.cloneHint")}</p>
+          <p className="text-xs text-leise">{t("seasons.cloneHint")}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div><label className="label" htmlFor="clone-name">{t("common:name")}</label><input id="clone-name" className="input" value={cloneOf.name} onChange={(e) => setCloneOf({ ...cloneOf, name: e.target.value })} /></div>
             <div><label className="label" htmlFor="clone-year">{t("seasons.year")}</label><input id="clone-year" className="input" type="number" value={cloneOf.year} onChange={(e) => setCloneOf({ ...cloneOf, year: Number(e.target.value) })} /></div>
@@ -253,18 +253,18 @@ function SeasonsSettings() {
           </div>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise text-sm">{t("common:loading")}</p>}
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+          <thead className="bg-flaeche-2"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("seasons.year")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {seasons?.map((s: any) => (
               <tr key={s.id}>
                 <td className="px-4 py-3 font-medium">{s.name}</td>
-                <td className="px-4 py-3 text-gray-500">{s.year}</td>
+                <td className="px-4 py-3 text-leise">{s.year}</td>
                 <td className="px-4 py-3"><span className={SEASON_STATUS_BADGE[s.status] ?? "badge-gray"}>{SEASON_STATUS_LABEL[s.status] ?? s.status}</span></td>
                 <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                   {s.status !== "active" && s.status !== "archived" && <button className="btn-secondary text-xs" disabled={activateM.isPending} onClick={() => activateM.mutate(s.id)}>{t("activate")}</button>}
@@ -305,7 +305,7 @@ function SpoolsPanel() {
 
   return (
     <div className="mt-8">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("spools.title")}</h3>
+      <h3 className="text-sm font-semibold text-fg mb-3">{t("spools.title")}</h3>
       <div className="card p-4 mb-4 flex flex-wrap items-end gap-3">
         <div><label htmlFor="settingspage-f9" className="label">{t("spools.material")}</label>
           <select id="settingspage-f9" className="input" value={material} onChange={(e) => setMaterial(e.target.value)}><option>PLA</option><option>PETG</option></select></div>
@@ -316,27 +316,27 @@ function SpoolsPanel() {
       </div>
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+          <thead className="bg-flaeche-2"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("spools.material")}</th><th className="px-4 py-3 text-left font-medium">{t("spools.color")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("spools.brand")}</th><th className="px-4 py-3 text-right font-medium">{t("spools.remaining")}</th>
             <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {spools?.map((s: any) => {
               const pct = Math.round((s.remaining_grams / s.initial_grams) * 100);
               return (
                 <tr key={s.id}>
                   <td className="px-4 py-3 font-medium">{s.material}</td>
-                  <td className="px-4 py-3 text-gray-500">{s.color ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-500">{s.brand ?? "—"}</td>
-                  <td className="px-4 py-3 text-right">{s.remaining_grams} g <span className="text-gray-400">({pct}%)</span></td>
+                  <td className="px-4 py-3 text-leise">{s.color ?? "—"}</td>
+                  <td className="px-4 py-3 text-leise">{s.brand ?? "—"}</td>
+                  <td className="px-4 py-3 text-right">{s.remaining_grams} g <span className="text-leise">({pct}%)</span></td>
                   <td className="px-4 py-3 text-right">
                     <button className="btn-secondary text-xs" disabled={consumeM.isPending} onClick={() => consumeM.mutate({ id: s.id, g: 50 })}>−50 g</button>
                   </td>
                 </tr>
               );
             })}
-            {spools?.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">{t("spools.empty")}</td></tr>}
+            {spools?.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-leise">{t("spools.empty")}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -376,7 +376,7 @@ function QuotaRow({ quota, seasonId }: { quota: PrintQuota; seasonId: string }) 
   return (
     <tr>
       <td className="px-4 py-3 font-medium">{quota.team_name ?? quota.team_id}</td>
-      <td className="px-4 py-3 text-gray-500">
+      <td className="px-4 py-3 text-leise">
         <span className={committed > quota.soft_limit_parts ? "text-yellow-600" : undefined}>{t("quotas.usedParts", { used: quota.used_parts, open: quota.open_parts })}</span>
         <span className="block text-xs">{Math.round(quota.used_grams)} g{quota.open_grams ? ` ${t("quotas.openGrams", { grams: Math.round(quota.open_grams) })}` : ""}</span>
       </td>
@@ -404,24 +404,24 @@ function QuotasPanel() {
   return (
     <div className="mt-8">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("quotas.title")}</h3>
+        <h3 className="text-sm font-semibold text-fg">{t("quotas.title")}</h3>
         <select className="input" aria-label={t("quotas.event")} value={selected?.id ?? ""} onChange={(e) => setEventId(e.target.value)}>
           {events?.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
       </div>
-      <p className="mb-3 text-xs text-gray-500">{t("quotas.hint")}</p>
+      <p className="mb-3 text-xs text-leise">{t("quotas.hint")}</p>
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+          <thead className="bg-flaeche-2"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("quotas.team")}</th><th className="px-4 py-3 text-left font-medium">{t("quotas.used")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("quotas.softLimitParts")}</th><th className="px-4 py-3 text-left font-medium">{t("quotas.hardLimitParts")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("quotas.maxGrams")}</th>
             <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {selected && quotas?.map((q) => <QuotaRow key={`${q.id}-${q.max_parts}-${q.soft_limit_parts}-${q.max_grams}`} quota={q} seasonId={selected.season_id} />)}
-            {isLoading && <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">{t("common:loading")}</td></tr>}
-            {quotas?.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">{t("quotas.empty")}</td></tr>}
+            {isLoading && <tr><td colSpan={6} className="px-4 py-6 text-center text-leise">{t("common:loading")}</td></tr>}
+            {quotas?.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-leise">{t("quotas.empty")}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -480,20 +480,20 @@ function PrintersSettings() {
           <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>{t("common:add")}</button></div>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise text-sm">{t("common:loading")}</p>}
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+          <thead className="bg-flaeche-2"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("printers.model")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("printers.type")}</th><th className="px-4 py-3 text-left font-medium">{t("common:status")}</th>
             <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {printers?.map((p: any) => (
               <tr key={p.id}>
                 <td className="px-4 py-3 font-medium">{p.name}</td>
-                <td className="px-4 py-3 text-gray-500">{p.model ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500">{PRINTER_TYPE_LABEL[p.printer_type] ?? p.printer_type}</td>
+                <td className="px-4 py-3 text-leise">{p.model ?? "—"}</td>
+                <td className="px-4 py-3 text-leise">{PRINTER_TYPE_LABEL[p.printer_type] ?? p.printer_type}</td>
                 <td className="px-4 py-3"><span className={p.is_active ? "badge-green" : "badge-gray"}>{p.is_active ? t("common:active") : t("common:inactive")}</span></td>
                 <td className="px-4 py-3 text-right"><button className="btn-secondary text-xs" disabled={toggleM.isPending} onClick={() => toggleM.mutate(p)}>{p.is_active ? t("deactivate") : t("activate")}</button></td>
               </tr>
@@ -544,25 +544,25 @@ function AnnouncementsSettings() {
           <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!title || !text || createM.isPending} onClick={() => createM.mutate()}>{t("announcements.saveDraft")}</button></div>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise text-sm">{t("common:loading")}</p>}
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+          <thead className="bg-flaeche-2"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("announcements.titleLabel")}</th><th className="px-4 py-3 text-left font-medium">{t("announcements.audience")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {anns?.map((a: any) => (
               <tr key={a.id}>
                 <td className="px-4 py-3 font-medium">{a.title}</td>
-                <td className="px-4 py-3 text-gray-500">{AUDIENCES.includes(a.audience) ? t(`announcements.audiences.${a.audience}`) : a.audience}</td>
+                <td className="px-4 py-3 text-leise">{AUDIENCES.includes(a.audience) ? t(`announcements.audiences.${a.audience}`) : a.audience}</td>
                 <td className="px-4 py-3"><span className={a.is_published ? "badge-green" : "badge-gray"}>{a.is_published ? t("announcements.published") : t("announcements.draft")}</span></td>
                 <td className="px-4 py-3 text-right">
                   {!a.is_published && <button className="btn-secondary text-xs" disabled={publishM.isPending} onClick={() => publishM.mutate(a.id)}>{t("announcements.publish")}</button>}
                 </td>
               </tr>
             ))}
-            {anns?.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">{t("announcements.empty")}</td></tr>}
+            {anns?.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-leise">{t("announcements.empty")}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -620,7 +620,7 @@ function SeasonEditor() {
 
       {/* Dates / deadlines */}
       <div className="card p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("seasonDetails.dates")}</h3>
+        <h3 className="text-sm font-semibold text-fg">{t("seasonDetails.dates")}</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {DATE_FIELDS.map((key) => (
             <div key={key}>
@@ -638,43 +638,43 @@ function SeasonEditor() {
 
       {/* Deadlines & events */}
       <div className="card p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("seasonDetails.extra")}</h3>
+        <h3 className="text-sm font-semibold text-fg">{t("seasonDetails.extra")}</h3>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[10rem]"><label htmlFor="settingspage-f23" className="label">{t("announcements.titleLabel")}</label><input id="settingspage-f23" className="input" value={evTitle} onChange={(e) => setEvTitle(e.target.value)} placeholder={t("seasonDetails.titlePlaceholder")} /></div>
           <div><label htmlFor="settingspage-f24" className="label">{t("seasonDetails.kind")}</label><select id="settingspage-f24" className="input" value={evType} onChange={(e) => setEvType(e.target.value)}><option value="deadline">{t("seasonDetails.deadline")}</option><option value="event">{t("seasonDetails.event")}</option></select></div>
           <div><label htmlFor="settingspage-f25" className="label">{t("common:date")}</label><input id="settingspage-f25" type="date" className="input" value={evDate} onChange={(e) => setEvDate(e.target.value)} /></div>
           <button className="btn-primary text-sm disabled:opacity-40" disabled={!evTitle || !evDate || addEventM.isPending} onClick={() => addEventM.mutate()}>{t("seasonDetails.add")}</button>
         </div>
-        <div className="divide-y dark:divide-gray-800">
+        <div className="divide-y">
           {events?.map((ev: any) => (
             <div key={ev.id} className="flex items-center justify-between gap-2 py-1 text-sm">
               <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="text-gray-500 w-24">{formatDate(ev.event_date)}</span>
+                <span className="text-leise w-24">{formatDate(ev.event_date)}</span>
                 <span className={ev.event_type === "event" ? "badge-blue" : "badge-yellow"}>{ev.event_type === "event" ? t("seasonDetails.event") : t("seasonDetails.deadline")}</span>
-                <span className="text-gray-900 dark:text-white">{ev.title}</span>
+                <span className="text-fg">{ev.title}</span>
               </div>
               <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => void confirmThen(t("seasonDetails.confirmDelete", { title: ev.title }), () => delEventM.mutate(ev.id))} title={t("common:delete")} aria-label={t("seasonDetails.deleteEntry", { title: ev.title })}><Trash2 className="w-4 h-4" aria-hidden="true" /></button>
             </div>
           ))}
-          {events?.length === 0 && <p className="py-3 text-gray-400">{t("seasonDetails.noExtra")}</p>}
+          {events?.length === 0 && <p className="py-3 text-leise">{t("seasonDetails.noExtra")}</p>}
         </div>
       </div>
 
       {/* Phases */}
       <div className="card p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("seasonDetails.phases")}</h3>
-        <div className="divide-y dark:divide-gray-800">
+        <h3 className="text-sm font-semibold text-fg">{t("seasonDetails.phases")}</h3>
+        <div className="divide-y">
           {season?.phases?.map((p: any) => (
             <div key={p.id} className="flex items-center justify-between py-2 text-sm">
               <div className="flex items-center gap-2">
-                <span className="text-gray-900 dark:text-white">{p.name}</span>
-                <span className="text-xs text-gray-400">{t("seasonDetails.phaseInfo", { type: p.phase_type, rounds: p.rounds })}</span>
+                <span className="text-fg">{p.name}</span>
+                <span className="text-xs text-leise">{t("seasonDetails.phaseInfo", { type: p.phase_type, rounds: p.rounds })}</span>
                 {p.is_active && <span className="badge-green">{t("activeBadge")}</span>}
               </div>
               {!p.is_active && <button className="btn-secondary text-xs" disabled={activatePhaseM.isPending} onClick={() => activatePhaseM.mutate(p.id)}>{t("activate")}</button>}
             </div>
           ))}
-          {(!season?.phases || season.phases.length === 0) && <p className="py-3 text-gray-400">{t("dashboard:noPhases")}</p>}
+          {(!season?.phases || season.phases.length === 0) && <p className="py-3 text-leise">{t("dashboard:noPhases")}</p>}
         </div>
       </div>
     </div>
@@ -708,16 +708,16 @@ function LevelsSettings() {
       </div>
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+          <thead className="bg-flaeche-2"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("levels.code")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("levels.order")}</th><th className="px-4 py-3 text-left font-medium">{t("levels.qualifiesFrom")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("common:status")}</th><th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {levels?.map((l: any) => (
               <tr key={l.id}>
                 <td className="px-4 py-3 font-medium">{l.name}</td>
-                <td className="px-4 py-3 text-gray-500 font-mono">{l.code}</td>
+                <td className="px-4 py-3 text-leise font-mono">{l.code}</td>
                 <td className="px-4 py-3"><input type="number" min={0} max={100} aria-label={t("levels.orderOf", { name: l.name })} className="input w-20" defaultValue={l.order ?? 0} onBlur={(e) => Number(e.target.value) !== (l.order ?? 0) && patchM.mutate({ id: l.id, order: Number(e.target.value) })} /></td>
                 <td className="px-4 py-3"><select aria-label={t("levels.qualifiesFromOf", { name: l.name })} className="input" value={l.qualifies_from_level_id ?? ""} onChange={(e) => patchM.mutate({ id: l.id, qualifies_from_level_id: e.target.value || null })}><option value="">{t("levels.none")}</option>{levels?.filter((other: any) => other.id !== l.id).map((other: any) => <option key={other.id} value={other.id}>{other.name}</option>)}</select></td>
                 <td className="px-4 py-3"><span className={l.is_active ? "badge-green" : "badge-gray"}>{l.is_active ? t("common:active") : t("common:inactive")}</span></td>
@@ -766,7 +766,7 @@ function SeasonModulesSettings() {
       use_aerial: effective.use_aerial, active_categories: effective.active_categories,
     });
   };
-  if (loadingSeasons) return <p className="text-gray-500 text-sm">{t("common:loading")}</p>;
+  if (loadingSeasons) return <p className="text-leise text-sm">{t("common:loading")}</p>;
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -775,29 +775,29 @@ function SeasonModulesSettings() {
       </div>
       {saveMutation.isSuccess && <div className="mb-4 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">{t("profile:saved")}</div>}
       <div className="mb-6">
-        <label htmlFor="season-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("teams:season")}</label>
+        <label htmlFor="season-select" className="block text-sm font-medium text-fg mb-1">{t("teams:season")}</label>
         <select id="season-select" value={selectedSeasonId || seasons?.[0]?.id || ""} onChange={(e) => { setSelectedSeasonId(e.target.value); setDraft(null); }} className="input text-sm w-64">
           {seasons?.map((s: any) => <option key={s.id} value={s.id}>{s.name} {s.is_active ? t("activeSuffix") : ""}</option>)}
         </select>
       </div>
-      {loadingSeason ? <p className="text-gray-500 text-sm">{t("common:loading")}</p> : (
+      {loadingSeason ? <p className="text-leise text-sm">{t("common:loading")}</p> : (
         <div className="space-y-6">
           <div className="card p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("modules.active")}</h3>
+            <h3 className="text-sm font-semibold text-fg mb-2">{t("modules.active")}</h3>
             {SEASON_MODULES.map((field) => (
               <label key={field} className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={!!(effective[field] ?? false)} onChange={(e) => setFlag(field, e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                <div><div className="text-sm font-medium text-gray-900 dark:text-white">{t(`modules.module.${field}.label`)}</div><div className="text-xs text-gray-500">{t(`modules.module.${field}.description`)}</div></div>
+                <input type="checkbox" checked={!!(effective[field] ?? false)} onChange={(e) => setFlag(field, e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-akzent focus:ring-primary-500" />
+                <div><div className="text-sm font-medium text-fg">{t(`modules.module.${field}.label`)}</div><div className="text-xs text-leise">{t(`modules.module.${field}.description`)}</div></div>
               </label>
             ))}
           </div>
           <div className="card p-4">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("modules.categories")}</h3>
+            <h3 className="text-sm font-semibold text-fg mb-3">{t("modules.categories")}</h3>
             <div className="flex flex-wrap gap-2">
               {ALL_CATEGORIES.map((value) => {
                 const label = CATEGORY_LABEL[value];
                 const active = (effective.active_categories ?? ["botball"]).includes(value);
-                return <button key={value} onClick={() => toggleCategory(value)} className={clsx("px-3 py-1.5 rounded-full text-sm font-medium border transition-colors", active ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:border-primary-700 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>{label}</button>;
+                return <button key={value} onClick={() => toggleCategory(value)} className={clsx("px-3 py-1.5 rounded-full text-sm font-medium border transition-colors", active ? "bg-primary/10 border-primary/40 text-akzent" : "bg-flaeche-2 border-rand text-leise")}>{label}</button>;
               })}
             </div>
           </div>
@@ -850,7 +850,7 @@ function RolesSettings() {
                 return (
                   <button key={p.id} type="button" aria-pressed={on} title={p.description ?? ""}
                     onClick={() => setSelPerms((prev) => on ? prev.filter((x) => x !== p.name) : [...prev, p.name])}
-                    className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
+                    className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary/10 border-primary/40 text-akzent" : "bg-flaeche-2 border-rand text-leise")}>
                     {p.name}
                   </button>
                 );
@@ -862,18 +862,18 @@ function RolesSettings() {
       )}
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr>
+          <thead className="bg-flaeche-2"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("roles.role")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("roles.description")}</th>
             <th className="px-4 py-3 text-left font-medium">{t("roles.permissions")}</th>
             <th className="px-4 py-3 text-right font-medium"><span className="sr-only">{t("common:actions")}</span></th>
           </tr></thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {roles?.map((r: any) => (
               <tr key={r.id}>
                 <td className="px-4 py-3 font-medium">{r.name} {r.is_system && <span className="badge-gray ml-1">{t("roles.system")}</span>}</td>
-                <td className="px-4 py-3 text-gray-500">{r.description ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">
+                <td className="px-4 py-3 text-leise">{r.description ?? "—"}</td>
+                <td className="px-4 py-3 text-leise text-xs">
                   {editRole && editRole.id === r.id ? (
                     <div className="flex flex-wrap gap-1" role="group" aria-label={t("roles.permissions")}>
                       {perms?.map((p: any) => {
@@ -881,7 +881,7 @@ function RolesSettings() {
                         return (
                           <button key={p.id} type="button" aria-pressed={on} title={p.description ?? ""}
                             onClick={() => setEditRole({ id: r.id, names: on ? editRole.names.filter((x) => x !== p.name) : [...editRole.names, p.name] })}
-                            className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
+                            className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary/10 border-primary/40 text-akzent" : "bg-flaeche-2 border-rand text-leise")}>
                             {p.name}
                           </button>
                         );
@@ -929,7 +929,7 @@ export default function SettingsPage() {
         <aside className="md:w-48 md:shrink-0">
           <nav aria-label={t("title")} className="-mx-1 flex gap-1 overflow-x-auto pb-1 md:mx-0 md:block md:space-y-1 md:overflow-visible">
             {NAV.map(({ to, icon: Icon, label }) => (
-              <NavLink key={to} to={to} className={({ isActive }) => clsx("flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-3 py-2 rounded-lg text-sm", isActive ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800")}>
+              <NavLink key={to} to={to} className={({ isActive }) => clsx("flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-3 py-2 rounded-lg text-sm", isActive ? "bg-primary/10 text-akzent" : "text-leise hover:bg-flaeche-2")}>
                 <Icon className="w-4 h-4" aria-hidden="true" />{t(`nav.${label}`)}
               </NavLink>
             ))}

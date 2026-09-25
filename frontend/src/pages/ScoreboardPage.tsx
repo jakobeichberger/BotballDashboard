@@ -92,7 +92,7 @@ function RankCell({ rank }: { rank: number | null }) {
 }
 
 const RANK_COLOR = (r: number) =>
-  r === 1 ? "text-yellow-500" : r === 2 ? "text-gray-400" : r === 3 ? "text-amber-600" : "";
+  r === 1 ? "text-yellow-500" : r === 2 ? "text-leise" : r === 3 ? "text-amber-600" : "";
 
 function fmt(v: number | null | undefined, decimals = 4) {
   if (v == null) return "–";
@@ -177,29 +177,29 @@ function SeedingTab({ base, seasonId, categories, live }: { base: string; season
           <RankingExportButtons seasonId={seasonId} seasonYear={new Date().getFullYear()} />
         )}
       </div>
-      {isLoading && <p role="status" className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
+      {isLoading && <p role="status" className="text-leise text-sm">{t("common:loadingEllipsis")}</p>}
       <Freshness query={query} live={live} className="mb-3" />
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">#</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">#</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
               {categories.length > 1 && (
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.category")}</th>
+                <th className="px-4 py-3 text-left font-medium text-leise">{t("scoreboard.category")}</th>
               )}
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.seedScore")}</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scouting.best")}</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">⌀</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.rounds")}</th>
+              <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.seedScore")}</th>
+              <th className="px-4 py-3 text-right font-medium text-leise">{t("scouting.best")}</th>
+              <th className="px-4 py-3 text-right font-medium text-leise">⌀</th>
+              <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.rounds")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {data?.map((e) => (
-              <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              <tr key={e.team_id} className="hover:bg-flaeche-2">
                 <RankCell rank={e.rank} />
                 <td className="px-4 py-3">
-                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-fg hover:text-akzent hover:underline">
                     {e.team_name ?? t("scoreboard.unknownTeam")}
                   </EventLink>
                 </td>
@@ -210,16 +210,16 @@ function SeedingTab({ base, seasonId, categories, live }: { base: string; season
                 )}
                 <td className="px-4 py-3 text-right font-bold">
                   {fmt(e.seed_score)}
-                  {e.tiebreaker && <div className="text-xs font-normal text-gray-500" title={t("rules.tiebreaker")}>{e.tiebreaker}</div>}
+                  {e.tiebreaker && <div className="text-xs font-normal text-leise" title={t("rules.tiebreaker")}>{e.tiebreaker}</div>}
                 </td>
                 <td className="px-4 py-3 text-right">{fmt(e.best_score)}</td>
                 <td className="px-4 py-3 text-right">{fmt(e.average_score)}</td>
-                <td className="px-4 py-3 text-right text-gray-500">{e.rounds_played}</td>
+                <td className="px-4 py-3 text-right text-leise">{e.rounds_played}</td>
               </tr>
             ))}
             {data?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t("entry.noScores")}</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-leise">{t("entry.noScores")}</td>
               </tr>
             )}
           </tbody>
@@ -267,32 +267,32 @@ function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
           </EventLink>
         </div>
       )}
-      {isLoading && <p role="status" className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
+      {isLoading && <p role="status" className="text-leise text-sm">{t("common:loadingEllipsis")}</p>}
       {(["A", "B"] as const).map((bracket) => (
         <div key={bracket}>
-          <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("scoreboard.bracket", { bracket })}</h3>
+          <h3 className="font-semibold text-fg mb-2">{t("scoreboard.bracket", { bracket })}</h3>
           <div className="card table-scroll">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-800">
+              <thead className="bg-flaeche-2">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("de.rank")}</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.bracketScore")}</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.deScore")}</th>
+                  <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
+                  <th className="px-4 py-3 text-right font-medium text-leise">{t("de.rank")}</th>
+                  <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.bracketScore")}</th>
+                  <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.deScore")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y dark:divide-gray-800">
+              <tbody className="divide-y">
                 {groups[bracket].length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-gray-400">{t("scoreboard.noEntries")}</td>
+                    <td colSpan={4} className="px-4 py-6 text-center text-leise">{t("scoreboard.noEntries")}</td>
                   </tr>
                 ) : (
                   [...groups[bracket]]
                     .sort((a, b) => (a.de_rank ?? 99) - (b.de_rank ?? 99))
                     .map((e) => (
-                      <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <tr key={e.team_id} className="hover:bg-flaeche-2">
                         <td className="px-4 py-3">
-                          <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 hover:text-primary-600 hover:underline dark:text-white dark:hover:text-primary-400">
+                          <EventLink to={`/teams/${e.team_id}`} className="font-medium text-fg hover:text-akzent hover:underline">
                             {teamName(e.team_id)}
                           </EventLink>
                         </td>
@@ -335,25 +335,25 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
           </EventLink>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
+      {isLoading && <p className="text-leise text-sm">{t("common:loadingEllipsis")}</p>}
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">#</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">#</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
               {[1, 2, 3, 4].map((n) => (
-                <th key={n} className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("aerial.run", { number: n })}</th>
+                <th key={n} className="px-4 py-3 text-right font-medium text-leise">{t("aerial.run", { number: n })}</th>
               ))}
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("aerial.score")}</th>
+              <th className="px-4 py-3 text-right font-medium text-leise">{t("aerial.score")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {data?.map((e) => (
-              <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              <tr key={e.team_id} className="hover:bg-flaeche-2">
                 <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
                 <td className="px-4 py-3">
-                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-fg hover:text-akzent hover:underline">
                     {e.team_name ?? t("scoreboard.unknownTeam")}
                   </EventLink>
                 </td>
@@ -366,7 +366,7 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
             ))}
             {data?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t("scoreboard.noAerial")}</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-leise">{t("scoreboard.noAerial")}</td>
               </tr>
             )}
           </tbody>
@@ -415,30 +415,30 @@ function OverallTab({
       <div className="mb-3">
         <CategoryFilter categories={categories} active={category} onChange={setCategory} />
       </div>
-      {isLoading && <p role="status" className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
+      {isLoading && <p role="status" className="text-leise text-sm">{t("common:loadingEllipsis")}</p>}
       <Freshness query={query} live={live} className="mb-3" />
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">#</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">#</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
               {categories.length > 1 && (
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.category")}</th>
+                <th className="px-4 py-3 text-left font-medium text-leise">{t("scoreboard.category")}</th>
               )}
-              {showSeeding && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.seeding")}</th>}
-              {showDE && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.de")}</th>}
-              {showPaper && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.paper")}</th>}
-              {showDoc && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.doc")}</th>}
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.total")}</th>
+              {showSeeding && <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.seeding")}</th>}
+              {showDE && <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.de")}</th>}
+              {showPaper && <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.paper")}</th>}
+              {showDoc && <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.doc")}</th>}
+              <th className="px-4 py-3 text-right font-medium text-leise">{t("scoreboard.total")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {data?.map((e) => (
-              <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              <tr key={e.team_id} className="hover:bg-flaeche-2">
                 <RankCell rank={e.rank} />
                 <td className="px-4 py-3">
-                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
+                  <EventLink to={`/teams/${e.team_id}`} className="font-medium text-fg hover:text-akzent hover:underline">
                     {e.team_name ?? t("scoreboard.unknownTeam")}
                   </EventLink>
                 </td>
@@ -456,7 +456,7 @@ function OverallTab({
             ))}
             {data?.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">{t("scoreboard.noOverall")}</td>
+                <td colSpan={10} className="px-4 py-8 text-center text-leise">{t("scoreboard.noOverall")}</td>
               </tr>
             )}
           </tbody>
@@ -500,7 +500,7 @@ export default function ScoreboardPage() {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
           <Trophy className="w-6 h-6 text-yellow-500" aria-hidden="true" />
           {t("scoreboard.title")}
         </h1>
@@ -535,7 +535,7 @@ export default function ScoreboardPage() {
 
       {/* Tabs */}
       {visibleTabs.length > 1 && (
-        <div className="flex gap-1 mb-6 overflow-x-auto border-b border-gray-200 dark:border-gray-700">
+        <div className="flex gap-1 mb-6 overflow-x-auto border-b border-rand">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -570,9 +570,9 @@ export default function ScoreboardPage() {
         </>
       )}
 
-      {!sid && scope.isLoading && <p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+      {!sid && scope.isLoading && <p role="status" className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
       {!sid && !scope.isLoading && (
-        <div className="card p-8 text-center text-gray-400">
+        <div className="card p-8 text-center text-leise">
           {t("scoreboard.noSeason")}
         </div>
       )}

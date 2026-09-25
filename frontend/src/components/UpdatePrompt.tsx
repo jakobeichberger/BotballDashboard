@@ -27,14 +27,14 @@ export default function UpdatePrompt() {
   if (!needRefresh) return null;
   return (
     <div role="status" className="fixed inset-x-0 top-0 z-[55] flex justify-center p-3">
-      <div className="flex w-full max-w-md items-center gap-3 rounded-lg border border-primary-200 bg-white p-3 text-sm shadow-lg dark:border-primary-800 dark:bg-gray-900">
+      <div className="flex w-full max-w-md items-center gap-3 rounded-lg border border-primary/30 bg-flaeche p-3 text-sm shadow-lg">
         <p className="flex-1">{t("update.available")}</p>
         <button type="button" className="btn-primary min-h-11" onClick={() => void updateServiceWorker(true)}>
           <RefreshCw className="h-4 w-4" aria-hidden="true" /> {t("update.reload")}
         </button>
         <button
           type="button"
-          className="grid h-11 w-11 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="grid h-11 w-11 place-items-center rounded-lg text-leise hover:bg-flaeche-2"
           onClick={() => setNeedRefresh(false)}
           aria-label={t("update.later")}
         >

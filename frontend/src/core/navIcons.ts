@@ -1,0 +1,40 @@
+import {
+  Activity,
+  BarChart3,
+  Bot,
+  CalendarClock,
+  CalendarDays,
+  ClipboardPen,
+  FileText,
+  LayoutDashboard,
+  ListOrdered,
+  Printer,
+  ScanLine,
+  ScanSearch,
+  Settings2,
+  ShieldCheck,
+  Sigma,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import type { RouteDefinition } from "@/core/plugins";
+
+/** Outline icon (lucide) per registry icon key: sidebar and dashboard tiles. */
+export const NAV_ICONS: Record<RouteDefinition["icon"], LucideIcon> = {
+  dashboard: LayoutDashboard,
+  teams: Users,
+  schedule: CalendarDays,
+  scoring: ClipboardPen,
+  scans: ScanLine,
+  papers: FileText,
+  printing: Printer,
+  bots: Bot,
+  settings: Settings2,
+  stats: BarChart3,
+  performance: Activity,
+  calendar: CalendarClock,
+  scouting: ScanSearch,
+  ranking: ListOrdered,
+  formulas: Sigma,
+  admin: ShieldCheck,
+};

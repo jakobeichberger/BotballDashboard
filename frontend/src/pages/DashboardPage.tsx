@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { ClipboardPen } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useEvent } from "@/hooks/useEvents";
@@ -9,12 +10,20 @@ import AdminDashboard from "./dashboard/AdminDashboard";
 import ReviewerDashboard from "./dashboard/ReviewerDashboard";
 import UserDashboard from "./dashboard/UserDashboard";
 import { useDashboardSummary } from "@/api/analytics";
+import PageHeader from "@/components/ui/PageHeader";
+import { ShortcutGrid } from "./dashboard/widgets";
+import { navigationRoutes } from "@/core/plugins";
+import { NAV_ICONS } from "@/core/navIcons";
+import { isModuleEnabled, useEventModules } from "@/hooks/useEventModules";
+import { localized } from "@/i18n/config";
 
 export default function DashboardPage() {
   const { t } = useTranslation("dashboard");
   const { eventId = "" } = useParams();
   const role = useDashboardRole();
   const user = useAuthStore((state) => state.user);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const { data: modules } = useEventModules(eventId || undefined);
   const { data: event } = useEvent(eventId);
   // Role-aware sections (juror queue, own team, organizer status, deadlines).
   const { data: summary } = useDashboardSummary(eventId || undefined);
@@ -90,30 +99,56 @@ export default function DashboardPage() {
     enabled: role === "user",
   });
 
+  const canScore = hasPermission("scoring:write");
+  const eventBase = eventId ? `/events/${eventId}` : "";
+  // Phone home screen (mobil-startseite): the modules as a two-column tile grid.
+  const moduleTiles = navigationRoutes
+    .filter((route) => route.path !== "dashboard" && hasPermission(route.permission) && isModuleEnabled(modules, route.module))
+    .map((route) => ({
+      to: `${eventBase}/${route.path.replace(/\/\*$/, "")}`,
+      label: localized(route.label),
+      icon: NAV_ICONS[route.icon],
+    }));
+
   return (
-    <div className="p-6">
-      <header className="mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {t("common:nav.dashboard")}
-          </h1>
-          <span className="badge-gray text-xs" aria-label={t("roleLabel", { role: t(`role.${role}`) })}>
+    <div className="mx-auto max-w-[96rem] p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title={t("common:nav.dashboard")}
+        subtitle={user?.display_name ? t("welcome", { name: user.display_name }) : undefined}
+        actions={
+          canScore && (
+            <Link to={`${eventBase}/scoring`} className="btn-primary hidden md:inline-flex">
+              <ClipboardPen className="h-5 w-5" aria-hidden="true" />
+              {t("enterScores")}
+            </Link>
+          )
+        }
+      >
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="badge-red" aria-label={t("roleLabel", { role: t(`role.${role}`) })}>
             {t(`role.${role}`)}
           </span>
+          {context && (
+            <span className="text-sm text-leise">
+              {event
+                ? t("activeEvent", { name: event.name })
+                : t("activeSeason", { name: season.name, year: season.year })}
+            </span>
+          )}
         </div>
-        {user?.display_name && (
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            {t("welcome", { name: user.display_name })}
-          </p>
-        )}
-        {context && (
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {event
-              ? t("activeEvent", { name: event.name })
-              : t("activeSeason", { name: season.name, year: season.year })}
-          </p>
-        )}
-      </header>
+      </PageHeader>
+
+      {canScore && (
+        <Link to={`${eventBase}/scoring`} className="btn-primary btn-lg mb-5 w-full md:hidden">
+          <ClipboardPen className="h-5 w-5" aria-hidden="true" />
+          {t("enterScores")}
+        </Link>
+      )}
+      {moduleTiles.length > 0 && (
+        <nav className="mb-6 md:hidden" aria-label={t("modules")}>
+          <ShortcutGrid items={moduleTiles} />
+        </nav>
+      )}
 
       {role === "admin" && (
         <AdminDashboard

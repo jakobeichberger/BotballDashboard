@@ -28,7 +28,7 @@ export function VersionDiff({ paperId, versions }: { paperId: string; versions: 
   return (
     <div className="border-t p-4 space-y-3">
       <div className="flex flex-wrap items-end gap-2 text-sm">
-        <GitCompare className="h-4 w-4 text-gray-500" aria-hidden />
+        <GitCompare className="h-4 w-4 text-leise" aria-hidden />
         <label>{t("diff.from")}
           <select className="input ml-1 py-1" value={from} onChange={(e) => setFrom(Number(e.target.value))}>
             {numbers.map((n) => <option key={n} value={n}>v{n}</option>)}
@@ -40,13 +40,13 @@ export function VersionDiff({ paperId, versions }: { paperId: string; versions: 
           </select>
         </label>
         <button className="btn-secondary text-xs" disabled={from === to} onClick={() => setShown(true)}>{t("diff.compare")}</button>
-        {from === to && <span className="text-xs text-gray-500">{t("diff.pickTwo")}</span>}
+        {from === to && <span className="text-xs text-leise">{t("diff.pickTwo")}</span>}
       </div>
-      {shown && isFetching && <p className="text-sm text-gray-500">{t("diff.comparing")}</p>}
+      {shown && isFetching && <p className="text-sm text-leise">{t("diff.comparing")}</p>}
       {shown && error && <p role="alert" className="text-sm text-red-600">{apiErrorMessage(error)}</p>}
       {shown && data && (
         <div className="space-y-2 text-sm">
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-leise">
             v{data.from_version.version_number}: {data.from_version.file_name}
             {data.from_version.pages != null && `, ${t("diff.pages", { count: data.from_version.pages })}`} → v{data.to_version.version_number}: {data.to_version.file_name}
             {data.to_version.pages != null && `, ${t("diff.pages", { count: data.to_version.pages })}`}
@@ -56,12 +56,12 @@ export function VersionDiff({ paperId, versions }: { paperId: string; versions: 
               <p>
                 <span className="badge-green">{t("diff.added", { count: data.added })}</span>{" "}
                 <span className="badge-red">{t("diff.removed", { count: data.removed })}</span>
-                {data.truncated && <span className="ml-2 text-xs text-gray-500">{t("diff.truncated")}</span>}
+                {data.truncated && <span className="ml-2 text-xs text-leise">{t("diff.truncated")}</span>}
               </p>
               {data.diff.length === 0 ? (
-                <p className="text-gray-500">{t("diff.noDifference")}</p>
+                <p className="text-leise">{t("diff.noDifference")}</p>
               ) : (
-                <pre className="max-h-96 overflow-auto rounded border text-xs leading-5 dark:border-gray-700" aria-label={t("diff.label")}>
+                <pre className="max-h-96 overflow-auto rounded border text-xs leading-5" aria-label={t("diff.label")}>
                   {data.diff.map((line, index) => (
                     <div key={index} className={`px-2 ${diffLineClass(line)}`}>{line || " "}</div>
                   ))}

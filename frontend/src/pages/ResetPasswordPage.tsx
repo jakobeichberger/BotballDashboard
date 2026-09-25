@@ -33,9 +33,9 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-papier p-4">
       <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="mb-6 text-center text-2xl font-bold text-fg">
           {t("reset.title")}
         </h1>
         <div className="card p-6 space-y-4">
@@ -44,12 +44,12 @@ export default function ResetPasswordPage() {
               {t("reset.incompleteLink")}
             </p>
           ) : done ? (
-            <p role="status" className="text-sm text-gray-700 dark:text-gray-300">
+            <p role="status" className="text-sm text-fg">
               {t("reset.done")}
             </p>
           ) : (
             <form onSubmit={submit} className="space-y-4">
-              <p className="text-xs text-gray-500">{passwordHint()}</p>
+              <p className="text-xs text-leise">{passwordHint()}</p>
               <div>
                 <label className="label" htmlFor="new-password">{t("reset.newPassword")}</label>
                 <input
@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
             </form>
           )}
           <p className="text-center text-sm">
-            <Link to={done ? "/login" : "/forgot-password"} className="text-primary-600 hover:underline dark:text-primary-400">
+            <Link to={done ? "/login" : "/forgot-password"} className="text-akzent hover:underline">
               {done ? t("reset.toLogin") : t("reset.requestNew")}
             </Link>
           </p>

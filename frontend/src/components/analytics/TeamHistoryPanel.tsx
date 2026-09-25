@@ -32,19 +32,19 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
 
   return (
     <section className="card overflow-hidden" aria-labelledby="team-history-heading">
-      <h2 id="team-history-heading" className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+      <h2 id="team-history-heading" className="px-4 py-3 border-b font-semibold text-fg flex items-center gap-2">
         <History className="w-4 h-4" aria-hidden="true" /> {t("history.title", { count: rows?.length ?? 0 })}
       </h2>
-      {isLoading && <p className="p-4 text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+      {isLoading && <p className="p-4 text-sm text-leise">{t("common:loadingEllipsis")}</p>}
       {!isLoading && (!rows || rows.length === 0) && (
-        <p className="px-4 py-8 text-center text-gray-400">{t("history.empty")}</p>
+        <p className="px-4 py-8 text-center text-leise">{t("history.empty")}</p>
       )}
       {rows && rows.length > 0 && (
         <>
           {rows.length > 1 && (
             <div className="grid gap-4 p-4 lg:grid-cols-2">
               <figure>
-                <figcaption className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t("history.scoreChart")}</figcaption>
+                <figcaption className="mb-2 text-sm font-medium text-fg">{t("history.scoreChart")}</figcaption>
                 <div className="h-56" data-testid="history-score-chart">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
@@ -58,7 +58,7 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
                 </div>
               </figure>
               <figure>
-                <figcaption className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t("history.rankChart")}</figcaption>
+                <figcaption className="mb-2 text-sm font-medium text-fg">{t("history.rankChart")}</figcaption>
                 <div className="h-56" data-testid="history-rank-chart">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
@@ -78,7 +78,7 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <caption className="sr-only">{t("history.caption")}</caption>
-              <thead className="bg-gray-50 dark:bg-gray-800">
+              <thead className="bg-flaeche-2">
                 <tr>
                   {[
                     t("history.col.season"),
@@ -91,16 +91,16 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
                     t("history.col.bestRun"),
                     ...(showPractice ? [t("history.col.practiceAvg")] : []),
                   ].map((h) => (
-                    <th key={h} scope="col" className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-400">{h}</th>
+                    <th key={h} scope="col" className="px-4 py-2 text-left font-medium text-leise">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y dark:divide-gray-800">
+              <tbody className="divide-y">
                 {rows.map((r) => (
                   <tr key={`${r.event_id}-${r.team_id}`}>
                     <td className="px-4 py-2 tabular-nums">{r.season_year}</td>
                     <td className="px-4 py-2">
-                      <EventLink to={`/events/${r.event_id}/dashboard`} className="text-primary-600 dark:text-primary-400 hover:underline">{r.event_name}</EventLink>
+                      <EventLink to={`/events/${r.event_id}/dashboard`} className="text-akzent hover:underline">{r.event_name}</EventLink>
                     </td>
                     <td className="px-4 py-2 tabular-nums">{r.seeding_rank ? `${r.seeding_rank}/${r.seeding_teams}` : "—"}</td>
                     <td className="px-4 py-2 tabular-nums">{fmtNum(r.seeding_score)}</td>

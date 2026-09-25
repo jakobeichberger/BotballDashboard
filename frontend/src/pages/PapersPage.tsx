@@ -54,12 +54,12 @@ function PaperStatsPanel({ stats }: { stats: PaperStats }) {
       <dl className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {tiles.map(([label, value]) => (
           <div key={label} className="card p-3">
-            <dt className="text-xs text-gray-500">{label}</dt>
-            <dd className="text-xl font-semibold text-gray-900 dark:text-white">{value}</dd>
+            <dt className="text-xs text-leise">{label}</dt>
+            <dd className="text-xl font-semibold text-fg">{value}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-2 text-xs text-gray-500">
+      <p className="mt-2 text-xs text-leise">
         {t("stats.decisions", { accepted: stats.accepted, rejected: stats.rejected, disqualified: stats.disqualified })}{" "}
         {t("stats.perCriterion")}{" "}
         {REVIEW_CRITERIA.map((c) => `${c.label} ${formatNumber(stats.criterion_averages?.[c.key], oneDecimal)}`).join(" · ")}
@@ -133,7 +133,7 @@ export default function PapersPage() {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
           <FileText className="w-6 h-6" />
           {t("title")}
         </h1>
@@ -154,7 +154,7 @@ export default function PapersPage() {
 
       {deadline && <div className="mb-6"><DeadlineBanner deadline={deadline} /></div>}
 
-      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise">{t("common:loading")}</p>}
 
       {seasonId && <PaperDeadlinesPanel seasonId={seasonId} canAdmin={canAdmin} />}
 
@@ -162,40 +162,40 @@ export default function PapersPage() {
 
       {canAdmin && seasonId && <AutoAssignPanel seasonId={seasonId} eventId={eventId} />}
 
-      {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">{t("workload.title")}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-gray-500">{t("workload.summary", { open: item.open, overdue: item.overdue, completed: item.completed })}</p></div>)}</div></section>}
+      {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">{t("workload.title")}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-leise">{t("workload.summary", { open: item.open, overdue: item.overdue, completed: item.completed })}</p></div>)}</div></section>}
 
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.title")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:status")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.round")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.version")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.submitted")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.title")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("common:status")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.round")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.version")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.submitted")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {papers?.map((paper) => (
-              <tr key={paper.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                  <EventLink to={`/papers/${paper.id}`} className="text-primary-700 hover:underline dark:text-primary-300">{paper.title}</EventLink>
+              <tr key={paper.id} className="hover:bg-flaeche-2">
+                <td className="px-4 py-3 font-medium text-fg">
+                  <EventLink to={`/papers/${paper.id}`} className="text-akzent hover:underline">{paper.title}</EventLink>
                 </td>
                 <td className="px-4 py-3">
                   <span className={PAPER_STATUS_BADGE[paper.status] ?? "badge-gray"}>
                     {PAPER_STATUS_LABEL[paper.status] ?? paper.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500">#{paper.revision_number}</td>
-                <td className="px-4 py-3 text-gray-500">{paper.current_version ? `v${paper.current_version}` : "—"}</td>
-                <td className="px-4 py-3 text-gray-500">
+                <td className="px-4 py-3 text-leise">#{paper.revision_number}</td>
+                <td className="px-4 py-3 text-leise">{paper.current_version ? `v${paper.current_version}` : "—"}</td>
+                <td className="px-4 py-3 text-leise">
                   {formatDate(paper.submitted_at)}
                 </td>
               </tr>
             ))}
             {papers?.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-leise">
                   {t("empty")}
                 </td>
               </tr>
@@ -205,7 +205,7 @@ export default function PapersPage() {
       </div>
       <Modal open={open} title={t("create.title")} onClose={() => setOpen(false)}>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); createPaper.mutate(); }}>
-          <p className="text-xs text-gray-500">{t("create.hint")}</p>
+          <p className="text-xs text-leise">{t("create.hint")}</p>
           <label className="block text-sm font-medium">{t("create.team")}
             <select className="input mt-1 w-full" required value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
               <option value="">{t("common:pleaseChoose")}</option>

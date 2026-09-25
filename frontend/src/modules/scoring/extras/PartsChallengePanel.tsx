@@ -76,27 +76,27 @@ export default function PartsChallengePanel({
     <section className="card space-y-4 p-4" aria-labelledby="parts-challenges-title">
       <div>
         <h2 id="parts-challenges-title" className="flex items-center gap-2 text-lg font-semibold"><Gavel className="h-5 w-5" aria-hidden="true" />{t("partsChallenge.title")}</h2>
-        <p className="text-xs text-gray-500">{t("partsChallenge.hint")}</p>
+        <p className="text-xs text-leise">{t("partsChallenge.hint")}</p>
       </div>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <ul className="space-y-3">
         {list.map((item) => {
           const open = item.upheld === null;
           return (
-            <li key={item.id} className="rounded-lg border p-3 text-sm dark:border-gray-700">
+            <li key={item.id} className="rounded-lg border p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium">
                   {t("partsChallenge.versus", { challenger: teamName(item.challenger_team_id), challenged: teamName(item.challenged_team_id) })}
-                  {item.scheduled_match_id && <span className="ml-2 font-mono text-xs text-gray-500">{matchCode(item.scheduled_match_id)}</span>}
+                  {item.scheduled_match_id && <span className="ml-2 font-mono text-xs text-leise">{matchCode(item.scheduled_match_id)}</span>}
                 </p>
                 <span className={open ? "badge-yellow" : item.upheld ? "badge-red" : "badge-gray"}>
                   {open ? t("partsChallenge.open") : item.upheld ? t("partsChallenge.upheld") : t("partsChallenge.rejected")}
                 </span>
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">{item.description}</p>
-              <p className="mt-1 text-xs text-gray-500">{formatDateTime(item.created_at, { dateStyle: "short", timeStyle: "short" })}</p>
+              <p className="mt-1 whitespace-pre-wrap text-fg">{item.description}</p>
+              <p className="mt-1 text-xs text-leise">{formatDateTime(item.created_at, { dateStyle: "short", timeStyle: "short" })}</p>
               {!open && (
-                <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                <p className="mt-2 text-xs text-leise">
                   {t("partsChallenge.outcome", { team: teamName(item.upheld ? item.challenged_team_id : item.challenger_team_id) })}
                   {item.ruling_note ? ` – ${item.ruling_note}` : ""}
                   {!item.scheduled_match_id && ` ${t("partsChallenge.noMatchEffect")}`}
@@ -119,10 +119,10 @@ export default function PartsChallengePanel({
             </li>
           );
         })}
-        {!challenges.isLoading && list.length === 0 && <li className="text-sm text-gray-400">{t("partsChallenge.none")}</li>}
+        {!challenges.isLoading && list.length === 0 && <li className="text-sm text-leise">{t("partsChallenge.none")}</li>}
       </ul>
       {canJudge && (
-        <form className="grid gap-3 border-t pt-4 sm:grid-cols-3 dark:border-gray-800" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
+        <form className="grid gap-3 border-t pt-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
           <label className="text-sm font-medium">{t("partsChallenge.match")}
             <select className="input mt-1 w-full" value={form.scheduled_match_id} onChange={(e) => setForm({ ...form, scheduled_match_id: e.target.value, challenger_team_id: "", challenged_team_id: "" })}>
               <option value="">{t("partsChallenge.noMatch")}</option>

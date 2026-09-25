@@ -31,7 +31,7 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
             const total = result.sides.find((s) => s.side === item)?.total ?? 0;
             return <button key={item} type="button" role="tab" aria-selected={side === item} className={side === item ? "btn-primary" : "btn-secondary"} onClick={() => setActiveSide(item)}>{t("sheet.sideTotal", { side: item, total })}</button>;
           })}
-          <span className="text-sm text-gray-500">{t("sheet.total", { sides: definition.sides.join(" + ") })} <strong>{result.total}</strong></span>
+          <span className="text-sm text-leise">{t("sheet.total", { sides: definition.sides.join(" + ") })} <strong>{result.total}</strong></span>
         </div>
       )}
       {definition.sections.map((section, index) => {
@@ -43,16 +43,16 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
               {section.fields.map((field) => <Input key={field.key} spec={field} rawKey={rawKey(side, field.key)} hint={`× ${field.multiplier ?? 1}`} values={values} onChange={onChange} />)}
             </div>
             {section.multipliers.length > 0 && (
-              <div className="mt-3 grid gap-3 border-t pt-3 dark:border-gray-800 sm:grid-cols-2">
+              <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-2">
                 {section.multipliers.map((multiplier) => isEither(multiplier) ? (
-                  <div key={multiplier.key} className="rounded border border-dashed p-2 dark:border-gray-700 sm:col-span-2">
-                    <p className="mb-2 text-xs font-medium text-gray-500">{t("sheet.eitherHint", { name: multiplier.label })}</p>
+                  <div key={multiplier.key} className="rounded border border-dashed p-2 sm:col-span-2">
+                    <p className="mb-2 text-xs font-medium text-leise">{t("sheet.eitherHint", { name: multiplier.label })}</p>
                     <div className="grid gap-3 sm:grid-cols-2">{multiplier.either.map((option) => <Input key={option.key} spec={option} rawKey={rawKey(side, option.key)} hint={multiplierHint(option, t)} values={values} onChange={onChange} />)}</div>
                   </div>
                 ) : <Input key={multiplier.key} spec={multiplier} rawKey={rawKey(side, multiplier.key)} hint={multiplierHint(multiplier, t)} values={values} onChange={onChange} />)}
               </div>
             )}
-            {breakdown && <p className="mt-3 text-right text-sm text-gray-500" aria-live="polite">{breakdown.subtotal}{breakdown.multiplier !== 1 ? ` × ${breakdown.multiplier}` : ""} = <strong className="text-gray-900 dark:text-white">{breakdown.total}</strong></p>}
+            {breakdown && <p className="mt-3 text-right text-sm text-leise" aria-live="polite">{breakdown.subtotal}{breakdown.multiplier !== 1 ? ` × ${breakdown.multiplier}` : ""} = <strong className="text-fg">{breakdown.total}</strong></p>}
           </fieldset>
         );
       })}
@@ -74,7 +74,7 @@ function Input({ spec, rawKey: key, hint, values, onChange }: { spec: SheetField
   const value = values[key];
   return (
     <label className="text-sm font-medium">
-      {spec.label} <span className="text-xs text-gray-500">{hint}</span>
+      {spec.label} <span className="text-xs text-leise">{hint}</span>
       {isBoolean ? (
         <input className="ml-3 h-5 w-5 align-middle" type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(key, event.target.checked)} />
       ) : (

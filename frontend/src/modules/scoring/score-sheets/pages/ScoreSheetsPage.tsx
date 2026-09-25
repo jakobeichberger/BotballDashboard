@@ -100,7 +100,7 @@ export default function ScoreSheetsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{t('scoreSheets.title')}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{t('scoreSheets.subtitle')}</p>
+          <p className="text-sm text-leise mt-0.5">{t('scoreSheets.subtitle')}</p>
         </div>
         <button
           type="button"
@@ -129,11 +129,11 @@ export default function ScoreSheetsPage() {
         {/* Left: sheet list */}
         <div className="w-full lg:w-80 shrink-0 flex flex-col gap-2 lg:overflow-y-auto">
           {isLoading && (
-            <p role="status" className="text-sm text-gray-500 py-4 text-center">{t('common:loading')}</p>
+            <p role="status" className="text-sm text-leise py-4 text-center">{t('common:loading')}</p>
           )}
 
           {!isLoading && sheets.length === 0 && (
-            <div className="text-center py-12 text-gray-400 text-sm">
+            <div className="text-center py-12 text-leise text-sm">
               <p className="text-2xl mb-2" aria-hidden="true">📄</p>
               <p>{t('scoreSheets.empty')}</p>
             </div>
@@ -146,7 +146,7 @@ export default function ScoreSheetsPage() {
                 'w-full rounded-lg border transition-colors',
                 selectedId === sheet.id
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300',
+                  : 'border-rand hover:border-blue-300',
               ].join(' ')}
             >
               {/* Selecting and the row actions are separate controls: a button must not contain links or buttons. */}
@@ -159,7 +159,7 @@ export default function ScoreSheetsPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">{sheet.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-leise mt-0.5">
                     {sheet.year} {sheet.game_theme ? `· ${sheet.game_theme}` : ''}
                   </p>
                 </div>
@@ -185,7 +185,7 @@ export default function ScoreSheetsPage() {
                 <button
                   type="button"
                   onClick={() => void handleDownload(sheet)}
-                  className="min-h-11 rounded px-2 text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  className="min-h-11 rounded px-2 text-xs text-info hover:underline"
                   aria-label={t('scoreSheets.downloadFor', { label: sheet.label })}
                 >
                   {t('scoreSheets.download')}
@@ -195,7 +195,7 @@ export default function ScoreSheetsPage() {
                     <button
                       type="button"
                       onClick={() => setActive.mutate(sheet.id)}
-                      className="min-h-11 rounded px-2 text-xs text-gray-600 hover:underline dark:text-gray-400"
+                      className="min-h-11 rounded px-2 text-xs text-leise hover:underline"
                     >
                       {t('scoreSheets.setActive')}
                     </button>
@@ -215,13 +215,13 @@ export default function ScoreSheetsPage() {
         </div>
 
         {/* Right: field editor */}
-        <div className="min-w-0 flex-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-4 lg:p-6">
+        <div className="min-w-0 flex-1 overflow-y-auto rounded-lg border border-rand p-4 lg:p-6">
           {!selectedSheet ? (
-            <div className="flex h-full items-center justify-center text-gray-400 text-sm">
+            <div className="flex h-full items-center justify-center text-leise text-sm">
               {t('scoreSheets.selectToEdit')}
             </div>
           ) : selectedSheet.ocr_status === 'processing' || selectedSheet.ocr_status === 'pending' ? (
-            <div className="flex flex-col items-center justify-center gap-3 h-full text-gray-500">
+            <div className="flex flex-col items-center justify-center gap-3 h-full text-leise">
               <div className="animate-spin h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent" />
               <p className="text-sm">{t('scoreSheets.ocr.processingHint')}</p>
             </div>
@@ -229,7 +229,7 @@ export default function ScoreSheetsPage() {
             <div>
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <h2 className="font-semibold">{selectedSheet.label}</h2>
-                <span className="text-sm text-gray-500">{selectedSheet.file_name}</span>
+                <span className="text-sm text-leise">{selectedSheet.file_name}</span>
               </div>
               <FieldCandidateEditor
                 template={selectedSheet}
@@ -237,7 +237,7 @@ export default function ScoreSheetsPage() {
                   queryClient.invalidateQueries({ queryKey: ['score-sheets', 'detail', selectedId] })
                 }
               />
-              <div className="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
+              <div className="mt-8 border-t border-rand pt-6">
                 <OcrLayoutEditor
                   template={selectedSheet}
                   onSaved={() =>

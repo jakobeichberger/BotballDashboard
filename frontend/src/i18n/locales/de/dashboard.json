@@ -100,5 +100,7 @@
     "printFailed": "{{count}} Fehler"
   },
   "upcomingDeadlines": "Nächste Deadlines",
-  "calendar": "Kalender"
+  "calendar": "Kalender",
+  "enterScores": "Wertung erfassen",
+  "modules": "Module"
 }

@@ -141,7 +141,7 @@ export default function OcrLayoutEditor({
   }
 
   if (fields.length === 0) {
-    return <p className="text-sm text-gray-500">{t('scoreSheets.layout.noFields')}</p>
+    return <p className="text-sm text-leise">{t('scoreSheets.layout.noFields')}</p>
   }
 
   const preview = drag ? rectFromPoints(active, drag.start, drag.current) : null
@@ -157,7 +157,7 @@ export default function OcrLayoutEditor({
     <section className="space-y-4" aria-labelledby="ocr-layout-title">
       <div>
         <h3 id="ocr-layout-title" className="font-semibold">{t('scoreSheets.layout.title')}</h3>
-        <p className="text-xs text-gray-500">{t('scoreSheets.layout.hint')}</p>
+        <p className="text-xs text-leise">{t('scoreSheets.layout.hint')}</p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3 text-sm">
@@ -202,7 +202,7 @@ export default function OcrLayoutEditor({
           data-testid="ocr-layout-surface"
           role="application"
           aria-label={mode === 'anchors' ? t('scoreSheets.anchors.surface') : t('scoreSheets.layout.surface', { field: labelOf(active) })}
-          className="relative w-full cursor-crosshair touch-none select-none overflow-hidden rounded border border-gray-300 bg-white dark:border-gray-600"
+          className="relative w-full cursor-crosshair touch-none select-none overflow-hidden rounded border border-rand-stark/70 bg-white"
           style={{ aspectRatio: `${page.width} / ${page.height}` }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -241,7 +241,7 @@ export default function OcrLayoutEditor({
         <div className="space-y-6 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500">
+              <tr className="text-left text-leise">
                 <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.layout.field')}</th>
                 {EDGES.map((edge) => <th key={edge} scope="col" className="py-1 pr-2 font-medium">{t(`scoreSheets.layout.edge.${edge}`)}</th>)}
                 <th scope="col" className="py-1"><span className="sr-only">{t('common:actions')}</span></th>
@@ -251,10 +251,10 @@ export default function OcrLayoutEditor({
               {fields.map((field) => {
                 const region = regionOf(field.key)
                 return (
-                  <tr key={field.key} className={`border-t border-gray-100 dark:border-gray-800 ${field.key === active ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
+                  <tr key={field.key} className={`border-t border-rand ${field.key === active ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
                     <td className="py-1 pr-2">
                       <button type="button" className="text-left hover:underline" onClick={() => setActive(field.key)}>
-                        {field.label} <span className="font-mono text-xs text-gray-500">{field.key}</span>
+                        {field.label} <span className="font-mono text-xs text-leise">{field.key}</span>
                       </button>
                     </td>
                     {EDGES.map((edge) => (
@@ -271,7 +271,7 @@ export default function OcrLayoutEditor({
                             onChange={(e) => setRegion(fitRegion({ ...region, [edge]: Number(e.target.value) / 100 }))}
                           />
                         ) : edge === 'x' ? (
-                          <button type="button" className="text-xs text-blue-600 hover:underline dark:text-blue-400" onClick={() => setRegion({ key: field.key, x: 0.1, y: 0.1, width: 0.1, height: 0.03 })}>
+                          <button type="button" className="text-xs text-info hover:underline" onClick={() => setRegion({ key: field.key, x: 0.1, y: 0.1, width: 0.1, height: 0.03 })}>
                             {t('scoreSheets.layout.addBox')}
                           </button>
                         ) : null}
@@ -289,7 +289,7 @@ export default function OcrLayoutEditor({
               })}
             </tbody>
           </table>
-          <p className="-mt-4 text-xs text-gray-500">{t('scoreSheets.layout.coverage', { count: regions.length, total: fields.length })}</p>
+          <p className="-mt-4 text-xs text-leise">{t('scoreSheets.layout.coverage', { count: regions.length, total: fields.length })}</p>
 
           <section aria-labelledby="ocr-anchors-title">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -303,12 +303,12 @@ export default function OcrLayoutEditor({
                 {t('scoreSheets.anchors.add')}
               </button>
             </div>
-            <p className="text-xs text-gray-500">{t('scoreSheets.anchors.hint')}</p>
+            <p className="text-xs text-leise">{t('scoreSheets.anchors.hint')}</p>
             {anchors.length > 0 && (
               <div className="table-scroll">
               <table className="mt-2 w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500">
+                  <tr className="text-left text-leise">
                     <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.anchors.name')}</th>
                     {EDGES.map((edge) => <th key={edge} scope="col" className="py-1 pr-2 font-medium">{t(`scoreSheets.layout.edge.${edge}`)}</th>)}
                     <th scope="col" className="py-1"><span className="sr-only">{t('common:actions')}</span></th>
@@ -316,7 +316,7 @@ export default function OcrLayoutEditor({
                 </thead>
                 <tbody>
                   {anchors.map((anchor, index) => (
-                    <tr key={index} className="border-t border-gray-100 dark:border-gray-800">
+                    <tr key={index} className="border-t border-rand">
                       <td className="py-1 pr-2">
                         <input
                           className="input w-32"
@@ -366,7 +366,7 @@ export default function OcrLayoutEditor({
           {t('scoreSheets.layout.save')}
         </button>
         {problem && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{problem}</p>}
-        {message && <p role="status" className="text-sm text-gray-600 dark:text-gray-300">{message}</p>}
+        {message && <p role="status" className="text-sm text-leise">{message}</p>}
       </div>
     </section>
   )

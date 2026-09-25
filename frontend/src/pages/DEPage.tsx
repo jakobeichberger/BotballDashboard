@@ -89,7 +89,7 @@ export default function DEPage() {
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-gray-400 hover:text-gray-600">
+          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-leise hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
           </EventLink>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -113,30 +113,30 @@ export default function DEPage() {
         </div>
       )}
 
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm text-leise mb-4">
         {t("de.hint")}
       </p>
 
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("de.bracket")}</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("de.rank")}</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("de.bracketScore")}</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("de.deScore")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-center font-medium text-leise">{t("de.bracket")}</th>
+              <th className="px-4 py-3 text-center font-medium text-leise">{t("de.rank")}</th>
+              <th className="px-4 py-3 text-center font-medium text-leise">{t("de.bracketScore")}</th>
+              <th className="px-4 py-3 text-center font-medium text-leise">{t("de.deScore")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {teams?.map((team) => {
               const e = effective(team.id);
               const dirty = !!draft[team.id];
               return (
-                <tr key={team.id} className={dirty ? "bg-yellow-50 dark:bg-yellow-900/10" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}>
+                <tr key={team.id} className={dirty ? "bg-yellow-50 dark:bg-yellow-900/10" : "hover:bg-flaeche-2"}>
                   <td className="px-4 py-2">
                     <div className="font-medium">{team.name}</div>
-                    <div className="text-xs text-gray-400 font-mono">{team.team_number ?? team.id}</div>
+                    <div className="text-xs text-leise font-mono">{team.team_number ?? team.id}</div>
                   </td>
                   <td className="px-4 py-2 text-center">
                     <select

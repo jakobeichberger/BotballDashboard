@@ -185,7 +185,7 @@ export default function ScoreEntryPage() {
   if (!canEnter) {
     return (
       <div className="p-6">
-        <div className="card p-8 text-center text-gray-400">{t("entry.noPermission")}</div>
+        <div className="card p-8 text-center text-leise">{t("entry.noPermission")}</div>
       </div>
     );
   }
@@ -197,11 +197,11 @@ export default function ScoreEntryPage() {
       </EventLink>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
           <ClipboardList className="w-6 h-6" /> {t("entry.title")}
         </h1>
         {/* Mode toggle */}
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="inline-flex rounded-lg border border-rand overflow-hidden">
           {([
             ["contest", t("entry.contest"), Trophy],
             ["practice", t("entry.practice"), Dumbbell],
@@ -214,8 +214,8 @@ export default function ScoreEntryPage() {
               className={clsx(
                 "flex min-h-11 items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
                 mode === m
-                  ? "bg-primary-600 text-white"
-                  : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  ? "bg-primary text-white"
+                  : "bg-flaeche text-leise hover:bg-flaeche-2"
               )}
             >
               <Icon className="w-4 h-4" /> {label}
@@ -225,7 +225,7 @@ export default function ScoreEntryPage() {
       </div>
 
       {isPractice && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-leise">
           <Trans t={t} i18nKey="entry.practiceHint" components={{ strong: <strong /> }} />
         </p>
       )}
@@ -236,11 +236,11 @@ export default function ScoreEntryPage() {
         </p>
       )}
       {sid && <PendingScores filter={(entry) => entry.url === `/scoring/seasons/${sid}/matches` && (entry.eventId ?? undefined) === eventId && !!entry.body.is_practice === isPractice} />}
-      {notice && <p role="status" className="rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">{notice}</p>}
+      {notice && <p role="status" className="rounded-lg bg-flaeche-2 p-3 text-sm">{notice}</p>}
 
-      {!season && scopeLoading && <p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+      {!season && scopeLoading && <p role="status" className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
       {!season && !scopeLoading && <p className="text-red-600 text-sm">{t("entry.noSeason")}</p>}
-      {season && schemaQuery.isLoading && <p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+      {season && schemaQuery.isLoading && <p role="status" className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
       {season && schemaQuery.isError && (
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
           {apiErrorMessage(schemaQuery.error, t("entry.schemaLoadFailed"))}
@@ -269,8 +269,8 @@ export default function ScoreEntryPage() {
             </div>
             <div className="flex items-end">
               <div className="text-sm">
-                <div className="text-gray-500">{t("entry.preview")}</div>
-                <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{preview}</div>
+                <div className="text-leise">{t("entry.preview")}</div>
+                <div className="text-2xl font-bold text-akzent">{preview}</div>
                 {sheet.errors.length > 0 && <div role="alert" className="text-xs text-red-600">{sheet.errors[0]}</div>}
               </div>
             </div>
@@ -280,9 +280,9 @@ export default function ScoreEntryPage() {
             {fields.map((f) => (
               <div key={f.key}>
                 {f.type === "boolean" ? (
-                  <p className="label" id={`${formId}-${f.key}-label`}>{f.label} <span className="text-gray-400">(×{f.multiplier})</span></p>
+                  <p className="label" id={`${formId}-${f.key}-label`}>{f.label} <span className="text-leise">(×{f.multiplier})</span></p>
                 ) : (
-                  <label className="label" htmlFor={`${formId}-${f.key}`}>{f.label} <span className="text-gray-400">(×{f.multiplier})</span></label>
+                  <label className="label" htmlFor={`${formId}-${f.key}`}>{f.label} <span className="text-leise">(×{f.multiplier})</span></label>
                 )}
                 {f.type === "boolean" ? (
                   <label className="inline-flex min-h-11 items-center gap-2 text-sm">
@@ -308,9 +308,9 @@ export default function ScoreEntryPage() {
               <Save className="w-4 h-4" /> {editingId ? t("entry.saveChanges") : (isPractice ? t("entry.savePractice") : t("entry.checkAndSave"))}
             </button>
           </div>
-          {editingId && <p className="text-xs text-gray-400">{t("entry.editHint")}</p>}
+          {editingId && <p className="text-xs text-leise">{t("entry.editHint")}</p>}
           {!editingId && !isPractice && !canManageAll && (
-            <p className="text-xs text-gray-400">{t("entry.juryHint")}</p>
+            <p className="text-xs text-leise">{t("entry.juryHint")}</p>
           )}
         </div>
       )}
@@ -330,33 +330,33 @@ export default function ScoreEntryPage() {
       {/* Practice progress summary */}
       {isPractice && practiceScores.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="card p-4"><div className="text-gray-500 text-sm">{t("entry.best")}</div><div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{practiceBest}</div></div>
-          <div className="card p-4"><div className="text-gray-500 text-sm">{t("entry.average")}</div><div className="text-2xl font-bold text-gray-900 dark:text-white">{practiceAvg}</div></div>
-          <div className="card p-4"><div className="text-gray-500 text-sm">{t("scouting.runs")}</div><div className="text-2xl font-bold text-gray-900 dark:text-white">{practiceScores.length}</div></div>
+          <div className="card p-4"><div className="text-leise text-sm">{t("entry.best")}</div><div className="text-2xl font-bold text-akzent">{practiceBest}</div></div>
+          <div className="card p-4"><div className="text-leise text-sm">{t("entry.average")}</div><div className="text-2xl font-bold text-fg">{practiceAvg}</div></div>
+          <div className="card p-4"><div className="text-leise text-sm">{t("scouting.runs")}</div><div className="text-2xl font-bold text-fg">{practiceScores.length}</div></div>
         </div>
       )}
 
       {/* Matches list */}
       <section className="card overflow-hidden">
-        <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white">
+        <h2 className="px-4 py-3 border-b font-semibold text-fg">
           {t(isPractice ? "entry.practiceRuns" : "entry.recorded", { count: visibleMatches.length })}
         </h2>
         <div className="table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{isPractice ? t("entry.run") : t("scouting.roundLabel")}</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scouting.points")}</th>
-              {!isPractice && <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:status")}</th>}
-              {canManageAll && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("common:actions")}</th>}
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("scouting.team")}</th>
+              <th className="px-4 py-3 text-right font-medium text-leise">{isPractice ? t("entry.run") : t("scouting.roundLabel")}</th>
+              <th className="px-4 py-3 text-right font-medium text-leise">{t("scouting.points")}</th>
+              {!isPractice && <th className="px-4 py-3 text-left font-medium text-leise">{t("common:status")}</th>}
+              {canManageAll && <th className="px-4 py-3 text-right font-medium text-leise">{t("common:actions")}</th>}
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {visibleMatches.map((m: any) => (
-              <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 text-gray-900 dark:text-white">{teamName(m.team_id)}</td>
-                <td className="px-4 py-3 text-right text-gray-500">{m.round_number}</td>
+              <tr key={m.id} className="hover:bg-flaeche-2">
+                <td className="px-4 py-3 text-fg">{teamName(m.team_id)}</td>
+                <td className="px-4 py-3 text-right text-leise">{m.round_number}</td>
                 <td className="px-4 py-3 text-right font-semibold">{m.total_score}</td>
                 {!isPractice && (
                   <td className="px-4 py-3">
@@ -371,7 +371,7 @@ export default function ScoreEntryPage() {
                     {/* 44px targets; delete sits apart from confirm behind a divider and asks first. */}
                     <div className="inline-flex items-center gap-1">
                       <button type="button" onClick={() => startEdit(m)} disabled={!online}
-                              className="grid h-11 w-11 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 dark:hover:bg-gray-800"
+                              className="grid h-11 w-11 place-items-center rounded-lg text-leise hover:bg-flaeche-2 disabled:opacity-40"
                               title={t("common:edit")} aria-label={t("entry.editFor", { team: teamName(m.team_id), round: m.round_number })}><Pencil className="w-4 h-4" aria-hidden="true" /></button>
                       {!isPractice && (
                         <button type="button" onClick={() => setPenaltyMatch(m)} disabled={!online}
@@ -393,7 +393,7 @@ export default function ScoreEntryPage() {
               </tr>
             ))}
             {visibleMatches.length === 0 && (
-              <tr><td colSpan={(isPractice ? 3 : 4) + (canManageAll ? 1 : 0)} className="px-4 py-8 text-center text-gray-400">
+              <tr><td colSpan={(isPractice ? 3 : 4) + (canManageAll ? 1 : 0)} className="px-4 py-8 text-center text-leise">
                 {isPractice ? t("entry.noPracticeRuns") : t("entry.noScores")}
               </td></tr>
             )}

@@ -31,19 +31,19 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-papier p-4">
       <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="mb-6 text-center text-2xl font-bold text-fg">
           {t("forgot.title")}
         </h1>
         <div className="card p-6 space-y-4">
           {sent ? (
-            <p role="status" className="text-sm text-gray-700 dark:text-gray-300">
+            <p role="status" className="text-sm text-fg">
               {t("forgot.sent")}
             </p>
           ) : (
             <form onSubmit={submit} className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-leise">
                 {t("forgot.intro")}
               </p>
               <div>
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
             </form>
           )}
           <p className="text-center text-sm">
-            <Link to="/login" className="text-primary-600 hover:underline dark:text-primary-400">
+            <Link to="/login" className="text-akzent hover:underline">
               {t("forgot.backToLogin")}
             </Link>
           </p>

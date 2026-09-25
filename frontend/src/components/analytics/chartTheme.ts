@@ -22,7 +22,7 @@ export function heatColor(ratio: number | null | undefined): string {
 
 /** Text colour that stays legible on a heatColor() cell. */
 export function heatTextClass(ratio: number | null | undefined): string {
-  return ratio != null && ratio > 0.6 ? "text-white" : "text-gray-900 dark:text-gray-100";
+  return ratio != null && ratio > 0.6 ? "text-white" : "text-fg";
 }
 
 export const DEADLINE_DOT: Record<string, string> = {

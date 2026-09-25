@@ -192,7 +192,7 @@ export default function EventSchedulePage() {
 
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[900px] text-sm">
-          <thead className="bg-gray-100 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
               {[
                 t("schedulePage.col.time"),
@@ -210,7 +210,7 @@ export default function EventSchedulePage() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {schedule.data?.map((match) => (
               <tr key={match.id}>
                 <td className="whitespace-nowrap px-4 py-3">
@@ -313,7 +313,7 @@ export default function EventSchedulePage() {
           </tbody>
         </table>
         {!schedule.isLoading && !schedule.data?.length && (
-          <p className="p-8 text-center text-gray-500">{t("schedulePage.empty")}</p>
+          <p className="p-8 text-center text-leise">{t("schedulePage.empty")}</p>
         )}
       </div>
 
@@ -327,7 +327,7 @@ export default function EventSchedulePage() {
             {t("schedulePage.brackets")}
           </h2>
           {canScore && (
-            <p className="mb-4 text-sm text-gray-500">
+            <p className="mb-4 text-sm text-leise">
               {t("schedulePage.bracketHint")}
             </p>
           )}

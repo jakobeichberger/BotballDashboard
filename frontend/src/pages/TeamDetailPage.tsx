@@ -48,7 +48,7 @@ export function MemberAccountCell({
   const { t } = useTranslation("teams");
   const linked = users?.find((u) => u.id === member.user_id);
   if (!canLink) {
-    return member.user_id ? <span className="badge-blue">{t("detail.accountLinked")}</span> : <span className="text-gray-400">—</span>;
+    return member.user_id ? <span className="badge-blue">{t("detail.accountLinked")}</span> : <span className="text-leise">—</span>;
   }
   return (
     <select
@@ -214,12 +214,12 @@ export default function TeamDetailPage() {
   });
   const startQuotaEdit = () => { setQParts(quota?.max_parts ?? 4); setQGrams(quota?.max_grams ?? 0); setEditQuota(true); };
 
-  if (isLoading) return <div className="p-6 text-gray-500">{t("common:loading")}</div>;
+  if (isLoading) return <div className="p-6 text-leise">{t("common:loading")}</div>;
   if (isError || !team) {
     return (
       <div className="p-6">
         <EventLink to="/teams" className="btn-secondary text-sm mb-6"><ArrowLeft className="w-4 h-4" /> {t("detail.back")}</EventLink>
-        <div className="card p-8 text-center text-gray-400">{t("detail.notFound")}</div>
+        <div className="card p-8 text-center text-leise">{t("detail.notFound")}</div>
       </div>
     );
   }
@@ -269,19 +269,19 @@ export default function TeamDetailPage() {
           <>
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
                   <Users className="w-6 h-6" /> {team.name}
                 </h1>
-                {team.team_number && <span className="text-sm text-gray-500 font-mono">#{team.team_number}</span>}
+                {team.team_number && <span className="text-sm text-leise font-mono">#{team.team_number}</span>}
               </div>
               <span className={team.is_active ? "badge-green" : "badge-gray"}>{team.is_active ? t("common:active") : t("common:inactive")}</span>
             </div>
             <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-              <div><dt className="text-gray-500">{t("detail.level")}</dt><dd className="text-gray-900 dark:text-white">{levelName(team.competition_level_id)}</dd></div>
-              <div><dt className="text-gray-500">{t("detail.school")}</dt><dd className="text-gray-900 dark:text-white">{team.school ?? "—"}</dd></div>
-              <div><dt className="text-gray-500">{t("detail.city")}</dt><dd className="text-gray-900 dark:text-white flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-gray-400" />{[team.city, team.country].filter(Boolean).join(", ") || "—"}</dd></div>
+              <div><dt className="text-leise">{t("detail.level")}</dt><dd className="text-fg">{levelName(team.competition_level_id)}</dd></div>
+              <div><dt className="text-leise">{t("detail.school")}</dt><dd className="text-fg">{team.school ?? "—"}</dd></div>
+              <div><dt className="text-leise">{t("detail.city")}</dt><dd className="text-fg flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-leise" />{[team.city, team.country].filter(Boolean).join(", ") || "—"}</dd></div>
             </dl>
-            {team.notes && <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 border-t pt-3">{team.notes}</p>}
+            {team.notes && <p className="mt-4 text-sm text-leise border-t pt-3">{team.notes}</p>}
           </>
         )}
       </div>
@@ -296,31 +296,31 @@ export default function TeamDetailPage() {
       )}
 
       <ErrorBoundary>
-        <Suspense fallback={<p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}>
+        <Suspense fallback={<p role="status" className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}>
           <TeamHistoryPanel rows={history} isLoading={historyLoading} />
         </Suspense>
       </ErrorBoundary>
 
       {/* Members */}
       <section className="card overflow-hidden">
-        <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white">{t("detail.members", { count: team.members?.length ?? 0 })}</h2>
+        <h2 className="px-4 py-3 border-b font-semibold text-fg">{t("detail.members", { count: team.members?.length ?? 0 })}</h2>
         <div className="table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:name")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("members.roleLabel")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:email")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("detail.account")}</th>
-              {canManage && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400"><span className="sr-only">{t("common:actions")}</span></th>}
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("common:name")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("members.roleLabel")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("common:email")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("detail.account")}</th>
+              {canManage && <th className="px-4 py-3 text-right font-medium text-leise"><span className="sr-only">{t("common:actions")}</span></th>}
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {team.members?.map((m: any) => (
               <tr key={m.id}>
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{m.name}</td>
+                <td className="px-4 py-3 font-medium text-fg">{m.name}</td>
                 <td className="px-4 py-3"><span className={m.role === "mentor" ? "badge-blue" : "badge-gray"}>{m.role === "mentor" ? t("detail.mentor") : t("members.role.member")}</span></td>
-                <td className="px-4 py-3 text-gray-500">{m.email ?? "—"}</td>
+                <td className="px-4 py-3 text-leise">{m.email ?? "—"}</td>
                 <td className="px-4 py-3">
                   <MemberAccountCell
                     member={m}
@@ -341,13 +341,13 @@ export default function TeamDetailPage() {
               </tr>
             ))}
             {(!team.members || team.members.length === 0) && (
-              <tr><td colSpan={canManage ? 5 : 4} className="px-4 py-8 text-center text-gray-400">{t("detail.noMembers")}</td></tr>
+              <tr><td colSpan={canManage ? 5 : 4} className="px-4 py-8 text-center text-leise">{t("detail.noMembers")}</td></tr>
             )}
           </tbody>
         </table>
       </div>
         {canManage && (
-          <div className="border-t p-4 flex flex-wrap items-end gap-3 bg-gray-50 dark:bg-gray-800/40">
+          <div className="border-t p-4 flex flex-wrap items-end gap-3 bg-flaeche-2">
             <div className="flex-1 min-w-[8rem]"><label htmlFor="teamdetailpage-f3" className="label">{t("common:name")}</label><input id="teamdetailpage-f3" className="input" value={mName} onChange={(e) => setMName(e.target.value)} placeholder={t("detail.newMember")} /></div>
             <div className="flex-1 min-w-[8rem]"><label htmlFor="teamdetailpage-f4" className="label">{t("common:email")}</label><input id="teamdetailpage-f4" className="input" value={mEmail} onChange={(e) => setMEmail(e.target.value)} /></div>
             <div><label htmlFor="teamdetailpage-f5" className="label">{t("members.roleLabel")}</label>
@@ -375,7 +375,7 @@ export default function TeamDetailPage() {
       {/* 3D-print compliance checklist of the active season */}
       {activeSeason?.id && registrations?.some((r: any) => r.season_id === activeSeason.id) && (canManage || canVerifyCompliance) && (
         <section className="card overflow-hidden">
-          <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 className="px-4 py-3 border-b font-semibold text-fg flex items-center gap-2">
             <ClipboardCheck className="w-4 h-4" /> {t("detail.checklist", { season: activeSeason.name })}
           </h2>
           <ComplianceChecklist teamId={team.id} seasonId={activeSeason.id} canTick={canManage} canVerify={canVerifyCompliance} />
@@ -388,32 +388,32 @@ export default function TeamDetailPage() {
 
       {/* Papers */}
       <section className="card overflow-hidden">
-        <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2"><FileText className="w-4 h-4" /> {t("detail.papers", { count: papers?.length ?? 0 })}</h2>
+        <h2 className="px-4 py-3 border-b font-semibold text-fg flex items-center gap-2"><FileText className="w-4 h-4" /> {t("detail.papers", { count: papers?.length ?? 0 })}</h2>
         <div className="table-scroll">
-        <table className="w-full text-sm"><tbody className="divide-y dark:divide-gray-800">
+        <table className="w-full text-sm"><tbody className="divide-y">
           {papers?.map((p: any) => (
-            <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-              <td className="px-4 py-3"><EventLink to={`/papers/${p.id}`} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">{p.title}</EventLink></td>
+            <tr key={p.id} className="hover:bg-flaeche-2">
+              <td className="px-4 py-3"><EventLink to={`/papers/${p.id}`} className="font-medium text-akzent hover:underline">{p.title}</EventLink></td>
               <td className="px-4 py-3 text-right"><span className={PAPER_STATUS_BADGE[p.status] ?? "badge-gray"}>{PAPER_STATUS_LABEL[p.status] ?? p.status}</span></td>
             </tr>
           ))}
-          {(!papers || papers.length === 0) && (<tr><td className="px-4 py-8 text-center text-gray-400">{t("detail.noPapers")}</td></tr>)}
+          {(!papers || papers.length === 0) && (<tr><td className="px-4 py-8 text-center text-leise">{t("detail.noPapers")}</td></tr>)}
         </tbody></table>
       </div>
       </section>
 
       {/* Print jobs */}
       <section className="card overflow-hidden">
-        <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex flex-wrap items-center justify-between gap-2">
+        <h2 className="px-4 py-3 border-b font-semibold text-fg flex flex-wrap items-center justify-between gap-2">
           <span className="flex items-center gap-2"><Printer className="w-4 h-4" /> {t("detail.printJobs", { count: jobs?.length ?? 0 })}</span>
           {quota?.max_parts != null && !editQuota && (
-            <span className="text-xs font-normal text-gray-500 flex items-center gap-2">
+            <span className="text-xs font-normal text-leise flex items-center gap-2">
               {t("detail.quota", { used: quota.used_parts, max: quota.max_parts, grams: quota.used_grams })}
-              {isAdmin && <button onClick={startQuotaEdit} className="text-primary-600 dark:text-primary-400 hover:underline">{t("detail.editQuota")}</button>}
+              {isAdmin && <button onClick={startQuotaEdit} className="text-akzent hover:underline">{t("detail.editQuota")}</button>}
             </span>
           )}
           {isAdmin && editQuota && (
-            <span className="flex items-center gap-2 text-xs font-normal text-gray-500">
+            <span className="flex items-center gap-2 text-xs font-normal text-leise">
               {t("detail.maxParts")} <input type="number" className="input w-16 py-1" value={qParts} onChange={(e) => setQParts(Number(e.target.value))} />
               {t("detail.maxGrams")} <input type="number" className="input w-20 py-1" value={qGrams} onChange={(e) => setQGrams(Number(e.target.value))} />
               <button className="btn-primary text-xs" disabled={setQuotaM.isPending} onClick={() => setQuotaM.mutate()}>OK</button>
@@ -422,16 +422,16 @@ export default function TeamDetailPage() {
           )}
         </h2>
         <div className="table-scroll">
-        <table className="w-full text-sm"><tbody className="divide-y dark:divide-gray-800">
+        <table className="w-full text-sm"><tbody className="divide-y">
           {jobs?.map((j: any) => (
-            <tr key={j.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-              <td className="px-4 py-3"><EventLink to={`/printing/jobs/${j.id}`} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">{j.file_name}</EventLink></td>
-              <td className="px-4 py-3 text-gray-500">{j.material}</td>
+            <tr key={j.id} className="hover:bg-flaeche-2">
+              <td className="px-4 py-3"><EventLink to={`/printing/jobs/${j.id}`} className="font-medium text-akzent hover:underline">{j.file_name}</EventLink></td>
+              <td className="px-4 py-3 text-leise">{j.material}</td>
               <td className="px-4 py-3 text-right"><span className={JOB_STATUS_BADGE[j.status] ?? "badge-gray"}>{JOB_STATUS_LABEL[j.status] ?? j.status}</span></td>
-              <td className="px-4 py-3 text-right text-gray-500">{fmtDate(j.created_at)}</td>
+              <td className="px-4 py-3 text-right text-leise">{fmtDate(j.created_at)}</td>
             </tr>
           ))}
-          {(!jobs || jobs.length === 0) && (<tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">{t("detail.noPrintJobs")}</td></tr>)}
+          {(!jobs || jobs.length === 0) && (<tr><td colSpan={4} className="px-4 py-8 text-center text-leise">{t("detail.noPrintJobs")}</td></tr>)}
         </tbody></table>
       </div>
       </section>

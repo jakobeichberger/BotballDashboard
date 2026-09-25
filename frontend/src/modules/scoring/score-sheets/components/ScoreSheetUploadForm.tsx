@@ -81,7 +81,7 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
           'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors cursor-pointer focus-within:ring-2 focus-within:ring-primary-500',
           dragOver
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-            : 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
+            : 'border-rand-stark/70 hover:border-blue-400',
         ].join(' ')}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
@@ -99,14 +99,14 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
         {file ? (
           <div className="text-center">
             <p className="text-sm font-medium text-green-600 dark:text-green-400"><span aria-hidden="true">✓ </span>{file.name}</p>
-            <p className="text-xs text-gray-500 mt-1">{formatFileSize(file.size)}</p>
+            <p className="text-xs text-leise mt-1">{formatFileSize(file.size)}</p>
           </div>
         ) : (
           <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-leise">
               {t('scoreSheets.upload.dropzone')}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{t('scoreSheets.upload.limit')}</p>
+            <p className="text-xs text-leise mt-1">{t('scoreSheets.upload.limit')}</p>
           </div>
         )}
       </label>

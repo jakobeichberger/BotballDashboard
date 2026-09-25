@@ -41,10 +41,10 @@ export function DeadlineBanner({ deadline }: { deadline?: PaperDeadline | null }
       <>
       {internalWarning}
       <div role="status" className="card flex flex-wrap items-center gap-2 border-blue-200 p-3 text-sm dark:border-blue-900">
-        <Clock className="h-4 w-4 text-blue-600" aria-hidden />
+        <Clock className="h-4 w-4 text-info" aria-hidden />
         <span>
           {t("deadlineBanner.deadline")} <time dateTime={deadline.cutoff_at} className="font-medium">{when}</time>
-          <span className="text-gray-500"> ({deadline.timezone})</span>
+          <span className="text-leise"> ({deadline.timezone})</span>
         </span>
         <span className="badge-blue ml-auto">{t("deadlineBanner.remaining", { remaining })}</span>
       </div>

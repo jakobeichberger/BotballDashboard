@@ -9,14 +9,15 @@ import {
   Pause,
   Play,
   Trophy,
-  Wifi,
   WifiOff,
 } from "lucide-react";
+import clsx from "clsx";
 import { api } from "@/lib/api";
 import { errorStatus } from "@/lib/errors";
 import { parseLiveMessage, reconnectDelay } from "@/lib/liveSocket";
 import { formatScore, formatTime } from "@/i18n/format";
 import BracketView from "@/components/BracketView";
+import { LogoBadge } from "@/components/BrandMark";
 import type {
   BracketPhase,
   EventSummary,
@@ -211,67 +212,115 @@ export default function PublicEventPage() {
       .slice(0, NEXT_MATCHES_SHOWN) ?? [];
 
   if (event.isLoading) {
-    return <div className="grid min-h-screen place-items-center bg-slate-950 text-white">{t("loading")}</div>;
+    return <div className="buehne grid min-h-screen place-items-center text-white">{t("loading")}</div>;
   }
   // 404: no such public event. Anything else (offline, server error) can be retried.
   if (event.isError && errorStatus(event.error) === 404) {
-    return <div className="grid min-h-screen place-items-center bg-slate-950 text-white">{t("notPublic")}</div>;
+    return <div className="buehne grid min-h-screen place-items-center text-white">{t("notPublic")}</div>;
   }
   if (event.isError) {
     return (
-      <div role="alert" className="grid min-h-screen place-items-center bg-slate-950 p-6 text-center text-white">
+      <div role="alert" className="buehne grid min-h-screen place-items-center p-6 text-center text-white">
         <div className="space-y-4">
           <p>{t("publicLoadFailed")}</p>
-          <button type="button" className="rounded-lg bg-slate-800 px-4 py-3" onClick={() => void event.refetch()}>{t("common:retry")}</button>
+          <button type="button" className="btn-primary" onClick={() => void event.refetch()}>{t("common:retry")}</button>
         </div>
       </div>
     );
   }
   const lastUpdate = Math.max(ranking.dataUpdatedAt, schedule.dataUpdatedAt, results.dataUpdatedAt, announcements.dataUpdatedAt);
+  const panelTitle = "mb-6 flex items-center gap-3 font-display text-3xl font-extrabold tracking-display md:text-4xl";
+  const panelIcon = "h-8 w-8 text-rot-auf-dunkel";
+  const tile = "rounded-karte border border-white/10 bg-tief-2/80 p-5 backdrop-blur-sm";
+  const shown = panel % Math.max(panels.length, 1);
 
+  // Big-screen board: always dark (tief + grid + red ember), readable from afar.
   return (
-    <main className="min-h-screen bg-slate-950 p-4 text-white md:p-8">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <p className="text-sm uppercase tracking-[.25em] text-cyan-400">{t("liveTitle")}</p>
-          <h1 className="text-3xl font-black md:text-5xl">{event.data?.name}</h1>
-          <p className="mt-1 text-slate-400">{event.data?.venue} · {event.data?.timezone}</p>
+    <main className="buehne min-h-screen p-4 pb-14 text-white md:p-10 md:pb-16">
+      <header className="mb-8 flex flex-wrap items-center justify-between gap-6 border-b border-white/10 pb-6">
+        <div className="flex min-w-0 items-center gap-5">
+          <LogoBadge size="lg" className="hidden sm:inline-grid" />
+          <div className="min-w-0">
+            <p className="eyebrow !text-rot-auf-dunkel">{t("liveTitle")}</p>
+            <h1 className="mt-1 font-display text-4xl font-extrabold leading-[1.05] tracking-display md:text-6xl">{event.data?.name}</h1>
+            <p className="mt-2 text-lg text-sidebar-leise">{event.data?.venue} · {event.data?.timezone}</p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <span
             role="status"
-            className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm ${connection === "connected" ? "bg-emerald-950 text-emerald-300" : "bg-red-950 text-red-300"}`}
+            className={clsx(
+              "flex min-h-11 items-center gap-2 rounded-full border px-4 font-ui text-sm font-semibold",
+              connection === "connected"
+                ? "border-green-400/40 bg-green-400/10 text-green-300"
+                : "border-rot-auf-dunkel/50 bg-primary/15 text-rot-auf-dunkel",
+            )}
           >
-            {connection === "connected" ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+            {connection === "connected" ? (
+              <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60 motion-reduce:hidden" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
+              </span>
+            ) : (
+              <WifiOff className="h-4 w-4" aria-hidden="true" />
+            )}
             {t(`connection.${connection}`)}
           </span>
           {connection !== "connected" && lastUpdate > 0 && (
-            <span className="text-sm text-slate-400">{t("common:live.lastUpdated", { time: formatTime(lastUpdate, { hour: "2-digit", minute: "2-digit", second: "2-digit" }) })}</span>
+            <span className="text-sm text-sidebar-leise">
+              {t("common:live.lastUpdated", { time: formatTime(lastUpdate, { hour: "2-digit", minute: "2-digit", second: "2-digit" }) })}
+            </span>
           )}
-          <button className="rounded-lg bg-slate-800 p-3" onClick={() => setRotation(!rotation)} aria-label={t("toggleRotation")}>
-            {rotation ? <Pause /> : <Play />}
+          <button type="button" className="sidebar-toggle" onClick={() => setRotation(!rotation)} aria-label={t("toggleRotation")}>
+            {rotation ? <Pause className="h-5 w-5" aria-hidden="true" /> : <Play className="h-5 w-5" aria-hidden="true" />}
           </button>
-          <button className="rounded-lg bg-slate-800 p-3" onClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)} aria-label={t("fullscreen")}>
-            <Expand />
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)}
+            aria-label={t("fullscreen")}
+          >
+            <Expand className="h-5 w-5" aria-hidden="true" />
           </button>
-          <img className="h-20 w-20 rounded bg-white p-1" src={`/api/v1/public/events/${eventSlug}/qr.svg`} alt={t("qrAlt")} />
+          <img className="h-20 w-20 rounded-eng bg-white p-1" src={`/api/v1/public/events/${eventSlug}/qr.svg`} alt={t("qrAlt")} />
         </div>
       </header>
 
       {current === "ranking" && (
-        <section>
-          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-yellow-400" />{t("ranking")}</h2>
-          <div className="table-scroll rounded-2xl border border-slate-800">
-            <table className="w-full text-lg md:text-2xl">
-              <thead className="bg-slate-900 text-slate-400"><tr><th className="p-4 text-left">{t("rank")}</th><th className="p-4 text-left">{t("team")}</th><th className="p-4 text-right">{t("seed")}</th><th className="p-4 text-right">{t("best")}</th><th className="p-4 text-right">{t("rounds")}</th></tr></thead>
-              <tbody className="divide-y divide-slate-800">
+        <section className="reveal">
+          <h2 className={panelTitle}>
+            <Trophy className={panelIcon} strokeWidth={1.75} aria-hidden="true" />
+            {t("ranking")}
+          </h2>
+          <div className="table-scroll rounded-karte border border-white/10 bg-tief-2/70 backdrop-blur-sm">
+            <table className="w-full text-xl md:text-[1.7rem]">
+              <thead className="border-b border-white/10 font-ui text-sm uppercase tracking-overline text-sidebar-leise md:text-base">
+                <tr>
+                  <th scope="col" className="px-5 py-4 text-left">{t("rank")}</th>
+                  <th scope="col" className="px-5 py-4 text-left">{t("team")}</th>
+                  <th scope="col" className="px-5 py-4 text-right">{t("seed")}</th>
+                  <th scope="col" className="px-5 py-4 text-right">{t("best")}</th>
+                  <th scope="col" className="px-5 py-4 text-right">{t("rounds")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.07]">
                 {ranking.data?.map((item) => (
-                  <tr key={item.team_id} className={item.rank <= 3 ? "bg-cyan-950/20" : ""}>
-                    <td className="p-4 font-black text-cyan-300">{item.rank}</td>
-                    <td className="p-4"><span className="font-bold">{item.team_name}</span>{item.team_number && <span className="ml-2 text-slate-400">#{item.team_number}</span>}</td>
-                    <td className="p-4 text-right font-bold">{formatScore(item.seed_score)}</td>
-                    <td className="p-4 text-right">{formatScore(item.best_score)}</td>
-                    <td className="p-4 text-right">{item.rounds_played}</td>
+                  <tr key={item.team_id} className={item.rank <= 3 ? "bg-primary/[0.08] shadow-[inset_4px_0_0_theme(colors.primary.DEFAULT)]" : ""}>
+                    <td
+                      className={clsx(
+                        "px-5 py-4 font-display text-3xl font-extrabold tabular-nums md:text-4xl",
+                        item.rank <= 3 ? "text-rot-auf-dunkel" : "text-sidebar-leise",
+                      )}
+                    >
+                      {item.rank}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="font-ui font-bold">{item.team_name}</span>
+                      {item.team_number && <span className="ml-3 text-sidebar-leise">#{item.team_number}</span>}
+                    </td>
+                    <td className="px-5 py-4 text-right font-display text-3xl font-extrabold tabular-nums md:text-4xl">{formatScore(item.seed_score)}</td>
+                    <td className="px-5 py-4 text-right tabular-nums text-sidebar-text">{formatScore(item.best_score)}</td>
+                    <td className="px-5 py-4 text-right tabular-nums text-sidebar-text">{item.rounds_played}</td>
                   </tr>
                 ))}
               </tbody>
@@ -281,14 +330,24 @@ export default function PublicEventPage() {
       )}
 
       {current === "schedule" && (
-        <section>
-          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><CalendarDays className="text-cyan-400" />{t("nextMatches")}</h2>
+        <section className="reveal">
+          <h2 className={panelTitle}>
+            <CalendarDays className={panelIcon} strokeWidth={1.75} aria-hidden="true" />
+            {t("nextMatches")}
+          </h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {nextMatches.map((match) => (
-              <article key={match.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                <div className="flex justify-between text-slate-400"><span>{match.code}</span><span>{t("table", { number: match.table_number ?? "–" })}</span></div>
-                <p className="my-4 text-2xl font-black">{match.participants.map((item) => item.team_name ?? t("tbd")).join(" vs. ") || t("tbd")}</p>
-                <p className="text-cyan-300">{match.scheduled_at ? formatTime(match.scheduled_at, { timeStyle: "short" }) : t("open")}</p>
+              <article key={match.id} className={tile}>
+                <div className="flex justify-between font-ui text-sm font-semibold uppercase tracking-overline text-sidebar-leise">
+                  <span>{match.code}</span>
+                  <span>{t("table", { number: match.table_number ?? "–" })}</span>
+                </div>
+                <p className="my-4 font-ui text-2xl font-bold md:text-3xl">
+                  {match.participants.map((item) => item.team_name ?? t("tbd")).join(" vs. ") || t("tbd")}
+                </p>
+                <p className="font-display text-2xl font-extrabold text-rot-auf-dunkel">
+                  {match.scheduled_at ? formatTime(match.scheduled_at, { timeStyle: "short" }) : t("open")}
+                </p>
               </article>
             ))}
           </div>
@@ -296,27 +355,80 @@ export default function PublicEventPage() {
       )}
 
       {current === "bracket" && bracket.data && (
-        <section>
-          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-cyan-400" />{t("bracket.title")}</h2>
+        <section className="reveal">
+          <h2 className={panelTitle}>
+            <Trophy className={panelIcon} strokeWidth={1.75} aria-hidden="true" />
+            {t("bracket.title")}
+          </h2>
           <BracketView phases={bracket.data} dark />
         </section>
       )}
 
       {current === "announcements" && (
-        <section>
-          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Megaphone className="text-cyan-400" />{t("announcements")}</h2>
-          <div className="grid gap-5 md:grid-cols-2">{announcements.data?.map((item) => <article key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-6"><h3 className="text-2xl font-bold">{item.title}</h3><p className="mt-3 whitespace-pre-wrap text-lg text-slate-300">{item.body}</p></article>)}</div>
+        <section className="reveal">
+          <h2 className={panelTitle}>
+            <Megaphone className={panelIcon} strokeWidth={1.75} aria-hidden="true" />
+            {t("announcements")}
+          </h2>
+          <div className="grid gap-5 md:grid-cols-2">
+            {announcements.data?.map((item) => (
+              <article key={item.id} className={clsx(tile, "border-l-4 border-l-primary p-6")}>
+                <h3 className="font-display text-3xl font-extrabold tracking-display">{item.title}</h3>
+                <p className="mt-3 whitespace-pre-wrap text-xl text-sidebar-text">{item.body}</p>
+              </article>
+            ))}
+          </div>
         </section>
       )}
 
       {current === "results" && (
-        <section>
-          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-cyan-400" />{t("results")}</h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.data?.map((result) => <article key={result.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between text-slate-400"><span>{t("round", { number: result.round_number })}</span><span>{t("table", { number: result.table_number ?? "–" })}</span></div><p className="mt-2 text-lg font-bold">{result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</p><p className="mt-3 text-3xl font-black text-cyan-300">{result.is_disqualified ? t("common:dqShort") : formatScore(result.total_score)}</p><dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-slate-400">{Object.entries(result.raw_scores).map(([key, value]) => <div key={key} className="contents"><dt>{key}</dt><dd className="text-right text-slate-200">{String(value)}</dd></div>)}</dl></article>)}</div>
+        <section className="reveal">
+          <h2 className={panelTitle}>
+            <Trophy className={panelIcon} strokeWidth={1.75} aria-hidden="true" />
+            {t("results")}
+          </h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {results.data?.map((result) => (
+              <article key={result.id} className={tile}>
+                <div className="flex justify-between font-ui text-sm font-semibold uppercase tracking-overline text-sidebar-leise">
+                  <span>{t("round", { number: result.round_number })}</span>
+                  <span>{t("table", { number: result.table_number ?? "–" })}</span>
+                </div>
+                <p className="mt-2 font-ui text-xl font-bold">
+                  {result.team_name}
+                  {result.team_number ? ` #${result.team_number}` : ""}
+                </p>
+                <p className="mt-3 font-display text-5xl font-extrabold tabular-nums text-rot-auf-dunkel">
+                  {result.is_disqualified ? t("common:dqShort") : formatScore(result.total_score)}
+                </p>
+                <dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-sidebar-leise">
+                  {Object.entries(result.raw_scores).map(([key, value]) => (
+                    <div key={key} className="contents">
+                      <dt>{key}</dt>
+                      <dd className="text-right tabular-nums text-sidebar-text">{String(value)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </article>
+            ))}
+          </div>
         </section>
       )}
 
-      <footer className="fixed bottom-3 right-4 flex gap-2">{panels.map((item, index) => <button key={item} aria-label={t("showPanel", { panel: t(item === "bracket" ? "bracket.title" : item) })} onClick={() => setPanel(index)} className={`h-2 rounded-full transition-all ${index === panel % panels.length ? "w-10 bg-cyan-400" : "w-2 bg-slate-600"}`} />)}</footer>
+      <footer className="fixed bottom-1 right-3 flex">
+        {panels.map((item, index) => (
+          <button
+            type="button"
+            key={item}
+            aria-label={t("showPanel", { panel: t(item === "bracket" ? "bracket.title" : item) })}
+            aria-current={index === shown ? "true" : undefined}
+            onClick={() => setPanel(index)}
+            className="grid h-11 place-items-center px-1"
+          >
+            <span className={clsx("block h-2 rounded-full transition-all", index === shown ? "w-10 bg-primary" : "w-2 bg-white/30")} />
+          </button>
+        ))}
+      </footer>
     </main>
   );
 }

@@ -41,11 +41,11 @@ export default defineConfig({
       srcDir: "src",
       filename: "sw.ts",
       manifest: {
-        name: "BotballDashboard",
+        name: "Botball Dashboard",
         short_name: "BotballDash",
         description: "Botball Competition Dashboard",
-        theme_color: "#1d4ed8",
-        background_color: "#ffffff",
+        theme_color: "#F2F2F2",
+        background_color: "#F2F2F2",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
@@ -63,7 +63,9 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         // Charts and admin-only pages are not needed offline at the scoring
         // table; the service worker caches them on first use instead (sw.ts).
-        globIgnores: ADMIN_CHUNKS.map((name) => `assets/${name}-*.js`),
+        // latin-ext font faces are only fetched for names outside latin-1;
+        // sw.ts caches them on first use like the chunks above.
+        globIgnores: [...ADMIN_CHUNKS.map((name) => `assets/${name}-*.js`), "assets/*-latin-ext-*.woff2"],
       },
       devOptions: {
         enabled: false,

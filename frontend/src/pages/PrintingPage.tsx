@@ -143,7 +143,7 @@ export default function PrintingPage() {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
           <Printer className="w-6 h-6" />
           {t("title")}
         </h1>
@@ -166,8 +166,8 @@ export default function PrintingPage() {
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {printers.filter((printer) => printer.is_active).map((printer) => (
               <div key={printer.id} className="card p-3 text-sm">
-                <p className="font-semibold text-gray-900 dark:text-white">{printer.name}</p>
-                <p className={printer.is_online ? "text-green-600" : "text-gray-500"}>
+                <p className="font-semibold text-fg">{printer.name}</p>
+                <p className={printer.is_online ? "text-green-600" : "text-leise"}>
                   {printer.printer_type === "generic"
                     ? t("manual")
                     : printer.is_online
@@ -182,38 +182,38 @@ export default function PrintingPage() {
         </section>
       )}
 
-      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise">{t("common:loading")}</p>}
 
       <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.file")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.team")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.material")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:status")}</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("col.grams")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.progress")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.action")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.file")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.team")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.material")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("common:status")}</th>
+              <th className="px-4 py-3 text-right font-medium text-leise">{t("col.grams")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.progress")}</th>
+              <th className="px-4 py-3 text-left font-medium text-leise">{t("col.action")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {jobs?.map((job) => (
-              <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                  <EventLink to={`/printing/jobs/${job.id}`} className="text-primary-700 hover:underline dark:text-primary-300">{job.file_name}</EventLink>
+              <tr key={job.id} className="hover:bg-flaeche-2">
+                <td className="px-4 py-3 font-medium text-fg">
+                  <EventLink to={`/printing/jobs/${job.id}`} className="text-akzent hover:underline">{job.file_name}</EventLink>
                   {!job.file_url && <span className="ml-2 badge-gray">{t("noFile")}</span>}
                 </td>
-                <td className="px-4 py-3 text-gray-500">{teamName(job.team_id)}</td>
-                <td className="px-4 py-3 text-gray-500">{job.material}</td>
+                <td className="px-4 py-3 text-leise">{teamName(job.team_id)}</td>
+                <td className="px-4 py-3 text-leise">{job.material}</td>
                 <td className="px-4 py-3">
                   <span className={STATUS_BADGE[job.status] ?? "badge-gray"}>{STATUS_LABEL[job.status] ?? job.status}</span>
                   {job.status === "rejected" && job.rejection_reason && <p className="mt-1 text-xs text-red-600">{job.rejection_reason}</p>}
                 </td>
-                <td className="px-4 py-3 text-right text-gray-500">
+                <td className="px-4 py-3 text-right text-leise">
                   {job.actual_grams ?? job.estimated_grams ?? "—"}g
                 </td>
-                <td className="px-4 py-3 text-gray-500">
+                <td className="px-4 py-3 text-leise">
                   {job.status === "printing" && job.progress != null
                     ? t("progress", { progress: job.progress.toFixed(0), remaining: formatDuration(job.remaining_seconds) })
                     : job.error_message ?? job.status_message ?? "—"}
@@ -244,7 +244,7 @@ export default function PrintingPage() {
             ))}
             {jobs?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-leise">
                   {t("empty")}
                 </td>
               </tr>
@@ -277,7 +277,7 @@ export default function PrintingPage() {
                 .map((registration) => <option key={registration.id} value={registration.team_id}>{registration.team_name}</option>)}
             </select>
           </label>
-          <label className="block text-sm font-medium">{t("create.file")} <span className="font-normal text-gray-500">{t("create.fileTypes")}</span>
+          <label className="block text-sm font-medium">{t("create.file")} <span className="font-normal text-leise">{t("create.fileTypes")}</span>
             <input className="input mt-1 w-full" type="file" accept={PRINT_FILE_ACCEPT} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </label>
           <div className="grid grid-cols-2 gap-4">

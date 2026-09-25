@@ -55,7 +55,7 @@ export function PaperDeadlinesPanel({ seasonId, canAdmin }: { seasonId: string; 
       <h2 id="paper-deadlines-heading" className="px-4 py-3 border-b font-semibold flex items-center gap-2">
         <CalendarClock className="h-4 w-4" /> {t("deadlines.title")}
       </h2>
-      <ul className="divide-y dark:divide-gray-800 text-sm">
+      <ul className="divide-y text-sm">
         {deadlines?.map((d) => {
           const passed = d.due_date < today;
           const official = OFFICIAL_DEADLINE_TYPES.has(d.deadline_type);
@@ -81,11 +81,11 @@ export function PaperDeadlinesPanel({ seasonId, canAdmin }: { seasonId: string; 
             </li>
           );
         })}
-        {deadlines?.length === 0 && <li className="px-4 py-4 text-gray-400">{t("deadlines.empty")}</li>}
+        {deadlines?.length === 0 && <li className="px-4 py-4 text-leise">{t("deadlines.empty")}</li>}
       </ul>
       {canAdmin && (
         <form
-          className="border-t p-4 flex flex-wrap items-end gap-3 bg-gray-50 dark:bg-gray-800/40"
+          className="border-t p-4 flex flex-wrap items-end gap-3 bg-flaeche-2"
           onSubmit={(e) => { e.preventDefault(); createM.mutate(); }}
         >
           <label className="text-sm">{t("deadlines.type")}

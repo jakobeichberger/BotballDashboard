@@ -26,11 +26,11 @@ export default function PendingScores({ filter }: { filter?: (entry: QueuedScore
           const unclaimed = isUnclaimed(entry);
           const failed = unclaimed || entry.status === "conflict" || entry.status === "error";
           return (
-            <li key={entry.id} className="rounded-lg border p-3 text-sm dark:border-gray-700">
+            <li key={entry.id} className="rounded-lg border p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{entry.label || t("pendingScores.score")}</p>
-                  <p className="text-xs text-gray-500">{formatDateTime(entry.createdAt)}</p>
+                  <p className="text-xs text-leise">{formatDateTime(entry.createdAt)}</p>
                 </div>
                 <span className={failed ? "badge-red" : "badge-yellow"}>
                   {entry.status === "syncing" && <Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden="true" />}

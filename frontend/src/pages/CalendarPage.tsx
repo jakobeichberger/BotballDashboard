@@ -37,11 +37,11 @@ export default function CalendarPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
           <CalendarClock className="w-6 h-6" /> {t("calendarPage.title")}
         </h1>
         <div className="flex items-center gap-2">
-          <label htmlFor="calendar-season" className="text-sm text-gray-600 dark:text-gray-400">{t("calendarPage.season")}</label>
+          <label htmlFor="calendar-season" className="text-sm text-leise">{t("calendarPage.season")}</label>
           <select id="calendar-season" className="input w-auto" value={seasonId} onChange={(e) => setSeasonId(e.target.value)}>
             <option value="">{t("calendarPage.allRelevant")}</option>
             {seasons?.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.year})</option>)}
@@ -51,28 +51,28 @@ export default function CalendarPage() {
 
       {timeline && (
         <section className="card p-6" aria-labelledby="timeline-heading">
-          <h2 id="timeline-heading" className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">{t("calendarPage.timeline", { season: timeline.season_name })}</h2>
+          <h2 id="timeline-heading" className="mb-4 text-lg font-semibold text-fg">{t("calendarPage.timeline", { season: timeline.season_name })}</h2>
           <SeasonTimelineView timeline={timeline} />
         </section>
       )}
 
       <section className="card p-6" aria-labelledby="deadlines-heading">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 id="deadlines-heading" className="text-lg font-semibold text-gray-900 dark:text-white">{t("calendarPage.deadlineCalendar")}</h2>
+          <h2 id="deadlines-heading" className="text-lg font-semibold text-fg">{t("calendarPage.deadlineCalendar")}</h2>
           <div className="flex items-center gap-3">
             {view === "list" && (
-              <label className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+              <label className="flex items-center gap-1.5 text-sm text-leise">
                 <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} /> {t("calendarPage.showPast")}
               </label>
             )}
-            <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700" role="group" aria-label={t("calendarPage.view")}>
+            <div className="inline-flex overflow-hidden rounded-lg border border-rand" role="group" aria-label={t("calendarPage.view")}>
               {([["list", t("calendarPage.list"), List], ["month", t("calendarPage.month"), CalendarDays]] as const).map(([id, label, Icon]) => (
                 <button
                   key={id}
                   type="button"
                   aria-pressed={view === id}
                   onClick={() => setView(id)}
-                  className={clsx("flex items-center gap-1.5 px-3 py-1.5 text-sm", view === id ? "bg-primary-600 text-white" : "text-gray-600 dark:text-gray-300")}
+                  className={clsx("flex items-center gap-1.5 px-3 py-1.5 text-sm", view === id ? "bg-primary text-white" : "text-leise")}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" /> {label}
                 </button>
@@ -80,18 +80,18 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
-        <ul className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400" aria-label={t("calendarPage.legend")}>
+        <ul className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-leise" aria-label={t("calendarPage.legend")}>
           {LEGEND.map((color) => (
             <li key={color} className="flex items-center gap-1.5"><span className={clsx("h-2 w-2 rounded-full", DEADLINE_DOT[color])} aria-hidden="true" />{t(`calendarPage.legendItem.${color}`)}</li>
           ))}
         </ul>
-        {isLoading && <p className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+        {isLoading && <p className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
         {!isLoading && view === "list" && <DeadlineList entries={visible} showSeason={!seasonId} />}
         {!isLoading && view === "month" && <MonthCalendar entries={deadlines ?? []} />}
       </section>
 
       <section className="card p-6" aria-labelledby="ical-heading">
-        <h2 id="ical-heading" className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">{t("calendarPage.ical")}</h2>
+        <h2 id="ical-heading" className="mb-3 text-lg font-semibold text-fg">{t("calendarPage.ical")}</h2>
         <CalendarFeedPanel />
       </section>
     </div>

@@ -50,14 +50,14 @@ export default function QualificationPanel({ eventId, seasonId, onMessage }: { e
   });
 
   if (!targets.length) {
-    return <section className="card p-5 lg:col-span-2"><h2 className="mb-2 flex items-center gap-2 text-lg font-semibold"><Award className="h-5 w-5" />{t("qualification.title")}</h2><p className="text-sm text-gray-500">{t("qualification.notConfigured")}</p></section>;
+    return <section className="card p-5 lg:col-span-2"><h2 className="mb-2 flex items-center gap-2 text-lg font-semibold"><Award className="h-5 w-5" />{t("qualification.title")}</h2><p className="text-sm text-leise">{t("qualification.notConfigured")}</p></section>;
   }
   return (
     <section className="card p-5 lg:col-span-2" aria-labelledby="qualification-title">
       <h2 id="qualification-title" className="mb-1 flex items-center gap-2 text-lg font-semibold"><Award className="h-5 w-5" />{t("qualification.title")} {source ? `${source.name} → ` : ""}{level?.name}</h2>
-      <p className="mb-3 text-sm text-gray-500">{t("qualification.hint", { level: level?.name })}</p>
+      <p className="mb-3 text-sm text-leise">{t("qualification.hint", { level: level?.name })}</p>
       {targets.length > 1 && <label className="mb-3 block text-sm font-medium">{t("qualification.targetLevel")}<select className="input mt-1" value={levelId} onChange={(e) => { setChosenLevel(e.target.value); setSelected([]); }}>{targets.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
-      <ul className="mb-3 max-h-64 divide-y overflow-auto rounded border text-sm dark:divide-gray-800 dark:border-gray-700">
+      <ul className="mb-3 max-h-64 divide-y overflow-auto rounded border text-sm">
         {status.data?.map((entry) => (
           <li key={entry.team_id} className="flex items-center justify-between gap-2 p-2">
             <label className="flex items-center gap-2">
@@ -65,11 +65,11 @@ export default function QualificationPanel({ eventId, seasonId, onMessage }: { e
               <span>{entry.team_name}</span>
             </label>
             {entry.qualified ? (
-              <span className="flex items-center gap-2"><span className="badge-green">{t("qualification.qualifiedBadge")}</span>{entry.note && <span className="text-xs text-gray-500">{entry.note}</span>}{canQualify && entry.qualification_id && <button type="button" className="btn-secondary min-h-11 min-w-11 justify-center px-2" aria-label={t("qualification.revoke", { team: entry.team_name })} disabled={revoke.isPending} onClick={() => void confirmAction({ message: t("qualification.confirmRevoke", { team: entry.team_name, level: level?.name }), tone: "danger", confirmLabel: t("qualification.revokeShort") }).then((ok) => ok && revoke.mutate(entry.qualification_id!))}><X className="h-4 w-4" aria-hidden="true" /></button>}</span>
+              <span className="flex items-center gap-2"><span className="badge-green">{t("qualification.qualifiedBadge")}</span>{entry.note && <span className="text-xs text-leise">{entry.note}</span>}{canQualify && entry.qualification_id && <button type="button" className="btn-secondary min-h-11 min-w-11 justify-center px-2" aria-label={t("qualification.revoke", { team: entry.team_name })} disabled={revoke.isPending} onClick={() => void confirmAction({ message: t("qualification.confirmRevoke", { team: entry.team_name, level: level?.name }), tone: "danger", confirmLabel: t("qualification.revokeShort") }).then((ok) => ok && revoke.mutate(entry.qualification_id!))}><X className="h-4 w-4" aria-hidden="true" /></button>}</span>
             ) : <span className="badge-gray">{t("qualification.notYet")}</span>}
           </li>
         ))}
-        {status.data?.length === 0 && <li className="p-3 text-gray-500">{t("qualification.noTeams")}</li>}
+        {status.data?.length === 0 && <li className="p-3 text-leise">{t("qualification.noTeams")}</li>}
       </ul>
       {canQualify && <div className="flex flex-wrap gap-2"><input className="input min-w-0 flex-1" aria-label={t("qualification.notePlaceholder")} placeholder={t("qualification.notePlaceholder")} value={note} onChange={(e) => setNote(e.target.value)} /><button type="button" className="btn-primary" disabled={!selected.length || qualify.isPending} onClick={() => qualify.mutate()}>{t("qualification.qualify")}</button></div>}
       <button type="button" className="btn-secondary mt-3" disabled={register.isPending} onClick={() => register.mutate()}><UserPlus className="h-4 w-4" />{t("qualification.register")}</button>

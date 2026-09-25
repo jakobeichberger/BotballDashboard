@@ -68,7 +68,7 @@ export function AutoAssignPanel({ seasonId, eventId }: { seasonId: string; event
             {t(result.dry_run ? "autoAssign.previewResult" : "autoAssign.assignedResult", { count: result.assignments.length })}
           </p>
           {result.assignments.length > 0 && (
-            <ul className="list-disc pl-5 text-gray-600 dark:text-gray-400">
+            <ul className="list-disc pl-5 text-leise">
               {result.assignments.map((a) => (
                 <li key={`${a.paper_id}-${a.reviewer_id}`}>{a.paper_title} → {a.reviewer_name}</li>
               ))}

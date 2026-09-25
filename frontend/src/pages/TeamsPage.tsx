@@ -191,7 +191,7 @@ export default function TeamsPage() {
   return (
     <div className="p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-fg">
           <Users className="h-6 w-6" />
           {t("title")}
         </h1>
@@ -207,7 +207,7 @@ export default function TeamsPage() {
         <label className="flex-1 min-w-[12rem] text-sm font-medium">
           {t("filter.search")}
           <span className="relative mt-1 block">
-            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-leise" aria-hidden="true" />
             <input
               type="search"
               className="input w-full pl-8"
@@ -251,15 +251,15 @@ export default function TeamsPage() {
         )}
       </form>
 
-      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise">{t("common:loading")}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {teams?.map((team) => (
           <article key={team.id} className="card min-w-0 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="truncate font-semibold text-gray-900 dark:text-white"><EventLink to={`/teams/${team.id}`} className="hover:underline">{team.name}</EventLink></h3>
-                {team.team_number && <span className="text-xs text-gray-500">#{team.team_number}</span>}
+                <h3 className="truncate font-semibold text-fg"><EventLink to={`/teams/${team.id}`} className="hover:underline">{team.name}</EventLink></h3>
+                {team.team_number && <span className="text-xs text-leise">#{team.team_number}</span>}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className={team.is_active ? "badge-green" : "badge-gray"}>
@@ -268,7 +268,7 @@ export default function TeamsPage() {
                 {canWrite && (
                   <button
                     type="button"
-                    className="grid h-11 w-11 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary-700 dark:hover:bg-gray-800"
+                    className="grid h-11 w-11 place-items-center rounded-lg text-leise hover:bg-flaeche-2 hover:text-akzent"
                     aria-label={t("editLabel", { name: team.name })}
                     onClick={() => openEdit(team)}
                   >
@@ -277,17 +277,17 @@ export default function TeamsPage() {
                 )}
               </div>
             </div>
-            {team.school && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{team.school}</p>}
-            {team.city && <p className="mt-0.5 text-sm text-gray-500">{team.city}, {team.country}</p>}
+            {team.school && <p className="mt-1 text-sm text-leise">{team.school}</p>}
+            {team.city && <p className="mt-0.5 text-sm text-leise">{team.city}, {team.country}</p>}
             {team.competition_level_id && (
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-leise">
                 {t("levelLabel", { level: levelNames.get(team.competition_level_id) ?? team.competition_level_id })}
               </p>
             )}
           </article>
         ))}
         {teams?.length === 0 && (
-          <div className="col-span-3 py-12 text-center text-gray-400">
+          <div className="col-span-3 py-12 text-center text-leise">
             {filtered ? t("noneFound") : t("empty")}
           </div>
         )}
@@ -305,7 +305,7 @@ export default function TeamsPage() {
             editingTeamId ? updateTeam.mutate() : createTeam.mutate();
           }}
         >
-          {isLoadingDetails && <p className="text-sm text-gray-500">{t("form.loadingDetails")}</p>}
+          {isLoadingDetails && <p className="text-sm text-leise">{t("form.loadingDetails")}</p>}
           <div className="grid gap-4 sm:grid-cols-2">
             {(["name", "team_number", "school", "city", "country"] as const).map((field) => (
               <label key={field} className="block text-sm font-medium">
@@ -367,12 +367,12 @@ export default function TeamsPage() {
           <section className="mt-5" aria-labelledby="team-members-heading">
             <h3 id="team-members-heading" className="mb-3 font-semibold">{t("members.title")}</h3>
             {teamDetails?.members?.length ? (
-              <ul className="mb-4 divide-y dark:divide-gray-800">
+              <ul className="mb-4 divide-y">
                 {teamDetails.members.map((member) => (
                   <li key={member.id} className="flex items-center justify-between gap-3 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{member.name}</p>
-                      <p className="truncate text-xs text-gray-500">
+                      <p className="truncate text-xs text-leise">
                         {MEMBER_ROLES.includes(member.role) ? t(`members.role.${member.role}`) : member.role}{member.email ? ` · ${member.email}` : ""}
                       </p>
                     </div>
@@ -389,7 +389,7 @@ export default function TeamsPage() {
                 ))}
               </ul>
             ) : (
-              <p className="mb-4 text-sm text-gray-500">{t("members.empty")}</p>
+              <p className="mb-4 text-sm text-leise">{t("members.empty")}</p>
             )}
             <form
               className="grid gap-3 sm:grid-cols-3"

@@ -63,6 +63,8 @@ export default tseslint.config(
               "JSON",
               "Botball",
               "BotballDashboard",
+              // second half of the "Botball" + "Dashboard" wordmark
+              "Dashboard",
               "📄",
             ],
           },

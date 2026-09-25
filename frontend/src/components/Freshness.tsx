@@ -42,7 +42,7 @@ export default function Freshness({ query, live, className }: { query: Freshness
   }
   if (!updated) return null;
   return (
-    <p className={clsx("flex items-center gap-2 text-xs text-gray-500", className)}>
+    <p className={clsx("flex items-center gap-2 text-xs text-leise", className)}>
       {live && (
         <span className="inline-flex items-center gap-1 font-medium text-green-600">
           <span className="h-2 w-2 rounded-full bg-green-500" aria-hidden="true" />

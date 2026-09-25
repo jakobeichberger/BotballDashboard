@@ -54,7 +54,7 @@ export default function EventBracketWeights({ eventId }: { eventId: string }) {
           </button>
         }
       />
-      {message && <p role="status" className="text-sm text-gray-600 dark:text-gray-300">{message}</p>}
+      {message && <p role="status" className="text-sm text-leise">{message}</p>}
     </div>
   );
 }
