@@ -222,7 +222,10 @@ Botball Overall  = DE + Seeding + AdaptedDocScore
 ECER Open        = DE + Seeding + ½ × PaperScore
 ```
 
-> Offene Frage: Die veröffentlichten ECER-2026-Ergebnisse werten Open als `Seeding + DE` ohne Paper (z. B. Tracer: 0,2998 + 0,5 = 0,7998, obwohl Paper = 100). Die Vorlage `ecer_2026_open` folgt den Amendments; wer die veröffentlichten Zahlen braucht, streicht den Paper-Term in der Formel der Kategorie. Der Test `test_open_overall_as_published` hält den Unterschied fest.
+> Zwei Stellen, an denen Amendments und veröffentlichte Ergebnisse 2026 auseinandergehen, gibt es als eigene Vorlagen; der Veranstalter wählt pro Saison:
+>
+> - **ECER Open:** `ecer_2026_open` folgt den Amendments (`+ ½ × PaperScore`), `ecer_2026_open_results` rechnet wie die veröffentlichten Ergebnisse `Seeding + DE` ohne Paper (z. B. Tracer: 0,2998 + 0,5 = 0,7998, obwohl Paper = 100) und reproduziert die Open-Rangliste 2026.
+> - **Botball-Doku:** `ecer_2026_botball` rechnet jede Periode relativ zum besten Team, wie die veröffentlichten Ergebnisse (alle 18 Teams reproduziert); `ecer_2026_botball_rubric` nimmt die Amendments wörtlich und rechnet mit dem Anteil am Bewertungsmaximum (P1 /100, P2 /95, P3 /100).
 
 **Aerial:** ECER 2025 wertete den Schnitt aller Läufe (Vorlage `aerial_2025`). Das Aerial Junior Rulebook 2026: mindestens fünf Wertungsläufe, „ranked according to the arithmetic mean of their three highest scores“ – Vorlage `aerial_2026` = `avg_best(aerial_runs, 3)`; ECER 2026 flog sechs Läufe. Läufe sind eine Liste (`aerial_results.runs`, Migration `0034`); wie viele gezählt werden, legt die Kategorie fest (`counted_runs`, Formel-Eingabe `aerial_counted_runs`; ohne gespeicherte Formeln zählt die Standardformel so viele beste Läufe, sonst alle).
 
@@ -252,7 +255,8 @@ Overall = SeedScore + DEScore + DoubleSeedScore + OnsiteDocScore
 - Eine **rote Karte** in irgendeinem offiziellen Match des Events disqualifiziert das Team für die
   gesamte Wertung des Events: es erhält keinen Rang (`rank = null`, `disqualified = true`), zählt nicht
   zu `n` und wird in Exporten/öffentlicher Rangliste nicht gelistet.
-- Formel-Vorlagen: `ecer_2026_botball`, `ecer_2026_open`, `ecer_2025_botball` (Standard),
+- Formel-Vorlagen: `ecer_2026_botball`, `ecer_2026_botball_rubric`, `ecer_2026_open`,
+  `ecer_2026_open_results`, `ecer_2025_botball` (Standard),
   `ecer_2025_open` (Standard), `regional_2026_botball`, `gcer_2026_botball`, `aerial_2025`,
   `aerial_2026`, `jbc`, `jbc_2026` – im Formel-Editor über „Vorlage laden“ (angeboten werden die
   Vorlagen der Art der Kategorie). Eine Kategorie kann eine Vorlage als Standard setzen, solange die

@@ -4,6 +4,10 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### ECER 2026: beide Lesarten wählbar
+
+- Neue Formel-Vorlagen `ecer_2026_open_results` (Open ohne Paper, wie die veröffentlichten Ergebnisse) und `ecer_2026_botball_rubric` (Doku als Anteil am Bewertungsmaximum, wie die Amendments). Damit entscheidet der Veranstalter pro Saison, welche Lesart gilt; die bisherigen Vorlagen bleiben unverändert.
+
 ### Schulung „Von der Frage zum Auftrag“
 
 - `docs/schulung/schueler-handbuch.md` und `schueler-handbuch.html`: Handbuch für Schülerinnen und Schüler mit LEDVV, Hebeln für bessere Ergebnisse, Prüfregeln, Übungen mit Lösungen und Glossar. Die HTML-Fassung enthält einen Prompt-Baukasten, der Aufträge nach LEDVV zusammensetzt, fehlende Teile anzeigt und vor Passwörtern im Text warnt.
