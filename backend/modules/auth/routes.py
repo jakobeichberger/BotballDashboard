@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_permission
+from core.auth import get_current_user, permissions_of, require_permission
 from core.config import get_settings
 from core.database import get_db
 from core.logging import get_logger
@@ -341,7 +341,12 @@ async def unsubscribe_push(
 async def list_users(
     _=Depends(require_permission("users:read")), db: AsyncSession = Depends(get_db)
 ):
-    return await service.list_users(db)
+    return [
+        UserListItem.model_validate(user).model_copy(
+            update={"permissions": sorted(permissions_of(user))}
+        )
+        for user in await service.list_users(db)
+    ]
 
 
 @router.post("/users", response_model=UserResponse, status_code=201)

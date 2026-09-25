@@ -75,6 +75,34 @@ class TestUserManagement:
         assert any(u["email"] == admin_user.email for u in users)
 
     @pytest.mark.asyncio
+    async def test_list_users_includes_permissions(self, client, db, auth_headers):
+        from modules.auth.models import Permission, Role, RolePermission, User, UserRole
+        from modules.auth.service import hash_password
+
+        perm = Permission(name="papers:review", description="Review")
+        role = Role(name="custom-reviewer")
+        user = User(
+            email="rev@test.com",
+            display_name="Rev",
+            hashed_password=hash_password("password123"),
+            is_active=True,
+        )
+        db.add_all([perm, role, user])
+        await db.flush()
+        db.add_all(
+            [
+                RolePermission(role_id=role.id, permission_id=perm.id),
+                UserRole(user_id=user.id, role_id=role.id),
+            ]
+        )
+        await db.commit()
+        resp = await client.get("/api/auth/users", headers=auth_headers)
+        assert resp.status_code == 200
+        listed = next(u for u in resp.json() if u["email"] == "rev@test.com")
+        assert listed["permissions"] == ["papers:review"]
+        assert listed["is_superuser"] is False
+
+    @pytest.mark.asyncio
     async def test_create_user_as_admin(self, client, auth_headers):
         resp = await client.post(
             "/api/auth/users",

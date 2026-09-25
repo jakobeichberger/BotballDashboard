@@ -150,7 +150,11 @@ class UserListItem(BaseModel):
     email: str
     display_name: str
     is_active: bool
+    is_superuser: bool = False
     roles: list[RoleResponse]
+    # Effective permissions through the roles, so clients can pick users by
+    # what they may do (e.g. papers:review) instead of by role name.
+    permissions: list[str] = []
 
 
 # ── Roles ─────────────────────────────────────────────────────────────────────

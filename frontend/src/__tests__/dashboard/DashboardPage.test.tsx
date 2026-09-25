@@ -62,7 +62,7 @@ describe("DashboardPage (role-adaptive)", () => {
   });
 
   it("renders the reviewer dashboard for the reviewer role", async () => {
-    setUser({ id: "u2", display_name: "Rita", is_superuser: false, roles: [{ name: "reviewer" }] });
+    setUser({ id: "u2", display_name: "Rita", is_superuser: false, roles: [{ name: "reviewer" }], permissions: ["papers:review"] });
     renderPage();
     expect(await screen.findByTestId("reviewer-dashboard")).toBeInTheDocument();
     expect(screen.getByText("Reviewer")).toBeInTheDocument();

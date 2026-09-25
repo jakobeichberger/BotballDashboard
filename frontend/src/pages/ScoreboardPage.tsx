@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
 import { EventRankingExportButtons, RankingExportButtons } from "@/components/ExportButtons";
-import { useCurrentUser } from "@/hooks/useAuth";
+import { useAuthStore } from "@/store/authStore";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import DEPlacementPanel from "@/modules/scoring/extras/DEPlacementPanel";
 
@@ -459,11 +459,8 @@ const TABS = [
 ] as const;
 
 export default function ScoreboardPage() {
-  const { data: currentUser } = useCurrentUser();
-  const isAdmin = currentUser?.roles?.some((r: any) => r.name === "admin") ?? false;
-  const canEnterScores =
-    currentUser?.is_superuser ||
-    (currentUser?.roles?.some((r: any) => ["admin", "juror", "mentor"].includes(r.name)) ?? false);
+  const isAdmin = useAuthStore((s) => s.hasPermission("scoring:admin"));
+  const canEnterScores = useAuthStore((s) => s.hasPermission("scoring:write"));
 
   // Under /events/:eventId every tab reads that event's results.
   const scope = useScoringScope();

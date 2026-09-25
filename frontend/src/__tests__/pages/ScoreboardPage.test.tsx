@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import ScoreboardPage from "@/pages/ScoreboardPage";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn() } }));
 vi.mock("@/hooks/useAuth", () => ({
@@ -58,6 +59,27 @@ describe("ScoreboardPage", () => {
     mockApi();
     renderPage();
     expect(await screen.findByText(/noch keine wertungen/i)).toBeInTheDocument();
+  });
+
+  it("shows the organizer links for scoring:admin, not for a role name", async () => {
+    mockApi();
+    const hrefs = () => screen.queryAllByRole("link").map((a) => a.getAttribute("href"));
+    useAuthStore.setState({
+      user: { id: "u1", is_superuser: false, roles: [{ name: "admin" }], permissions: ["scoring:read"] } as never,
+    });
+    const { unmount } = renderPage();
+    await screen.findByText(/noch keine wertungen/i);
+    expect(hrefs()).not.toContain("/scoring/score-sheets");
+    expect(hrefs()).not.toContain("/scoring/entry");
+    unmount();
+
+    useAuthStore.setState({
+      user: { id: "u2", is_superuser: false, roles: [{ name: "organizer" }], permissions: ["scoring:admin", "scoring:write"] } as never,
+    });
+    renderPage();
+    await screen.findByText(/noch keine wertungen/i);
+    expect(hrefs()).toContain("/scoring/score-sheets");
+    expect(hrefs()).toContain("/scoring/entry");
   });
 
   it("shows the no-season message when there is no active season", async () => {

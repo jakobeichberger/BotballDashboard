@@ -150,7 +150,9 @@ async def revoke_refresh_token(db: AsyncSession, token: str) -> None:
 
 async def list_users(db: AsyncSession) -> list[User]:
     result = await db.execute(
-        select(User).options(selectinload(User.roles)).order_by(User.display_name)
+        select(User)
+        .options(selectinload(User.roles).selectinload(Role.permissions))
+        .order_by(User.display_name)
     )
     return list(result.scalars().all())
 

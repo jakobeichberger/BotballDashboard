@@ -74,8 +74,8 @@ export default function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const navigate = useEventNavigate();
-  const isAdmin = useAuthStore((s) => s.hasRole("admin"));
-  const isMentor = useAuthStore((s) => s.hasRole("mentor"));
+  const isAdmin = useAuthStore((s) => s.hasPermission("teams:admin"));
+  const isMentor = useAuthStore((s) => s.hasPermission("teams:write"));
   const canLinkAccounts = useAuthStore((s) => s.hasPermission("teams:admin"));
   const canVerifyCompliance = useAuthStore((s) => s.hasPermission("teams:admin") || s.hasPermission("printing:admin"));
 

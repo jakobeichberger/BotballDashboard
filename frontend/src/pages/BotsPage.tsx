@@ -11,8 +11,8 @@ type Owner = "team" | "external";
 
 export default function BotsPage() {
   const qc = useQueryClient();
-  const isAdmin = useAuthStore((s) => s.hasRole("admin"));
-  const isMentor = useAuthStore((s) => s.hasRole("mentor"));
+  const isAdmin = useAuthStore((s) => s.hasPermission("teams:admin"));
+  const isMentor = useAuthStore((s) => s.hasPermission("teams:write"));
   const canCreate = isAdmin || isMentor;
 
   const [seasonFilter, setSeasonFilter] = useState("");

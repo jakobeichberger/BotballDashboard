@@ -26,7 +26,7 @@ interface Registration {
 
 export default function TeamSeasonMatrixPage() {
   const qc = useQueryClient();
-  const canEdit = useAuthStore((s) => s.hasRole("admin"));
+  const canEdit = useAuthStore((s) => s.hasPermission("teams:admin"));
 
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["teams"],
