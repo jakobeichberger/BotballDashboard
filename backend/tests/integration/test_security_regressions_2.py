@@ -152,17 +152,17 @@ class TestOrganizerOnlyResultRoutes:
             ("doc-scores/{team}", {"part1": 0}),
         ],
     )
-    async def test_mentor_cannot_write_result_routes(self, client, db, season, team, path, payload):
+    async def test_mentor_cannot_write_result_routes(self, client, db, event, team, path, payload):
         _, headers = await _mentor(db, team)
-        url = f"/api/scoring/seasons/{season.id}/" + path.format(team=team.id)
+        url = f"/api/scoring/events/{event.id}/" + path.format(team=team.id)
         resp = await client.put(url, headers=headers, json=payload)
         # Even for their OWN team: these are organizer-entered results.
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_organizer_can_still_write(self, client, season, team, auth_headers):
+    async def test_organizer_can_still_write(self, client, event, team, auth_headers):
         resp = await client.put(
-            f"/api/scoring/seasons/{season.id}/doc-scores/{team.id}",
+            f"/api/scoring/events/{event.id}/doc-scores/{team.id}",
             headers=auth_headers,
             json={"part1": 50},
         )

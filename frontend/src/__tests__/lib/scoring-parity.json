@@ -1,0 +1,24 @@
+{
+  "_comment": "Shared by frontend/src/__tests__/lib/scoring.test.ts and backend/tests/unit/test_scoring_parity.py. The backend (modules.scoring.competition_service and the formula presets) is the source of truth; lib/scoring.ts only previews.",
+  "documentation": [
+    { "parts": [100, 100, 100, 100], "score": 1.0 },
+    { "parts": [50, null, null, null], "score": 0.1 },
+    { "parts": [null, null, null, 100], "score": 0.4 },
+    { "parts": [80, 70, 60, 90], "score": 0.78 },
+    { "parts": [0, 0, 0, 0], "score": 0.0 },
+    { "parts": [33.3, 66.6, 99.9, 12.5], "score": 0.4496 },
+    { "parts": [null, null, null, null], "score": null }
+  ],
+  "aerial": [
+    { "runs": [10, 20, null, 30], "score": 20.0 },
+    { "runs": [7, null, null, null], "score": 7.0 },
+    { "runs": [12.5, 13.5, 0, 0], "score": 6.5 },
+    { "runs": [null, null, null, null], "score": null }
+  ],
+  "bracket": [
+    { "n": 4, "de_rank": 1, "score": 1.0 },
+    { "n": 4, "de_rank": 4, "score": 0.25 },
+    { "n": 5, "de_rank": 3, "score": 0.6 },
+    { "n": 1, "de_rank": 1, "score": 1.0 }
+  ]
+}

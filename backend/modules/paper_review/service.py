@@ -484,16 +484,14 @@ async def set_paper_status(
 
 
 async def _assert_reviewer_eligible(db: AsyncSession, paper: Paper, reviewer_id: str) -> None:
+    from core.auth import has_elevated_access
     from modules.auth.models import User
-    from modules.auth.service import get_user_permissions
     from modules.teams.models import Team, TeamMember
 
     reviewer = await db.get(User, reviewer_id)
     if not reviewer or not reviewer.is_active:
         raise NotFoundError("Reviewer not found")
-    if not reviewer.is_superuser and "papers:review" not in await get_user_permissions(
-        db, reviewer_id
-    ):
+    if not await has_elevated_access(db, reviewer, "papers:review"):
         raise ValidationError(f"{reviewer.display_name} does not hold the papers:review permission")
 
     reviewer_team_ids = set(

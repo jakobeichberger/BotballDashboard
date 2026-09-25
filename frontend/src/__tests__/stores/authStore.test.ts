@@ -41,41 +41,6 @@ describe("authStore", () => {
     expect(useAuthStore.getState().user).toBeNull();
   });
 
-  it("hasRole returns false when no user", () => {
-    expect(useAuthStore.getState().hasRole("admin")).toBe(false);
-  });
-
-  it("hasRole returns true for matching role", () => {
-    useAuthStore.setState({
-      user: {
-        id: "1",
-        email: "a@b.com",
-        display_name: "A",
-        is_superuser: false,
-        preferred_language: "de",
-        theme: "system",
-        roles: [{ id: "r1", name: "juror", description: null }],
-      },
-    } as any);
-    expect(useAuthStore.getState().hasRole("juror")).toBe(true);
-    expect(useAuthStore.getState().hasRole("admin")).toBe(false);
-  });
-
-  it("hasRole returns true for superuser regardless of roles", () => {
-    useAuthStore.setState({
-      user: {
-        id: "1",
-        email: "admin@b.com",
-        display_name: "Admin",
-        is_superuser: true,
-        preferred_language: "de",
-        theme: "system",
-        roles: [],
-      },
-    } as any);
-    expect(useAuthStore.getState().hasRole("anything")).toBe(true);
-  });
-
   it("uses concrete permissions instead of role names", () => {
     useAuthStore.setState({
       user: {

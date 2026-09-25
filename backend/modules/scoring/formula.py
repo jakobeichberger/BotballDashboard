@@ -24,10 +24,11 @@ from __future__ import annotations
 
 import ast
 import math
-from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
+
+from modules.scoring.ranking import rank_in_sorted
 
 # Nodes a formula may contain. Anything else is rejected at parse time.
 _ALLOWED_NODES: tuple[type[ast.AST], ...] = (
@@ -346,29 +347,12 @@ class ScopeContext:
         if ordered is None:
             ordered = sorted(self.column(name))
             self._sorted[name] = ordered
-        # Competition ranking: ties share a rank and the next rank skips.
-        if descending:
-            better = len(ordered) - bisect_right(ordered, value)
-        else:
-            better = bisect_left(ordered, value)
-        return float(better + 1)
+        return float(rank_in_sorted(value, ordered, descending=descending))
 
     def team_count(self) -> float:
         for column in self.columns.values():
             return float(len(column))
         return 0.0
-
-
-def _competition_rank(value: float, population: Sequence[float], *, descending: bool) -> float:
-    """1224-style ranking: ties share a rank and the next rank skips.
-
-    Matches how the tournament sheets rank teams (…, 5, 5, 7, …).
-    """
-    if descending:
-        better = sum(1 for v in population if v > value)
-    else:
-        better = sum(1 for v in population if v < value)
-    return float(better + 1)
 
 
 class _Evaluator(ast.NodeVisitor):

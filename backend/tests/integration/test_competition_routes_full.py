@@ -2,12 +2,12 @@
 Integration tests for competition-scoring + score-sheet routes.
 
 Competition routes (under /api/scoring):
-  - PUT  /seasons/{sid}/de-results/{team_id}   upsert single (team_id from path)
-  - PUT  /seasons/{sid}/de-results             bulk upsert
-  - GET  /seasons/{sid}/de-results             list
-  - PUT  /seasons/{sid}/aerial-results/{team_id}, bulk, GET, aerial-ranking
-  - PUT  /seasons/{sid}/doc-scores/{team_id}, bulk, GET
-  - GET  /seasons/{sid}/ranking/overall        combined ranking
+  - PUT  /events/{eid}/de-results/{team_id}   upsert single (team_id from path)
+  - PUT  /events/{eid}/de-results             bulk upsert
+  - GET  /events/{eid}/de-results             list
+  - PUT  /events/{eid}/aerial-results/{team_id}, bulk, GET, aerial-ranking
+  - PUT  /events/{eid}/doc-scores/{team_id}, bulk, GET
+  - GET  /events/{eid}/ranking/overall        combined ranking
   - validation (bad bracket → 422), auth (401)
 
 Score-sheet routes:
@@ -45,6 +45,16 @@ async def comp_season(db):
     return s
 
 
+@pytest.fixture
+async def comp_base(db, comp_season):
+    """URL prefix of the result routes of the season's (draft) event."""
+    from modules.scoring.service import get_default_event
+
+    event = await get_default_event(db, comp_season.id)
+    await db.commit()
+    return f"/api/scoring/events/{event.id}"
+
+
 async def _register(db, season_id, name):
     from modules.teams.models import Team, TeamSeasonRegistration
 
@@ -66,9 +76,11 @@ def _minimal_pdf() -> bytes:
 
 class TestDERoutes:
     @pytest.mark.asyncio
-    async def test_upsert_single_team_id_from_path(self, client, auth_headers, comp_season, team):
+    async def test_upsert_single_team_id_from_path(
+        self, comp_base, client, auth_headers, comp_season, team
+    ):
         resp = await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/de-results/{team.id}",
+            f"{comp_base}/de-results/{team.id}",
             headers=auth_headers,
             json={"bracket": "a", "de_rank": 1, "de_score": 1.0},
         )
@@ -80,7 +92,7 @@ class TestDERoutes:
 
     @pytest.mark.asyncio
     async def test_upsert_then_update_idempotent_in_db(
-        self, client, auth_headers, comp_season, team, db
+        self, comp_base, client, auth_headers, comp_season, team, db
     ):
         """Re-submitting the same team updates in place (no duplicate row).
 
@@ -89,7 +101,7 @@ class TestDERoutes:
         """
         from modules.scoring import competition_service as comp_svc
 
-        url = f"/api/scoring/seasons/{comp_season.id}/de-results/{team.id}"
+        url = f"{comp_base}/de-results/{team.id}"
         first = await client.put(url, headers=auth_headers, json={"bracket": "A", "de_rank": 1})
         assert first.status_code == 200
         assert first.json()["bracket"] == "A"
@@ -107,21 +119,23 @@ class TestDERoutes:
         assert rows[0].de_rank == 5
 
     @pytest.mark.asyncio
-    async def test_invalid_bracket_422(self, client, auth_headers, comp_season, team):
+    async def test_invalid_bracket_422(self, comp_base, client, auth_headers, comp_season, team):
         resp = await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/de-results/{team.id}",
+            f"{comp_base}/de-results/{team.id}",
             headers=auth_headers,
             json={"bracket": "Z"},
         )
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_bulk_upsert_computes_bracket_scores(self, client, auth_headers, comp_season, db):
+    async def test_bulk_upsert_computes_bracket_scores(
+        self, comp_base, client, auth_headers, comp_season, db
+    ):
         t1 = await _register(db, comp_season.id, "T1")
         t2 = await _register(db, comp_season.id, "T2")
         t3 = await _register(db, comp_season.id, "T3")
         resp = await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/de-results",
+            f"{comp_base}/de-results",
             headers=auth_headers,
             json=[
                 {"team_id": t1.id, "bracket": "A", "de_rank": 1},
@@ -137,18 +151,16 @@ class TestDERoutes:
         assert by_team[t3.id]["bracket_score"] == pytest.approx(1 / 3)
 
     @pytest.mark.asyncio
-    async def test_requires_auth(self, client, comp_season, team):
+    async def test_requires_auth(self, comp_base, client, comp_season, team):
         resp = await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/de-results/{team.id}",
+            f"{comp_base}/de-results/{team.id}",
             json={"bracket": "A"},
         )
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_list_empty(self, client, auth_headers, comp_season):
-        resp = await client.get(
-            f"/api/scoring/seasons/{comp_season.id}/de-results", headers=auth_headers
-        )
+    async def test_list_empty(self, comp_base, client, auth_headers, comp_season):
+        resp = await client.get(f"{comp_base}/de-results", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json() == []
 
@@ -158,9 +170,11 @@ class TestDERoutes:
 
 class TestAerialRoutes:
     @pytest.mark.asyncio
-    async def test_upsert_mean_of_all_runs(self, client, auth_headers, comp_season, team):
+    async def test_upsert_mean_of_all_runs(
+        self, comp_base, client, auth_headers, comp_season, team
+    ):
         resp = await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/aerial-results/{team.id}",
+            f"{comp_base}/aerial-results/{team.id}",
             headers=auth_headers,
             json={"run1": 10.0, "run2": 4.0, "run3": 8.0, "run4": 2.0},
         )
@@ -170,39 +184,35 @@ class TestAerialRoutes:
         assert data["score"] == 6.0  # (10 + 4 + 8 + 2) / 4
 
     @pytest.mark.asyncio
-    async def test_bulk_and_ranking(self, client, auth_headers, comp_season, db):
+    async def test_bulk_and_ranking(self, comp_base, client, auth_headers, comp_season, db):
         t1 = await _register(db, comp_season.id, "Low")
         t2 = await _register(db, comp_season.id, "High")
         await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/aerial-results",
+            f"{comp_base}/aerial-results",
             headers=auth_headers,
             json=[
                 {"team_id": t1.id, "run1": 2.0, "run2": 2.0},
                 {"team_id": t2.id, "run1": 10.0, "run2": 8.0},
             ],
         )
-        ranking = await client.get(
-            f"/api/scoring/seasons/{comp_season.id}/aerial-ranking", headers=auth_headers
-        )
+        ranking = await client.get(f"{comp_base}/aerial-ranking", headers=auth_headers)
         assert ranking.status_code == 200
         rows = ranking.json()
         assert rows[0]["team_id"] == t2.id
         assert rows[0]["rank"] == 1
         assert rows[0]["team_name"] == "High"
         # The season's event is a draft: no anonymous access.
-        anonymous = await client.get(f"/api/scoring/seasons/{comp_season.id}/aerial-ranking")
+        anonymous = await client.get(f"{comp_base}/aerial-ranking")
         assert anonymous.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_list_aerial_results(self, client, auth_headers, comp_season, team):
+    async def test_list_aerial_results(self, comp_base, client, auth_headers, comp_season, team):
         await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/aerial-results/{team.id}",
+            f"{comp_base}/aerial-results/{team.id}",
             headers=auth_headers,
             json={"run1": 5.0},
         )
-        resp = await client.get(
-            f"/api/scoring/seasons/{comp_season.id}/aerial-results", headers=auth_headers
-        )
+        resp = await client.get(f"{comp_base}/aerial-results", headers=auth_headers)
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 
@@ -212,9 +222,9 @@ class TestAerialRoutes:
 
 class TestDocRoutes:
     @pytest.mark.asyncio
-    async def test_upsert_doc_score(self, client, auth_headers, comp_season, team):
+    async def test_upsert_doc_score(self, comp_base, client, auth_headers, comp_season, team):
         resp = await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/doc-scores/{team.id}",
+            f"{comp_base}/doc-scores/{team.id}",
             headers=auth_headers,
             json={"part1": 90.0, "part2": 60.0, "part3": 30.0},
         )
@@ -225,11 +235,11 @@ class TestDocRoutes:
         assert data["doc_score"] == pytest.approx(0.36)
 
     @pytest.mark.asyncio
-    async def test_bulk_doc_ranking(self, client, auth_headers, comp_season, db):
+    async def test_bulk_doc_ranking(self, comp_base, client, auth_headers, comp_season, db):
         t1 = await _register(db, comp_season.id, "Worse")
         t2 = await _register(db, comp_season.id, "Better")
         resp = await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/doc-scores",
+            f"{comp_base}/doc-scores",
             headers=auth_headers,
             json=[
                 {"team_id": t1.id, "part1": 40.0},
@@ -242,15 +252,13 @@ class TestDocRoutes:
         assert by_team[t1.id]["doc_rank"] == 2
 
     @pytest.mark.asyncio
-    async def test_list_doc_scores(self, client, auth_headers, comp_season, team):
+    async def test_list_doc_scores(self, comp_base, client, auth_headers, comp_season, team):
         await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/doc-scores/{team.id}",
+            f"{comp_base}/doc-scores/{team.id}",
             headers=auth_headers,
             json={"part1": 80.0},
         )
-        resp = await client.get(
-            f"/api/scoring/seasons/{comp_season.id}/doc-scores", headers=auth_headers
-        )
+        resp = await client.get(f"{comp_base}/doc-scores", headers=auth_headers)
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 
@@ -260,32 +268,30 @@ class TestDocRoutes:
 
 class TestOverallRankingRoute:
     @pytest.mark.asyncio
-    async def test_overall_combines_modules(self, client, auth_headers, comp_season, db):
+    async def test_overall_combines_modules(self, comp_base, client, auth_headers, comp_season, db):
         t1 = await _register(db, comp_season.id, "T1")
         t2 = await _register(db, comp_season.id, "T2")
         await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/de-results/{t1.id}",
+            f"{comp_base}/de-results/{t1.id}",
             headers=auth_headers,
             json={"bracket": "A", "de_rank": 2},
         )
         await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/de-results/{t2.id}",
+            f"{comp_base}/de-results/{t2.id}",
             headers=auth_headers,
             json={"bracket": "A", "de_rank": 1},
         )
         await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/doc-scores/{t1.id}",
+            f"{comp_base}/doc-scores/{t1.id}",
             headers=auth_headers,
             json={"part1": 100.0},
         )
         await client.put(
-            f"/api/scoring/seasons/{comp_season.id}/doc-scores/{t2.id}",
+            f"{comp_base}/doc-scores/{t2.id}",
             headers=auth_headers,
             json={"part1": 10.0},
         )
-        resp = await client.get(
-            f"/api/scoring/seasons/{comp_season.id}/ranking/overall", headers=auth_headers
-        )
+        resp = await client.get(f"{comp_base}/ranking/overall", headers=auth_headers)
         assert resp.status_code == 200
         entries = resp.json()
         by_team = {e["team_id"]: e for e in entries}
@@ -301,10 +307,10 @@ class TestOverallRankingRoute:
         assert by_team[t1.id]["rank"] == 2
 
     @pytest.mark.asyncio
-    async def test_overall_category_filter(self, client, auth_headers, comp_season, db):
+    async def test_overall_category_filter(self, comp_base, client, auth_headers, comp_season, db):
         await _register(db, comp_season.id, "T1")
         resp = await client.get(
-            f"/api/scoring/seasons/{comp_season.id}/ranking/overall",
+            f"{comp_base}/ranking/overall",
             params={"category": "open"},  # no team registered as 'open'
             headers=auth_headers,
         )
@@ -447,3 +453,48 @@ class TestScoreSheetRoutes:
             data={"label": "Bad", "year": "2026"},
         )
         assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_upload_survives_a_missing_broker_and_logs_it(
+        self, client, auth_headers, season, monkeypatch
+    ):
+        from modules.scoring.score_sheets import routes as sheet_routes
+        from modules.scoring.score_sheets import tasks as sheet_tasks
+
+        def broker_down(template_id):
+            raise ConnectionError("redis unreachable")
+
+        warnings: list[tuple[str, dict]] = []
+        monkeypatch.setattr(sheet_tasks.extract_template, "delay", broker_down)
+        monkeypatch.setattr(
+            sheet_routes.logger,
+            "warning",
+            lambda event, **fields: warnings.append((event, fields)),
+        )
+        resp = await client.post(
+            f"/api/scoring/seasons/{season.id}/score-sheets",
+            headers=auth_headers,
+            files={"file": ("sheet.pdf", io.BytesIO(_minimal_pdf()), "application/pdf")},
+            data={"label": "Official", "year": "2026"},
+        )
+        assert resp.status_code == 201, resp.text
+        # The template stays (ocr_status pending) and can be re-queued later.
+        assert resp.json()["ocr_status"] == "pending"
+        [(event, fields)] = warnings
+        assert event == "score_sheet_ocr_queue_failed"
+        assert fields["template_id"] == resp.json()["id"]
+        assert "redis unreachable" in fields["error"]
+
+    @pytest.mark.asyncio
+    async def test_upload_too_large_413(self, client, auth_headers, season, monkeypatch):
+        from modules.scoring.score_sheets import routes as sheet_routes
+
+        monkeypatch.setattr(sheet_routes, "MAX_PDF_SIZE", 10)
+        resp = await client.post(
+            f"/api/scoring/seasons/{season.id}/score-sheets",
+            headers=auth_headers,
+            files={"file": ("sheet.pdf", io.BytesIO(_minimal_pdf()), "application/pdf")},
+            data={"label": "Big", "year": "2026"},
+        )
+        assert resp.status_code == 413
+        assert resp.json()["message"].startswith("File too large")

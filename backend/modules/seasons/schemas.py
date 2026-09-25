@@ -28,17 +28,6 @@ class SeasonPhaseResponse(BaseModel):
     end_date: date | None
 
 
-class SeasonModules(BaseModel):
-    """Which competition modules are active for a season."""
-
-    use_seeding: bool = True
-    use_double_elimination: bool = False
-    use_paper_scoring: bool = False
-    use_documentation_scoring: bool = False
-    use_aerial: bool = False
-    active_categories: list[str] = ["botball"]
-
-
 class SeasonCreate(BaseModel):
     name: str
     year: int

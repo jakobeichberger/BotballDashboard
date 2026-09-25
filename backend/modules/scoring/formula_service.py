@@ -22,6 +22,7 @@ from modules.scoring.formula_engine import (
 )
 from modules.scoring.formula_models import ScoringBracketWeight, ScoringFormula
 from modules.scoring.models import Match
+from modules.scoring.ranking import rank_descending
 from modules.scoring.service import (
     DEFAULT_CATEGORY,
     DOUBLE_SEEDING,
@@ -381,16 +382,10 @@ def _rank_rows(rows: list[dict[str, Any]], key: str = "overall") -> list[dict[st
     Single pass over the sorted list rather than counting better rows for each
     row, so this stays O(n log n) on a large field.
     """
-    ordered = sorted(rows, key=lambda r: r.get(key) or 0.0, reverse=True)
-    previous: float | None = None
-    rank = 0
-    for position, row in enumerate(ordered, start=1):
-        value = row.get(key) or 0.0
-        if previous is None or value < previous:
-            rank = position  # a new value takes its own position; ties keep the first
-            previous = value
+    ranked = rank_descending(rows, lambda r: r.get(key) or 0.0)
+    for rank, row in ranked:
         row["rank"] = rank
-    return ordered
+    return [row for _, row in ranked]
 
 
 def _run_and_rank(

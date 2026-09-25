@@ -384,7 +384,6 @@ class TestRankingRoutes:
         for path in (
             f"/api/scoring/seasons/{season.id}/ranking",
             f"/api/scoring/seasons/{season.id}/ranking/extended",
-            f"/api/scoring/seasons/{season.id}/ranking/overall",
             f"/api/scoring/events/{event.id}/ranking/extended",
             f"/api/scoring/events/{event.id}/ranking/overall",
         ):
@@ -410,7 +409,6 @@ class TestRankingRoutes:
         paths = (
             f"/api/scoring/seasons/{season.id}/ranking",
             f"/api/scoring/seasons/{season.id}/ranking/extended?event_id={event.id}",
-            f"/api/scoring/seasons/{season.id}/ranking/overall",
             f"/api/scoring/events/{event.id}/ranking/extended",
             f"/api/scoring/events/{event.id}/ranking/overall",
         )
@@ -521,7 +519,7 @@ class TestRankingRoutes:
 
     @pytest.mark.asyncio
     async def test_ranking_overall_returns_entries(
-        self, client, db, auth_headers, season, team, scoring_schema
+        self, client, db, auth_headers, season, event, team, scoring_schema
     ):
         # Overall ranking only includes teams registered for the season.
         from modules.teams.models import TeamSeasonRegistration
@@ -542,7 +540,7 @@ class TestRankingRoutes:
             json={"team_id": team.id, "round_number": 1, "raw_scores": {"task_a": 10, "task_b": 0}},
         )
         await db.commit()
-        resp = await client.get(f"/api/scoring/seasons/{season.id}/ranking/overall")
+        resp = await client.get(f"/api/scoring/events/{event.id}/ranking/overall")
         assert resp.status_code == 200
         rows = resp.json()
         assert isinstance(rows, list)

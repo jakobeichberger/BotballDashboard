@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, permissions_of, require_permission
+from core.auth import get_current_user, has_elevated_access, require_permission
 from core.database import get_db
 from core.domain_events import emit_event
 from core.exceptions import ForbiddenError, NotFoundError
@@ -52,7 +52,7 @@ async def list_announcements(
     q = select(Announcement).order_by(Announcement.created_at.desc())
     if include_unpublished:
         # Drafts are internal — only those who may publish may read them.
-        if not current_user.is_superuser and "dashboard:write" not in permissions_of(current_user):
+        if not await has_elevated_access(db, current_user, "dashboard:write"):
             raise ForbiddenError("Missing permissions: dashboard:write")
     else:
         q = q.where(Announcement.is_published.is_(True))

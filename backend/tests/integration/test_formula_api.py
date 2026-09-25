@@ -130,7 +130,8 @@ class TestFormulaDrivenRanking:
         await db.flush()
 
         resp = await client.get(
-            f"/api/scoring/seasons/{season.id}/ranking/overall", headers=auth_headers
+            f"/api/scoring/events/{scored_season['event'].id}/ranking/overall",
+            headers=auth_headers,
         )
         assert resp.status_code == 200, resp.text
         rows = resp.json()

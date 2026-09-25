@@ -8,7 +8,6 @@ from core.auth import (
     bearer_scheme,
     get_current_user,
     has_elevated_access,
-    permissions_of,
     require_permission,
 )
 from core.database import get_db
@@ -116,7 +115,7 @@ async def _authorize_ranking(
     if credentials is None:
         raise UnauthorizedError()
     user = await get_current_user(credentials, db)
-    if not user.is_superuser and "scoring:read" not in permissions_of(user):
+    if not await has_elevated_access(db, user, "scoring:read"):
         raise ForbiddenError("Missing permissions: scoring:read")
 
 
@@ -410,26 +409,6 @@ async def get_event_ranking_extended(
 # ── Overall Ranking ───────────────────────────────────────────────────────────
 
 
-@router.get("/seasons/{season_id}/ranking/overall", response_model=list[OverallRankingEntry])
-async def get_overall_ranking(
-    season_id: str,
-    category: str | None = Query(None),
-    event_id: str | None = Query(None),
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
-):
-    """Overall ranking computed from the season's configured formula set.
-
-    Results are recorded per event, so this ranks one event: the one named by
-    `event_id`, otherwise the season's default event — the same one the other
-    season routes read and write, so a result entered through them shows here.
-    """
-    event = await _season_ranking_event(db, credentials, season_id, event_id)
-    season = await season_svc.get_season(db, season_id)
-    categories = [category] if category else list(season.active_categories or ["botball"])
-    return await formula_svc.compute_overall_ranking(db, event.id, categories)
-
-
 @router.get("/events/{event_id}/ranking/overall", response_model=list[OverallRankingEntry])
 async def get_event_overall_ranking(
     event_id: str,
@@ -445,54 +424,6 @@ async def get_event_overall_ranking(
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/seasons/{season_id}/de-results", response_model=list[DEResultResponse], dependencies=_DE
-)
-async def list_de_results(
-    season_id: str,
-    event_id: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
-    db: AsyncSession = Depends(get_db),
-):
-    return await comp_svc.get_de_results(db, await _season_event(db, season_id, event_id))
-
-
-@router.put(
-    "/seasons/{season_id}/de-results", response_model=list[DEResultResponse], dependencies=_DE
-)
-async def bulk_upsert_de_results(
-    season_id: str,
-    body: list[DEResultUpsert],
-    event_id: str | None = Query(None),
-    current_user=Depends(require_permission("scoring:admin")),
-    db: AsyncSession = Depends(get_db),
-):
-    event = await _season_event(db, season_id, event_id)
-    entries = [e.model_dump() for e in body]
-    rows = await comp_svc.bulk_upsert_de_results(db, event, entries, current_user.id)
-    await _broadcast_ranking_update(db, event.id)
-    return rows
-
-
-@router.put(
-    "/seasons/{season_id}/de-results/{team_id}", response_model=DEResultResponse, dependencies=_DE
-)
-async def upsert_de_result(
-    season_id: str,
-    team_id: str,
-    body: DEResultUpsert,
-    event_id: str | None = Query(None),
-    current_user=Depends(require_permission("scoring:admin")),
-    db: AsyncSession = Depends(get_db),
-):
-    event = await _season_event(db, season_id, event_id)
-    data = body.model_dump()
-    data["team_id"] = team_id
-    row = await comp_svc.upsert_de_result(db, event, data, current_user.id)
-    await _broadcast_ranking_update(db, event.id)
-    return row
 
 
 @router.get(
@@ -542,71 +473,6 @@ async def upsert_event_de_result(
 
 
 # ── Aerial ────────────────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/seasons/{season_id}/aerial-results",
-    response_model=list[AerialResultResponse],
-    dependencies=_AERIAL,
-)
-async def list_aerial_results(
-    season_id: str,
-    event_id: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
-    db: AsyncSession = Depends(get_db),
-):
-    return await comp_svc.get_aerial_results(db, await _season_event(db, season_id, event_id))
-
-
-@router.get("/seasons/{season_id}/aerial-ranking", dependencies=_AERIAL)
-async def get_aerial_ranking(
-    season_id: str,
-    event_id: str | None = Query(None),
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
-):
-    event = await _season_ranking_event(db, credentials, season_id, event_id)
-    return await comp_svc.get_aerial_ranking(db, event)
-
-
-@router.put(
-    "/seasons/{season_id}/aerial-results",
-    response_model=list[AerialResultResponse],
-    dependencies=_AERIAL,
-)
-async def bulk_upsert_aerial_results(
-    season_id: str,
-    body: list[AerialResultUpsert],
-    event_id: str | None = Query(None),
-    current_user=Depends(require_permission("scoring:admin")),
-    db: AsyncSession = Depends(get_db),
-):
-    event = await _season_event(db, season_id, event_id)
-    entries = [e.model_dump() for e in body]
-    rows = await comp_svc.bulk_upsert_aerial_results(db, event, entries, current_user.id)
-    await _broadcast_ranking_update(db, event.id)
-    return rows
-
-
-@router.put(
-    "/seasons/{season_id}/aerial-results/{team_id}",
-    response_model=AerialResultResponse,
-    dependencies=_AERIAL,
-)
-async def upsert_aerial_result(
-    season_id: str,
-    team_id: str,
-    body: AerialResultUpsert,
-    event_id: str | None = Query(None),
-    current_user=Depends(require_permission("scoring:admin")),
-    db: AsyncSession = Depends(get_db),
-):
-    event = await _season_event(db, season_id, event_id)
-    data = body.model_dump()
-    data["team_id"] = team_id
-    row = await comp_svc.upsert_aerial_result(db, event, data, current_user.id)
-    await _broadcast_ranking_update(db, event.id)
-    return row
 
 
 @router.get(
@@ -673,54 +539,6 @@ async def upsert_event_aerial_result(
 
 
 # ── Documentation Scoring ─────────────────────────────────────────────────────
-
-
-@router.get(
-    "/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse], dependencies=_DOC
-)
-async def list_doc_scores(
-    season_id: str,
-    event_id: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
-    db: AsyncSession = Depends(get_db),
-):
-    return await comp_svc.get_doc_scores(db, await _season_event(db, season_id, event_id))
-
-
-@router.put(
-    "/seasons/{season_id}/doc-scores", response_model=list[DocScoreResponse], dependencies=_DOC
-)
-async def bulk_upsert_doc_scores(
-    season_id: str,
-    body: list[DocScoreUpsert],
-    event_id: str | None = Query(None),
-    current_user=Depends(require_permission("scoring:admin")),
-    db: AsyncSession = Depends(get_db),
-):
-    event = await _season_event(db, season_id, event_id)
-    entries = [e.model_dump() for e in body]
-    rows = await comp_svc.bulk_upsert_doc_scores(db, event, entries, current_user.id)
-    await _broadcast_ranking_update(db, event.id)
-    return rows
-
-
-@router.put(
-    "/seasons/{season_id}/doc-scores/{team_id}", response_model=DocScoreResponse, dependencies=_DOC
-)
-async def upsert_doc_score(
-    season_id: str,
-    team_id: str,
-    body: DocScoreUpsert,
-    event_id: str | None = Query(None),
-    current_user=Depends(require_permission("scoring:admin")),
-    db: AsyncSession = Depends(get_db),
-):
-    event = await _season_event(db, season_id, event_id)
-    data = body.model_dump()
-    data["team_id"] = team_id
-    row = await comp_svc.upsert_doc_score(db, event, data, current_user.id)
-    await _broadcast_ranking_update(db, event.id)
-    return row
 
 
 @router.get(

@@ -19,7 +19,6 @@ interface AuthState {
   setUser: (user: AuthUser) => void;
   setSessionChecked: (checked: boolean) => void;
   logout: () => void;
-  hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
 }
 
@@ -34,10 +33,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setUser: (user) => set({ user }),
   setSessionChecked: (sessionChecked) => set({ sessionChecked }),
   logout: () => set({ accessToken: null, user: null, sessionChecked: true }),
-  hasRole: (role) => {
-    const { user } = get();
-    return !!user && (user.is_superuser || user.roles.some((item) => item.name === role));
-  },
   hasPermission: (permission) => {
     const { user } = get();
     return !!user && (user.is_superuser || !!user.permissions?.includes(permission));

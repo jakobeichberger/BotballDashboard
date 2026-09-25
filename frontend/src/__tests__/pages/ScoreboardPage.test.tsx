@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ScoreboardPage from "@/pages/ScoreboardPage";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -22,9 +22,11 @@ const SEASON = {
   active_categories: ["botball"],
 };
 
-function mockApi(activeSeason: any = SEASON, overrides: Record<string, any> = {}) {
+// The page lives under /events/:eventId; its season comes from the event.
+function mockApi(season: any = SEASON, overrides: Record<string, any> = {}) {
   (api.get as any).mockImplementation((url: string) => {
-    if (url === "/seasons/active") return Promise.resolve({ data: activeSeason });
+    if (url === "/v1/events/e1") return Promise.resolve({ data: season ? { id: "e1", season_id: season.id } : null });
+    if (url === "/seasons/s1") return Promise.resolve({ data: season });
     for (const [key, value] of Object.entries(overrides)) {
       if (url.includes(key)) return Promise.resolve({ data: value });
     }
@@ -37,8 +39,10 @@ function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <ScoreboardPage />
+      <MemoryRouter initialEntries={["/events/e1/scoreboard"]}>
+        <Routes>
+          <Route path="/events/:eventId/scoreboard" element={<ScoreboardPage />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>
   );
@@ -55,7 +59,7 @@ describe("ScoreboardPage", () => {
     expect(screen.getByRole("heading", { name: /rangliste/i })).toBeInTheDocument();
   });
 
-  it("renders the seeding empty state once the active season loads", async () => {
+  it("renders the seeding empty state once the event's season loads", async () => {
     mockApi();
     renderPage();
     expect(await screen.findByText(/noch keine wertungen/i)).toBeInTheDocument();
@@ -69,8 +73,8 @@ describe("ScoreboardPage", () => {
     });
     const { unmount } = renderPage();
     await screen.findByText(/noch keine wertungen/i);
-    expect(hrefs()).not.toContain("/scoring/score-sheets");
-    expect(hrefs()).not.toContain("/scoring/entry");
+    expect(hrefs()).not.toContain("/events/e1/scoring/score-sheets");
+    expect(hrefs()).not.toContain("/events/e1/scoring/entry");
     unmount();
 
     useAuthStore.setState({
@@ -78,11 +82,11 @@ describe("ScoreboardPage", () => {
     });
     renderPage();
     await screen.findByText(/noch keine wertungen/i);
-    expect(hrefs()).toContain("/scoring/score-sheets");
-    expect(hrefs()).toContain("/scoring/entry");
+    expect(hrefs()).toContain("/events/e1/scoring/score-sheets");
+    expect(hrefs()).toContain("/events/e1/scoring/entry");
   });
 
-  it("shows the no-season message when there is no active season", async () => {
+  it("shows the no-season message when the event cannot be loaded", async () => {
     mockApi(null);
     renderPage();
     expect(await screen.findByText(/keine aktive saison gefunden/i)).toBeInTheDocument();

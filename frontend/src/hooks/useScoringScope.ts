@@ -21,9 +21,8 @@ export interface ScoringScope {
   season?: ScoringSeason;
   /**
    * API prefix for the result resources (de-results, doc-scores, aerial-…,
-   * ranking/…). Event-scoped under /events/:eventId; outside an event route it
-   * falls back to the season routes, which the backend resolves to the
-   * season's default event.
+   * ranking/…) of the event. Undefined outside /events/:eventId: results only
+   * exist per event (the season-scoped result routes were removed).
    */
   base?: string;
 }
@@ -61,10 +60,6 @@ export function useScoringScope(): ScoringScope {
   });
 
   const season = eventId ? eventSeason : activeSeason;
-  const base = eventId
-    ? `/scoring/events/${eventId}`
-    : seasonId
-      ? `/scoring/seasons/${seasonId}`
-      : undefined;
+  const base = eventId ? `/scoring/events/${eventId}` : undefined;
   return { eventId, seasonId, season: season ?? undefined, base };
 }

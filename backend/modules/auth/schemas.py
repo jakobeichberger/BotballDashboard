@@ -22,10 +22,6 @@ class TokenResponse(BaseModel):
     expires_in: int  # seconds
 
 
-class RefreshRequest(BaseModel):
-    refresh_token: str
-
-
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 
