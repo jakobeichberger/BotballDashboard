@@ -4,6 +4,15 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### Abhängigkeiten: bcrypt 5, OpenCV 5, reportlab 5
+
+Ersetzt die Dependabot-PRs #31 und #32. #30 (pydantic-core 2.49.0) ist nicht installierbar: pydantic 2.13.5 verlangt genau pydantic-core 2.46.5, und 2.49.0 gehört zu pydantic 2.14 (bisher nur Beta). Beide bleiben deshalb auf dem stabilen Stand.
+
+- **bcrypt 5.0.0:** Neue Passwörter dürfen höchstens 72 Byte (UTF-8) lang sein. Die Passwort-Richtlinie lehnt längere beim Anlegen, Ändern, Zurücksetzen, Admin-Setzen und in `scripts/create_admin.py` ab, dort auch mit `APP_ENV=development`. Beim Prüfen wird das Passwort wie früher unter bcrypt 4 auf 72 Byte gekürzt. Bestehende Konten mit längerem Passwort melden sich also weiter an, und ein überlanges Passwort beim Login ergibt 401 statt eines Fehlers 500 (bcrypt 5 wirft auch in `checkpw`).
+- **opencv-python-headless 5.0.0.93:** keine Codeänderung nötig. Alle verwendeten Funktionen sind vorhanden, `OPENCV_IO_MAX_IMAGE_PIXELS` greift weiter, die OCR-Ausrichtungstests laufen mit dem echten OpenCV.
+- **reportlab 5.0.1:** keine Codeänderung nötig. 5.0 vertraut entfernten Bildquellen nur noch per Whitelist und entfernt renderPM-C-Erweiterung und pyRXP; nichts davon wird genutzt. Alle sieben PDF-Exporte wurden gerendert und mit pypdf geöffnet, Markup bleibt Text.
+- Build-Anforderung `setuptools>=84.0.0`; Lockfiles mit `make lock-backend` neu erzeugt.
+
 ### Schulung „Von der Frage zum Auftrag“
 
 - `docs/schulung/schueler-handbuch.md` und `schueler-handbuch.html`: Handbuch für Schülerinnen und Schüler mit LEDVV, Hebeln für bessere Ergebnisse, Prüfregeln, Übungen mit Lösungen und Glossar. Die HTML-Fassung enthält einen Prompt-Baukasten, der Aufträge nach LEDVV zusammensetzt, fehlende Teile anzeigt und vor Passwörtern im Text warnt.
