@@ -8,8 +8,11 @@
 #   /opt/botballdashboard/scripts/update.sh --ref v1.4 # check out a tag/branch/commit
 #
 # The compose file builds all application images locally, so an update is
-#   git pull → build images → docker compose up -d
+#   git pull → build images → [PostgreSQL major upgrade] → docker compose up -d
 # (a plain `docker compose pull` would only refresh postgres/redis/traefik).
+# When docker-compose.yml moves to a new PostgreSQL major version,
+# scripts/postgres-upgrade.sh dumps the database with the old version and
+# restores it into the new one before the stack starts again.
 #
 # Frontend build mode (FRONTEND_BUILD=auto|host|docker, default auto):
 #   host    build dist/ with pnpm on the host and wrap it with
@@ -39,7 +42,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-pull) PULL=false ;;
     --ref) REF="${2:?--ref needs a value}"; shift ;;
-    -h|--help) sed -n '2,25p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '2,27p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown option: $1" ;;
   esac
   shift
@@ -70,17 +73,28 @@ PYEOF
 }
 
 # ── 1. Remember the running version ──────────────────────────────────────────
-previous_commit="$(git rev-parse HEAD)"
-previous_revision="$(docker compose exec -T backend alembic current 2>/dev/null \
-  | awk '/^[0-9a-f]+/ {print $1; exit}' || true)"
-{
-  echo "PREVIOUS_COMMIT=${previous_commit}"
-  echo "PREVIOUS_ALEMBIC_REVISION=${previous_revision}"
-  echo "UPDATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-} > .deploy-state
-info "Current version: ${previous_commit:0:12} (alembic ${previous_revision:-unknown}) → saved to .deploy-state"
+# Skipped when this script restarted itself after step 2 (see there).
+if [[ -z "${BOTBALL_UPDATE_RESTARTED:-}" ]]; then
+  previous_commit="$(git rev-parse HEAD)"
+  previous_revision="$(docker compose exec -T backend alembic current 2>/dev/null \
+    | awk '/^[0-9a-f]+/ {print $1; exit}' || true)"
+  if [[ -z "${previous_revision}" && -f .deploy-state ]]; then
+    # The backend is down, typically after an update that stopped half-way;
+    # the version recorded before that update is the one to roll back to.
+    info "Backend not running – keeping the rollback point in .deploy-state:"
+    sed 's/^/        /' .deploy-state
+  else
+    {
+      echo "PREVIOUS_COMMIT=${previous_commit}"
+      echo "PREVIOUS_ALEMBIC_REVISION=${previous_revision}"
+      echo "UPDATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    } > .deploy-state
+    info "Current version: ${previous_commit:0:12} (alembic ${previous_revision:-unknown}) → saved to .deploy-state"
+  fi
+fi
 
 # ── 2. Update the checkout ───────────────────────────────────────────────────
+script_before="$(sha256sum "${BASH_SOURCE[0]}" | cut -d' ' -f1)"
 if [[ -n "${REF}" ]]; then
   git fetch --tags origin
   git checkout "${REF}"
@@ -89,6 +103,15 @@ elif [[ "${PULL}" == "true" ]]; then
   git pull --ff-only
 fi
 success "Checkout at $(git rev-parse --short HEAD): $(git log -1 --format=%s)"
+
+# The rest of the update belongs to the new release: if the pull changed this
+# script, continue with the new version (it may know steps the old one did
+# not, such as a database migration).
+if [[ -z "${BOTBALL_UPDATE_RESTARTED:-}" ]] \
+  && [[ "$(sha256sum "${BASH_SOURCE[0]}" | cut -d' ' -f1)" != "${script_before}" ]]; then
+  info "scripts/update.sh changed – continuing with the new version"
+  BOTBALL_UPDATE_RESTARTED=1 exec "${BASH_SOURCE[0]}" --no-pull
+fi
 
 # ── 3. Build images ──────────────────────────────────────────────────────────
 mode="${FRONTEND_BUILD:-auto}"
@@ -136,7 +159,24 @@ else
 fi
 success "Images built"
 
-# ── 4. Restart ───────────────────────────────────────────────────────────────
+# ── 4. PostgreSQL major version ──────────────────────────────────────────────
+# A new PostgreSQL major in docker-compose.yml needs the data dumped with the
+# old server and restored into the new one. postgres-upgrade.sh does that with
+# a row-count check, keeps the old files for a rollback and does nothing when
+# the database is already on the right version.
+pg_state=0
+scripts/postgres-upgrade.sh --check || pg_state=$?
+case "${pg_state}" in
+  0) ;;
+  3)
+    info "The database has to move to a new PostgreSQL major version (application stops meanwhile)..."
+    scripts/postgres-upgrade.sh --yes \
+      || die "PostgreSQL upgrade failed – the old data is unchanged; see the messages above and docs/documentation/installation/update.md"
+    ;;
+  *) die "PostgreSQL data needs attention (see above); the running stack was left as it is" ;;
+esac
+
+# ── 5. Restart ───────────────────────────────────────────────────────────────
 info "Starting the updated stack (migrations run on backend start)..."
 docker compose up -d --remove-orphans
 

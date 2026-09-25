@@ -72,3 +72,5 @@ frontend/e2e/.auth/
 frontend/coverage/
 # Default BACKUP_OFFSITE_CONFIG_DIR (SSH key, rclone.conf for off-site backups).
 /backup-offsite/
+# Dumps and row counts of scripts/postgres-upgrade.sh (PG_UPGRADE_DIR).
+/pg-upgrade/

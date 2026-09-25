@@ -427,7 +427,10 @@ configure_env() {
       success ".env kept (missing new settings added)"
       return 0
     fi
-  elif [[ -f "${DATA_DIR}/db/PG_VERSION" ]]; then
+  elif compgen -G "${DATA_DIR}/db/PG_VERSION" >/dev/null \
+    || compgen -G "${DATA_DIR}/db/*/docker/PG_VERSION" >/dev/null; then
+    # PostgreSQL <= 17 kept the cluster directly in /data/db, 18+ in
+    # /data/db/<major>/docker.
     # PostgreSQL data directory exists but .env is gone → the new .env will
     # get a freshly generated password that does not match the running DB.
     # The start_services() ALTER USER step will re-synchronise the password,
@@ -786,6 +789,12 @@ start_services() {
   if [[ "$(env_value PGDATA_DRIVER_OPT_TYPE)" == "none" ]]; then
     docker volume rm botballdashboard_pgdata 2>/dev/null || true
   fi
+
+  # Data of an older PostgreSQL major (e.g. 16 from an earlier install) is
+  # migrated to the version in docker-compose.yml first; without old data this
+  # does nothing (see docs/documentation/installation/update.md).
+  "${INSTALL_DIR}/scripts/postgres-upgrade.sh" --yes \
+    || die "PostgreSQL data could not be migrated – see the messages above."
 
   # Start infrastructure first; bypass depends_on so the script controls ordering
   info "Starting infrastructure services (db, redis)..."
