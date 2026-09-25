@@ -8,6 +8,7 @@ Or via Docker (migrate-then-start.sh runs migrations first).
 
 import asyncio
 import re
+import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -21,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from core.audit import AuditMiddleware
 from core.config import get_settings
 from core.exceptions import RequestTooLargeError
-from core.logging import configure_logging
+from core.logging import AccessLogMiddleware, configure_logging, get_logger
 from core.metrics import observe_request, render_metrics
 from core.modules import MODULES
 from core.request_limits import BodySizeLimitMiddleware, body_limit_bytes
@@ -30,14 +31,17 @@ from modules.events.module_access import require_module
 
 settings = get_settings()
 configure_logging()
+logger = get_logger("api")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from core.logging import get_logger
+    from core.live import drain_pending_publishes
 
     get_logger("startup").info("BotballDashboard API starting", env=settings.app_env)
     yield
+    # Live events queued by the last commits are still being published.
+    await drain_pending_publishes()
     get_logger("shutdown").info("BotballDashboard API stopped")
 
 
@@ -49,6 +53,9 @@ app = FastAPI(
     openapi_url="/api/openapi.json" if settings.is_dev else None,
     lifespan=lifespan,
 )
+# Registered first, so it runs inside request_context_and_security and sees the
+# request id that middleware assigns.
+app.add_middleware(AccessLogMiddleware)
 
 
 def _request_id(request: Request) -> str:
@@ -123,13 +130,20 @@ async def validation_error(request: Request, exc: RequestValidationError):
 
 
 @app.exception_handler(IntegrityError)
-async def integrity_error_handler(request: Request, _exc: IntegrityError):
+async def integrity_error_handler(request: Request, exc: IntegrityError):
     """Convert constraint violations without leaking database internals."""
     request_id = (
         getattr(getattr(request, "state", None), "request_id", None)
         if request is not None
         else None
     ) or (str(uuid.uuid4()) if request is None else _request_id(request))
+    # The client gets a generic message; the log keeps the constraint for debugging.
+    logger.warning(
+        "integrity_error",
+        path=request.url.path if request is not None else None,
+        request_id=request_id,
+        error=str(exc.orig)[:500],
+    )
     return JSONResponse(
         status_code=409,
         content={
@@ -183,12 +197,40 @@ async def health():
     return {"status": "ok", "version": app.version}
 
 
+# The worker check broadcasts over the broker; probes call readiness every few
+# seconds, so its result is reused for a short while.
+_WORKER_CHECK_TTL = 15.0
+_worker_check: tuple[float, bool] | None = None
+
+
+async def _worker_alive() -> bool:
+    global _worker_check
+    now = time.monotonic()
+    if _worker_check and now - _worker_check[0] < _WORKER_CHECK_TTL:
+        return _worker_check[1]
+
+    from core.celery_app import celery_app
+
+    try:
+        # limit=1: return as soon as one worker answers instead of waiting out
+        # the timeout for replies from every worker.
+        replies = await asyncio.wait_for(
+            asyncio.to_thread(lambda: celery_app.control.ping(timeout=1.0, limit=1)),
+            timeout=2,
+        )
+        alive = bool(replies)
+    except Exception as exc:  # noqa: BLE001 - any broker error means "not ready"
+        logger.warning("readiness_worker_check_failed", error=str(exc))
+        alive = False
+    _worker_check = (time.monotonic(), alive)
+    return alive
+
+
 @app.get("/api/system/readiness", tags=["system"])
-async def readiness():
+async def readiness() -> JSONResponse:
     from redis.asyncio import Redis
     from sqlalchemy import text
 
-    from core.celery_app import celery_app
     from core.database import engine
 
     checks: dict[str, bool] = {"postgresql": False, "redis": False, "worker": False}
@@ -196,23 +238,16 @@ async def readiness():
         async with engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
         checks["postgresql"] = True
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 - reported as a failed check
+        logger.warning("readiness_postgresql_failed", error=str(exc))
     redis = Redis.from_url(settings.redis_url)
     try:
         checks["redis"] = bool(await redis.ping())
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 - reported as a failed check
+        logger.warning("readiness_redis_failed", error=str(exc))
     finally:
         await redis.aclose()
-    try:
-        replies = await asyncio.wait_for(
-            asyncio.to_thread(lambda: celery_app.control.inspect(timeout=1).ping()),
-            timeout=2,
-        )
-        checks["worker"] = bool(replies)
-    except Exception:
-        pass
+    checks["worker"] = await _worker_alive()
     ready = all(checks.values())
     return JSONResponse(
         status_code=200 if ready else 503,

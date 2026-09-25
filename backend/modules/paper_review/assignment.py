@@ -67,6 +67,8 @@ async def _reviewer_schools(db: AsyncSession, user_ids: list[str]) -> dict[str, 
     )
     result: dict[str, tuple[set[str], set[str]]] = {uid: (set(), set()) for uid in user_ids}
     for user_id, team_id, school in rows.all():
+        if user_id is None:
+            continue
         teams, schools = result[user_id]
         teams.add(team_id)
         if _school_key(school):

@@ -289,8 +289,8 @@ def _row(obj: Any, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
 
 
 async def _rows(db: AsyncSession, query, exclude: tuple[str, ...] = ()) -> list[dict[str, Any]]:
-    result = await db.execute(query)
-    return [_row(item, exclude) for item in result.scalars().all()]
+    items: list[Any] = list((await db.execute(query)).scalars().all())
+    return [_row(item, exclude) for item in items]
 
 
 async def export_season(db: AsyncSession, season_id: str) -> dict[str, Any]:

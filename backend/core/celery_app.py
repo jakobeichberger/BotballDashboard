@@ -16,12 +16,16 @@ next one is dropped instead of piling up.
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
+from pathlib import Path
 from typing import TypeVar
 
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import after_task_publish, beat_init, setup_logging
 
 from core.config import get_settings
+from core.logging import configure_logging
 
 DEFAULT_QUEUE = "default"
 PERIODIC_QUEUE = "periodic"
@@ -115,3 +119,34 @@ def run_task(main: Callable[[], Awaitable[T]]) -> T:
             await close_clients()
 
     return asyncio.run(runner())
+
+
+@setup_logging.connect
+def _configure_worker_logging(**_kwargs) -> None:
+    """Worker and beat log through structlog like the API (JSON in production).
+
+    Connecting this signal also stops Celery from installing its own root
+    handler, so every record is formatted once.
+    """
+    configure_logging()
+
+
+# Celery beat has no ping. Beat touches this file whenever the broker accepted
+# one of its tasks (the notification outbox is due every 10 s), and the beat
+# container's healthcheck (scripts/beat_healthcheck.py) checks its age.
+BEAT_HEARTBEAT_FILE = Path("/tmp/celerybeat-heartbeat")
+_beat_running = False
+
+
+@beat_init.connect
+def _mark_beat_process(**_kwargs) -> None:
+    global _beat_running
+    _beat_running = True
+
+
+@after_task_publish.connect
+def _beat_heartbeat(**_kwargs) -> None:
+    # The API and the worker publish tasks too; only beat keeps the heartbeat.
+    if _beat_running:
+        with suppress(OSError):
+            BEAT_HEARTBEAT_FILE.touch()

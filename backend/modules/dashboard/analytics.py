@@ -27,6 +27,7 @@ from modules.dashboard.statistics import (
 from modules.events.models import Event, EventPhase, EventRegistration
 from modules.scoring import formula_service
 from modules.scoring.models import Match, Ranking
+from modules.scoring.ranking import rank_descending
 from modules.scoring.service import compute_match_total, get_active_schema
 from modules.seasons.models import Season
 from modules.teams.models import Team, TeamSeasonRegistration
@@ -150,23 +151,17 @@ async def seeding_tables(db: AsyncSession, event_ids: set[str]) -> dict[str, lis
             per_event[row.team_id] = row
     tables: dict[str, list[dict[str, Any]]] = {}
     for event_id, rows in best.items():
-        ordered = sorted(rows.values(), key=lambda r: (-r.seed_score, r.team_id))
-        table: list[dict[str, Any]] = []
-        previous: float | None = None
-        rank = 0
-        for position, row in enumerate(ordered, start=1):
-            if previous is None or row.seed_score < previous:
-                rank, previous = position, row.seed_score
-            table.append(
-                {
-                    "team_id": row.team_id,
-                    "rank": rank,
-                    "seed_score": row.seed_score,
-                    "best_score": row.best_score,
-                    "rounds_played": row.rounds_played,
-                }
-            )
-        tables[event_id] = table
+        by_team = sorted(rows.values(), key=lambda r: r.team_id)
+        tables[event_id] = [
+            {
+                "team_id": row.team_id,
+                "rank": rank,
+                "seed_score": row.seed_score,
+                "best_score": row.best_score,
+                "rounds_played": row.rounds_played,
+            }
+            for rank, row in rank_descending(by_team, lambda r: r.seed_score)
+        ]
     return tables
 
 

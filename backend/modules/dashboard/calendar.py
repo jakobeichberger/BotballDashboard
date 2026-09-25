@@ -296,6 +296,8 @@ async def collect_deadlines(
         )
     )
     for assignment, paper in assignments.all():
+        if assignment.due_at is None:  # excluded by the query; narrows the type
+            continue
         entries.append(
             _entry(
                 f"review-{assignment.id}",

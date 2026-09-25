@@ -19,7 +19,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -69,7 +69,7 @@ async def build_summary(db: AsyncSession, user, event_id: str) -> dict[str, Any]
     }
 
 
-def _upcoming_query(event_id: str):
+def _upcoming_query(event_id: str) -> Select[ScheduledMatch]:
     return (
         select(ScheduledMatch)
         .options(selectinload(ScheduledMatch.participants).selectinload(MatchParticipant.team))
@@ -139,7 +139,7 @@ async def _upcoming_by_team(
     matches = list((await db.execute(query)).scalars().all())
     per_team: dict[str, list[ScheduledMatch]] = {tid: [] for tid in team_ids}
     for match in matches:
-        for tid in {p.team_id for p in match.participants} & team_ids:
+        for tid in {p.team_id for p in match.participants if p.team_id} & team_ids:
             if len(per_team[tid]) < limit:
                 per_team[tid].append(match)
     used = {m.id: m for team_matches in per_team.values() for m in team_matches}

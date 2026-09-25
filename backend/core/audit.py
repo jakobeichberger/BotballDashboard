@@ -3,10 +3,15 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import JSON, DateTime, String, func, insert
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
+from core.exceptions import UnauthorizedError
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class AuditLog(Base):
@@ -101,7 +106,7 @@ def _bearer_subject(headers: list[tuple[bytes, bytes]]) -> str | None:
             if authorization.lower().startswith("bearer "):
                 try:
                     return decode_token(authorization.split(" ", 1)[1]).get("sub")
-                except Exception:
+                except UnauthorizedError:
                     return None
     return None
 
@@ -158,6 +163,6 @@ async def _write_directly(entry: PendingAudit) -> None:
         async with database.engine.begin() as connection:
             await connection.execute(insert(AuditLog).values(**entry.values()))
         entry.written = True
-    except Exception:
+    except (SQLAlchemyError, OSError) as exc:
         # User-facing mutations must not fail when audit storage is unavailable.
-        pass
+        logger.warning("audit_write_failed", action=entry.action, error=str(exc))

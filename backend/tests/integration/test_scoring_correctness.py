@@ -373,32 +373,28 @@ class TestEventScoping:
         # Nothing leaked into the season's default (earliest) event.
         for kind in ("de-results", "doc-scores", "aerial-results"):
             default = await client.get(
-                f"/api/scoring/seasons/{season.id}/{kind}", headers=auth_headers
+                f"/api/scoring/events/{event.id}/{kind}", headers=auth_headers
             )
             assert default.json() == [], kind
-            scoped = await client.get(
-                f"/api/scoring/seasons/{season.id}/{kind}?event_id={gcer.id}",
-                headers=auth_headers,
-            )
+            scoped = await client.get(f"/api/scoring/events/{gcer.id}/{kind}", headers=auth_headers)
             assert scoped.json() != [], kind
 
     @pytest.mark.asyncio
-    async def test_season_overall_route_uses_the_same_default_event(
+    async def test_overall_route_ranks_only_its_event(
         self, client, db, season, event, auth_headers
     ):
-        """Season routes write the default event; the overall ranking must read it too."""
+        """Results are per event: the overall ranking of another event stays empty."""
         later = await _second_event(db, season)
         (alpha,) = await _teams(db, "Alpha")
         await _match(db, event, alpha, 100.0)
         await db.commit()
 
         resp = await client.get(
-            f"/api/scoring/seasons/{season.id}/ranking/overall", headers=auth_headers
+            f"/api/scoring/events/{event.id}/ranking/overall", headers=auth_headers
         )
         assert [e["team_name"] for e in resp.json()] == ["Alpha"]
         resp = await client.get(
-            f"/api/scoring/seasons/{season.id}/ranking/overall?event_id={later.id}",
-            headers=auth_headers,
+            f"/api/scoring/events/{later.id}/ranking/overall", headers=auth_headers
         )
         assert resp.json() == []
 

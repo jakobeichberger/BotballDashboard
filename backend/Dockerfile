@@ -28,15 +28,19 @@ RUN groupadd --system --gid 10001 app \
 WORKDIR /app
 
 # ── Dependencies ──────────────────────────────────────────────
+# requirements.txt pins every package (generated from pyproject.toml with
+# `make lock-backend`), so an image build installs exactly what CI tested.
 FROM base AS deps
-COPY pyproject.toml .
+COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && pip install .
+    pip install --upgrade pip && pip install -r requirements.txt
 
 # ── Development target ────────────────────────────────────────
 FROM deps AS development
-# Install the project-maintained test/lint toolchain plus reload support.
-RUN pip install ".[dev]" watchfiles
+# The pinned test/lint toolchain; uvicorn[standard] already brings watchfiles
+# for --reload.
+COPY requirements-dev.txt .
+RUN pip install -r requirements-dev.txt
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # ── Production target ─────────────────────────────────────────

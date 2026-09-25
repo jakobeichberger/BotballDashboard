@@ -341,11 +341,11 @@ async def test_failed_requests_leave_no_audit_row(client, db, auth_headers, audi
 
 
 @pytest.mark.asyncio
-async def test_audit_falls_back_to_a_single_insert(client, db, auth_headers, monkeypatch):
+async def test_audit_falls_back_to_a_single_insert(
+    client, db, auth_headers, monkeypatch, engine_in_test_transaction
+):
     """Requests whose session never ran get_db's commit still get their row."""
-    from tests.conftest import test_engine
-
-    monkeypatch.setattr(database, "engine", test_engine)
+    monkeypatch.setattr(database, "engine", engine_in_test_transaction)
     app.state.testing = False
     try:
         response = await client.post(

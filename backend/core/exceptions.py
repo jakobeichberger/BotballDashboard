@@ -30,6 +30,11 @@ class ValidationError(HTTPException):
         super().__init__(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail)
 
 
+class PayloadTooLargeError(HTTPException):
+    def __init__(self, detail: str = "Payload too large"):
+        super().__init__(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=detail)
+
+
 class BadRequestError(HTTPException):
     def __init__(self, detail: str = "Bad request"):
         super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)

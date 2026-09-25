@@ -11,14 +11,21 @@ from tests.conftest import test_engine
 
 from .test_security_regressions_2 import _mentor
 
+_TRANSACTION_CONTROL = ("SAVEPOINT", "RELEASE SAVEPOINT", "ROLLBACK TO SAVEPOINT", "BEGIN")
+
 
 @pytest.fixture
 def statements():
-    """Number of SQL statements executed while the test runs (reset at will)."""
+    """Number of SQL statements executed while the test runs (reset at will).
+
+    Transaction control is not counted: the test session runs inside SAVEPOINTs
+    (tests/conftest.py), which the application never issues.
+    """
     counter = {"n": 0}
 
-    def count(*_args):
-        counter["n"] += 1
+    def count(_conn, _cursor, statement: str, *_args):
+        if not statement.lstrip().upper().startswith(_TRANSACTION_CONTROL):
+            counter["n"] += 1
 
     sa_event.listen(test_engine.sync_engine, "before_cursor_execute", count)
     yield counter

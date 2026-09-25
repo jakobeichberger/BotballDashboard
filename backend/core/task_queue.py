@@ -11,6 +11,8 @@ runs in a worker thread instead of blocking the event loop.
 import asyncio
 from typing import Any
 
+from kombu.exceptions import KombuError
+from redis.exceptions import RedisError
 from sqlalchemy import event as sa_event
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -58,7 +60,7 @@ def _after_commit(session: Session) -> None:
 def _send(task: Any, args: tuple) -> None:
     try:
         task.delay(*args)
-    except Exception as exc:
+    except (KombuError, RedisError, OSError) as exc:
         # The record stays queued; its retry endpoint can queue it again.
         logger.warning("task_enqueue_failed", task=getattr(task, "name", str(task)), error=str(exc))
 

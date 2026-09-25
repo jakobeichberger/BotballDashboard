@@ -172,7 +172,7 @@ def _number(key: str, value: Any) -> float:
     try:
         return float(value)
     except (TypeError, ValueError):
-        raise ValidationError(f"Score for '{key}' must be a number")
+        raise ValidationError(f"Score for '{key}' must be a number") from None
 
 
 def _value(raw: dict, key: str, spec: dict) -> float:

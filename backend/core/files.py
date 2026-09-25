@@ -69,7 +69,7 @@ def remove_on_rollback(db, path: Path) -> None:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     session = db.sync_session if isinstance(db, AsyncSession) else db
-    pending = session.info.get(_ROLLBACK_FILES_KEY)
+    pending: list[Path] | None = session.info.get(_ROLLBACK_FILES_KEY)
     if pending is None:
         pending = session.info[_ROLLBACK_FILES_KEY] = []
         sa_event.listen(session, "after_commit", _keep_files)

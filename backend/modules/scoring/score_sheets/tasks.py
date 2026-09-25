@@ -6,9 +6,12 @@ from sqlalchemy import select
 
 from core.celery_app import celery_app, run_task
 from core.database import WorkerSessionLocal
+from core.logging import get_logger
 from modules.scoring.score_sheets.models import ScoreSheetScan, ScoreSheetTemplate
 from modules.scoring.score_sheets.scan_service import run_local_ocr
 from modules.scoring.score_sheets.service import run_ocr_pipeline
+
+logger = get_logger(__name__)
 
 
 @celery_app.task(name="score_sheets.extract_template")
@@ -40,7 +43,8 @@ def process_scan(scan_id: str) -> None:
                 scan.status = "review"
                 scan.processed_at = datetime.now(UTC)
                 scan.error = None
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - shown to the juror on the scan
+                logger.warning("score_sheet_scan_failed", scan_id=str(scan.id), error=str(exc))
                 scan.status = "failed"
                 scan.error = str(exc)[:4000]
             await db.commit()

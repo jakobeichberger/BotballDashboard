@@ -57,7 +57,7 @@ def decode_token(token: str, expected_type: str = "access") -> dict[str, Any]:
             options={"require": ["exp", "sub"]},
         )
     except jwt.PyJWTError:
-        raise UnauthorizedError("Invalid or expired token")
+        raise UnauthorizedError("Invalid or expired token") from None
     if payload.get("type") != expected_type:
         raise UnauthorizedError("Wrong token type")
     return payload
@@ -99,7 +99,7 @@ async def get_current_user(
     try:
         token_version = int(payload.get("tv", 0))
     except (TypeError, ValueError):
-        raise UnauthorizedError("Invalid or expired token")
+        raise UnauthorizedError("Invalid or expired token") from None
     if token_version != (user.token_version or 0):
         raise UnauthorizedError("Token has been revoked")
     return user

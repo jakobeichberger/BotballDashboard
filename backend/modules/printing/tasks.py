@@ -83,7 +83,7 @@ async def poll_all_printers(
                 continue
             try:
                 await apply_printer_status(db, printer, status)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - any failure means "offline"
                 logger.warning(
                     "printer_status_failed", printer_id=target.printer_id, error=str(exc)
                 )

@@ -3,14 +3,13 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 
 interface Props {
-  requireRole?: string;
   requirePermission?: string;
   children?: React.ReactNode;
 }
 
-export default function ProtectedRoute({ requireRole, requirePermission, children }: Props) {
+export default function ProtectedRoute({ requirePermission, children }: Props) {
   const { t } = useTranslation();
-  const { accessToken, offlineSession, hasRole, hasPermission, user } = useAuthStore();
+  const { accessToken, offlineSession, hasPermission, user } = useAuthStore();
 
   // An offline cold start signs in read-only from the cached profile.
   if (!accessToken && !offlineSession) {
@@ -20,12 +19,8 @@ export default function ProtectedRoute({ requireRole, requirePermission, childre
   // After a page load the session is back (access token) a moment before the
   // profile with the permissions: wait for it instead of redirecting a deep
   // link or a reload to the start page.
-  if ((requireRole || requirePermission) && !user) {
+  if (requirePermission && !user) {
     return <div className="p-6 text-gray-500" role="status">{t("loadingEllipsis")}</div>;
-  }
-
-  if (requireRole && !hasRole(requireRole) && !user?.is_superuser) {
-    return <Navigate to="/" replace />;
   }
 
   if (requirePermission && !hasPermission(requirePermission)) {

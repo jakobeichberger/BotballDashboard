@@ -104,8 +104,9 @@ async def recipient_languages(db: AsyncSession, emails: list[str]) -> dict[str, 
             .join(User, User.id == TeamMember.user_id)
             .where(func.lower(TeamMember.email).in_(wanted))
         )
-        for email, language in members:
-            found.setdefault(email.lower(), language)
+        for member_email, language in members:
+            if member_email:
+                found.setdefault(member_email.lower(), language)
     return {
         email: normalize_language(found.get(email.lower()), DEFAULT_LANGUAGE) for email in emails
     }
@@ -286,7 +287,13 @@ async def deliver_pending(db: AsyncSession, now: datetime | None = None) -> int:
         live_subscriptions = [s for s in subscriptions if s.id not in gone_ids]
         try:
             gone = await _deliver(item, live_subscriptions, preferences, languages, email_languages)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - recorded on the item and retried
+            logger.warning(
+                "notification_delivery_failed",
+                outbox_id=str(item.id),
+                attempt=item.attempts,
+                error=str(exc),
+            )
             outcomes.append((item, exc))
             continue
         gone_ids.update(gone)

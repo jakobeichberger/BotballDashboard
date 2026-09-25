@@ -22,6 +22,7 @@ from modules.events.models import (
 )
 from modules.events.module_access import assert_phase_allowed, modules_for_season
 from modules.scoring.competition_models import DEResult
+from modules.scoring.competition_service import rescore_brackets
 from modules.scoring.models import Match, Ranking
 from modules.seasons.lifecycle import ARCHIVED, DRAFT, ensure_writable
 from modules.seasons.models import CompetitionLevel, Season
@@ -956,7 +957,7 @@ async def tiebroken_placements(
             Ranking.rank.is_not(None),
         )
     )
-    for team_id, rank in ranking_rows.tuples().all():
+    for team_id, rank in ranking_rows.all():
         if rank is not None:
             seed_ranks[team_id] = min(rank, seed_ranks.get(team_id, rank))
 
@@ -993,13 +994,13 @@ async def _complete_if_decided(db: AsyncSession, phase: EventPhase) -> dict[str,
 async def sync_de_results(db: AsyncSession, event: Event, phase: EventPhase) -> None:
     """Write the placements of a double-elimination phase into ``de_results``.
 
-    ``bracket_score`` follows the manual DE entry (1 for the winner down to 0
-    for last place); the DE score itself is left to the scoring formula.
+    ``bracket_score`` is derived exactly like a manual DE entry
+    (competition_service.bracket_score: (n − DERank + 1) / n per bracket and
+    category); the DE score itself is left to the scoring formula.
     """
     label = _bracket_label(phase)
     places = await _complete_if_decided(db, phase)
     _, teams = await _phase_outcomes(db, phase)
-    field = len(teams)
     existing = {
         row.team_id: row
         for row in (
@@ -1016,10 +1017,10 @@ async def sync_de_results(db: AsyncSession, event: Event, phase: EventPhase) -> 
             db.add(row)
         row.bracket = label
         row.de_rank = rank
-        row.bracket_score = (
-            None if rank is None else (1.0 if field <= 1 else 1 - (rank - 1) / (field - 1))
-        )
+        if rank is None:
+            row.bracket_score = None
     await db.flush()
+    await rescore_brackets(db, event)
 
 
 # ── Bracket view, alliance standings, bracket weights ─────────────────────────

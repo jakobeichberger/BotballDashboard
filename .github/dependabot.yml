@@ -1,0 +1,97 @@
+# Weekly, grouped dependency updates. CI stays manual: start the CI workflow
+# on a Dependabot branch before merging its pull request.
+#
+# Backend: pyproject.toml pins the direct dependencies and
+# backend/requirements*.txt pin everything (`make lock-backend`). Run
+# `make lock-backend` on an update branch when a bump needs a re-resolve.
+version: 2
+
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      backend-minor-and-patch:
+        update-types: [minor, patch]
+      backend-major:
+        update-types: [major]
+
+  - package-ecosystem: npm # pnpm-lock.yaml is updated as well
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      frontend-minor-and-patch:
+        update-types: [minor, patch]
+      frontend-major:
+        update-types: [major]
+    ignore:
+      # Framework majors wait for the planned design refresh (docs/todo.md).
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+      - dependency-name: "@types/react"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@types/react-dom"
+        update-types: [version-update:semver-major]
+      - dependency-name: react-router-dom
+        update-types: [version-update:semver-major]
+      - dependency-name: vite
+        update-types: [version-update:semver-major]
+      - dependency-name: vitest
+        update-types: [version-update:semver-major]
+      - dependency-name: "@vitest/*"
+        update-types: [version-update:semver-major]
+      - dependency-name: tailwindcss
+        update-types: [version-update:semver-major]
+      - dependency-name: zod
+        update-types: [version-update:semver-major]
+      # generated.ts must not change with the generator; bump it deliberately.
+      - dependency-name: openapi-typescript
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories: [/backend, /frontend]
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      docker-images:
+        patterns: ["*"]
+    ignore:
+      # Python and Node.js versions change deliberately (CI, lockfile, docs).
+      - dependency-name: python
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      compose-images:
+        patterns: ["*"]
+    ignore:
+      # A PostgreSQL major needs a dump/restore of the data volume.
+      - dependency-name: postgres
+        update-types: [version-update:semver-major]
+      - dependency-name: redis
+        update-types: [version-update:semver-major]
+      - dependency-name: node
+        update-types: [version-update:semver-major]

@@ -3,17 +3,27 @@
 ## Readiness and uptime
 
 - Liveness: `GET /api/system/health` returns `{"status": "ok", "version": …}`. It is the `backend` container healthcheck.
-- Readiness: `GET /api/system/readiness` checks PostgreSQL, Redis and a Celery worker. It returns 200 `{"status": "ready", …}` or 503 `{"status": "not_ready", "checks": {…}}`.
+- Readiness: `GET /api/system/readiness` checks PostgreSQL, Redis and a Celery worker (the worker ping is cached for 15 s). It returns 200 `{"status": "ready", …}` or 503 `{"status": "not_ready", "checks": {…}}`. Like the metrics it is internal: Traefik does not route it (404 from outside); the Blackbox exporter and `verify-deployment.sh` call `backend:8000` directly. Every failed check is logged (`readiness_*_failed`).
 - Metrics: `GET /api/system/metrics` exposes Prometheus text metrics on the internal network only (404 through Traefik).
+- Every container has a Docker healthcheck. Beat has no ping; it touches `/tmp/celerybeat-heartbeat` whenever the broker accepts one of its tasks, and `scripts/beat_healthcheck.py` turns the container unhealthy when that is older than 2 minutes.
 - `scripts/verify-deployment.sh` checks the whole installation: containers, TLS endpoints, headers, worker, beat, migrations, backups and monitoring. It prints PASS/WARN/FAIL per check and exits non-zero on any FAIL.
+
+## Logs
+
+- API, worker and beat log to stdout; `docker compose logs <service>` shows them. In production every line is a JSON object (`event`, `level`, `logger`, `timestamp`, plus fields), including uvicorn, SQLAlchemy and Celery messages. `APP_ENV=development` prints a readable console format instead.
+- The API writes one access-log line per request (`"event": "request"` with `method`, `path`, `status`, `duration_ms`); health, readiness and metrics probes only at DEBUG.
+- Every line written while a request is handled carries its `request_id`, the same value the client receives in the `X-Request-ID` response header (and may send in the request). Search for it to follow one request: `docker compose logs backend | grep '"request_id": "<id>"'`.
+- `LOG_LEVEL` (`.env`) sets the level for API, worker and beat; empty means INFO in production.
 
 ## Monitoring and alerts
 
-Enable the `monitoring` compose profile (`COMPOSE_PROFILES=production,monitoring` in `.env`, then `docker compose up -d`). Prometheus scrapes three targets:
+Enable the `monitoring` compose profile (`COMPOSE_PROFILES=production,monitoring` in `.env`, then `docker compose up -d`). Prometheus scrapes:
 
 - the API,
 - the readiness endpoint through the Blackbox exporter,
-- the backup service (`backup:9101`).
+- the backup service (`backup:9101`),
+- the host through `node-exporter` (disk space of every real file system, memory, load; the host's `/` is mounted read-only),
+- PostgreSQL through `postgres-exporter` (connections, database size, `pg_up`).
 
 It evaluates `monitoring/alerts.yml`:
 
@@ -28,6 +38,12 @@ It evaluates `monitoring/alerts.yml`:
 | `BackupStale` | the last successful backup is older than 26 h |
 | `BackupNeverSucceeded` | runs were recorded but none succeeded (1 h) |
 | `BackupMonitoringDown` | the backup service is unreachable for 15 min |
+| `DiskSpaceLow` / `DiskSpaceCritical` | a file system has less than 15 % (10 min) / 5 % (5 min) free |
+| `ExporterDown` | node-exporter or postgres-exporter is not scraped for 5 min |
+| `PostgresDown` | postgres-exporter cannot connect to the database for 1 min |
+| `PostgresConnectionsHigh` | more than 80 % of `max_connections` are in use for 5 min |
+
+`monitoring/alerts.test.yml` holds unit tests for the rules: `docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v3.5.5 test rules /m/alerts.test.yml`.
 
 Alertmanager delivers alerts to `ALERT_WEBHOOK_URL` (Alertmanager webhook JSON, e.g. an ntfy topic) and/or `ALERT_EMAIL_TO`. SMTP comes from `ALERT_SMTP_*` and falls back to `SMTP_*`. `monitoring/alertmanager/render-config.sh` renders the configuration at container start. Without a receiver, alerts are only visible in the UIs, and Alertmanager logs a warning.
 

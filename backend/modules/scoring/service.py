@@ -21,6 +21,7 @@ from modules.events.models import (
 )
 from modules.scoring import rules_service, sheet, tiebreak
 from modules.scoring.models import Match, Ranking, ScoreRevision, ScoringSchema
+from modules.scoring.ranking import competition_ranks
 from modules.scoring.visibility import visible_matches_clause, visible_revisions_clause
 from modules.seasons.lifecycle import ensure_writable
 from modules.seasons.models import SeasonPhase
@@ -72,6 +73,11 @@ def select_matches_with_kind(*columns: Any) -> Select:
     match's phase, else from the legacy season phase. A match linked to none of
     them was entered free-hand (score entry page, bulk entry) and counts as a
     seeding round — that is the only kind the free-hand entry offers.
+
+    The season-phase fallback stays: migration 0010 copied the phase of every
+    existing match into ``event_phase_id``, but ``MatchCreate.phase_id`` still
+    accepts a season phase and season imports (seasons.portability) create
+    them, so a new match can carry only the legacy link.
     """
     direct_phase = aliased(EventPhase)
     scheduled_phase = aliased(EventPhase)
@@ -148,20 +154,6 @@ async def red_carded_teams(db: AsyncSession, event_id: str) -> set[str]:
         .distinct()
     )
     return set(result.scalars().all())
-
-
-def competition_ranks(values: list[tuple[str, float]]) -> dict[str, int]:
-    """1224 ranking: equal values share a rank and the next rank skips."""
-    ordered = sorted(values, key=lambda item: (-item[1], item[0]))
-    ranks: dict[str, int] = {}
-    previous: float | None = None
-    rank = 0
-    for position, (key, value) in enumerate(ordered, start=1):
-        if previous is None or value < previous:
-            rank = position
-            previous = value
-        ranks[key] = rank
-    return ranks
 
 
 def compute_match_total(

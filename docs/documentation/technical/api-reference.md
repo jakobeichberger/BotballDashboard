@@ -141,7 +141,7 @@ Legende Recht: `öffentlich` = ohne Token · `Login` = jeder angemeldete Nutzer 
 | Methode | Pfad | Recht | Zweck |
 |---|---|---|---|
 | GET | `/api/system/health` | öffentlich | Liveness: `{"status": "ok", "version": …}` |
-| GET | `/api/system/readiness` | öffentlich | Prüft PostgreSQL, Redis und einen Celery-Worker; 200 `ready` oder 503 `not_ready` mit `checks` |
+| GET | `/api/system/readiness` | intern | Prüft PostgreSQL, Redis und einen Celery-Worker (Ping höchstens alle 15 s); 200 `ready` oder 503 `not_ready` mit `checks`. Traefik leitet den Pfad nicht nach außen; Docker-Healthchecks und Prometheus fragen `backend:8000` direkt |
 | GET | `/api/system/metrics` | intern | Prometheus-Metriken; Anfragen mit `X-Forwarded-For` (also über Traefik) erhalten 404 |
 
 ### Auth & Konto (`/api/auth`)
@@ -314,17 +314,16 @@ Nur Events mit Status `published`, `live` oder `completed`. Jede Teilansicht ver
 | GET | `/api/scoring/seasons/{season_id}/ranking` | öffentlich | Seeding-Rangliste (siehe Restrisiken in SECURITY.md) |
 | GET | `/api/scoring/seasons/{season_id}/ranking/extended` | öffentlich | Seeding-Rangliste mit Teamnamen und Kategorie |
 | GET | `/api/scoring/events/{event_id}/ranking/extended` | öffentlich | dasselbe für ein Event, Ränge je Kategorie |
-| GET | `/api/scoring/seasons/{season_id}/ranking/overall` | öffentlich | Gesamtwertung aus dem Formel-Set der Saison |
 | GET | `/api/scoring/events/{event_id}/ranking/overall` | öffentlich | Gesamtwertung eines Events |
 | GET | `/api/scoring/scheduled-matches/{scheduled_match_id}/outcome` | `scoring:read` | Sieger eines Duells und was entschied (Punkte, Tie-Breaker, DQ, Replay) |
 
 #### DE, Aerial, Dokumentation
 
-Jede Route gibt es in einer Saison-Variante (`/seasons/{season_id}/…`, optional `?event_id=`, sonst Standard-Event) und einer Event-Variante (`/events/{event_id}/…`). Beide antworten mit 404, wenn das Modul für das Event aus ist.
+Die Ergebnisse gehören zu einem Event (`/events/{event_id}/…`); die früheren Saison-Varianten sind entfernt. Jede Route antwortet mit 404, wenn das Modul für das Event aus ist.
 
 | Methode | Pfad | Recht | Zweck |
 |---|---|---|---|
-| GET | `/api/scoring/{seasons/{season_id}\|events/{event_id}}/de-results` | `scoring:read` · Modul `double_elimination` | DE-Ergebnisse |
+| GET | `/api/scoring/events/{event_id}/de-results` | `scoring:read` · Modul `double_elimination` | DE-Ergebnisse |
 | PUT | `…/de-results` | `scoring:admin` · Modul `double_elimination` | DE-Ergebnisse (Liste) speichern |
 | PUT | `…/de-results/{team_id}` | `scoring:admin` · Modul `double_elimination` | DE-Ergebnis eines Teams |
 | GET | `…/aerial-results` | `scoring:read` · Modul `aerial` | Aerial-Läufe |

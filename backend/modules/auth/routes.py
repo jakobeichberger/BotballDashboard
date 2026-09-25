@@ -134,7 +134,8 @@ async def refresh(
         try:
             body = await request.json()
             refresh_token = body.get("refresh_token")
-        except Exception:
+        except (ValueError, AttributeError):
+            # No body, invalid JSON or not an object: treated as "no token".
             refresh_token = None
     if not refresh_token:
         from core.exceptions import UnauthorizedError

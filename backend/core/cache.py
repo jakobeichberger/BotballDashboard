@@ -39,7 +39,7 @@ from pydantic import TypeAdapter
 from core.config import get_settings
 from core.logging import get_logger
 from core.metrics import record_redis_fail_open
-from core.redis_client import shared_redis
+from core.redis_client import REDIS_ERRORS, shared_redis
 
 logger = get_logger("cache")
 
@@ -104,7 +104,7 @@ async def current_version(event_id: str) -> int | None:
         return None
     try:
         value = await _client().get(f"{_VERSION_PREFIX}{event_id}")
-    except Exception as exc:
+    except REDIS_ERRORS as exc:
         _mark_down("version", exc)
         return None
     return int(value or 0)
@@ -126,7 +126,7 @@ async def bump_version(event_id: str) -> None:
             pipe.incr(key)
             pipe.expire(key, _VERSION_TTL_SECONDS)
             await pipe.execute()
-    except Exception as exc:
+    except REDIS_ERRORS as exc:
         _mark_down("bump", exc)
 
 
@@ -142,7 +142,7 @@ async def _load(key: str) -> Payload | None:
         return Payload.decode(entry[1])
     try:
         raw = await _client().get(key)
-    except Exception as exc:
+    except REDIS_ERRORS as exc:
         _mark_down("get", exc)
         return None
     return Payload.decode(raw) if raw else None
@@ -155,7 +155,7 @@ async def _store(key: str, payload: Payload) -> None:
         return
     try:
         await _client().set(key, payload.encode(), ex=ttl)
-    except Exception as exc:
+    except REDIS_ERRORS as exc:
         _mark_down("set", exc)
 
 

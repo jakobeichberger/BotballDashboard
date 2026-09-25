@@ -37,7 +37,7 @@ def extract_text(path: Path) -> tuple[list[str] | None, int | None, str | None]:
                 line = _SPACES.sub(" ", raw).strip()
                 if line:
                     lines.append(line)
-    except Exception as exc:  # pypdf raises many types for broken files
+    except Exception as exc:  # noqa: BLE001 - pypdf raises many types for broken files
         logger.warning("paper_text_extraction_failed", file=str(path), error=str(exc))
         return None, None, f"The PDF text could not be read: {exc}"[:300]
     if not lines:

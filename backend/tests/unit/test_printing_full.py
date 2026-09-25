@@ -22,7 +22,6 @@ from modules.printing.service import (
     create_spool,
     get_print_job,
     get_printer,
-    get_printer_api_key,
     get_quota,
     list_print_jobs,
     list_printers,
@@ -114,18 +113,18 @@ class TestPrinterService:
             await update_printer(db, "nope", name="X")
 
     @pytest.mark.asyncio
-    async def test_get_printer_api_key_empty_when_unset(self, db):
+    async def test_printer_without_api_key_stores_nothing(self, db):
         printer = await create_printer(db, {"name": "NoKey"})
-        assert await get_printer_api_key(db, printer.id) == ""
+        assert not printer.api_key_encrypted
 
     @pytest.mark.asyncio
-    async def test_get_printer_api_key_roundtrip(self, db, monkeypatch):
+    async def test_printer_api_key_roundtrip(self, db, monkeypatch):
         monkeypatch.setattr(
             "modules.printing.crypto.get_settings",
             _fernet_settings(Fernet.generate_key().decode()),
         )
         printer = await create_printer(db, {"name": "K", "api_key": "abc123"})
-        assert await get_printer_api_key(db, printer.id) == "abc123"
+        assert decrypt_credential(printer.api_key_encrypted) == "abc123"
 
 
 # ── Print jobs ──────────────────────────────────────────────────────────────

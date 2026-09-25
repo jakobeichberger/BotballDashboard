@@ -204,13 +204,15 @@ async def test_season_ranking_of_a_draft_default_event_is_hidden(
     _, organizer = await _user(
         db, "org-rank@test.com", ["events:read", "events:write", "scoring:read"]
     )
+    # The season-scoped overall ranking is gone; the extended one remains.
+    url = f"/api/scoring/seasons/{season.id}/ranking/extended"
+    # The organizer warms the cache first; the guest must still get 404.
+    assert (await client.get(url, headers=organizer)).status_code == 200
+    assert (await client.get(url, headers=guest)).status_code == 404
+    assert (await client.get(url)).status_code == 401
     for kind in ("extended", "overall"):
-        url = f"/api/scoring/seasons/{season.id}/ranking/{kind}"
-        # The organizer warms the cache first; the guest must still get 404.
-        assert (await client.get(url, headers=organizer)).status_code == 200, kind
-        assert (await client.get(url, headers=guest)).status_code == 404, kind
-        assert (await client.get(url)).status_code == 401, kind
         by_event = f"/api/scoring/events/{event.id}/ranking/{kind}"
+        assert (await client.get(by_event, headers=organizer)).status_code == 200, kind
         assert (await client.get(by_event, headers=guest)).status_code == 404, kind
     season.status = "active"
     await db.commit()

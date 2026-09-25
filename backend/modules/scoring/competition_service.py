@@ -24,7 +24,8 @@ from modules.scoring.competition_models import (
     DocumentationScore,
     ResultRevision,
 )
-from modules.scoring.service import DEFAULT_CATEGORY, competition_ranks, team_categories
+from modules.scoring.ranking import competition_ranks
+from modules.scoring.service import DEFAULT_CATEGORY, team_categories
 from modules.seasons.lifecycle import ensure_writable
 from modules.teams.models import Team
 
@@ -150,7 +151,7 @@ async def get_de_results(db: AsyncSession, event: Event) -> list[DEResult]:
     return list(result.scalars())
 
 
-async def _rescore_brackets(db: AsyncSession, event: Event) -> None:
+async def rescore_brackets(db: AsyncSession, event: Event) -> None:
     """Derive every bracket_score of the event from the DE ranks.
 
     n is the number of teams in the bracket within the team's category — the
@@ -178,7 +179,7 @@ async def upsert_de_result(
 ) -> DEResult:
     row = await _upsert(db, DEResult, event, data, _DE_FIELDS, "de", changed_by)
     if rescore:
-        await _rescore_brackets(db, event)
+        await rescore_brackets(db, event)
         await _refresh(db, [row])
     return row
 
@@ -187,7 +188,7 @@ async def bulk_upsert_de_results(
     db: AsyncSession, event: Event, entries: list[dict], changed_by: str | None = None
 ) -> list[DEResult]:
     rows = [await upsert_de_result(db, event, e, changed_by, rescore=False) for e in entries]
-    await _rescore_brackets(db, event)
+    await rescore_brackets(db, event)
     await _refresh(db, rows)
     return rows
 
@@ -244,7 +245,7 @@ async def get_aerial_ranking(db: AsyncSession, event: Event) -> list[dict]:
     names_result = await db.execute(
         select(Team.id, Team.name).where(Team.id.in_([r.team_id for r in rows]))
     )
-    names = dict(names_result.tuples().all())
+    names = {team_id: name for team_id, name in names_result.all()}
     ranks = competition_ranks([(r.team_id, r.score or 0.0) for r in rows])
     rows.sort(key=lambda r: (ranks[r.team_id], names.get(r.team_id) or ""))
     return [

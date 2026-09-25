@@ -8,11 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.audit import log_action
 from core.domain_events import emit_event
 from core.exceptions import ConflictError, NotFoundError
+from core.logging import get_logger
 from modules.printing.adapters import cancel_printer_job
 from modules.printing.crypto import decrypt_credential, encrypt_credential
 from modules.printing.models import FilamentSpool, Printer, PrintJob, TeamSeasonPrintQuota
 from modules.scoring.service import get_default_event, resolve_event
 from modules.seasons.lifecycle import ensure_writable
+
+logger = get_logger(__name__)
 
 JOB_TRANSITIONS = {
     "pending": {"approved", "rejected", "cancelled"},
@@ -71,13 +74,6 @@ async def update_printer(db: AsyncSession, printer_id: str, **kwargs) -> Printer
     if api_key:
         printer.api_key_encrypted = encrypt_credential(api_key)
     return printer
-
-
-async def get_printer_api_key(db: AsyncSession, printer_id: str) -> str:
-    printer = await get_printer(db, printer_id)
-    if not printer.api_key_encrypted:
-        return ""
-    return decrypt_credential(printer.api_key_encrypted)
 
 
 # ── Print Jobs ────────────────────────────────────────────────────────────────
@@ -290,7 +286,8 @@ async def stop_on_printer(db: AsyncSession, job: PrintJob, user_id: str | None) 
             printer.device_id,
         )
         result = {"printer_cancel": "sent", "printer_message": message}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - adapters raise network and API errors alike
+        logger.warning("printer_cancel_failed", printer_id=str(printer.id), error=str(exc))
         result = {
             "printer_cancel": "failed",
             "printer_message": f"Could not stop the print on {printer.name}: {exc}"[:500],
@@ -356,7 +353,7 @@ async def _open_usage(db: AsyncSession, team_id: str, event_id: str | None) -> t
         )
     )
     count, grams = result.one()
-    return int(count), float(grams)
+    return int(count), float(grams or 0.0)
 
 
 async def _hard_limit_violation(

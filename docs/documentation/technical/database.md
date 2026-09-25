@@ -1,9 +1,9 @@
 # Datenbankschema
 
-Stand: Migration `0031`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 60 Tabellen.
+Stand: Migration `0032`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 61 Tabellen.
 
-- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0031`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
-- **Tests:** SQLite in-memory über `Base.metadata.create_all`. Die Migrationen laufen in der CI zusätzlich gegen PostgreSQL.
+- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0032`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
+- **Tests:** SQLite in-memory über `Base.metadata.create_all`, einmal pro Testprozess; jeder Test wird per SAVEPOINT-Rollback isoliert (`backend/tests/conftest.py`). Die Migrationen laufen in der CI zusätzlich gegen PostgreSQL.
 - **IDs:** fast überall `VARCHAR(36)` mit UUID-Text; Ausnahme `audit_logs.id` (Integer, autoincrement).
 - **JSON-Spalten** (`JSON`, auf PostgreSQL als `json` angelegt) halten flexible Strukturen: Score-Sheet-Definitionen, Rohwerte einer Wertung, Modul-Listen, Benachrichtigungs-Payloads.
 - **Zeitstempel** werden als UTC gespeichert. Datumsfelder ohne Uhrzeit (`DATE`) sind Kalendertage, z. B. Deadlines. Eine Paper-Deadline gilt bis Tagesende in der Zeitzone des Events.

@@ -15,8 +15,14 @@ it; a new loop gets a new client.
 import asyncio
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 from core.config import get_settings
+
+#: What a Redis call raises when the server is unreachable, slow or refuses a
+#: command. The fail-open paths (cache, live publishing, rate limit, token
+#: denylist) catch exactly these; anything else is a bug and propagates.
+REDIS_ERRORS: tuple[type[Exception], ...] = (RedisError, OSError, TimeoutError)
 
 _clients: dict[str, tuple[asyncio.AbstractEventLoop, Redis]] = {}
 

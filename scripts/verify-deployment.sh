@@ -76,11 +76,11 @@ fi
 
 # ── 1. Containers running / healthy ─────────────────────────────────────────
 echo "== Services (${#services[@]} in active profiles: ${services[*]})"
-for service in backend worker worker-ocr beat frontend db redis traefik backup prometheus blackbox alertmanager; do
+for service in backend worker worker-ocr beat frontend db redis traefik backup prometheus blackbox alertmanager node-exporter postgres-exporter; do
   if ! has_service "${service}"; then
     case "${service}" in
       backup) warn "backup: service not enabled (COMPOSE_PROFILES lacks \"production\") – NO BACKUPS are made" ;;
-      prometheus|blackbox|alertmanager) ;;  # monitoring profile is optional
+      prometheus|blackbox|alertmanager|node-exporter|postgres-exporter) ;;  # monitoring profile is optional
       *) fail "${service}: not defined in the compose configuration" ;;
     esac
     continue
@@ -122,12 +122,28 @@ http_status() { curl "${curl_opts[@]}" -o /dev/null -w '%{http_code}' "$1" 2>/de
 code="$(http_status "${base_url}/api/system/health")"
 if [[ "${code}" == "200" ]]; then pass "/api/system/health: 200"; else fail "/api/system/health: HTTP ${code}"; fi
 
-readiness="$(curl "${curl_opts[@]}" -w '\n%{http_code}' "${base_url}/api/system/readiness" 2>/dev/null || echo 000)"
+# Readiness is internal (Traefik does not route it): ask the API container.
+readiness="$(in_service backend python -c '
+import sys, urllib.error, urllib.request
+try:
+    response = urllib.request.urlopen("http://localhost:8000/api/system/readiness", timeout=10)
+    print(response.read().decode()); print(response.status)
+except urllib.error.HTTPError as error:
+    print(error.read().decode()); print(error.code)
+except OSError as error:
+    print(error); print("000")
+' 2>/dev/null || echo 000)"
 code="$(tail -n1 <<<"${readiness}")"
 if [[ "${code}" == "200" ]]; then
-  pass "/api/system/readiness: 200 $(head -n1 <<<"${readiness}")"
+  pass "/api/system/readiness (inside backend): 200 $(head -n1 <<<"${readiness}")"
 else
-  fail "/api/system/readiness: HTTP ${code} $(head -n1 <<<"${readiness}")"
+  fail "/api/system/readiness (inside backend): HTTP ${code} $(head -n1 <<<"${readiness}")"
+fi
+code="$(http_status "${base_url}/api/system/readiness")"
+if [[ "${code}" == "404" ]]; then
+  pass "/api/system/readiness not exposed through Traefik (404)"
+else
+  fail "/api/system/readiness is reachable through Traefik (HTTP ${code}, expected 404)"
 fi
 
 metrics="$(curl "${curl_opts[@]}" -w '\n%{http_code}' "${base_url}/api/system/metrics" 2>/dev/null || echo 000)"

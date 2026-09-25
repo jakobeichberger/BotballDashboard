@@ -13,7 +13,7 @@
 # What this script does:
 #   1.  Checks prerequisites (OS, root, network) and installs git/curl/python3/age
 #   2.  Installs Docker + Docker Compose plugin
-#   3.  Installs Node.js 20 + pnpm (needed to build the frontend on the host)
+#   3.  Installs Node.js 22 + pnpm (needed to build the frontend on the host)
 #   4.  Clones the repository (or updates if already cloned)
 #   5.  Interactively generates .env with all secrets (APP/JWT secrets, DB
 #       password, Fernet key, age backup key pair, compose profiles, alerts)
@@ -58,7 +58,7 @@ REPO_BRANCH="main"
 INSTALL_DIR="/opt/botballdashboard"
 DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
-NODE_MAJOR="20"
+NODE_MAJOR="22"
 PNPM_VERSION="10.29.3"
 # Private key that decrypts the backups. It must be copied OFF this machine.
 BACKUP_IDENTITY_FILE="/root/botball-backup-identity.txt"
@@ -1150,7 +1150,7 @@ main() {
 
   check_prerequisites   # 1
   install_docker        # 2
-  install_node          # 3  ← installs Node.js 20 + pnpm on the host
+  install_node          # 3  ← installs Node.js 22 + pnpm on the host
   setup_repository      # 4
   configure_env         # 5
   create_directories    # 6

@@ -28,7 +28,6 @@ interface AuthState {
   /** Start the read-only offline session; false when no profile is cached. */
   startOfflineSession: () => boolean;
   logout: () => void;
-  hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
 }
 
@@ -92,10 +91,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     cacheProfile(null);
     set({ accessToken: null, user: null, sessionChecked: true, offlineSession: false });
-  },
-  hasRole: (role) => {
-    const { user } = get();
-    return !!user && (user.is_superuser || user.roles.some((item) => item.name === role));
   },
   hasPermission: (permission) => {
     const { user } = get();
