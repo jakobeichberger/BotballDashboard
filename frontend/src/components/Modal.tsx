@@ -9,7 +9,7 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   /** Element to focus first (default: the first form field, else the dialog). */
-  initialFocus?: React.RefObject<HTMLElement>;
+  initialFocus?: React.RefObject<HTMLElement | null>;
   /** Wider dialogs, e.g. for tables. */
   size?: "md" | "lg";
 }

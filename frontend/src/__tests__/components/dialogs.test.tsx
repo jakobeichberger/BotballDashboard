@@ -91,7 +91,7 @@ describe("toasts", () => {
 });
 
 describe("ErrorBoundary", () => {
-  function Broken({ error }: { error: Error }): JSX.Element {
+  function Broken({ error }: { error: Error }): React.JSX.Element {
     throw error;
   }
 
