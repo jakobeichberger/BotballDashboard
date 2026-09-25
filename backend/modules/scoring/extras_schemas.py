@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from modules.seasons.categories import CategoryKey
+
 _KEY = r"^[a-z][a-z0-9_]*$"
 
 
@@ -31,6 +33,17 @@ class ChecklistItem(BaseModel):
     key: str = Field(pattern=_KEY, max_length=100)
     label: str = Field(min_length=1, max_length=255)
     required: bool = True
+    # The rule text, e.g. the game review's wording, shown under the label.
+    description: str | None = Field(default=None, max_length=2000)
+
+
+class DocMaxPoints(BaseModel):
+    """Rubric maximum of each documentation period (2026: 100 / 95 / 100 / 100)."""
+
+    p1: float = Field(default=100.0, gt=0, le=1000)
+    p2: float = Field(default=100.0, gt=0, le=1000)
+    p3: float = Field(default=100.0, gt=0, le=1000)
+    onsite: float = Field(default=100.0, gt=0, le=1000)
 
 
 class RuleSetUpdate(BaseModel):
@@ -38,6 +51,9 @@ class RuleSetUpdate(BaseModel):
     finals_replay: bool = False
     end_contact_bonus_percent: float = Field(default=25.0, ge=0, le=100)
     referee_checklist: list[ChecklistItem] = Field(default_factory=list, max_length=40)
+    # Off: equal seed scores share a rank (game review, ECER 2026).
+    seeding_tiebreakers: bool = False
+    doc_max_points: DocMaxPoints = Field(default_factory=DocMaxPoints)
 
     @model_validator(mode="after")
     def unique_keys(self) -> "RuleSetUpdate":
@@ -52,6 +68,12 @@ class RuleSetUpdate(BaseModel):
 
 class RuleSetResponse(RuleSetUpdate):
     season_id: str
+
+
+class ChecklistPreset(BaseModel):
+    id: str
+    name: str
+    items: list[ChecklistItem]
 
 
 class TiebreakerPreset(BaseModel):
@@ -303,7 +325,7 @@ class QualificationStatusEntry(BaseModel):
 
 class RegisterQualifiedRequest(BaseModel):
     level_id: str
-    category: Literal["botball", "open", "aerial", "jbc"] = "botball"
+    category: CategoryKey = "botball"
 
 
 class RegisteredTeam(BaseModel):

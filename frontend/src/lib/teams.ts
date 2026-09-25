@@ -6,7 +6,8 @@ import { formatNumber } from "@/i18n/format";
 import { downloadFile } from "@/lib/download";
 import { labelMap } from "@/i18n/labels";
 
-export type TeamCategory = "botball" | "open" | "aerial" | "jbc";
+/** A key of the season's category registry (lib/categories); these are the defaults. */
+export type TeamCategory = "botball" | "open" | "aerial" | "aerial_junior" | "jbc";
 export type FeeStatus = "pending" | "paid" | "waived";
 export type KitStatus = "not_sent" | "sent" | "received";
 
@@ -28,7 +29,8 @@ export interface TeamSeasonRegistration {
   address: string | null;
 }
 
-export const CATEGORY_LABEL = labelMap("teams:category", ["botball", "open", "aerial", "jbc"]);
+/** Labels of the default categories; season-specific labels come from useSeasonCategories. */
+export const CATEGORY_LABEL = labelMap("teams:category", ["botball", "open", "aerial_junior", "aerial", "jbc"]);
 export const FEE_LABEL = labelMap("teams:fee", ["pending", "paid", "waived"]);
 export const FEE_BADGE: Record<string, string> = { pending: "badge-yellow", paid: "badge-green", waived: "badge-gray" };
 export const KIT_LABEL = labelMap("teams:kit", ["not_sent", "sent", "received"]);

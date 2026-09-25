@@ -31,19 +31,20 @@ def _formula(formula_set: list[tuple[str, str]], key: str) -> tuple[str, str]:
 def test_documentation_score(case):
     parts = case["parts"]
     expected = case["score"]
-    result = documentation_score(*parts)
+    limits = case.get("maxima", [100, 100, 100, 100])
+    maxima = dict(zip(("p1", "p2", "p3", "onsite"), map(float, limits), strict=True))
+    result = documentation_score(*parts, maxima=maxima)
     if expected is None:
         assert result is None
         return
     assert result == pytest.approx(expected)
 
     # The regional preset computes the same score inside the overall ranking.
+    names = ("doc_p1", "doc_p2", "doc_p3", "onsite")
     row = dict(
         team_id="t",
-        **{
-            name: float(value or 0)
-            for name, value in zip(("doc_p1", "doc_p2", "doc_p3", "onsite"), parts, strict=True)
-        },
+        **{name: float(value or 0) for name, value in zip(names, parts, strict=True)},
+        **{f"{name}_max": float(limit) for name, limit in zip(names, limits, strict=True)},
     )
     run = run_formula_set([_formula(REGIONAL_2026_BOTBALL_FORMULA_SET, "doc_score")], [row])
     assert not run.issues
@@ -54,13 +55,19 @@ def test_documentation_score(case):
 def test_aerial_score(case):
     runs = case["runs"]
     expected = case["score"]
-    result = aerial_score(runs)
+    counted = case.get("counted")
+    result = aerial_score(runs, counted)
     if expected is None:
         assert result is None
         return
     assert result == pytest.approx(expected)
 
-    row = {"team_id": "t", "aerial_runs": [float(r) for r in runs if r is not None]}
+    # The default aerial set counts the category's configured runs (0 = all).
+    row = {
+        "team_id": "t",
+        "aerial_runs": [float(r) for r in runs if r is not None],
+        "aerial_counted_runs": float(counted or 0),
+    }
     run = run_formula_set([_formula(DEFAULT_FORMULA_SETS["aerial"], "aerial_score")], [row])
     assert not run.issues
     assert run.rows[0]["aerial_score"] == pytest.approx(expected)

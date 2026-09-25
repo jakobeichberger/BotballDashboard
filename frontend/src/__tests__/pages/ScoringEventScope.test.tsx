@@ -68,7 +68,7 @@ describe("scoring pages under /events/:eventId", () => {
 
   it("AerialPage shows the mean of all runs", async () => {
     mockApi({
-      "/aerial-results": [{ team_id: "t1", run1: 20, run2: 100, run3: 80, run4: 0 }],
+      "/aerial-results": [{ team_id: "t1", runs: [20, 100, 80, 0] }],
     });
     renderAt("/scoring/aerial", <AerialPage />);
     // (20 + 100 + 80 + 0) / 4 = 50 — not the best-two average of 90.

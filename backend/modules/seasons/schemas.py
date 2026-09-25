@@ -1,7 +1,9 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from modules.seasons.categories import CategoryKey
 
 SeasonStatus = Literal["draft", "active", "finished", "archived"]
 
@@ -169,3 +171,28 @@ class SeasonEventResponse(BaseModel):
 class SeasonClone(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     year: int = Field(ge=2000, le=2100)
+
+
+# ── Category registry ─────────────────────────────────────────────────────────
+
+
+class SeasonCategoryEntry(BaseModel):
+    """One category of the season's registry (see modules.seasons.categories)."""
+
+    model_config = {"from_attributes": True}
+
+    key: CategoryKey
+    label_de: str = Field(min_length=1, max_length=100)
+    label_en: str = Field(min_length=1, max_length=100)
+    kind: Literal["botball", "open", "aerial", "jbc", "custom"] = "custom"
+    formula_preset: str | None = Field(default=None, max_length=50)
+    run_count: int | None = Field(default=None, ge=1, le=20)
+    counted_runs: int | None = Field(default=None, ge=1, le=20)
+    rank_per_bracket: bool = False
+    sort_order: int | None = None
+
+    @model_validator(mode="after")
+    def counted_within_runs(self) -> "SeasonCategoryEntry":
+        if self.run_count and self.counted_runs and self.counted_runs > self.run_count:
+            raise ValueError("counted_runs must not exceed run_count")
+        return self

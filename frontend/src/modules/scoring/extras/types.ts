@@ -14,6 +14,8 @@ export interface TiebreakerCriterion {
 }
 
 export interface ChecklistItem {
+  /** The rule text (game review wording), shown under the label. */
+  description?: string | null;
   key: string;
   label: string;
   required: boolean;
@@ -25,6 +27,18 @@ export interface RuleSet {
   finals_replay: boolean;
   end_contact_bonus_percent: number;
   referee_checklist: ChecklistItem[];
+  /** Off: equal seed scores share a rank (game review, ECER 2026). */
+  seeding_tiebreakers?: boolean;
+  /** Rubric maxima of the documentation periods (2026: 100 / 95 / 100 / 100). */
+  doc_max_points?: DocMaxPoints;
+}
+
+export interface DocMaxPoints { p1: number; p2: number; p3: number; onsite: number }
+
+export interface ChecklistPreset {
+  id: string;
+  name: string;
+  items: ChecklistItem[];
 }
 
 export interface TiebreakerPreset {

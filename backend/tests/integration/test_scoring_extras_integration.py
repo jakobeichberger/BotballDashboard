@@ -32,11 +32,14 @@ async def _score(client, headers, event_id, team_id, raw, **extra):
     return resp.json()
 
 
-async def _rules(client, headers, season_id, tiebreakers=None):
+async def _rules(client, headers, season_id, tiebreakers=None, seeding_tiebreakers=True):
     resp = await client.put(
         f"/api/scoring/seasons/{season_id}/rules",
         headers=headers,
-        json={"tiebreakers": [CUPS] if tiebreakers is None else tiebreakers},
+        json={
+            "tiebreakers": [CUPS] if tiebreakers is None else tiebreakers,
+            "seeding_tiebreakers": seeding_tiebreakers,
+        },
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
@@ -105,6 +108,44 @@ async def test_seeding_ties_are_broken_per_category_and_shared_when_undecided(
     assert ranking[a.id]["rank"] == ranking[b.id]["rank"] == 2
     # The open category is ranked on its own and untouched by it.
     assert ranking[o1.id]["rank"] == ranking[o2.id]["rank"] == 1
+
+
+@pytest.mark.asyncio
+async def test_seeding_rank_and_formula_rank_agree(client, auth_headers, db, season, event):
+    """The overall formula scores the rank the seeding table shows."""
+    a, b, c = await _teams(db, event, ("A", "botball"), ("B", "botball"), ("C", "botball"))
+    await _score(client, auth_headers, event.id, a.id, {"points": 50}, tiebreak_values=CUPS_2)
+    await _score(client, auth_headers, event.id, b.id, {"points": 50})
+    await _score(client, auth_headers, event.id, c.id, {"points": 10})
+    await client.post(
+        f"/api/scoring/formulas/seasons/{season.id}/presets/ecer_2026_botball",
+        headers=auth_headers,
+    )
+
+    async def ranks():
+        seeding = await _ranking(client, auth_headers, event.id)
+        overall = (
+            await client.get(
+                f"/api/scoring/events/{event.id}/ranking/overall?category=botball",
+                headers=auth_headers,
+            )
+        ).json()
+        return (
+            {t: seeding[t]["rank"] for t in (a.id, b.id, c.id)},
+            {e["team_id"]: e["values"]["seed_rank"] for e in overall},
+        )
+
+    # Off (default): the tie is shared in both places.
+    await _rules(client, auth_headers, season.id, seeding_tiebreakers=False)
+    table, formula = await ranks()
+    assert table == {a.id: 1, b.id: 1, c.id: 3}
+    assert formula == table
+
+    # On: the criterion places A first, in the table and in the formula.
+    await _rules(client, auth_headers, season.id, seeding_tiebreakers=True)
+    table, formula = await ranks()
+    assert table == {a.id: 1, b.id: 2, c.id: 3}
+    assert formula == table
 
 
 @pytest.mark.asyncio

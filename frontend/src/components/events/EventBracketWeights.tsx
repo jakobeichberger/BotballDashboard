@@ -3,11 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
-import { CATEGORY_LABEL } from "@/lib/teams";
+import { useSeasonCategories } from "@/lib/categories";
+import { useEvent } from "@/hooks/useEvents";
 import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
 import { apiErrorMessage } from "@/lib/errors";
-
-const CATEGORIES = ["botball", "open", "aerial", "jbc"] as const;
 
 /**
  * Bracket weights of one event and category. The game review announces them
@@ -19,6 +18,8 @@ export default function EventBracketWeights({ eventId }: { eventId: string }) {
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<string>("botball");
   const [message, setMessage] = useState("");
+  const { data: event } = useEvent(eventId);
+  const categories = useSeasonCategories(event?.season_id);
   const weights = useQuery<Record<string, number>>({
     queryKey: ["event-bracket-weights", eventId, category],
     queryFn: async () => (await api.get(`/v1/events/${eventId}/bracket-weights`, { params: { category } })).data,
@@ -37,7 +38,7 @@ export default function EventBracketWeights({ eventId }: { eventId: string }) {
       <label className="flex items-center gap-2 text-sm font-medium">
         {t("setup.category")}
         <select className="input w-auto" value={category} onChange={(e) => { setCategory(e.target.value); setMessage(""); }}>
-          {CATEGORIES.map((key) => <option key={key} value={key}>{CATEGORY_LABEL[key]}</option>)}
+          {categories.categories.map((entry) => <option key={entry.key} value={entry.key}>{categories.label(entry.key)}</option>)}
         </select>
       </label>
       <BracketWeightsEditor

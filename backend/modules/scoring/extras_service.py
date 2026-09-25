@@ -45,6 +45,8 @@ async def get_rule_set(db: AsyncSession, season_id: str) -> dict[str, Any]:
         "finals_replay": rules.finals_replay,
         "end_contact_bonus_percent": rules.end_contact_bonus_percent,
         "referee_checklist": rules.referee_checklist,
+        "seeding_tiebreakers": rules.seeding_tiebreakers,
+        "doc_max_points": rules.doc_max_points,
     }
 
 
@@ -61,10 +63,17 @@ async def put_rule_set(db: AsyncSession, season_id: str, data: dict[str, Any]) -
     row.finals_replay = data["finals_replay"]
     row.end_contact_bonus_percent = data["end_contact_bonus_percent"]
     row.referee_checklist = data["referee_checklist"]
+    row.seeding_tiebreakers = bool(data.get("seeding_tiebreakers", False))
+    row.doc_max_points = data.get("doc_max_points")
     await db.flush()
     # Tie-breakers decide shared seed scores: re-rank every event of the season.
+    # The documentation maxima change the stored documentation scores.
+    from modules.scoring import competition_service
+
     for event_id in await season_event_ids(db, season_id):
         await score_service.refresh_all_levels(db, event_id)
+        await competition_service.sync_event_scores(db, event_id)
+    await score_service.invalidate_season_rankings(db, season_id)
     return await get_rule_set(db, season_id)
 
 

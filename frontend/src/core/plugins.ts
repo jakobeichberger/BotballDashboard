@@ -74,6 +74,7 @@ export const modules: readonly ModuleDefinition[] = [
       { path: "scoring/entry", component: lazy(() => import("@/pages/ScoreEntryPage")), permission: "scoring:write", label: { de: "Punkte eintragen", en: "Enter scores" }, icon: "scoring", navigation: false },
       { path: "scoring/de", component: lazy(() => import("@/pages/DEPage")), permission: "scoring:admin", label: { de: "Double Elimination", en: "Double elimination" }, icon: "scoring", navigation: false, module: "double_elimination" },
       { path: "scoring/aerial", component: lazy(() => import("@/pages/AerialPage")), permission: "scoring:admin", label: { de: "Aerial", en: "Aerial" }, icon: "scoring", navigation: false, module: "aerial" },
+      { path: "scoring/jbc", component: lazy(() => import("@/pages/JBCPage")), permission: "scoring:admin", label: { de: "Junior Botball Challenge", en: "Junior Botball Challenge" }, icon: "scoring", navigation: false },
       { path: "scoring/doc", component: lazy(() => import("@/pages/DocScoringPage")), permission: "scoring:admin", label: { de: "Dokumentation", en: "Documentation" }, icon: "scoring", navigation: false, module: ["documentation", "paper_scoring"] },
       { path: "scoring/score-sheets", component: lazy(() => import("@/modules/scoring/score-sheets/pages/ScoreSheetsPage")), permission: "scoring:admin", label: { de: "Score-Sheets", en: "Score sheets" }, icon: "scans", navigation: false },
       // Mentors see their own team only; the backend scopes the data.

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from modules.seasons.categories import CategoryKey
+
 
 class TeamMemberCreate(BaseModel):
     name: str
@@ -101,7 +103,8 @@ class TeamSeasonRegistrationCreate(BaseModel):
     notes: str | None = None
 
 
-TeamCategory = Literal["botball", "open", "aerial", "jbc"]
+# A key of the season's category registry, checked against it by the service.
+TeamCategory = CategoryKey
 FeeStatus = Literal["pending", "paid", "waived"]
 KitStatus = Literal["not_sent", "sent", "received"]
 

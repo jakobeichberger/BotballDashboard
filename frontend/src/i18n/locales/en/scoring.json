@@ -91,10 +91,14 @@
   "saving": "Saving…",
   "aerial": {
     "title": "Aerial – results",
-    "hint": "Score = average of all runs. Only fields with a value ≥ 0 are saved.",
+    "hint": "Score = average of all runs (unless the category says otherwise). Empty fields do not count.",
     "run": "Run {{number}}",
-    "score": "Score (⌀ of all runs)",
-    "runFor": "Run {{number}} for {{team}}"
+    "score": "Score",
+    "runFor": "Run {{number}} for {{team}}",
+    "hintBest": "Score = average of the best {{count}} runs (Aerial Junior Rulebook 2026). Empty fields do not count.",
+    "category": "Category",
+    "allTeams": "All teams",
+    "addRun": "Add run"
   },
   "de": {
     "title": "Double elimination – results",
@@ -161,7 +165,20 @@
     "checkItemKey": "Check item key",
     "removeCheckItem": "Remove check item",
     "newCheckItem": "New check item",
-    "save": "Save rules"
+    "save": "Save rules",
+    "seedingTiebreakers": "Apply tie-breakers to seeding ties",
+    "seedingTiebreakersHint": "Off (default): equal seed scores share a rank, as in the game review and at ECER 2026. The seeding rank of the overall score (seed_rank) is always the displayed rank.",
+    "docMax": "Documentation rubric maxima",
+    "docMaxHint": "Points of each period's rubric. Entries above are refused; the formulas use them for percentages (doc_p1_max …).",
+    "docMaxPart": {
+      "p1": "Period 1",
+      "p2": "Period 2",
+      "p3": "Period 3",
+      "onsite": "Onsite"
+    },
+    "docMax2026": "2026 rubrics (100/95/100/100)",
+    "checklistPreset": "Checklist preset",
+    "applyChecklist": "Use checklist"
   },
   "qualification": {
     "qualified": "{{count}} team(s) qualified for {{level}}.",
@@ -342,7 +359,8 @@
       "overall": "Overall ranking"
     },
     "noSeason": "No active season found",
-    "unknownTeam": "Unknown team"
+    "unknownTeam": "Unknown team",
+    "enterJbcShort": "JBC points"
   },
   "formulas": {
     "saveFailed": "Saving failed",
@@ -548,5 +566,14 @@
     "description": "Description",
     "descriptionPlaceholder": "e.g. servo that is not part of the kit",
     "file": "File challenge"
+  },
+  "jbc": {
+    "title": "Junior Botball Challenge – points",
+    "hint": "Points for solved challenges per team. Equal points share a rank. The overall ranking uses them with the formula preset “Junior Botball Challenge 2026” (jbc_points).",
+    "points": "Points for solved challenges",
+    "pointsFor": "Points for {{team}}",
+    "rank": "Rank",
+    "fromChallenges": "Sum of the recorded challenges",
+    "noTeams": "No teams registered in a JBC category."
   }
 }

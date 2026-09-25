@@ -846,9 +846,12 @@ async def _refresh_ranks(
 
     Ranks are computed per registration category — Botball and Open teams are
     separate competitions — and red-carded teams take no rank at all. Equal
-    seed scores are separated by the season's tie-breakers (applied to the
-    runs that make up the seed score); teams no criterion separates — or all
-    tied teams when the season configures none — share a rank (1, 2, 2, 4).
+    seed scores share a rank (1, 2, 2, 4) — the game review uses its
+    tie-breakers for head-to-head rounds only. A season can switch on
+    ``seeding_tiebreakers``; then the tie-breakers are applied to the runs
+    that make up the seed score, and only teams no criterion separates share
+    a rank. The formula input ``seed_rank`` is this rank, so the overall
+    score and the displayed seeding table agree.
     The red-card flag is refreshed for every row, since the card may have
     been shown in a match of another phase or level.
     """
@@ -876,7 +879,9 @@ async def _refresh_ranks(
         ranking.disqualified = ranking.team_id in red_carded
         by_category[ranking.category].append(ranking)
 
-    criteria = (await rules_service.get_rules(db, event.season_id)).tiebreakers
+    rules = await rules_service.get_rules(db, event.season_id)
+    # Seeding ties share a rank unless the season breaks them explicitly.
+    criteria = rules.tiebreakers if rules.seeding_tiebreakers else []
     for rows in by_category.values():
         ranked = [r for r in rows if not r.disqualified]
         ranks = competition_ranks([(r.team_id, r.seed_score) for r in ranked])

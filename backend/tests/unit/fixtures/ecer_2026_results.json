@@ -1,0 +1,67 @@
+{
+  "_source": "Official ECER 2026 results (https://docs.google.com/spreadsheets/d/1SpVYkuFiEy28i87rqH0xb-Bq2zUwGxpcA5WXuFw8ONU), sheets 'Botball & Open', 'Aerial', 'Alliance', 'Junior Botball Challenge'. Inputs and published results as printed.",
+  "botball": [
+    {"id": "26-0188", "name": "ByteMe", "seeding": [330, 1311, 1653], "de_rank": 2, "paper": 86, "expected": {"seed_total": 1482, "seed_rank": 2, "seed_score": 0.8040945119, "de_score": 0.9444444444, "paper_score": 0.86, "paper_rank": 7, "overall": 2.678538956, "overall_rank": 2, "doc_score": 1, "adapted_doc_score": 0.93, "adapted_doc_rank": 3}, "doc": [54, 85, 94]},
+    {"id": "26-0340", "name": "Failure Management", "seeding": [21, 0, 2476], "de_rank": 9, "paper": 58.5, "expected": {"seed_total": 1248.5, "seed_rank": 3, "seed_score": 0.7473399673, "de_score": 0.5555555556, "paper_score": 0.585, "paper_rank": 14, "overall": 1.595395523, "overall_rank": 9, "doc_score": 0, "adapted_doc_score": 0.2925, "adapted_doc_rank": 10}, "doc": [null, null, null]},
+    {"id": "26-0367", "name": "ProbablyLast", "seeding": [28, 242, 153], "de_rank": 3, "paper": null, "expected": {"seed_total": 197.5, "seed_rank": 8, "seed_score": 0.4710950289, "de_score": 0.8888888889, "paper_score": 0, "paper_rank": 18, "overall": 1.645379242, "overall_rank": 8, "doc_score": 0.5707906488, "adapted_doc_score": 0.2853953244, "adapted_doc_rank": 11}, "doc": [4, 85, 60]},
+    {"id": "26-0397", "name": "Botbusters Saalfelden", "seeding": [29, 254, 397], "de_rank": 7, "paper": 73.5, "expected": {"seed_total": 325.5, "seed_rank": 6, "seed_score": 0.5626992332, "de_score": 0.6666666667, "paper_score": 0.735, "paper_rank": 10, "overall": 2.030409372, "overall_rank": 6, "doc_score": 0.8670869451, "adapted_doc_score": 0.8010434726, "adapted_doc_rank": 6}, "doc": [52, 85, 60]},
+    {"id": "26-0602", "name": "Cheese Wizards", "seeding": [53, 914, 243], "de_rank": 7, "paper": 56, "expected": {"seed_total": 578.5, "seed_rank": 5, "seed_score": 0.6207137934, "de_score": 0.6666666667, "paper_score": 0.56, "paper_rank": 15, "overall": 2.06738046, "overall_rank": 5, "doc_score": 1, "adapted_doc_score": 0.78, "adapted_doc_rank": 7}, "doc": [54, 85, 94]},
+    {"id": "26-0603", "name": "TechSupport", "seeding": [807, 179, 3869], "de_rank": 1, "paper": 94.5, "expected": {"seed_total": 2338, "seed_rank": 1, "seed_score": 0.9010726286, "de_score": 1, "paper_score": 0.945, "paper_rank": 4, "overall": 2.813288941, "overall_rank": 1, "doc_score": 0.8794326241, "adapted_doc_score": 0.9122163121, "adapted_doc_rank": 4}, "doc": [54, 85, 60]},
+    {"id": "26-0604", "name": "AXHT3085/3", "seeding": [860, 1153, 804], "de_rank": 5, "paper": 100, "expected": {"seed_total": 1006.5, "seed_rank": 4, "seed_score": 0.6900361851, "de_score": 0.7777777778, "paper_score": 1, "paper_rank": 1, "overall": 2.467813963, "overall_rank": 3, "doc_score": 1, "adapted_doc_score": 1, "adapted_doc_rank": 1}, "doc": [54, 85, 94]},
+    {"id": "26-0610", "name": "Die Hackler", "seeding": [0, 142, 184], "de_rank": 13, "paper": null, "expected": {"seed_total": 163, "seed_rank": 9, "seed_score": 0.427199104, "de_score": 0.3333333333, "paper_score": 0, "paper_rank": 18, "overall": 0.7728781163, "overall_rank": 14, "doc_score": 0.02469135802, "adapted_doc_score": 0.01234567901, "adapted_doc_rank": 13}, "doc": [4, null, null]},
+    {"id": "26-0617", "name": "Lord of the Bots", "seeding": [20, 0, 145], "de_rank": 13, "paper": 72.5, "expected": {"seed_total": 82.5, "seed_rank": 15, "seed_score": 0.1719975015, "de_score": 0.3333333333, "paper_score": 0.725, "paper_rank": 11, "overall": 1.133262934, "overall_rank": 11, "doc_score": 0.5308641975, "adapted_doc_score": 0.6279320988, "adapted_doc_rank": 9}, "doc": [32, null, 94]},
+    {"id": "26-0620", "name": "Pfuscher", "seeding": [0, 41, 118], "de_rank": 9, "paper": null, "expected": {"seed_total": 79.5, "seed_rank": 16, "seed_score": 0.1301369863, "de_score": 0.5555555556, "paper_score": 0, "paper_rank": 18, "overall": 0.6856925419, "overall_rank": 15, "doc_score": 0, "adapted_doc_score": 0, "adapted_doc_rank": 14}, "doc": [null, null, null]},
+    {"id": "26-0622", "name": "Teamname to be announced", "seeding": [0, 41, 154], "de_rank": 9, "paper": 82.5, "expected": {"seed_total": 97.5, "seed_rank": 12, "seed_score": 0.2979667442, "de_score": 0.5555555556, "paper_score": 0.825, "paper_rank": 8, "overall": 1.679602547, "overall_rank": 7, "doc_score": 0.8271604938, "adapted_doc_score": 0.8260802469, "adapted_doc_rank": 5}, "doc": [26, 85, 94]},
+    {"id": "26-0624", "name": "roboDIC", "seeding": [0, 0, 33], "de_rank": 17, "paper": null, "expected": {"seed_total": 16.5, "seed_rank": 18, "seed_score": 0.04273283363, "de_score": 0.1111111111, "paper_score": 0, "paper_rank": 18, "overall": 0.1538439447, "overall_rank": 18, "doc_score": 0, "adapted_doc_score": 0, "adapted_doc_rank": 14}, "doc": [null, null, null]},
+    {"id": "26-0625", "name": "NotImplementedException", "seeding": [18, 31, 26], "de_rank": 17, "paper": 53.5, "expected": {"seed_total": 28.5, "seed_rank": 17, "seed_score": 0.08517489446, "de_score": 0.1111111111, "paper_score": 0.535, "paper_rank": 16, "overall": 0.9637860056, "overall_rank": 12, "doc_score": 1, "adapted_doc_score": 0.7675, "adapted_doc_rank": 8}, "doc": [54, 85, 94]},
+    {"id": "26-0628", "name": "LiTec-3ABHIT", "seeding": [46, 130, 43], "de_rank": 13, "paper": null, "expected": {"seed_total": 88, "seed_rank": 14, "seed_score": 0.2140195572, "de_score": 0.3333333333, "paper_score": 0, "paper_rank": 18, "overall": 0.5473528905, "overall_rank": 17, "doc_score": 0, "adapted_doc_score": 0, "adapted_doc_rank": 14}, "doc": [null, null, null]},
+    {"id": "26-0629", "name": "Kurzschlusskommando", "seeding": [67, 134, 133], "de_rank": 5, "paper": null, "expected": {"seed_total": 133.5, "seed_rank": 11, "seed_score": 0.3419595933, "de_score": 0.7777777778, "paper_score": 0, "paper_rank": 18, "overall": 1.360478112, "overall_rank": 10, "doc_score": 0.4814814815, "adapted_doc_score": 0.2407407407, "adapted_doc_rank": 12}, "doc": [24, null, 94]},
+    {"id": "26-0635", "name": "6502 Squirrels", "seeding": [0, 390, 242], "de_rank": 4, "paper": 87.5, "expected": {"seed_total": 316, "seed_rank": 7, "seed_score": 0.5204187128, "de_score": 0.8333333333, "paper_score": 0.875, "paper_rank": 6, "overall": 2.291252046, "overall_rank": 4, "doc_score": 1, "adapted_doc_score": 0.9375, "adapted_doc_rank": 2}, "doc": [54, 85, 94]},
+    {"id": "26-0663", "name": "Titan", "seeding": [21, 0, 169], "de_rank": 13, "paper": null, "expected": {"seed_total": 95, "seed_rank": 13, "seed_score": 0.2561385371, "de_score": 0.3333333333, "paper_score": 0, "paper_rank": 18, "overall": 0.5894718704, "overall_rank": 16, "doc_score": 0, "adapted_doc_score": 0, "adapted_doc_rank": 14}, "doc": [null, null, null]},
+    {"id": "26-0787", "name": "Hammered Screws", "seeding": [32, 78, 190], "de_rank": 9, "paper": null, "expected": {"seed_total": 134, "seed_rank": 10, "seed_score": 0.3836585681, "de_score": 0.5555555556, "paper_score": 0, "paper_rank": 18, "overall": 0.9392141237, "overall_rank": 13, "doc_score": 0, "adapted_doc_score": 0, "adapted_doc_rank": 14}, "doc": [null, null, null]}
+  ],
+  "open": [
+    {"id": "OP-0059", "name": "Snackkarotten", "seeding": [1507, 1930, 1819], "de_rank": 1, "paper": 78.5, "expected": {"seed_total": 1874.5, "seed_rank": 1, "seed_score": 0.9928108808, "de_score": 1, "paper_score": 0.785, "paper_rank": 9, "overall": 1.992810881, "overall_rank": 1}},
+    {"id": "OP-0061", "name": "Error0x43", "seeding": [29, 240, 457], "de_rank": 4, "paper": null, "expected": {"seed_total": 348.5, "seed_rank": 3, "seed_score": 0.607642487, "de_score": 0.625, "paper_score": 0, "paper_rank": 18, "overall": 1.232642487, "overall_rank": 3}},
+    {"id": "OP-0062", "name": "SAYAS", "seeding": [1284, 35, 1306], "de_rank": 2, "paper": 89, "expected": {"seed_total": 1295, "seed_rank": 2, "seed_score": 0.823996114, "de_score": 0.875, "paper_score": 0.89, "paper_rank": 5, "overall": 1.698996114, "overall_rank": 2}},
+    {"id": "OP-0063", "name": "CursedBytes", "seeding": [145, 236, 253], "de_rank": 5, "paper": 98, "expected": {"seed_total": 244.5, "seed_rank": 4, "seed_score": 0.5004209845, "de_score": 0.5, "paper_score": 0.98, "paper_rank": 3, "overall": 1.000420984, "overall_rank": 5}},
+    {"id": "OP-0064", "name": "Tracer", "seeding": [159, 128, 76], "de_rank": 5, "paper": 100, "expected": {"seed_total": 143.5, "seed_rank": 6, "seed_score": 0.2998380829, "de_score": 0.5, "paper_score": 1, "paper_rank": 1, "overall": 0.7998380829, "overall_rank": 6}},
+    {"id": "OP-0065", "name": "Inchident", "seeding": [146, 39, 236], "de_rank": 3, "paper": 68.5, "expected": {"seed_total": 191, "seed_rank": 5, "seed_score": 0.3997409326, "de_score": 0.75, "paper_score": 0.685, "paper_rank": 13, "overall": 1.149740933, "overall_rank": 4}},
+    {"id": "OP-0066", "name": "Abmeldekommando", "seeding": [18, 29, 44], "de_rank": 7, "paper": 50.5, "expected": {"seed_total": 36.5, "seed_rank": 7, "seed_score": 0.1922279793, "de_score": 0.25, "paper_score": 0.505, "paper_rank": 17, "overall": 0.4422279793, "overall_rank": 7}},
+    {"id": "OP-0067", "name": "Cyber Warrior III", "seeding": [31, 29, 42], "de_rank": 7, "paper": 70.5, "expected": {"seed_total": 36.5, "seed_rank": 7, "seed_score": 0.1922279793, "de_score": 0.25, "paper_score": 0.705, "paper_rank": 12, "overall": 0.4422279793, "overall_rank": 7}}
+  ],
+  "aerial": [
+    {"id": "AE-0013", "name": "Drone Masters", "runs": [70, 52.5, 115, 30, 60, 105], "score": 96.66666667, "rank": 4},
+    {"id": "AE-0011", "name": "Lavadrone", "runs": [40, 85, 60, 30, 95, 105], "score": 95, "rank": 5},
+    {"id": "AE-0014", "name": "EVA-01", "runs": [75, 0, 30, 125, 75, 110], "score": 103.3333333, "rank": 2},
+    {"id": "AE-0015", "name": "Die blauen Bananen", "runs": [0, 120, 110, 130, 85, 30], "score": 120, "rank": 1},
+    {"id": "AE-0016", "name": "Custodis Aeris", "runs": [55, 75, 125, 100, 60, 30], "score": 100, "rank": 3},
+    {"id": "AE-0017", "name": "BGZ1", "runs": [100, 40, 30, 75, 30, 100], "score": 91.66666667, "rank": 6},
+    {"id": "AE-0018", "name": "BGZ2", "runs": [55, 20, 85, 30, 30, 85], "score": 75, "rank": 7}
+  ],
+  "alliance": [
+    {"id": "AL-0001", "name": "roboDIC & cursedBytes", "rank": 5},
+    {"id": "AL-0002", "name": "Pfuscher & Failure Management", "rank": 1},
+    {"id": "AL-0003", "name": "Die Hackler & NotImplementedException", "rank": 7},
+    {"id": "AL-0004", "name": "Hammered Screws & Cyber Warrior III", "rank": 5},
+    {"id": "AL-0005", "name": "Lord of the Bots & tracer", "rank": 3},
+    {"id": "AL-0006", "name": "Teamname to be announced & Abmeldekommando", "rank": 4},
+    {"id": "AL-0007", "name": "LiTec-3ABHIT & Titan", "rank": 2}
+  ],
+  "jbc": [
+    {"id": "JBC-001", "name": "3aSiegharts_A", "points": 18, "rank": 2},
+    {"id": "JBC-002", "name": "3aSiegharts_B", "points": 10, "rank": 10},
+    {"id": "JBC-003", "name": "Mr_PC", "points": 7, "rank": 12},
+    {"id": "JBC-004", "name": "TucTucTuTu", "points": 7, "rank": 12},
+    {"id": "JBC-005", "name": "Hackerjavi", "points": 11, "rank": 9},
+    {"id": "JBC-006", "name": "Duzen", "points": 7, "rank": 12},
+    {"id": "JBC-007", "name": "Jamo", "points": 14, "rank": 6},
+    {"id": "JBC-008", "name": "Biis", "points": 15, "rank": 4},
+    {"id": "JBC-009", "name": "BEst SIlent CHaos", "points": 21, "rank": 1},
+    {"id": "JBC-010", "name": "MS Böheimkirchen", "points": 8, "rank": 11},
+    {"id": "JBC-011", "name": "SK_Lation", "points": 12, "rank": 8},
+    {"id": "JBC-012", "name": "Robtik8", "points": 14, "rank": 6},
+    {"id": "JBC-013", "name": "EMS Prinzersdorf 1", "points": 16, "rank": 3},
+    {"id": "JBC-014", "name": "EMS Prinzersdorf 2", "points": 15, "rank": 4}
+  ]
+}

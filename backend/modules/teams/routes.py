@@ -86,7 +86,7 @@ async def list_teams(
     q: str | None = Query(None, max_length=200, description="Name, number, school or city"),
     country: str | None = Query(None, max_length=100),
     status: str | None = Query(None, pattern="^(active|archived)$"),
-    category: str | None = Query(None, pattern="^(botball|open|aerial|jbc)$"),
+    category: str | None = Query(None, pattern=r"^[a-z][a-z0-9_]{0,19}$"),
     _=Depends(require_permission("teams:read")),
     db: AsyncSession = Depends(get_db),
 ):

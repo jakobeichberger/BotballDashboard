@@ -17,6 +17,89 @@ from modules.scoring import tiebreak
 from modules.scoring.extras_models import ScoringRuleSet
 from modules.scoring.models import Match
 
+#: Rubric maxima when a season configures none: every period scored /100.
+DOC_MAX_DEFAULT: dict[str, float] = {"p1": 100.0, "p2": 100.0, "p3": 100.0, "onsite": 100.0}
+#: The 2026 rubrics: Period 1 /100, Period 2 /95, Period 3 /100, Onsite /100.
+DOC_MAX_2026: dict[str, float] = {"p1": 100.0, "p2": 95.0, "p3": 100.0, "onsite": 100.0}
+
+
+def doc_max(stored: dict | None) -> dict[str, float]:
+    out = dict(DOC_MAX_DEFAULT)
+    for key, value in (stored or {}).items():
+        if key in out and value:
+            out[key] = float(value)
+    return out
+
+
+def _check(
+    key: str, label: str, required: bool = True, description: str | None = None
+) -> dict[str, Any]:
+    return {"key": key, "label": label, "required": required, "description": description}
+
+
+#: Referee checklists a season can start from (SeasonRulesEditor). The 2026
+#: list follows Game Review v1.4; item wording quotes the rule where the
+#: jury has to apply it literally (rule 9, Packaging Bin Rule).
+REFEREE_CHECKLIST_PRESETS: dict[str, dict[str, Any]] = {
+    "botball_2026": {
+        "name": "Botball 2026 (Game Review v1.4)",
+        "items": [
+            _check(
+                "start_box",
+                'Every part of the entry starts inside one Starting Box (12" tall); '
+                "no robot crosses the boundary between two Starting Boxes",
+            ),
+            _check(
+                "structures",
+                "At most 4 independent structures, each marked with the team number",
+            ),
+            _check(
+                "printed_parts",
+                "At most 6 3D-printed parts on both robots (greyscale PLA/PETG); "
+                "a second identical copy is available to the judges",
+                required=False,
+            ),
+            _check(
+                "timeout_card",
+                "Timeout card only before Hands-Off, one 3-minute timeout per tournament",
+                required=False,
+            ),
+            _check(
+                "robots_stopped",
+                "Robots stopped their motors and servos at 120 s (otherwise: seeding 0, DE lost)",
+            ),
+            _check(
+                "black_tape",
+                "Game pieces touching black tape do not score (Black Tape Rule)",
+            ),
+            _check(
+                "packaging_center",
+                "Returned Packaging Bins only touch the Packaging Center (rule 9)",
+                description=(
+                    "Packaging Bin Rule: In order for a Packaging Bin to count as returned, it "
+                    "may not touch other game surface areas, or be supported by game pieces, "
+                    "robots, or any other structure, and must only be touching the surface of "
+                    "the game table in the Packaging Center."
+                ),
+            ),
+            _check(
+                "loading_dock",
+                "Loading Dock Rule: pallets and cubes touch only the dock surface and are not "
+                "supported, lifted or held in place by a robot, structure or game element",
+            ),
+            _check(
+                "matched_poms",
+                "Matched poms only with an equal number of blue and orange poms in the basket",
+            ),
+            _check(
+                "clean_deck",
+                "Clean Deck only when all poms were removed from the Upper Warehouse",
+            ),
+            _check("sheet_initialled", "Both teams initialled the score sheet"),
+        ],
+    },
+}
+
 
 @dataclass
 class Rules:
@@ -24,6 +107,8 @@ class Rules:
     finals_replay: bool = False
     end_contact_bonus_percent: float = 25.0
     referee_checklist: list[dict[str, Any]] = field(default_factory=list)
+    seeding_tiebreakers: bool = False
+    doc_max_points: dict[str, float] = field(default_factory=lambda: dict(DOC_MAX_DEFAULT))
 
 
 async def get_rules(db: AsyncSession, season_id: str) -> Rules:
@@ -36,6 +121,8 @@ async def get_rules(db: AsyncSession, season_id: str) -> Rules:
         finals_replay=bool(row.finals_replay),
         end_contact_bonus_percent=float(row.end_contact_bonus_percent),
         referee_checklist=list(row.referee_checklist or []),
+        seeding_tiebreakers=bool(row.seeding_tiebreakers),
+        doc_max_points=doc_max(row.doc_max_points),
     )
 
 

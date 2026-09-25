@@ -7,7 +7,8 @@ import { api } from "@/lib/api";
 import clsx from "clsx";
 import { useEvents } from "@/hooks/useEvents";
 import { PRINTER_TYPE_LABEL, apiError, type PrintQuota } from "@/lib/printing";
-import { CATEGORY_LABEL } from "@/lib/teams";
+import { useSeasonCategories } from "@/lib/categories";
+import CategoryRegistryEditor from "@/components/seasons/CategoryRegistryEditor";
 import { formatDate } from "@/i18n/format";
 import { passwordHint, passwordProblem } from "@/lib/passwordPolicy";
 import { toast } from "@/lib/toast";
@@ -570,8 +571,6 @@ function AnnouncementsSettings() {
   );
 }
 
-const ALL_CATEGORIES = ["botball", "open", "aerial", "jbc"];
-
 // ── Season editor: dates, deadlines/events, phases ────────────────────────────
 const DATE_FIELDS = [
   "registration_open", "registration_close",
@@ -748,6 +747,7 @@ function SeasonModulesSettings() {
     enabled: !!seasonId,
   });
   const [draft, setDraft] = useState<Record<string, any> | null>(null);
+  const registry = useSeasonCategories(seasonId || undefined);
   const effective = draft ?? season ?? {};
   const setFlag = (field: string, value: any) => setDraft((prev) => ({ ...(prev ?? season ?? {}), [field]: value }));
   const toggleCategory = (cat: string) => {
@@ -794,13 +794,14 @@ function SeasonModulesSettings() {
           <div className="card p-4">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("modules.categories")}</h3>
             <div className="flex flex-wrap gap-2">
-              {ALL_CATEGORIES.map((value) => {
-                const label = CATEGORY_LABEL[value];
+              {registry.categories.map(({ key: value }) => {
+                const label = registry.label(value);
                 const active = (effective.active_categories ?? ["botball"]).includes(value);
                 return <button key={value} onClick={() => toggleCategory(value)} className={clsx("px-3 py-1.5 rounded-full text-sm font-medium border transition-colors", active ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:border-primary-700 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>{label}</button>;
               })}
             </div>
           </div>
+          {seasonId && <CategoryRegistryEditor seasonId={seasonId} />}
         </div>
       )}
     </div>

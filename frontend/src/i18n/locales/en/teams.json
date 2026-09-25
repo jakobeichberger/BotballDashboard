@@ -2,9 +2,10 @@
   "season": "Season",
   "category": {
     "botball": "Botball",
-    "open": "Open",
-    "aerial": "Aerial",
-    "jbc": "JBC"
+    "open": "ECER Open",
+    "aerial": "Aerial Senior",
+    "jbc": "Junior Botball Challenge",
+    "aerial_junior": "Aerial Junior"
   },
   "fee": {
     "pending": "open",

@@ -231,8 +231,8 @@ class TestDocRoutes:
         assert resp.status_code == 200
         data = resp.json()
         assert data["team_id"] == team.id
-        # 0.2·0.9 + 0.2·0.6 + 0.2·0.3 + 0.4·0 (onsite missing counts 0)
-        assert data["doc_score"] == pytest.approx(0.36)
+        # The Botball default set (ECER 2025): (P1 + P2 + P3) / 300
+        assert data["doc_score"] == pytest.approx(0.6)
 
     @pytest.mark.asyncio
     async def test_bulk_doc_ranking(self, comp_base, client, auth_headers, comp_season, db):

@@ -50,6 +50,15 @@ class ScoringRuleSet(Base):
     end_contact_bonus_percent: Mapped[float] = mapped_column(Float, nullable=False, default=25.0)
     # [{key, label, required}] – ticked by the juror before confirming a score
     referee_checklist: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Break equal seed scores with the tie-breakers. Off by default: the game
+    # review applies tie-breakers to head-to-head rounds, and seeding ties
+    # share a rank (ECER 2026 results: two teams on seeding rank 7).
+    seeding_tiebreakers: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    # Rubric maxima of the documentation periods, {"p1": 100, "p2": 95, ...};
+    # NULL means 100 each (see rules_service.DOC_MAX_DEFAULT).
+    doc_max_points: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

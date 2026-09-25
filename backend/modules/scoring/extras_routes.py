@@ -13,6 +13,7 @@ from modules.events.draft_access import DRAFT_READERS
 from modules.scoring import extras_service as svc
 from modules.scoring import sheet_templates
 from modules.scoring.extras_schemas import (
+    ChecklistPreset,
     DEPlacementEntry,
     ExternalTeamCreate,
     ExternalTeamResponse,
@@ -77,6 +78,14 @@ async def put_rules(
 async def list_tiebreaker_presets(_=Depends(require_permission("scoring:read"))):
     """Tie-breaker lists transcribed from the 2024/2025/2026 game reviews."""
     return svc.tiebreaker_presets()
+
+
+@router.get("/referee-checklist-presets", response_model=list[ChecklistPreset])
+async def list_checklist_presets(_=Depends(require_permission("scoring:read"))):
+    """Referee checklists transcribed from the game review (2026: v1.4)."""
+    from modules.scoring.rules_service import REFEREE_CHECKLIST_PRESETS
+
+    return [{"id": key, **value} for key, value in REFEREE_CHECKLIST_PRESETS.items()]
 
 
 # ── Schema templates and cloning ──────────────────────────────────────────────
