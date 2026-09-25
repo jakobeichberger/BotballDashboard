@@ -269,7 +269,8 @@ def test_traefik_limits_api_request_bodies(compose):
     # WebSockets bypass the buffering middleware on their own router, which
     # uses Traefik v3 syntax (Path() takes no regex placeholders any more).
     [ws_rule] = [label for label in labels if label.startswith("traefik.http.routers.api-ws.rule=")]
-    pattern = re.search(r"PathRegexp\(`([^`]+)`\)", ws_rule).group(1)
+    # "$$" is compose's escape for a literal "$" (the regex end anchor).
+    pattern = re.search(r"PathRegexp\(`([^`]+)`\)", ws_rule).group(1).replace("$$", "$")
     for path in ("/api/v1/public/events/ecer-2026/ws", f"/api/v1/events/{uuid.uuid4()}/ws"):
         assert re.fullmatch(pattern, path), path
     for path in ("/api/v1/events/x/ws/extra", "/api/v1/events//ws", "/api/v1/teams/x/ws"):

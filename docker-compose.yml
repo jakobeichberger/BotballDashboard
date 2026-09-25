@@ -163,7 +163,7 @@ services:
       - "traefik.http.middlewares.api-body-limit.buffering.memRequestBodyBytes=2097152"
       # The live WebSockets (public per slug, authenticated per event id; no
       # request body) bypass the buffering middleware.
-      - "traefik.http.routers.api-ws.rule=Host(`${DOMAIN}`) && PathRegexp(`^/api/v1/(public/events/[a-z0-9-]+|events/[A-Za-z0-9-]+)/ws$`)"
+      - "traefik.http.routers.api-ws.rule=Host(`${DOMAIN}`) && PathRegexp(`^/api/v1/(public/events/[a-z0-9-]+|events/[A-Za-z0-9-]+)/ws$$`)"
       - "traefik.http.routers.api-ws.priority=1000"
       - "traefik.http.routers.api-ws.entrypoints=websecure"
       - "traefik.http.routers.api-ws.tls.certresolver=le"
