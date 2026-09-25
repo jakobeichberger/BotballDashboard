@@ -22,6 +22,7 @@ from redis.asyncio import Redis
 
 from core.config import get_settings
 from core.logging import get_logger
+from core.metrics import record_redis_fail_open
 
 logger = get_logger("token_denylist")
 
@@ -88,6 +89,7 @@ async def is_denied(jti: str) -> bool:
         return bool(await _client().exists(f"{_KEY_PREFIX}{jti}"))
     except Exception as exc:
         logger.warning("token_denylist_unavailable", op="check", error=str(exc))
+        record_redis_fail_open("token_denylist")
         return False
 
 

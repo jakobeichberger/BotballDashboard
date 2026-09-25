@@ -285,7 +285,7 @@ export default function PaperDetailPage() {
   const assignableUsers = (users ?? []).filter(
     (u: any) =>
       u.is_active !== false &&
-      u.roles?.some((r: any) => r.name === "reviewer" || r.name === "admin") &&
+      (u.is_superuser || u.permissions?.includes("papers:review")) &&
       !paper.assignments?.some((a) => a.reviewer_id === u.id)
   );
   const isMyTeam = !!myTeams?.some((item: any) => item.id === paper.team_id);

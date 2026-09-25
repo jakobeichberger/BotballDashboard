@@ -1613,10 +1613,10 @@ export interface paths {
         };
         /**
          * Get Ranking
-         * @description Public endpoint – no auth required for scoreboard display.
+         * @description Seeding ranking of the season's default event.
          *
-         *     NOTE: unlike GET /v1/public/events/{slug}/ranking this does not honour the
-         *     event's public_scoreboard / public_results flags.
+         *     Readable without login only when that event's scoreboard is public (see
+         *     _authorize_ranking); otherwise scoring:read is required.
          */
         get: operations["get_ranking_api_scoring_seasons__season_id__ranking_get"];
         put?: never;
@@ -9273,8 +9273,18 @@ export interface components {
             display_name: string;
             /** Is Active */
             is_active: boolean;
+            /**
+             * Is Superuser
+             * @default false
+             */
+            is_superuser: boolean;
             /** Roles */
             roles: components["schemas"]["RoleResponse"][];
+            /**
+             * Permissions
+             * @default []
+             */
+            permissions: string[];
         };
         /** UserPasswordChange */
         UserPasswordChange: {

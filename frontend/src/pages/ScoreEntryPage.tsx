@@ -28,11 +28,8 @@ type Mode = "contest" | "practice";
 export default function ScoreEntryPage() {
   const { t } = useTranslation("scoring");
   const qc = useQueryClient();
-  const isAdmin = useAuthStore((s) => s.hasRole("admin"));
-  const isJuror = useAuthStore((s) => s.hasRole("juror"));
-  const isMentor = useAuthStore((s) => s.hasRole("mentor"));
-  const canEnter = isAdmin || isJuror || isMentor;
-  const canManageAll = isAdmin || isJuror; // scoring:admin → any team + confirm/delete
+  const canEnter = useAuthStore((s) => s.hasPermission("scoring:write"));
+  const canManageAll = useAuthStore((s) => s.hasPermission("scoring:admin")); // any team + confirm/delete
 
   const [mode, setMode] = useState<Mode>("contest");
   const isPractice = mode === "practice";

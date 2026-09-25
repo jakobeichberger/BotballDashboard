@@ -22,6 +22,7 @@ It evaluates `monitoring/alerts.yml`:
 | `ApiDown` | the API cannot be scraped for 2 min |
 | `ReadinessFailing` | readiness is not 200 for 2 min |
 | `HighServerErrorRate` | more than 5 % of requests return 5xx for 5 min |
+| `RedisFailOpen` | a rate limit or the token deny-list let a request through because Redis was unreachable (`botball_redis_fail_open_total`) |
 | `BackupFailed` | the last backup run failed |
 | `BackupStale` | the last successful backup is older than 26 h |
 | `BackupNeverSucceeded` | runs were recorded but none succeeded (1 h) |

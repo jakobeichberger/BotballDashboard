@@ -1,8 +1,9 @@
 """Season clone and JSON export.
 
 Cloning copies a season's *configuration* – module flags, phases, deadlines,
-events (as empty drafts), scoring schemas, formulas and bracket weights – into a
-new draft season, shifting every date by the difference in years. Results,
+events (as empty drafts), scoring schemas, formulas, bracket weights, the rule
+set (tie-breakers and special rules), paper deadlines and the 3D-print
+checklist – into a new draft season, shifting every date by the difference in years. Results,
 registrations and other tournament data are never copied.
 
 The export is the opposite: a complete, self-contained JSON snapshot of
@@ -89,8 +90,11 @@ async def _unique_slug(db: AsyncSession, base: str) -> str:
 
 async def clone_season(db: AsyncSession, source_id: str, name: str, year: int) -> Season:
     from modules.events.models import Event, EventPhase
+    from modules.paper_review.models import PaperDeadline
+    from modules.scoring.extras_models import ScoringRuleSet
     from modules.scoring.formula_models import ScoringBracketWeight, ScoringFormula
     from modules.scoring.models import ScoringSchema
+    from modules.teams.models import PrintComplianceItem
 
     result = await db.execute(
         select(Season).where(Season.id == source_id).options(selectinload(Season.phases))
@@ -220,6 +224,51 @@ async def clone_season(db: AsyncSession, source_id: str, name: str, year: int) -
                 category=weight.category,
                 bracket=weight.bracket,
                 weight=weight.weight,
+            )
+        )
+
+    rule_set = (
+        await db.execute(select(ScoringRuleSet).where(ScoringRuleSet.season_id == source.id))
+    ).scalar_one_or_none()
+    if rule_set is not None:
+        db.add(
+            ScoringRuleSet(
+                season_id=clone.id,
+                tiebreakers=list(rule_set.tiebreakers or []),
+                finals_replay=rule_set.finals_replay,
+                end_contact_bonus_percent=rule_set.end_contact_bonus_percent,
+                referee_checklist=[dict(item) for item in rule_set.referee_checklist or []],
+            )
+        )
+
+    paper_deadlines = await db.execute(
+        select(PaperDeadline).where(PaperDeadline.season_id == source.id)
+    )
+    for paper_deadline in paper_deadlines.scalars().all():
+        db.add(
+            PaperDeadline(
+                season_id=clone.id,
+                deadline_type=paper_deadline.deadline_type,
+                due_date=shift_years(paper_deadline.due_date, delta),
+                label=paper_deadline.label,
+                is_hard_block=paper_deadline.is_hard_block,
+            )
+        )
+
+    # Retired checklist items only exist for the ticks that refer to them; a
+    # new season starts with the rules that currently apply.
+    print_items = await db.execute(
+        select(PrintComplianceItem).where(
+            PrintComplianceItem.season_id == source.id, PrintComplianceItem.is_active.is_(True)
+        )
+    )
+    for item in print_items.scalars().all():
+        db.add(
+            PrintComplianceItem(
+                season_id=clone.id,
+                label=item.label,
+                description=item.description,
+                sort_order=item.sort_order,
             )
         )
 

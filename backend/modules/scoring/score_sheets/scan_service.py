@@ -88,9 +88,15 @@ async def get_scan(db: AsyncSession, event_id: str, scan_id: str) -> ScoreSheetS
 
 
 async def list_scans(
-    db: AsyncSession, event_id: str, status: str | None = None
+    db: AsyncSession,
+    event_id: str,
+    status: str | None = None,
+    team_ids: set[str] | None = None,
 ) -> list[ScoreSheetScan]:
+    """Scans of an event; ``team_ids`` (when given) restricts them to those teams."""
     query = select(ScoreSheetScan).where(ScoreSheetScan.event_id == event_id)
+    if team_ids is not None:
+        query = query.where(ScoreSheetScan.team_id.in_(team_ids))
     if status:
         query = query.where(ScoreSheetScan.status == status)
     result = await db.execute(query.order_by(ScoreSheetScan.created_at.desc()))

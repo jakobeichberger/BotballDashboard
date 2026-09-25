@@ -45,7 +45,7 @@ describe("ScoreEntryPage", () => {
     vi.clearAllMocks();
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
     useAuthStore.setState({
-      user: { id: "j", display_name: "Jury", is_superuser: false, roles: [{ name: "juror", permissions: [] }] } as never,
+      user: { id: "j", display_name: "Jury", is_superuser: false, roles: [{ name: "juror", permissions: [] }], permissions: ["scoring:read", "scoring:write", "scoring:admin"] } as never,
     });
   });
 

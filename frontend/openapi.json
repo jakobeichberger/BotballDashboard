@@ -6404,8 +6404,13 @@
           "scoring"
         ],
         "summary": "Get Ranking",
-        "description": "Public endpoint \u2013 no auth required for scoreboard display.\n\nNOTE: unlike GET /v1/public/events/{slug}/ranking this does not honour the\nevent's public_scoreboard / public_results flags.",
+        "description": "Seeding ranking of the season's default event.\n\nReadable without login only when that event's scoreboard is public (see\n_authorize_ranking); otherwise scoring:read is required.",
         "operationId": "get_ranking_api_scoring_seasons__season_id__ranking_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "season_id",
@@ -6469,6 +6474,11 @@
         "summary": "Get Ranking Extended",
         "description": "Seeding ranking enriched with team name and category.\n\nRanks are per category (Botball and Open are separate competitions); a\nred-carded team is listed with `disqualified` and no rank.",
         "operationId": "get_ranking_extended_api_scoring_seasons__season_id__ranking_extended_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "season_id",
@@ -6548,6 +6558,11 @@
         "summary": "Get Event Ranking Extended",
         "description": "Seeding ranking of one event, with team names and per-category ranks.",
         "operationId": "get_event_ranking_extended_api_scoring_events__event_id__ranking_extended_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "event_id",
@@ -6611,6 +6626,11 @@
         "summary": "Get Overall Ranking",
         "description": "Overall ranking computed from the season's configured formula set.\n\nResults are recorded per event, so this ranks one event: the one named by\n`event_id`, otherwise the season's default event \u2014 the same one the other\nseason routes read and write, so a result entered through them shows here.",
         "operationId": "get_overall_ranking_api_scoring_seasons__season_id__ranking_overall_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "season_id",
@@ -6690,6 +6710,11 @@
         "summary": "Get Event Overall Ranking",
         "description": "Overall ranking for one event, using its season's formula set.",
         "operationId": "get_event_overall_ranking_api_scoring_events__event_id__ranking_overall_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "event_id",
@@ -7306,6 +7331,11 @@
         ],
         "summary": "Get Aerial Ranking",
         "operationId": "get_aerial_ranking_api_scoring_seasons__season_id__aerial_ranking_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "season_id",
@@ -7558,6 +7588,11 @@
         ],
         "summary": "Get Event Aerial Ranking",
         "operationId": "get_event_aerial_ranking_api_scoring_events__event_id__aerial_ranking_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "event_id",
@@ -32865,12 +32900,25 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "is_superuser": {
+            "type": "boolean",
+            "title": "Is Superuser",
+            "default": false
+          },
           "roles": {
             "items": {
               "$ref": "#/components/schemas/RoleResponse"
             },
             "type": "array",
             "title": "Roles"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions",
+            "default": []
           }
         },
         "type": "object",

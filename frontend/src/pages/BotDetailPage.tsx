@@ -14,8 +14,8 @@ export default function BotDetailPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const navigate = useEventNavigate();
-  const isAdmin = useAuthStore((s) => s.hasRole("admin"));
-  const isMentor = useAuthStore((s) => s.hasRole("mentor"));
+  const isAdmin = useAuthStore((s) => s.hasPermission("teams:admin"));
+  const isMentor = useAuthStore((s) => s.hasPermission("teams:write"));
 
   const { data: bot, isLoading, isError } = useQuery({
     queryKey: ["bot", id],

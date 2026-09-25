@@ -9,12 +9,13 @@ from core.auth import create_access_token
 from modules.auth.models import Permission, Role, RolePermission, User, UserRole
 from modules.auth.service import hash_password
 from modules.events.models import Event, EventPhase, EventRegistration
-from modules.paper_review.models import Paper
+from modules.paper_review.models import Paper, PaperDeadline
 from modules.printing.models import PrintJob
+from modules.scoring.extras_models import ScoringRuleSet
 from modules.scoring.formula_models import ScoringBracketWeight, ScoringFormula
 from modules.scoring.models import Match, ScoringSchema
 from modules.seasons.models import Season, SeasonEvent, SeasonPhase
-from modules.teams.models import TeamMember, TeamSeasonRegistration
+from modules.teams.models import PrintComplianceItem, TeamMember, TeamSeasonRegistration
 
 
 async def _user(db, permissions, email="mentor@test.com", team=None):
@@ -397,6 +398,79 @@ class TestClone:
             select(EventRegistration).where(EventRegistration.event_id == events[0].id)
         )
         assert regs.first() is None
+
+    async def test_clone_copies_rule_set_paper_deadlines_and_print_checklist(
+        self, client, auth_headers, db, season
+    ):
+        season.year = 2024
+        db.add_all(
+            [
+                ScoringRuleSet(
+                    season_id=season.id,
+                    tiebreakers=["best_run", "second_best_run"],
+                    finals_replay=True,
+                    end_contact_bonus_percent=30.0,
+                    referee_checklist=[{"key": "ok", "label": "Robot ok", "required": True}],
+                ),
+                PaperDeadline(
+                    season_id=season.id,
+                    deadline_type="official_final",
+                    due_date=date(2024, 2, 29),
+                    label="Final paper",
+                    is_hard_block=True,
+                ),
+                PrintComplianceItem(season_id=season.id, label="Max 10 cm", sort_order=2),
+                PrintComplianceItem(season_id=season.id, label="Retired", is_active=False),
+            ]
+        )
+        await db.commit()
+
+        resp = await client.post(
+            f"/api/seasons/{season.id}/clone",
+            json={"name": "Botball 2026", "year": 2026},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        cid = resp.json()["id"]
+
+        rules = (
+            await db.execute(select(ScoringRuleSet).where(ScoringRuleSet.season_id == cid))
+        ).scalar_one()
+        assert rules.tiebreakers == ["best_run", "second_best_run"]
+        assert rules.finals_replay is True
+        assert rules.end_contact_bonus_percent == 30.0
+        assert rules.referee_checklist == [{"key": "ok", "label": "Robot ok", "required": True}]
+
+        paper_deadlines = (
+            (await db.execute(select(PaperDeadline).where(PaperDeadline.season_id == cid)))
+            .scalars()
+            .all()
+        )
+        assert [
+            (d.deadline_type, d.due_date, d.label, d.is_hard_block) for d in paper_deadlines
+        ] == [("official_final", date(2026, 2, 28), "Final paper", True)]
+
+        items = (
+            (
+                await db.execute(
+                    select(PrintComplianceItem).where(PrintComplianceItem.season_id == cid)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert [(i.label, i.sort_order, i.is_active) for i in items] == [("Max 10 cm", 2, True)]
+
+    async def test_clone_without_rule_set(self, client, auth_headers, db, season):
+        resp = await client.post(
+            f"/api/seasons/{season.id}/clone",
+            json={"name": "Copy", "year": season.year + 1},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        cid = resp.json()["id"]
+        result = await db.execute(select(ScoringRuleSet).where(ScoringRuleSet.season_id == cid))
+        assert result.first() is None
 
 
 class TestExport:
