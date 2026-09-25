@@ -55,6 +55,10 @@ const QUERY_PANEL: Record<string, string> = {
   "public-announcements": "announcements",
 };
 
+// Same base as the API client, so the QR image also works when the API runs
+// on another origin (VITE_API_URL absolute, e.g. in the e2e stack).
+const API_BASE = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
+
 function socketUrl(slug: string) {
   const base = import.meta.env.VITE_API_URL ?? "/api";
   const prefix = base.startsWith("http")
@@ -282,7 +286,7 @@ export default function PublicEventPage() {
           >
             <Expand className="h-5 w-5" aria-hidden="true" />
           </button>
-          <img className="h-20 w-20 rounded-eng bg-white p-1" src={`/api/v1/public/events/${eventSlug}/qr.svg`} alt={t("qrAlt")} />
+          <img className="h-20 w-20 rounded-eng bg-white p-1" src={`${API_BASE}/v1/public/events/${eventSlug}/qr.svg`} alt={t("qrAlt")} />
         </div>
       </header>
 
