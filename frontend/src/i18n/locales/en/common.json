@@ -254,7 +254,6 @@
   },
   "live": {
     "connected": "Live",
-    "polling": "Updates periodically",
     "lastUpdated": "Last updated: {{time}}",
     "stale": "Data may be outdated – last updated: {{time}}",
     "loadFailed": "Data could not be loaded."
