@@ -54,6 +54,19 @@ Updates lassen sich auch aus GitHub starten: Actions → **Deploy** → *Run wor
 
 ---
 
+## Versionshinweis: Node.js 24 und neue Monitoring-Images (2026-09)
+
+Das Frontend wird mit **Node.js 24 LTS** gebaut (Docker-Image `node:24-alpine`, CI, `proxmox-setup.sh`). Beim Bau im Container ist nichts zu tun. Auf Proxmox-LXC baut `update.sh` das Frontend auf dem Host. Dort bleibt das vorhandene Node 22 installiert, und `update.sh` gibt eine Warnung aus. Node 22 baut vorerst weiter. Upgrade auf dem Host:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+apt-get install -y nodejs
+corepack enable && corepack prepare pnpm@10.29.3 --activate
+node --version   # v24.x
+```
+
+Das Profil `monitoring` nutzt jetzt Prometheus v3.15.0, Alertmanager v0.34.1 und Blackbox-Exporter v0.28.0. Die Konfigurationen bleiben unverändert, die Daten in `prometheusdata` und `alertmanagerdata` werden weiterverwendet. `update.sh` lädt die neuen Images mit `docker compose pull`.
+
 ## Versionshinweis: Container ohne Root-Rechte (Security-Update 2026-09)
 
 Ab diesem Stand laufen `backend`, `worker`, `worker-ocr`, `beat` und `backup` als unprivilegierter Benutzer `app` (**UID/GID 10001**) statt als `root`, ohne Linux-Capabilities (`cap_drop: ALL`), mit `no-new-privileges` und mit Speicherlimits (`*_MEM_LIMIT` in `.env`). `backend`, `worker`, `worker-ocr` und `beat` haben zusätzlich ein schreibgeschütztes Root-Dateisystem; beschreibbar sind nur ihre Volumes und `/tmp` (tmpfs).

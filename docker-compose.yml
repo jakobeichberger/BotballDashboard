@@ -377,7 +377,7 @@ services:
   # an SSH tunnel (ssh -L 9090:localhost:9090 -L 9093:localhost:9093 host).
   prometheus:
     profiles: ["monitoring"]
-    image: prom/prometheus:v3.5.5
+    image: prom/prometheus:v3.15.0
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=30d"
@@ -398,7 +398,7 @@ services:
 
   blackbox:
     profiles: ["monitoring"]
-    image: prom/blackbox-exporter:v0.25.0
+    image: prom/blackbox-exporter:v0.28.0
     restart: unless-stopped
     logging: *default-logging
     healthcheck:
@@ -448,7 +448,7 @@ services:
   # the application's SMTP_* settings).
   alertmanager:
     profiles: ["monitoring"]
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.34.1
     entrypoint: ["/bin/sh", "/etc/alertmanager/render-config.sh"]
     environment:
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
