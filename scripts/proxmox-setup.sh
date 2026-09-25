@@ -61,6 +61,9 @@ NODE_MAJOR="20"
 PNPM_VERSION="10.29.3"
 # Private key that decrypts the backups. It must be copied OFF this machine.
 BACKUP_IDENTITY_FILE="/root/botball-backup-identity.txt"
+# SSH key / known_hosts / rclone.conf for the optional off-site backup copy;
+# mounted read-only into the backup container (BACKUP_OFFSITE_CONFIG_DIR).
+OFFSITE_CONFIG_DIR="${DATA_DIR}/backup-offsite"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 info()    { echo -e "${CYAN}[INFO]${NC}  $*"; }
@@ -170,6 +173,59 @@ ensure_backup_keypair() {
   age-keygen -y "${BACKUP_IDENTITY_FILE}"
 }
 
+# Returns 0 when $1 is empty or a supported BACKUP_OFFSITE_TARGET form.
+valid_offsite_target() {
+  [[ -z "$1" || "$1" =~ ^rsync:[^:]+:.+$ || "$1" =~ ^rclone:[^:]+:.*$ || "$1" == /* ]]
+}
+
+# Prepares ${OFFSITE_CONFIG_DIR} for BACKUP_OFFSITE_TARGET ($1). Idempotent:
+# an existing SSH key or known_hosts entry is kept.
+setup_offsite_access() {
+  local target="$1"
+  mkdir -p "${OFFSITE_CONFIG_DIR}"
+  chmod 700 "${OFFSITE_CONFIG_DIR}"
+  [[ -z "${target}" ]] && return 0
+  case "${target}" in
+    rsync:*)
+      local remote="${target#rsync:}"
+      local host="${remote%%:*}"
+      host="${host#*@}"
+      if [[ ! -f "${OFFSITE_CONFIG_DIR}/id_ed25519" ]]; then
+        if command -v ssh-keygen &>/dev/null; then
+          ssh-keygen -q -t ed25519 -N "" -C "botball-backup@$(hostname)" -f "${OFFSITE_CONFIG_DIR}/id_ed25519"
+          info "Generated an SSH key for the off-site copy."
+        else
+          warn "ssh-keygen missing – put an SSH key at ${OFFSITE_CONFIG_DIR}/id_ed25519 yourself."
+        fi
+      fi
+      if [[ -f "${OFFSITE_CONFIG_DIR}/id_ed25519.pub" ]]; then
+        warn "Authorize this key on ${host} (e.g. in ~/.ssh/authorized_keys of the target user):"
+        echo "    $(cat "${OFFSITE_CONFIG_DIR}/id_ed25519.pub")"
+      fi
+      if ! grep -q "${host}" "${OFFSITE_CONFIG_DIR}/known_hosts" 2>/dev/null; then
+        if ssh-keyscan -T 10 "${host}" >> "${OFFSITE_CONFIG_DIR}/known_hosts" 2>/dev/null \
+            && grep -q "${host}" "${OFFSITE_CONFIG_DIR}/known_hosts"; then
+          info "Stored the host key of ${host} in ${OFFSITE_CONFIG_DIR}/known_hosts – verify its fingerprint."
+        else
+          warn "Could not fetch the host key of ${host}. Add it to ${OFFSITE_CONFIG_DIR}/known_hosts,"
+          warn "otherwise every off-site copy fails (StrictHostKeyChecking)."
+        fi
+      fi
+      ;;
+    rclone:*)
+      if [[ ! -f "${OFFSITE_CONFIG_DIR}/rclone.conf" ]]; then
+        warn "Put an rclone config with the remote '${target#rclone:}' at ${OFFSITE_CONFIG_DIR}/rclone.conf"
+        warn "(create it with 'rclone config' on any machine). Until then off-site copies fail."
+      fi
+      ;;
+    /*)
+      warn "The off-site directory ${target} must be mounted into the backup container,"
+      warn "e.g. in docker-compose.override.yml (see docs/operations.md)."
+      ;;
+  esac
+  chmod -R go-rwx "${OFFSITE_CONFIG_DIR}"
+}
+
 # Adds settings introduced after the first installation to a kept .env.
 ensure_env_defaults() {
   local env_file="${INSTALL_DIR}/.env"
@@ -183,6 +239,20 @@ ensure_env_defaults() {
   fi
   if ! grep -q '^BACKUP_HOST_DIR=' "${env_file}"; then
     set_env_value BACKUP_HOST_DIR "${DATA_DIR}/backups"
+  fi
+  if ! grep -q '^BACKUP_OFFSITE_CONFIG_DIR=' "${env_file}"; then
+    set_env_value BACKUP_OFFSITE_CONFIG_DIR "${OFFSITE_CONFIG_DIR}"
+  fi
+  if ! grep -q '^BACKUP_OFFSITE_TARGET=' "${env_file}"; then
+    set_env_value BACKUP_OFFSITE_TARGET ""
+    info "Added BACKUP_OFFSITE_TARGET (empty = no off-site copy) to .env – see docs/operations.md"
+  fi
+  local offsite_target
+  offsite_target=$(env_value BACKUP_OFFSITE_TARGET)
+  if valid_offsite_target "${offsite_target}"; then
+    setup_offsite_access "${offsite_target}"
+  else
+    warn "BACKUP_OFFSITE_TARGET '${offsite_target}' is not rsync:user@host:/path, rclone:remote:path or /dir."
   fi
   if [[ -z "$(env_value AGE_RECIPIENT)" ]]; then
     local recipient
@@ -236,6 +306,8 @@ check_prerequisites() {
   command -v python3    &>/dev/null || pkgs+=(python3)
   # age-keygen creates the backup encryption key pair (Debian 12: package "age").
   command -v age-keygen &>/dev/null || pkgs+=(age)
+  # ssh-keygen/ssh-keyscan prepare an optional rsync off-site backup target.
+  command -v ssh-keygen &>/dev/null || pkgs+=(openssh-client)
   if [[ ${#pkgs[@]} -gt 0 ]]; then
     info "Installing missing packages: ${pkgs[*]}..."
     if ! { apt-get update -qq && apt-get install -y -q "${pkgs[@]}" > /dev/null; }; then
@@ -450,6 +522,17 @@ configure_env() {
   elif [[ ! "${AGE_RECIPIENT}" =~ ^age1[0-9a-z]+$ ]]; then
     die "'${AGE_RECIPIENT}' is not an age public key (age1...)."
   fi
+  BACKUP_OFFSITE_TARGET=""
+  if [[ "${BACKUPS_ENABLED}" == "true" ]]; then
+    echo -e "Optional off-site copy of every archive (a second location protects against"
+    echo -e "losing this server): rsync:user@host:/path, rclone:remote:path or empty."
+    while true; do
+      prompt BACKUP_OFFSITE_TARGET "Off-site target (empty = none)" ""
+      valid_offsite_target "${BACKUP_OFFSITE_TARGET}" && break
+      warn "Use rsync:user@host:/path, rclone:remote:path, an absolute directory or leave it empty."
+    done
+    setup_offsite_access "${BACKUP_OFFSITE_TARGET}"
+  fi
 
   echo -e "\n${BOLD}--- Monitoring (optional) ---${NC}"
   echo -e "Prometheus + Alertmanager: alerts for API down, readiness, 5xx rate and failed/stale backups."
@@ -573,6 +656,10 @@ DOMAIN=${DOMAIN}
 # Private key for restores: ${BACKUP_IDENTITY_FILE} (keep a copy off-site!)
 AGE_RECIPIENT=${AGE_RECIPIENT}
 BACKUP_HOST_DIR=${DATA_DIR}/backups
+# Off-site copy of every archive (rsync:user@host:/path, rclone:remote:path,
+# /dir); empty = none. Key/config in BACKUP_OFFSITE_CONFIG_DIR.
+BACKUP_OFFSITE_TARGET=$(_q "${BACKUP_OFFSITE_TARGET}")
+BACKUP_OFFSITE_CONFIG_DIR=${OFFSITE_CONFIG_DIR}
 
 # ── Alerts (monitoring profile) ──────────────
 ALERT_WEBHOOK_URL=$(_q "${ALERT_WEBHOOK_URL}")
@@ -591,6 +678,9 @@ create_directories() {
   # Encrypted backup archives (BACKUP_HOST_DIR); sync this directory off-site.
   mkdir -p "${DATA_DIR}/backups"
   chmod 700 "${DATA_DIR}/backups"
+  # Off-site copy credentials (BACKUP_OFFSITE_CONFIG_DIR), may stay empty.
+  mkdir -p "${OFFSITE_CONFIG_DIR}"
+  chmod 700 "${OFFSITE_CONFIG_DIR}"
 
   # postgres:alpine runs as UID 70 inside the container. Pre-owning the bind-
   # mount directory to that UID lets PostgreSQL initialise without needing to
@@ -606,7 +696,7 @@ create_directories() {
   # Uploads, VAPID keys and Let's Encrypt certificates live in Docker named
   # volumes (uploads, vapid, letsencrypt); they are included in backups
   # (uploads) or re-creatable (certificates, VAPID via make vapid-keys).
-  success "Created: ${DATA_DIR}/db, ${DATA_DIR}/backups"
+  success "Created: ${DATA_DIR}/db, ${DATA_DIR}/backups, ${OFFSITE_CONFIG_DIR}"
 }
 
 # ── Step 7: Build Frontend on Host ────────────────────────────────────────────
@@ -1004,7 +1094,14 @@ print_summary() {
       echo -e "  ${YELLOW}Copy it off this server (password manager/offline) and delete it here.${NC}"
       echo -e "  ${YELLOW}Without it no backup can be restored.${NC}"
     fi
-    echo -e "  Copy ${DATA_DIR}/backups off-site regularly – see docs/operations.md."
+    local offsite_target
+    offsite_target=$(env_value BACKUP_OFFSITE_TARGET)
+    if [[ -n "${offsite_target}" ]]; then
+      echo -e "  Off-site copy of every archive → ${offsite_target}"
+      echo -e "  Test it now: docker compose exec backup python scripts/backup_scheduler.py once"
+    else
+      echo -e "  ${YELLOW}No off-site copy configured.${NC} Set BACKUP_OFFSITE_TARGET in .env – see docs/operations.md."
+    fi
   else
     echo -e "  ${RED}${BOLD}⚠  Backups are DISABLED${NC} (AGE_RECIPIENT or the \"production\" profile missing)."
     echo -e "  See docs/operations.md → Encrypted backups."

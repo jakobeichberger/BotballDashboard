@@ -54,6 +54,14 @@ groups:
           summary: "The last backup run failed"
           description: "backup.sh failed; it is retried every BACKUP_RETRY_SECONDS (default 1 h). See `docker compose logs backup`."
 
+      - alert: BackupOffsiteCopyFailed
+        expr: botball_backup_offsite_last_success == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "The off-site copy of the last backup failed"
+          description: "The archive exists locally but was not copied to BACKUP_OFFSITE_TARGET; the copy is retried every BACKUP_RETRY_SECONDS. See `docker compose logs backup`."
+
       - alert: BackupStale
         expr: time() - botball_backup_last_success_timestamp_seconds > 26 * 3600
         for: 10m

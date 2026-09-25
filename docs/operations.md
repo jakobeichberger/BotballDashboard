@@ -24,6 +24,7 @@ It evaluates `monitoring/alerts.yml`:
 | `HighServerErrorRate` | more than 5 % of requests return 5xx for 5 min |
 | `RedisFailOpen` | a rate limit or the token deny-list let a request through because Redis was unreachable (`botball_redis_fail_open_total`) |
 | `BackupFailed` | the last backup run failed |
+| `BackupOffsiteCopyFailed` | the off-site copy of the last archive failed (only with `BACKUP_OFFSITE_TARGET`) |
 | `BackupStale` | the last successful backup is older than 26 h |
 | `BackupNeverSucceeded` | runs were recorded but none succeeded (1 h) |
 | `BackupMonitoringDown` | the backup service is unreachable for 15 min |
@@ -71,16 +72,25 @@ docker compose logs backup
 
 ### Off-site copy
 
-Archives are only useful when they survive the server. Set `BACKUP_HOST_DIR=/data/backups` (the Proxmox setup does) so that they are plain files on the host, and copy them elsewhere at least daily. They are encrypted, so any storage works. Example with a host cron job and rsync over SSH:
+Archives are only useful when they survive the server. Set `BACKUP_OFFSITE_TARGET` in `.env` and the backup service copies every successful archive there right after writing it. The archives are encrypted, so any storage works. `scripts/proxmox-setup.sh` asks for the target and prepares the credentials.
 
-```sh
-# /etc/cron.d/botball-offsite
-30 3 * * * root rsync -a --delete-after /data/backups/ backup@nas.example.org:/srv/botball-backups/
-```
+| `BACKUP_OFFSITE_TARGET` | Copy with | Credentials in `BACKUP_OFFSITE_CONFIG_DIR` (default `/data/backup-offsite`, mounted read-only at `/offsite-config`) |
+|---|---|---|
+| `rsync:backup@nas.example.org:/srv/botball-backups` | rsync over SSH | `id_ed25519` (the setup generates it and prints the public key to authorize on the target) and `known_hosts` (the setup fetches it with `ssh-keyscan`; check the fingerprint). Host keys are checked strictly. |
+| `rclone:b2:botball-backups` | `rclone copy` | `rclone.conf` with the remote, created with `rclone config` on any machine |
+| `/mnt/offsite` | plain file copy | none; mount the directory (NFS, USB disk) into the `backup` container, e.g. in `docker-compose.override.yml`: `services: {backup: {volumes: ["/mnt/nas:/mnt/offsite"]}}` |
 
-rclone to S3-compatible or cloud storage works the same way (`rclone sync /data/backups remote:botball-backups`). Also check the copy regularly: count the files and verify a checksum with `sha256sum -c`.
+After changing `.env`, run `docker compose up -d backup`, then test the whole chain with `make backup-now` (backup plus copy; exit code 1 if either fails).
 
-Without `BACKUP_HOST_DIR` the archives live in the Docker volume `<project>_backups`. `docker volume inspect botballdashboard_backups --format '{{.Mountpoint}}'` shows the path.
+Failure handling:
+
+- A failed copy does not undo the local backup (`botball_backup_last_run_success` stays 1). It is recorded separately in the status file: `botball_backup_offsite_last_success` drops to 0, `botball_backup_offsite_consecutive_failures` counts up, the alert `BackupOffsiteCopyFailed` fires and `make backup-status` reports `UNHEALTHY: off-site copy failed (<reason>)`.
+- The scheduler retries only the copy after `BACKUP_RETRY_SECONDS` (1 h), without a new backup. A manual retry: `docker compose exec backup python scripts/backup_scheduler.py offsite`.
+- One copy may take `BACKUP_OFFSITE_TIMEOUT_SECONDS` (1 h).
+
+Only new archives are copied, and nothing is deleted on the target. Set the retention there (bucket lifecycle rule, cron job on the NAS). Also check the copy regularly: count the files and verify a checksum with `sha256sum -c`.
+
+Without `BACKUP_OFFSITE_TARGET` you can still sync by hand or from a host cron job, e.g. `rsync -a /data/backups/ backup@nas.example.org:/srv/botball-backups/`. That needs `BACKUP_HOST_DIR=/data/backups` (the Proxmox setup sets it). Without `BACKUP_HOST_DIR` the archives live in the Docker volume `<project>_backups`; `docker volume inspect botballdashboard_backups --format '{{.Mountpoint}}'` shows the path.
 
 ### Restore test (monthly)
 
