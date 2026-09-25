@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
 import { CATEGORY_LABEL, EMPTY_TEAM_FILTERS as EMPTY_FILTERS, teamFilterParams, type TeamFilters } from "@/lib/teams";
+import { confirmAction } from "@/lib/confirm";
 
 interface TeamForm {
   name: string;
@@ -189,7 +190,7 @@ export default function TeamsPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
           <Users className="h-6 w-6" />
           {t("title")}
@@ -254,20 +255,20 @@ export default function TeamsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {teams?.map((team) => (
-          <article key={team.id} className="card p-4">
+          <article key={team.id} className="card min-w-0 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="truncate font-semibold text-gray-900 dark:text-white"><EventLink to={`/teams/${team.id}`} className="hover:underline">{team.name}</EventLink></h3>
                 {team.team_number && <span className="text-xs text-gray-500">#{team.team_number}</span>}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <span className={team.is_active ? "badge-green" : "badge-gray"}>
                   {team.is_active ? t("common:active") : t("common:inactive")}
                 </span>
                 {canWrite && (
                   <button
                     type="button"
-                    className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-700 dark:hover:bg-gray-800"
+                    className="grid h-11 w-11 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary-700 dark:hover:bg-gray-800"
                     aria-label={t("editLabel", { name: team.name })}
                     onClick={() => openEdit(team)}
                   >
@@ -377,10 +378,10 @@ export default function TeamsPage() {
                     </div>
                     <button
                       type="button"
-                      className="rounded p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                       aria-label={t("members.remove", { name: member.name })}
                       disabled={removeMember.isPending}
-                      onClick={() => removeMember.mutate(member.id)}
+                      onClick={() => void confirmAction({ message: t("members.confirmRemove", { name: member.name }), tone: "danger", confirmLabel: t("detail.remove") }).then((ok) => ok && removeMember.mutate(member.id))}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>

@@ -13,6 +13,8 @@ import {
   WifiOff,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { errorStatus } from "@/lib/errors";
+import { parseLiveMessage, reconnectDelay } from "@/lib/liveSocket";
 import { formatScore, formatTime } from "@/i18n/format";
 import BracketView from "@/components/BracketView";
 import type {
@@ -28,6 +30,8 @@ interface Announcement {
   title: string;
   body: string;
 }
+
+const FALLBACK_POLL_MS = 20_000;
 
 function socketUrl(slug: string) {
   const base = import.meta.env.VITE_API_URL ?? "/api";
@@ -45,6 +49,8 @@ export default function PublicEventPage() {
     "connecting",
   );
   const [rotation, setRotation] = useState(true);
+  // While the live stream is down the panels poll instead (fallback).
+  const pollMs = connection === "connected" ? false : FALLBACK_POLL_MS;
   const [panel, setPanel] = useState(0);
   const event = useQuery<EventSummary>({
     queryKey: ["public-event", eventSlug],
@@ -54,11 +60,13 @@ export default function PublicEventPage() {
     queryKey: ["public-ranking", eventSlug],
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/ranking`)).data,
     enabled: !!event.data?.public_scoreboard,
+    refetchInterval: pollMs,
   });
   const schedule = useQuery<ScheduledMatch[]>({
     queryKey: ["public-schedule", eventSlug],
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/schedule`)).data,
     enabled: !!event.data?.public_schedule,
+    refetchInterval: pollMs,
   });
   const bracket = useQuery<BracketPhase[]>({
     queryKey: ["public-bracket", eventSlug],
@@ -69,11 +77,13 @@ export default function PublicEventPage() {
     queryKey: ["public-announcements", eventSlug],
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/announcements`)).data,
     enabled: !!event.data?.public_announcements,
+    refetchInterval: pollMs,
   });
   const results = useQuery<PublicResult[]>({
     queryKey: ["public-results", eventSlug],
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/results`)).data,
     enabled: !!event.data?.public_results,
+    refetchInterval: pollMs,
   });
   const panels = useMemo(
     () =>
@@ -100,13 +110,19 @@ export default function PublicEventPage() {
     let socket: WebSocket | null = null;
     let timer: number | undefined;
     let stopped = false;
+    let attempt = 0;
     const connect = () => {
       if (stopped) return;
       setConnection("connecting");
       socket = new WebSocket(socketUrl(eventSlug));
-      socket.onopen = () => setConnection("connected");
+      socket.onopen = () => {
+        attempt = 0;
+        setConnection("connected");
+      };
       socket.onmessage = (message) => {
-        const data = JSON.parse(message.data) as { event?: string };
+        // A malformed frame must not break the display.
+        const data = parseLiveMessage(message.data);
+        if (!data) return;
         if (data.event === "ranking_updated") {
           queryClient.invalidateQueries({ queryKey: ["public-ranking", eventSlug] });
           queryClient.invalidateQueries({ queryKey: ["public-results", eventSlug] });
@@ -124,7 +140,9 @@ export default function PublicEventPage() {
       };
       socket.onclose = () => {
         setConnection("disconnected");
-        timer = window.setTimeout(connect, 3000);
+        // Exponential backoff with jitter: screens do not reconnect in lock-step.
+        timer = window.setTimeout(connect, reconnectDelay(attempt));
+        attempt += 1;
       };
       socket.onerror = () => socket?.close();
     };
@@ -145,19 +163,31 @@ export default function PublicEventPage() {
   if (event.isLoading) {
     return <div className="grid min-h-screen place-items-center bg-slate-950 text-white">{t("loading")}</div>;
   }
-  if (event.isError) {
+  // 404: no such public event. Anything else (offline, server error) can be retried.
+  if (event.isError && errorStatus(event.error) === 404) {
     return <div className="grid min-h-screen place-items-center bg-slate-950 text-white">{t("notPublic")}</div>;
   }
+  if (event.isError) {
+    return (
+      <div role="alert" className="grid min-h-screen place-items-center bg-slate-950 p-6 text-center text-white">
+        <div className="space-y-4">
+          <p>{t("publicLoadFailed")}</p>
+          <button type="button" className="rounded-lg bg-slate-800 px-4 py-3" onClick={() => void event.refetch()}>{t("common:retry")}</button>
+        </div>
+      </div>
+    );
+  }
+  const lastUpdate = Math.max(ranking.dataUpdatedAt, schedule.dataUpdatedAt, results.dataUpdatedAt, announcements.dataUpdatedAt);
 
   return (
     <main className="min-h-screen bg-slate-950 p-4 text-white md:p-8">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
-          <p className="text-sm uppercase tracking-[.25em] text-cyan-400">Botball Live</p>
+          <p className="text-sm uppercase tracking-[.25em] text-cyan-400">{t("liveTitle")}</p>
           <h1 className="text-3xl font-black md:text-5xl">{event.data?.name}</h1>
           <p className="mt-1 text-slate-400">{event.data?.venue} · {event.data?.timezone}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span
             role="status"
             className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm ${connection === "connected" ? "bg-emerald-950 text-emerald-300" : "bg-red-950 text-red-300"}`}
@@ -165,10 +195,13 @@ export default function PublicEventPage() {
             {connection === "connected" ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
             {t(`connection.${connection}`)}
           </span>
+          {connection !== "connected" && lastUpdate > 0 && (
+            <span className="text-sm text-slate-400">{t("common:live.lastUpdated", { time: formatTime(lastUpdate, { hour: "2-digit", minute: "2-digit", second: "2-digit" }) })}</span>
+          )}
           <button className="rounded-lg bg-slate-800 p-3" onClick={() => setRotation(!rotation)} aria-label={t("toggleRotation")}>
             {rotation ? <Pause /> : <Play />}
           </button>
-          <button className="rounded-lg bg-slate-800 p-3" onClick={() => document.documentElement.requestFullscreen()} aria-label={t("fullscreen")}>
+          <button className="rounded-lg bg-slate-800 p-3" onClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)} aria-label={t("fullscreen")}>
             <Expand />
           </button>
           <img className="h-20 w-20 rounded bg-white p-1" src={`/api/v1/public/events/${eventSlug}/qr.svg`} alt={t("qrAlt")} />
@@ -178,7 +211,7 @@ export default function PublicEventPage() {
       {current === "ranking" && (
         <section>
           <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-yellow-400" />{t("ranking")}</h2>
-          <div className="overflow-hidden rounded-2xl border border-slate-800">
+          <div className="table-scroll rounded-2xl border border-slate-800">
             <table className="w-full text-lg md:text-2xl">
               <thead className="bg-slate-900 text-slate-400"><tr><th className="p-4 text-left">{t("rank")}</th><th className="p-4 text-left">{t("team")}</th><th className="p-4 text-right">{t("seed")}</th><th className="p-4 text-right">{t("best")}</th><th className="p-4 text-right">{t("rounds")}</th></tr></thead>
               <tbody className="divide-y divide-slate-800">
@@ -229,7 +262,7 @@ export default function PublicEventPage() {
       {current === "results" && (
         <section>
           <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-cyan-400" />{t("results")}</h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.data?.slice(-12).reverse().map((result) => <article key={result.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between text-slate-400"><span>{t("round", { number: result.round_number })}</span><span>{t("table", { number: result.table_number ?? "–" })}</span></div><p className="mt-2 text-lg font-bold">{result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</p><p className="mt-3 text-3xl font-black text-cyan-300">{result.is_disqualified ? "DQ" : formatScore(result.total_score)}</p><dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-slate-400">{Object.entries(result.raw_scores).map(([key, value]) => <div key={key} className="contents"><dt>{key}</dt><dd className="text-right text-slate-200">{String(value)}</dd></div>)}</dl></article>)}</div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.data?.slice(-12).reverse().map((result) => <article key={result.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between text-slate-400"><span>{t("round", { number: result.round_number })}</span><span>{t("table", { number: result.table_number ?? "–" })}</span></div><p className="mt-2 text-lg font-bold">{result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</p><p className="mt-3 text-3xl font-black text-cyan-300">{result.is_disqualified ? t("common:dqShort") : formatScore(result.total_score)}</p><dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-slate-400">{Object.entries(result.raw_scores).map(([key, value]) => <div key={key} className="contents"><dt>{key}</dt><dd className="text-right text-slate-200">{String(value)}</dd></div>)}</dl></article>)}</div>
         </section>
       )}
 

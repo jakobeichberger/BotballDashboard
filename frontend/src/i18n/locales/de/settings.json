@@ -120,7 +120,10 @@
     "add": "+ Hinzufügen",
     "noExtra": "Keine zusätzlichen Termine.",
     "phases": "Phasen",
-    "phaseInfo": "({{type}}, {{rounds}} Runden)"
+    "phaseInfo": "({{type}}, {{rounds}} Runden)",
+    "season": "Saison",
+    "confirmDelete": "Eintrag „{{title}}“ löschen?",
+    "deleteEntry": "Eintrag „{{title}}“ löschen"
   },
   "levels": {
     "title": "Wettbewerbsstufen",

@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import type { CompetitionLevel, QualificationStatusEntry } from "./types";
+import { confirmAction } from "@/lib/confirm";
+import { apiErrorMessage } from "@/lib/errors";
 
 /**
  * GCER qualification: admins mark teams of the source level (ECER) as
@@ -29,22 +31,22 @@ export default function QualificationPanel({ eventId, seasonId, onMessage }: { e
   const [selected, setSelected] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const refresh = () => { queryClient.invalidateQueries({ queryKey: ["qualification-status", seasonId, levelId] }); queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] }); };
-  const detail = (error: any, fallback: string) => (typeof error.response?.data?.detail === "string" ? error.response.data.detail : fallback);
+  const detail = (error: unknown, fallback: string) => apiErrorMessage(error, fallback);
 
   const qualify = useMutation({
     mutationFn: async () => api.post(`/scoring/levels/${levelId}/qualify`, { season_id: seasonId, team_ids: selected, note: note || null, source_event_id: eventId }),
     onSuccess: () => { onMessage(t("qualification.qualified", { count: selected.length, level: level?.name })); setSelected([]); setNote(""); refresh(); },
-    onError: (error: any) => onMessage(detail(error, t("qualification.failed"))),
+    onError: (error: unknown) => onMessage(detail(error, t("qualification.failed"))),
   });
   const revoke = useMutation({
     mutationFn: async (id: string) => api.delete(`/scoring/qualifications/${id}`),
     onSuccess: refresh,
-    onError: (error: any) => onMessage(detail(error, t("qualification.revokeFailed"))),
+    onError: (error: unknown) => onMessage(detail(error, t("qualification.revokeFailed"))),
   });
   const register = useMutation({
     mutationFn: async () => (await api.post(`/scoring/events/${eventId}/register-qualified`, { level_id: levelId })).data as unknown[],
     onSuccess: (created) => { onMessage(t("qualification.registered", { count: created.length })); refresh(); },
-    onError: (error: any) => onMessage(detail(error, t("qualification.registerFailed"))),
+    onError: (error: unknown) => onMessage(detail(error, t("qualification.registerFailed"))),
   });
 
   if (!targets.length) {
@@ -63,13 +65,13 @@ export default function QualificationPanel({ eventId, seasonId, onMessage }: { e
               <span>{entry.team_name}</span>
             </label>
             {entry.qualified ? (
-              <span className="flex items-center gap-2"><span className="badge-green">{t("qualification.qualifiedBadge")}</span>{entry.note && <span className="text-xs text-gray-500">{entry.note}</span>}{canQualify && entry.qualification_id && <button type="button" className="btn-secondary px-2" aria-label={t("qualification.revoke", { team: entry.team_name })} onClick={() => revoke.mutate(entry.qualification_id!)}><X className="h-4 w-4" /></button>}</span>
+              <span className="flex items-center gap-2"><span className="badge-green">{t("qualification.qualifiedBadge")}</span>{entry.note && <span className="text-xs text-gray-500">{entry.note}</span>}{canQualify && entry.qualification_id && <button type="button" className="btn-secondary min-h-11 min-w-11 justify-center px-2" aria-label={t("qualification.revoke", { team: entry.team_name })} disabled={revoke.isPending} onClick={() => void confirmAction({ message: t("qualification.confirmRevoke", { team: entry.team_name, level: level?.name }), tone: "danger", confirmLabel: t("qualification.revokeShort") }).then((ok) => ok && revoke.mutate(entry.qualification_id!))}><X className="h-4 w-4" aria-hidden="true" /></button>}</span>
             ) : <span className="badge-gray">{t("qualification.notYet")}</span>}
           </li>
         ))}
         {status.data?.length === 0 && <li className="p-3 text-gray-500">{t("qualification.noTeams")}</li>}
       </ul>
-      {canQualify && <div className="flex flex-wrap gap-2"><input className="input min-w-0 flex-1" placeholder={t("qualification.notePlaceholder")} value={note} onChange={(e) => setNote(e.target.value)} /><button type="button" className="btn-primary" disabled={!selected.length || qualify.isPending} onClick={() => qualify.mutate()}>{t("qualification.qualify")}</button></div>}
+      {canQualify && <div className="flex flex-wrap gap-2"><input className="input min-w-0 flex-1" aria-label={t("qualification.notePlaceholder")} placeholder={t("qualification.notePlaceholder")} value={note} onChange={(e) => setNote(e.target.value)} /><button type="button" className="btn-primary" disabled={!selected.length || qualify.isPending} onClick={() => qualify.mutate()}>{t("qualification.qualify")}</button></div>}
       <button type="button" className="btn-secondary mt-3" disabled={register.isPending} onClick={() => register.mutate()}><UserPlus className="h-4 w-4" />{t("qualification.register")}</button>
     </section>
   );

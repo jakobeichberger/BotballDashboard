@@ -4,6 +4,8 @@ import { api } from "@/lib/api";
 import i18n from "@/i18n/config";
 import { labelMap } from "@/i18n/labels";
 import { formatFileSize } from "@/lib/teams";
+import { apiErrorMessage } from "@/lib/errors";
+import { downloadFile } from "@/lib/download";
 
 export type PrintJobStatus =
   | "pending"
@@ -168,9 +170,9 @@ export function formatBytes(bytes: number | null | undefined): string {
   return bytes == null ? "—" : formatFileSize(bytes);
 }
 
+/** API error in the UI language (lib/errors). */
 export function apiError(error: unknown, fallback = i18n.t("common:actionFailed")): string {
-  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
-  return typeof detail === "string" ? detail : fallback;
+  return apiErrorMessage(error, fallback);
 }
 
 export async function uploadPrintFile(jobId: string, file: File): Promise<PrintJob> {
@@ -181,14 +183,5 @@ export async function uploadPrintFile(jobId: string, file: File): Promise<PrintJ
 
 /** The file endpoint needs the bearer token, so fetch it and save the blob. */
 export async function downloadPrintFile(job: Pick<PrintJob, "id" | "file_name">): Promise<void> {
-  const response = await api.get(`/printing/jobs/${job.id}/file`, { responseType: "blob" });
-  const href = URL.createObjectURL(new Blob([response.data]));
-  try {
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = job.file_name;
-    link.click();
-  } finally {
-    URL.revokeObjectURL(href);
-  }
+  await downloadFile(`/printing/jobs/${job.id}/file`, job.file_name);
 }

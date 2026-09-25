@@ -4,6 +4,7 @@ import { CalendarClock, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatDate } from "@/i18n/format";
 import { api } from "@/lib/api";
+import { confirmAction } from "@/lib/confirm";
 import {
   DEADLINE_TYPE_LABEL,
   OFFICIAL_DEADLINE_TYPES,
@@ -68,11 +69,13 @@ export function PaperDeadlinesPanel({ seasonId, canAdmin }: { seasonId: string; 
               {passed && official && <span className="badge-red">{t("deadlines.passed")}</span>}
               {canAdmin && (
                 <button
-                  className="ml-auto p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                  type="button"
+                  className="ml-auto grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                   aria-label={t("deadlines.deleteLabel", { name: d.label ?? d.deadline_type })}
-                  onClick={() => deleteM.mutate(d.id)}
+                  disabled={deleteM.isPending}
+                  onClick={() => void confirmAction({ message: t("deadlines.confirmDelete", { name: d.label ?? DEADLINE_TYPE_LABEL[d.deadline_type] ?? d.deadline_type, date: formatDate(d.due_date) }), tone: "danger" }).then((ok) => ok && deleteM.mutate(d.id))}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
             </li>

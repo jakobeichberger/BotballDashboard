@@ -46,6 +46,7 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
           ))}
         </ul>
         {match && (
+          <div className="table-scroll">
           <table className="w-full">
             <caption className="text-left font-medium text-gray-700 dark:text-gray-300">{t("review.values", { total: match.total_score })}</caption>
             <tbody>
@@ -57,6 +58,7 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
               ))}
             </tbody>
           </table>
+        </div>
         )}
         {revisions && revisions.length > 1 && (
           <div>

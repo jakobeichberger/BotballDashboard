@@ -10,6 +10,8 @@ import { useAuthStore } from "@/store/authStore";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import DEPlacementPanel from "@/modules/scoring/extras/DEPlacementPanel";
 import { formatNumber } from "@/i18n/format";
+import Freshness from "@/components/Freshness";
+import { pollWhileOffline, useLiveUpdates } from "@/hooks/useLiveUpdates";
 import { CATEGORY_LABEL as CATEGORY_LABELS } from "@/lib/teams";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -81,8 +83,8 @@ function RankCell({ rank }: { rank: number | null }) {
   const { t } = useTranslation("scoring");
   if (rank == null) {
     return (
-      <td className="px-4 py-3 font-bold text-red-600" title={t("scoreboard.disqualified")}>
-        DQ
+      <td className="px-4 py-3 font-bold text-red-600">
+        <abbr title={t("scoreboard.disqualified")} className="no-underline">{t("common:dqShort")}</abbr>
       </td>
     );
   }
@@ -111,10 +113,12 @@ function CategoryFilter({
   const { t } = useTranslation("scoring");
   if (categories.length <= 1) return null;
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <button
+        type="button"
+        aria-pressed={active === null}
         onClick={() => onChange(null)}
-        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+        className={`min-h-11 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
           active === null
             ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
             : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
@@ -125,8 +129,10 @@ function CategoryFilter({
       {categories.map((c) => (
         <button
           key={c}
+          type="button"
+          aria-pressed={active === c}
           onClick={() => onChange(c)}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+          className={`min-h-11 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
             active === c
               ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
@@ -141,12 +147,13 @@ function CategoryFilter({
 
 // ── Seeding Tab ───────────────────────────────────────────────────────────────
 
-function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: string; categories: string[] }) {
+function SeedingTab({ base, seasonId, categories, live }: { base: string; seasonId: string; categories: string[]; live: boolean }) {
   const { t } = useTranslation("scoring");
   const [category, setCategory] = useState<string | null>(null);
   const { eventId } = useParams();
 
-  const { data, isLoading } = useQuery<SeedingEntry[]>({
+  // Live updates invalidate the ranking; polling only while the stream is down.
+  const query = useQuery<SeedingEntry[]>({
     queryKey: ["ranking-extended", base, category],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -155,12 +162,13 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
       return data;
     },
     enabled: !!base,
-    refetchInterval: 10_000,
+    refetchInterval: pollWhileOffline(live),
   });
+  const { data, isLoading } = query;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <CategoryFilter categories={categories} active={category} onChange={setCategory} />
         {/* On an event page export that event, not the season's default event. */}
         {eventId ? (
@@ -169,8 +177,9 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
           <RankingExportButtons seasonId={seasonId} seasonYear={new Date().getFullYear()} />
         )}
       </div>
-      {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
-      <div className="card overflow-hidden">
+      {isLoading && <p role="status" className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
+      <Freshness query={query} live={live} className="mb-3" />
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
@@ -191,9 +200,8 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
                 <RankCell rank={e.rank} />
                 <td className="px-4 py-3">
                   <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
-                    {e.team_name ?? e.team_id}
+                    {e.team_name ?? t("scoreboard.unknownTeam")}
                   </EventLink>
-                  <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 {categories.length > 1 && (
                   <td className="px-4 py-3">
@@ -245,6 +253,8 @@ function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
     const entry = overall?.find((o) => o.team_id === tid);
     return entry?.de_score ?? entry?.values?.de_score ?? null;
   };
+  // DE results carry no team name; the overall ranking has it.
+  const teamName = (tid: string) => overall?.find((o) => o.team_id === tid)?.team_name ?? t("scoreboard.unknownTeam");
 
   const groups = { A: deData?.filter((e) => e.bracket === "A") ?? [], B: deData?.filter((e) => e.bracket === "B") ?? [] };
 
@@ -257,11 +267,11 @@ function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
           </EventLink>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
+      {isLoading && <p role="status" className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
       {(["A", "B"] as const).map((bracket) => (
         <div key={bracket}>
           <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("scoreboard.bracket", { bracket })}</h3>
-          <div className="card overflow-hidden">
+          <div className="card table-scroll">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
@@ -281,7 +291,11 @@ function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
                     .sort((a, b) => (a.de_rank ?? 99) - (b.de_rank ?? 99))
                     .map((e) => (
                       <tr key={e.team_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td className="px-4 py-3 font-mono text-xs text-gray-900 dark:text-white">{e.team_id}</td>
+                        <td className="px-4 py-3">
+                          <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 hover:text-primary-600 hover:underline dark:text-white dark:hover:text-primary-400">
+                            {teamName(e.team_id)}
+                          </EventLink>
+                        </td>
                         <td className="px-4 py-3 text-right">{e.de_rank ?? "–"}</td>
                         <td className="px-4 py-3 text-right">{fmt(e.bracket_score)}</td>
                         <td className="px-4 py-3 text-right font-bold">{fmt(formulaDE(e.team_id) ?? e.de_score)}</td>
@@ -322,7 +336,7 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
         </div>
       )}
       {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
@@ -340,9 +354,8 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
                 <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
                 <td className="px-4 py-3">
                   <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
-                    {e.team_name ?? e.team_id}
+                    {e.team_name ?? t("scoreboard.unknownTeam")}
                   </EventLink>
-                  <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 <td className="px-4 py-3 text-right">{fmt(e.run1, 1)}</td>
                 <td className="px-4 py-3 text-right">{fmt(e.run2, 1)}</td>
@@ -369,15 +382,17 @@ function OverallTab({
   base,
   season,
   categories,
+  live,
 }: {
   base: string;
   season: Season;
   categories: string[];
+  live: boolean;
 }) {
   const { t } = useTranslation("scoring");
   const [category, setCategory] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery<OverallEntry[]>({
+  const query = useQuery<OverallEntry[]>({
     queryKey: ["overall-ranking", base, category],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -386,8 +401,9 @@ function OverallTab({
       return data;
     },
     enabled: !!base,
-    refetchInterval: 15_000,
+    refetchInterval: pollWhileOffline(live),
   });
+  const { data, isLoading } = query;
 
   const showSeeding = season.use_seeding;
   const showDE = season.use_double_elimination;
@@ -399,8 +415,9 @@ function OverallTab({
       <div className="mb-3">
         <CategoryFilter categories={categories} active={category} onChange={setCategory} />
       </div>
-      {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
-      <div className="card overflow-hidden">
+      {isLoading && <p role="status" className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
+      <Freshness query={query} live={live} className="mb-3" />
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
@@ -422,9 +439,8 @@ function OverallTab({
                 <RankCell rank={e.rank} />
                 <td className="px-4 py-3">
                   <EventLink to={`/teams/${e.team_id}`} className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline">
-                    {e.team_name ?? e.team_id}
+                    {e.team_name ?? t("scoreboard.unknownTeam")}
                   </EventLink>
-                  <div className="text-xs text-gray-400 font-mono">{e.team_id}</div>
                 </td>
                 {categories.length > 1 && (
                   <td className="px-4 py-3">
@@ -466,6 +482,7 @@ export default function ScoreboardPage() {
 
   // Under /events/:eventId every tab reads that event's results.
   const scope = useScoringScope();
+  const { live } = useLiveUpdates(scope.eventId);
   const base = scope.base;
   const sid = scope.seasonId;
   const season = scope.season as Season | undefined;
@@ -482,12 +499,12 @@ export default function ScoreboardPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-yellow-500" />
+          <Trophy className="w-6 h-6 text-yellow-500" aria-hidden="true" />
           {t("scoreboard.title")}
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {canEnterScores && (
             <EventLink to="/scoring/entry" className="btn-primary text-sm">
               {t("entry.title")}
@@ -518,20 +535,22 @@ export default function ScoreboardPage() {
 
       {/* Tabs */}
       {visibleTabs.length > 1 && (
-        <div className="flex gap-1 mb-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex gap-1 mb-6 overflow-x-auto border-b border-gray-200 dark:border-gray-700">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
+                type="button"
+                aria-pressed={currentTab?.id === tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex min-h-11 shrink-0 items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   currentTab?.id === tab.id
                     ? "border-primary-500 text-primary-600 dark:text-primary-400"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4" aria-hidden="true" />
                 {t(`scoreboard.tab.${tab.id}`)}
               </button>
             );
@@ -542,16 +561,17 @@ export default function ScoreboardPage() {
       {/* Tab Content */}
       {sid && base && season && (
         <>
-          {currentTab?.id === "seeding" && <SeedingTab base={base} seasonId={sid} categories={categories} />}
+          {currentTab?.id === "seeding" && <SeedingTab base={base} seasonId={sid} categories={categories} live={live} />}
           {currentTab?.id === "de" && <DETab base={base} isAdmin={isAdmin} />}
           {currentTab?.id === "aerial" && <AerialTab base={base} isAdmin={isAdmin} />}
           {currentTab?.id === "overall" && (
-            <OverallTab base={base} season={season} categories={categories} />
+            <OverallTab base={base} season={season} categories={categories} live={live} />
           )}
         </>
       )}
 
-      {!sid && (
+      {!sid && scope.isLoading && <p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+      {!sid && !scope.isLoading && (
         <div className="card p-8 text-center text-gray-400">
           {t("scoreboard.noSeason")}
         </div>

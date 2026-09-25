@@ -96,7 +96,8 @@
     "type": "Type",
     "label": "Label",
     "blockAfter": "Block uploads afterwards",
-    "create": "Add deadline"
+    "create": "Add deadline",
+    "confirmDelete": "Delete the deadline “{{name}}” ({{date}})?"
   },
   "title": "Paper Review",
   "reviewsCsv": "Reviews CSV",

@@ -10,6 +10,7 @@ import AllianceStandings from "@/components/events/AllianceStandings";
 import type { BracketPhase, EventPhase, ScheduledMatch } from "@/api/types";
 import { phaseLabel } from "@/api/analytics";
 import { formatDateTime } from "@/i18n/format";
+import { apiErrorMessage } from "@/lib/errors";
 
 const MATCH_STATUSES = ["scheduled", "called", "running", "completed", "cancelled"];
 
@@ -66,7 +67,7 @@ export default function EventSchedulePage() {
       queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] });
     },
     onError: (reason: any) =>
-      setError(reason.response?.data?.detail ?? t("schedulePage.seedsFailed")),
+      setError(apiErrorMessage(reason, t("schedulePage.seedsFailed"))),
   });
   const recordResult = useMutation({
     mutationFn: async ({ match, teamId }: { match: ScheduledMatch; teamId: string }) =>
@@ -79,7 +80,7 @@ export default function EventSchedulePage() {
       refreshSchedule();
     },
     onError: (reason: any) =>
-      setError(reason.response?.data?.detail ?? t("schedulePage.resultFailed")),
+      setError(apiErrorMessage(reason, t("schedulePage.resultFailed"))),
   });
   const generate = useMutation({
     mutationFn: async () =>
@@ -93,7 +94,7 @@ export default function EventSchedulePage() {
       refreshSchedule();
     },
     onError: (reason: any) =>
-      setError(reason.response?.data?.detail ?? t("schedulePage.generateFailed")),
+      setError(apiErrorMessage(reason, t("schedulePage.generateFailed"))),
   });
   const updateMatch = useMutation({
     mutationFn: async (match: ScheduledMatch) =>
@@ -112,8 +113,7 @@ export default function EventSchedulePage() {
     },
     onError: (reason: any) =>
       setError(
-        reason.response?.data?.detail ??
-          t("schedulePage.updateFailed"),
+        apiErrorMessage(reason, t("schedulePage.updateFailed")),
       ),
   });
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -6,7 +6,9 @@ import { Users, ArrowLeft, FileText, Printer, MapPin, Pencil, Trash2, UserPlus, 
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { TeamReportExportButtons } from "@/components/ExportButtons";
-import TeamHistoryPanel from "@/components/analytics/TeamHistoryPanel";
+import ErrorBoundary from "@/components/ErrorBoundary";
+// Charts (recharts) load on demand: the team page works offline without them.
+const TeamHistoryPanel = lazy(() => import("@/components/analytics/TeamHistoryPanel"));
 import { useTeamHistory } from "@/api/analytics";
 import { useEventNavigate } from "@/hooks/useEventPath";
 import { useAuthStore } from "@/store/authStore";
@@ -16,6 +18,8 @@ import { SeasonRegistrations } from "@/components/teams/SeasonRegistrations";
 import { TeamDocuments } from "@/components/teams/TeamDocuments";
 import { formatDate } from "@/i18n/format";
 import { STATUS_LABEL as JOB_STATUS_LABEL } from "@/lib/printing";
+import { confirmAction } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
 
 interface UserOption {
   id: string;
@@ -167,7 +171,7 @@ export default function TeamDetailPage() {
     ["school", t("detail.school")], ["city", t("detail.city")], ["country", t("filter.country")],
   ];
   const refresh = () => { qc.invalidateQueries({ queryKey: ["team", id] }); qc.invalidateQueries({ queryKey: ["teams"] }); };
-  const onError = (e: unknown) => alert(apiErrorMessage(e));
+  const onError = (e: unknown) => toast.error(apiErrorMessage(e));
 
   const updateM = useMutation({
     mutationFn: () => api.patch(`/teams/${id}`, form),
@@ -222,14 +226,14 @@ export default function TeamDetailPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <EventLink to="/teams" className="btn-secondary text-sm"><ArrowLeft className="w-4 h-4" /> {t("detail.back")}</EventLink>
         {canManage && !editing && (
           <div className="flex items-center gap-2">
             <button onClick={startEdit} className="btn-secondary text-sm"><Pencil className="w-4 h-4" /> {t("common:edit")}</button>
             {isAdmin && (
               <button
-                onClick={() => { if (confirm(t("detail.confirmDelete", { name: team.name }))) deleteM.mutate(); }}
+                onClick={() => void confirmAction({ message: t("detail.confirmDelete", { name: team.name }), tone: "danger" }).then((ok) => ok && deleteM.mutate())}
                 className="btn-danger text-sm"><Trash2 className="w-4 h-4" /> {t("common:delete")}</button>
             )}
           </div>
@@ -243,15 +247,15 @@ export default function TeamDetailPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {editFields.map(([key, label]) => (
                 <div key={key}>
-                  <label className="label">{label}</label>
-                  <input className="input" value={form[key] ?? ""} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+                  <label htmlFor={`teamdetailpage-f1-${key}`} className="label">{label}</label>
+                  <input id={`teamdetailpage-f1-${key}`} className="input" value={form[key] ?? ""} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
                 </div>
               ))}
             </div>
             {isAdmin && (
               <div>
-                <label className="label">{t("common:notes")}</label>
-                <textarea className="input min-h-[4rem]" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                <label htmlFor="teamdetailpage-f2" className="label">{t("common:notes")}</label>
+                <textarea id="teamdetailpage-f2" className="input min-h-[4rem]" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -291,11 +295,16 @@ export default function TeamDetailPage() {
         </div>
       )}
 
-      <TeamHistoryPanel rows={history} isLoading={historyLoading} />
+      <ErrorBoundary>
+        <Suspense fallback={<p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}>
+          <TeamHistoryPanel rows={history} isLoading={historyLoading} />
+        </Suspense>
+      </ErrorBoundary>
 
       {/* Members */}
       <section className="card overflow-hidden">
         <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white">{t("detail.members", { count: team.members?.length ?? 0 })}</h2>
+        <div className="table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
@@ -323,9 +332,9 @@ export default function TeamDetailPage() {
                 </td>
                 {canManage && (
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => removeMemberM.mutate(m.id)} disabled={removeMemberM.isPending}
-                            className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40" title={t("detail.remove")}>
-                      <Trash2 className="w-4 h-4" />
+                    <button type="button" onClick={() => void confirmAction({ message: t("members.confirmRemove", { name: m.name }), tone: "danger", confirmLabel: t("detail.remove") }).then((ok) => ok && removeMemberM.mutate(m.id))} disabled={removeMemberM.isPending}
+                            className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40" title={t("detail.remove")} aria-label={t("members.remove", { name: m.name })}>
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </td>
                 )}
@@ -336,12 +345,13 @@ export default function TeamDetailPage() {
             )}
           </tbody>
         </table>
+      </div>
         {canManage && (
           <div className="border-t p-4 flex flex-wrap items-end gap-3 bg-gray-50 dark:bg-gray-800/40">
-            <div className="flex-1 min-w-[8rem]"><label className="label">{t("common:name")}</label><input className="input" value={mName} onChange={(e) => setMName(e.target.value)} placeholder={t("detail.newMember")} /></div>
-            <div className="flex-1 min-w-[8rem]"><label className="label">{t("common:email")}</label><input className="input" value={mEmail} onChange={(e) => setMEmail(e.target.value)} /></div>
-            <div><label className="label">{t("members.roleLabel")}</label>
-              <select className="input" value={mRole} onChange={(e) => setMRole(e.target.value)}>
+            <div className="flex-1 min-w-[8rem]"><label htmlFor="teamdetailpage-f3" className="label">{t("common:name")}</label><input id="teamdetailpage-f3" className="input" value={mName} onChange={(e) => setMName(e.target.value)} placeholder={t("detail.newMember")} /></div>
+            <div className="flex-1 min-w-[8rem]"><label htmlFor="teamdetailpage-f4" className="label">{t("common:email")}</label><input id="teamdetailpage-f4" className="input" value={mEmail} onChange={(e) => setMEmail(e.target.value)} /></div>
+            <div><label htmlFor="teamdetailpage-f5" className="label">{t("members.roleLabel")}</label>
+              <select id="teamdetailpage-f5" className="input" value={mRole} onChange={(e) => setMRole(e.target.value)}>
                 <option value="member">{t("members.role.member")}</option>
                 <option value="mentor">{t("detail.mentor")}</option>
               </select>
@@ -379,6 +389,7 @@ export default function TeamDetailPage() {
       {/* Papers */}
       <section className="card overflow-hidden">
         <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2"><FileText className="w-4 h-4" /> {t("detail.papers", { count: papers?.length ?? 0 })}</h2>
+        <div className="table-scroll">
         <table className="w-full text-sm"><tbody className="divide-y dark:divide-gray-800">
           {papers?.map((p: any) => (
             <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
@@ -388,6 +399,7 @@ export default function TeamDetailPage() {
           ))}
           {(!papers || papers.length === 0) && (<tr><td className="px-4 py-8 text-center text-gray-400">{t("detail.noPapers")}</td></tr>)}
         </tbody></table>
+      </div>
       </section>
 
       {/* Print jobs */}
@@ -409,6 +421,7 @@ export default function TeamDetailPage() {
             </span>
           )}
         </h2>
+        <div className="table-scroll">
         <table className="w-full text-sm"><tbody className="divide-y dark:divide-gray-800">
           {jobs?.map((j: any) => (
             <tr key={j.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
@@ -420,6 +433,7 @@ export default function TeamDetailPage() {
           ))}
           {(!jobs || jobs.length === 0) && (<tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">{t("detail.noPrintJobs")}</td></tr>)}
         </tbody></table>
+      </div>
       </section>
     </div>
   );

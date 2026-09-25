@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trans, useTranslation } from "react-i18next";
 import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy, Pencil, X, Flag } from "lucide-react";
@@ -15,6 +15,9 @@ import ChecklistConfirmDialog from "@/modules/scoring/extras/ChecklistConfirmDia
 import MatchPenaltyDialog, { PenaltyBadges, type PenaltyMatch } from "@/modules/scoring/extras/MatchPenaltyDialog";
 import type { RuleSet } from "@/modules/scoring/extras/types";
 import { formatNumber } from "@/i18n/format";
+import { apiErrorMessage } from "@/lib/errors";
+import { toast } from "@/lib/toast";
+import { confirmAction } from "@/lib/confirm";
 
 interface Field {
   key: string;
@@ -40,7 +43,7 @@ export default function ScoreEntryPage() {
 
   // Scores are entered for the event of the current route; without one the
   // backend falls back to the season's default event.
-  const { eventId, seasonId: sid, season } = useScoringScope();
+  const { eventId, seasonId: sid, season, isLoading: scopeLoading } = useScoringScope();
   const eventQuery = eventId ? `?event_id=${eventId}` : "";
 
   const { data: allTeams } = useQuery({
@@ -52,11 +55,12 @@ export default function ScoreEntryPage() {
     queryFn: async () => (await api.get("/teams/mine")).data,
     enabled: canEnter && !canManageAll,
   });
-  const { data: schema } = useQuery({
+  const schemaQuery = useQuery({
     queryKey: ["scoring-schema", sid, eventId],
     queryFn: async () => (await api.get(`/scoring/seasons/${sid}/schema${eventQuery}`)).data,
     enabled: !!sid,
   });
+  const schema = schemaQuery.data;
   const { data: matches } = useQuery({
     queryKey: ["matches", sid, eventId],
     queryFn: async () => (await api.get(`/scoring/seasons/${sid}/matches${eventQuery}`)).data,
@@ -82,7 +86,8 @@ export default function ScoreEntryPage() {
   const preview = sheet.total;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["matches", sid, eventId] });
-  const onError = (e: any) => alert(e?.response?.data?.detail ?? t("common:actionFailed"));
+  const onError = (e: unknown) => toast.apiError(e, t("common:actionFailed"));
+  const formId = useId();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const rawFromScores = () => Object.fromEntries(fields.map((f) => [f.key, Number(scores[f.key] || 0)]));
@@ -138,7 +143,7 @@ export default function ScoreEntryPage() {
       api.put(`/scoring/matches/${mid}/confirm`, items ? { checklist: items } : undefined),
     onSuccess: () => { setChecklistMatchId(null); setConfirmError(""); invalidate(); },
     onError: (e: any) => {
-      if (checklistMatchId) setConfirmError(e?.response?.data?.detail ?? t("entry.confirmFailed"));
+      if (checklistMatchId) setConfirmError(apiErrorMessage(e, t("entry.confirmFailed")));
       else onError(e);
     },
   });
@@ -150,6 +155,14 @@ export default function ScoreEntryPage() {
     mutationFn: (mid: string) => api.delete(`/scoring/matches/${mid}`),
     onSuccess: invalidate, onError,
   });
+  // Deleting a score cannot be undone: always ask, naming team and round.
+  const askDelete = async (m: any) => {
+    const confirmed = await confirmAction({
+      message: t("entry.confirmDelete", { team: teamName(m.team_id), round: m.round_number, points: m.total_score }),
+      tone: "danger",
+    });
+    if (confirmed) deleteM.mutate(m.id);
+  };
 
   const visibleMatches = (matches ?? [])
     .filter((m: any) => !!m.is_practice === isPractice)
@@ -192,9 +205,11 @@ export default function ScoreEntryPage() {
           ] as [Mode, string, any][]).map(([m, label, Icon]) => (
             <button
               key={m}
+              type="button"
+              aria-pressed={mode === m}
               onClick={() => setMode(m)}
               className={clsx(
-                "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
+                "flex min-h-11 items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
                 mode === m
                   ? "bg-primary-600 text-white"
                   : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -220,25 +235,33 @@ export default function ScoreEntryPage() {
       {sid && <PendingScores filter={(entry) => entry.url === `/scoring/seasons/${sid}/matches` && (entry.eventId ?? undefined) === eventId && !!entry.body.is_practice === isPractice} />}
       {notice && <p role="status" className="rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">{notice}</p>}
 
-      {!season && <p className="text-red-600 text-sm">{t("entry.noSeason")}</p>}
-      {season && !schema && (
+      {!season && scopeLoading && <p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+      {!season && !scopeLoading && <p className="text-red-600 text-sm">{t("entry.noSeason")}</p>}
+      {season && schemaQuery.isLoading && <p role="status" className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+      {season && schemaQuery.isError && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+          {apiErrorMessage(schemaQuery.error, t("entry.schemaLoadFailed"))}
+          <button type="button" className="btn-secondary min-h-11" onClick={() => void schemaQuery.refetch()}>{t("common:retry")}</button>
+        </div>
+      )}
+      {season && schemaQuery.isSuccess && !schema?.fields?.length && (
         <p className="text-yellow-600 text-sm">{t("entry.noSchema")}</p>
       )}
 
       {/* Entry form */}
-      {season && schema && (
+      {season && schema?.fields?.length > 0 && (
         <div className="card p-6 space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <label className="label">{t("scouting.team")}</label>
-              <select className="input" value={teamId} disabled={!!editingId} onChange={(e) => setTeamId(e.target.value)}>
+              <label className="label" htmlFor={`${formId}-team`}>{t("scouting.team")}</label>
+              <select id={`${formId}-team`} className="input" value={teamId} disabled={!!editingId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">{t("entry.chooseTeam")}</option>
                 {entryTeams?.map((team: any) => (<option key={team.id} value={team.id}>{team.name}</option>))}
               </select>
             </div>
             <div>
-              <label className="label">{isPractice ? t("entry.runNumber") : t("scouting.roundLabel")}</label>
-              <input type="number" min={1} className="input" value={round} disabled={!!editingId}
+              <label className="label" htmlFor={`${formId}-round`}>{isPractice ? t("entry.runNumber") : t("scouting.roundLabel")}</label>
+              <input id={`${formId}-round`} type="number" min={1} className="input" value={round} disabled={!!editingId}
                      onChange={(e) => setRound(Number(e.target.value) || 1)} />
             </div>
             <div className="flex items-end">
@@ -253,15 +276,19 @@ export default function ScoreEntryPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 border-t pt-4">
             {fields.map((f) => (
               <div key={f.key}>
-                <label className="label">{f.label} <span className="text-gray-400">(×{f.multiplier})</span></label>
                 {f.type === "boolean" ? (
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={!!scores[f.key]}
+                  <p className="label" id={`${formId}-${f.key}-label`}>{f.label} <span className="text-gray-400">(×{f.multiplier})</span></p>
+                ) : (
+                  <label className="label" htmlFor={`${formId}-${f.key}`}>{f.label} <span className="text-gray-400">(×{f.multiplier})</span></label>
+                )}
+                {f.type === "boolean" ? (
+                  <label className="inline-flex min-h-11 items-center gap-2 text-sm">
+                    <input type="checkbox" aria-describedby={`${formId}-${f.key}-label`} checked={!!scores[f.key]}
                            onChange={(e) => setScores({ ...scores, [f.key]: e.target.checked ? 1 : 0 })} />
                     {t("entry.achieved")}
                   </label>
                 ) : (
-                  <input type="number" min={0} max={f.max_value ?? undefined} className="input"
+                  <input id={`${formId}-${f.key}`} type="number" min={0} max={f.max_value ?? undefined} className="input"
                          value={scores[f.key] ?? ""}
                          onChange={(e) => setScores({ ...scores, [f.key]: Number(e.target.value) })} />
                 )}
@@ -271,9 +298,9 @@ export default function ScoreEntryPage() {
 
           <div className="flex justify-end gap-2">
             {editingId && (
-              <button className="btn-secondary" onClick={resetForm}><X className="w-4 h-4" /> {t("common:cancel")}</button>
+              <button type="button" className="btn-secondary" onClick={resetForm}><X className="w-4 h-4" /> {t("common:cancel")}</button>
             )}
-            <button className="btn-primary disabled:opacity-40" disabled={!teamId || saveM.isPending}
+            <button type="button" className="btn-primary disabled:opacity-40" disabled={!teamId || saveM.isPending}
                     onClick={submit}>
               <Save className="w-4 h-4" /> {editingId ? t("entry.saveChanges") : (isPractice ? t("entry.savePractice") : t("entry.checkAndSave"))}
             </button>
@@ -311,6 +338,7 @@ export default function ScoreEntryPage() {
         <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white">
           {t(isPractice ? "entry.practiceRuns" : "entry.recorded", { count: visibleMatches.length })}
         </h2>
+        <div className="table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
@@ -336,24 +364,26 @@ export default function ScoreEntryPage() {
                   </td>
                 )}
                 {canManageAll && (
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-1 text-right">
+                    {/* 44px targets; delete sits apart from confirm behind a divider and asks first. */}
                     <div className="inline-flex items-center gap-1">
-                      <button onClick={() => startEdit(m)} disabled={!online}
-                              className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-                              title={t("common:edit")}><Pencil className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => startEdit(m)} disabled={!online}
+                              className="grid h-11 w-11 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 dark:hover:bg-gray-800"
+                              title={t("common:edit")} aria-label={t("entry.editFor", { team: teamName(m.team_id), round: m.round_number })}><Pencil className="w-4 h-4" aria-hidden="true" /></button>
                       {!isPractice && (
-                        <button onClick={() => setPenaltyMatch(m)} disabled={!online}
-                                className="p-1 rounded text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 disabled:opacity-40"
-                                title={t("penalty.open")} aria-label={t("penalty.openFor", { team: teamName(m.team_id), round: m.round_number })}><Flag className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => setPenaltyMatch(m)} disabled={!online}
+                                className="grid h-11 w-11 place-items-center rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 disabled:opacity-40"
+                                title={t("penalty.open")} aria-label={t("penalty.openFor", { team: teamName(m.team_id), round: m.round_number })}><Flag className="w-4 h-4" aria-hidden="true" /></button>
                       )}
                       {!isPractice && !m.confirmed_by && (
-                        <button onClick={() => startConfirm(m.id)} disabled={confirmM.isPending}
-                                className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"
-                                title={t("entry.confirm")}><Check className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => startConfirm(m.id)} disabled={confirmM.isPending}
+                                className="grid h-11 w-11 place-items-center rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40"
+                                title={t("entry.confirm")} aria-label={t("entry.confirmFor", { team: teamName(m.team_id), round: m.round_number })}><Check className="w-4 h-4" aria-hidden="true" /></button>
                       )}
-                      <button onClick={() => deleteM.mutate(m.id)} disabled={deleteM.isPending}
-                              className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40"
-                              title={t("common:delete")}><Trash2 className="w-4 h-4" /></button>
+                      <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-gray-700" aria-hidden="true" />
+                      <button type="button" onClick={() => void askDelete(m)} disabled={deleteM.isPending}
+                              className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40"
+                              title={t("common:delete")} aria-label={t("entry.deleteFor", { team: teamName(m.team_id), round: m.round_number })}><Trash2 className="w-4 h-4" aria-hidden="true" /></button>
                     </div>
                   </td>
                 )}
@@ -366,6 +396,7 @@ export default function ScoreEntryPage() {
             )}
           </tbody>
         </table>
+        </div>
       </section>
       <MatchPenaltyDialog
         match={penaltyMatch}

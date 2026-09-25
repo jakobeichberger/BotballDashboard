@@ -7,6 +7,8 @@ import { formatDateTime } from "@/i18n/format";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration, ScheduledMatch } from "@/api/types";
 import type { PartsChallenge } from "./types";
+import { confirmAction } from "@/lib/confirm";
+import { apiErrorMessage } from "@/lib/errors";
 
 const EMPTY_FORM = { scheduled_match_id: "", challenger_team_id: "", challenged_team_id: "", description: "" };
 
@@ -46,7 +48,7 @@ export default function PartsChallengePanel({
   const matchTeams = selectedMatch?.participants.map((p) => p.team_id).filter((id): id is string => !!id);
   const teamOptions = registrations.filter((item) => !matchTeams || matchTeams.includes(item.team_id));
 
-  const fail = (e: any) => setError(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : t("common:actionFailed"));
+  const fail = (e: any) => setError(apiErrorMessage(e, t("common:actionFailed")));
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["parts-challenges", eventId] });
     queryClient.invalidateQueries({ queryKey: ["event-ranking", eventId] });
@@ -106,10 +108,10 @@ export default function PartsChallengePanel({
                     {t("partsChallenge.rulingNote")}
                     <input className="input mt-1 w-full" maxLength={2000} value={notes[item.id] ?? ""} onChange={(e) => setNotes((current) => ({ ...current, [item.id]: e.target.value }))} />
                   </label>
-                  <button type="button" className="btn-danger" disabled={rule.isPending} onClick={() => { if (confirm(t("partsChallenge.confirmUphold", { team: teamName(item.challenged_team_id) }))) rule.mutate({ id: item.id, upheld: true }); }}>
+                  <button type="button" className="btn-danger" disabled={rule.isPending} onClick={() => void confirmAction({ message: t("partsChallenge.confirmUphold", { team: teamName(item.challenged_team_id) }) }).then((ok) => ok && rule.mutate({ id: item.id, upheld: true }))}>
                     {t("partsChallenge.uphold")}
                   </button>
-                  <button type="button" className="btn-secondary" disabled={rule.isPending} onClick={() => { if (confirm(t("partsChallenge.confirmReject", { team: teamName(item.challenger_team_id) }))) rule.mutate({ id: item.id, upheld: false }); }}>
+                  <button type="button" className="btn-secondary" disabled={rule.isPending} onClick={() => void confirmAction({ message: t("partsChallenge.confirmReject", { team: teamName(item.challenger_team_id) }) }).then((ok) => ok && rule.mutate({ id: item.id, upheld: false }))}>
                     {t("partsChallenge.reject")}
                   </button>
                 </div>

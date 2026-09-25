@@ -1,7 +1,13 @@
 import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach, vi } from "vitest";
-import i18n from "@/i18n/config";
+import { afterEach, beforeAll, beforeEach, vi } from "vitest";
+import i18n, { i18nReady } from "@/i18n/config";
+
+// The language bundles load lazily (i18n/config); have both ready up front.
+beforeAll(async () => {
+  await i18nReady;
+  await i18n.loadLanguages(["de", "en"]);
+});
 
 // Components render in German by default so assertions match the German UI
 // texts; tests covering English switch the language explicitly.
@@ -40,6 +46,11 @@ const localStorageMock = (() => {
   };
 })();
 Object.defineProperty(window, "localStorage", { value: localStorageMock });
+
+// jsdom has no object URLs (blob downloads, image previews).
+if (typeof URL.createObjectURL !== "function") {
+  Object.assign(URL, { createObjectURL: () => "blob:test", revokeObjectURL: () => undefined });
+}
 
 // Mock service worker
 Object.defineProperty(navigator, "serviceWorker", {

@@ -24,9 +24,9 @@ describe("formatCountdown", () => {
 });
 
 describe("apiErrorMessage", () => {
-  it("prefers the API message, then detail, then the fallback", () => {
-    expect(apiErrorMessage({ response: { data: { message: "Deadline passed" } } })).toBe("Deadline passed");
-    expect(apiErrorMessage({ response: { data: { detail: "Nope" } } })).toBe("Nope");
+  it("translates known API messages and falls back otherwise (lib/errors)", () => {
+    expect(apiErrorMessage({ response: { status: 404, data: { message: "Paper not found" } } })).toBe("Paper nicht gefunden.");
+    expect(apiErrorMessage({ response: { data: { detail: "Nope" } } }, "Fallback")).toBe("Fallback");
     expect(apiErrorMessage(new Error("x"), "Fallback")).toBe("Fallback");
   });
 });

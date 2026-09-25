@@ -9,7 +9,9 @@ import { useEvents } from "@/hooks/useEvents";
 import { PRINTER_TYPE_LABEL, apiError, type PrintQuota } from "@/lib/printing";
 import { CATEGORY_LABEL } from "@/lib/teams";
 import { formatDate } from "@/i18n/format";
-import { apiErrorMessage, passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { toast } from "@/lib/toast";
+import { confirmAction } from "@/lib/confirm";
 import i18n from "@/i18n/config";
 import { labelMap } from "@/i18n/labels";
 
@@ -17,7 +19,11 @@ function useInvalidate(keys: string[]) {
   const qc = useQueryClient();
   return () => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 }
-const onErr = (e: any) => alert(apiErrorMessage(e, i18n.t("common:actionFailed")));
+const onErr = (e: unknown) => toast.apiError(e, i18n.t("common:actionFailed"));
+/** Ask before a destructive action; runs `action` only when confirmed. */
+const confirmThen = async (message: string, action: () => void) => {
+  if (await confirmAction({ message, tone: "danger" })) action();
+};
 
 // ── Users ───────────────────────────────────────────────────────────────────
 function UsersSettings() {
@@ -49,7 +55,7 @@ function UsersSettings() {
   const [pwUser, setPwUser] = useState<{ id: string; email: string; password: string } | null>(null);
   const setPasswordM = useMutation({
     mutationFn: () => api.post(`/auth/users/${pwUser!.id}/password`, { new_password: pwUser!.password }),
-    onSuccess: () => { setPwUser(null); alert(t("users.passwordSet")); },
+    onSuccess: () => { setPwUser(null); toast.success(t("users.passwordSet")); },
     onError: onErr,
   });
   const deleteUserM = useMutation({
@@ -61,7 +67,7 @@ function UsersSettings() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold">{t("users.title")}</h2>
         <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("users.create")}</button>
       </div>
@@ -69,19 +75,19 @@ function UsersSettings() {
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
-            <div><label className="label">{t("common:email")}</label><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-            <div><label className="label">{t("auth:login.password")}</label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><p className={clsx("mt-1 text-xs", createPwProblem ? "text-red-600" : "text-gray-500")}>{createPwProblem ?? passwordHint()}</p></div>
+            <div><label htmlFor="settingspage-f1" className="label">{t("common:name")}</label><input id="settingspage-f1" className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div><label htmlFor="settingspage-f2" className="label">{t("common:email")}</label><input id="settingspage-f2" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+            <div><label htmlFor="settingspage-f3" className="label">{t("auth:login.password")}</label><input id="settingspage-f3" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><p className={clsx("mt-1 text-xs", createPwProblem ? "text-red-600" : "text-gray-500")}>{createPwProblem ?? passwordHint()}</p></div>
           </div>
-          <div>
-            <label className="label">{t("users.roles")}</label>
+          <div role="group" aria-labelledby="new-user-roles">
+            <p id="new-user-roles" className="label">{t("users.roles")}</p>
             <div className="flex flex-wrap gap-2">
               {roles?.map((r: any) => {
                 const on = roleIds.includes(r.id);
                 return (
-                  <button key={r.id} type="button"
+                  <button key={r.id} type="button" aria-pressed={on}
                     onClick={() => setRoleIds((prev) => on ? prev.filter((x) => x !== r.id) : [...prev, r.id])}
-                    className={clsx("px-3 py-1 rounded-full text-sm border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
+                    className={clsx("min-h-11 px-3 py-1 rounded-full text-sm border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
                     {r.name}
                   </button>
                 );
@@ -107,7 +113,7 @@ function UsersSettings() {
       )}
 
       {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th>
@@ -123,11 +129,11 @@ function UsersSettings() {
                 <td className="px-4 py-3 text-gray-500">{user.email}</td>
                 <td className="px-4 py-3">
                   {editUser && editUser.id === user.id ? (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1" role="group" aria-label={t("users.roles")}>
                       {roles?.map((r: any) => {
                         const on = editUser.roleIds.includes(r.id);
                         return (
-                          <button key={r.id} type="button"
+                          <button key={r.id} type="button" aria-pressed={on}
                             onClick={() => setEditUser({ id: user.id, roleIds: on ? editUser.roleIds.filter((x) => x !== r.id) : [...editUser.roleIds, r.id] })}
                             className={clsx("px-2 py-0.5 rounded-full text-xs border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
                             {r.name}
@@ -153,7 +159,7 @@ function UsersSettings() {
                         {user.is_active ? t("deactivate") : t("activate")}
                       </button>
                       <button className="btn-secondary text-xs" onClick={() => setPwUser({ id: user.id, email: user.email, password: "" })}>{t("auth:reset.submit")}</button>
-                      <button className="btn-danger text-xs" disabled={deleteUserM.isPending} onClick={() => { if (confirm(t("users.confirmDelete", { name: user.display_name }))) deleteUserM.mutate(user.id); }}>{t("common:delete")}</button>
+                      <button className="btn-danger text-xs" disabled={deleteUserM.isPending} onClick={() => void confirmThen(t("users.confirmDelete", { name: user.display_name }), () => deleteUserM.mutate(user.id))}>{t("common:delete")}</button>
                     </>
                   )}
                 </td>
@@ -217,18 +223,18 @@ function SeasonsSettings() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold">{t("seasons.title")}</h2>
         <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("seasons.create")}</button>
       </div>
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Botball 2027" /></div>
-            <div><label className="label">{t("seasons.year")}</label><input className="input" type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} /></div>
-            <div><label className="label">{t("seasons.gameTheme")}</label><input className="input" value={theme} onChange={(e) => setTheme(e.target.value)} /></div>
-            <div><label className="label">{t("seasons.eventStart")}</label><input className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
-            <div><label className="label">{t("seasons.eventEnd")}</label><input className="input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
+            <div><label htmlFor="settingspage-f4" className="label">{t("common:name")}</label><input id="settingspage-f4" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Botball 2027" /></div>
+            <div><label htmlFor="settingspage-f5" className="label">{t("seasons.year")}</label><input id="settingspage-f5" className="input" type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} /></div>
+            <div><label htmlFor="settingspage-f6" className="label">{t("seasons.gameTheme")}</label><input id="settingspage-f6" className="input" value={theme} onChange={(e) => setTheme(e.target.value)} /></div>
+            <div><label htmlFor="settingspage-f7" className="label">{t("seasons.eventStart")}</label><input id="settingspage-f7" className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
+            <div><label htmlFor="settingspage-f8" className="label">{t("seasons.eventEnd")}</label><input id="settingspage-f8" className="input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
           </div>
           <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>{t("create")}</button></div>
         </div>
@@ -248,7 +254,7 @@ function SeasonsSettings() {
         </div>
       )}
       {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("seasons.year")}</th>
@@ -263,11 +269,11 @@ function SeasonsSettings() {
                 <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                   {s.status !== "active" && s.status !== "archived" && <button className="btn-secondary text-xs" disabled={activateM.isPending} onClick={() => activateM.mutate(s.id)}>{t("activate")}</button>}
                   {s.status === "active" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => statusM.mutate({ sid: s.id, status: "finished" })}>{t("seasons.finish")}</button>}
-                  {s.status === "finished" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => { if (confirm(t("seasons.confirmArchive", { name: s.name }))) statusM.mutate({ sid: s.id, status: "archived" }); }}>{t("seasons.archive")}</button>}
+                  {s.status === "finished" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => void confirmAction({ message: t("seasons.confirmArchive", { name: s.name }), confirmLabel: t("seasons.archive") }).then((ok) => ok && statusM.mutate({ sid: s.id, status: "archived" }))}>{t("seasons.archive")}</button>}
                   {s.status === "archived" && <button className="btn-secondary text-xs" disabled={statusM.isPending} onClick={() => statusM.mutate({ sid: s.id, status: "finished" })}>{t("seasons.unarchive")}</button>}
                   <button className="btn-secondary text-xs" onClick={() => setCloneOf({ id: s.id, name: t("seasons.copyName", { name: s.name }), year: s.year + 1 })}>{t("seasons.clone")}</button>
                   <button className="btn-secondary text-xs" disabled={exportM.isPending} onClick={() => exportM.mutate(s)}>{t("seasons.export")}</button>
-                  {!s.is_active && s.status !== "archived" && <button className="btn-danger text-xs" disabled={deleteM.isPending} onClick={() => { if (confirm(t("seasons.confirmDelete", { name: s.name }))) deleteM.mutate(s.id); }}>{t("common:delete")}</button>}
+                  {!s.is_active && s.status !== "archived" && <button className="btn-danger text-xs" disabled={deleteM.isPending} onClick={() => void confirmThen(t("seasons.confirmDelete", { name: s.name }), () => deleteM.mutate(s.id))}>{t("common:delete")}</button>}
                 </td>
               </tr>
             ))}
@@ -301,14 +307,14 @@ function SpoolsPanel() {
     <div className="mt-8">
       <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("spools.title")}</h3>
       <div className="card p-4 mb-4 flex flex-wrap items-end gap-3">
-        <div><label className="label">{t("spools.material")}</label>
-          <select className="input" value={material} onChange={(e) => setMaterial(e.target.value)}><option>PLA</option><option>PETG</option></select></div>
-        <div><label className="label">{t("spools.color")}</label><input className="input" value={color} onChange={(e) => setColor(e.target.value)} /></div>
-        <div><label className="label">{t("spools.brand")}</label><input className="input" value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
-        <div><label className="label">{t("spools.grams")}</label><input type="number" className="input w-28" value={grams} onChange={(e) => setGrams(Number(e.target.value))} /></div>
+        <div><label htmlFor="settingspage-f9" className="label">{t("spools.material")}</label>
+          <select id="settingspage-f9" className="input" value={material} onChange={(e) => setMaterial(e.target.value)}><option>PLA</option><option>PETG</option></select></div>
+        <div><label htmlFor="settingspage-f10" className="label">{t("spools.color")}</label><input id="settingspage-f10" className="input" value={color} onChange={(e) => setColor(e.target.value)} /></div>
+        <div><label htmlFor="settingspage-f11" className="label">{t("spools.brand")}</label><input id="settingspage-f11" className="input" value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
+        <div><label htmlFor="settingspage-f12" className="label">{t("spools.grams")}</label><input id="settingspage-f12" type="number" className="input w-28" value={grams} onChange={(e) => setGrams(Number(e.target.value))} /></div>
         <button className="btn-primary text-sm disabled:opacity-40" disabled={createM.isPending} onClick={() => createM.mutate()}>{t("spools.add")}</button>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("spools.material")}</th><th className="px-4 py-3 text-left font-medium">{t("spools.color")}</th>
@@ -404,7 +410,7 @@ function QuotasPanel() {
         </select>
       </div>
       <p className="mb-3 text-xs text-gray-500">{t("quotas.hint")}</p>
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("quotas.team")}</th><th className="px-4 py-3 text-left font-medium">{t("quotas.used")}</th>
@@ -453,29 +459,29 @@ function PrintersSettings() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold">{t("printers.title")}</h2>
         <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("printers.add")}</button>
       </div>
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
-            <div><label className="label">{t("printers.model")}</label><input className="input" value={model} onChange={(e) => setModel(e.target.value)} /></div>
-            <div><label className="label">{t("printers.type")}</label>
-              <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
+            <div><label htmlFor="settingspage-f13" className="label">{t("common:name")}</label><input id="settingspage-f13" className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div><label htmlFor="settingspage-f14" className="label">{t("printers.model")}</label><input id="settingspage-f14" className="input" value={model} onChange={(e) => setModel(e.target.value)} /></div>
+            <div><label htmlFor="settingspage-f15" className="label">{t("printers.type")}</label>
+              <select id="settingspage-f15" className="input" value={type} onChange={(e) => setType(e.target.value)}>
                 {Object.entries(PRINTER_TYPE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </div>
-            <div><label className="label">{t("printers.apiUrl")}</label><input className="input" disabled={isGeneric} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="http://..." /></div>
-            {type === "bambu" && <div><label className="label">{t("printers.serial")}</label><input className="input" value={deviceId} onChange={(e) => setDeviceId(e.target.value)} /></div>}
-            {!isGeneric && <div><label className="label">{t("printers.apiKey")}</label><input className="input" type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} /></div>}
+            <div><label htmlFor="settingspage-f16" className="label">{t("printers.apiUrl")}</label><input id="settingspage-f16" className="input" disabled={isGeneric} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="http://..." /></div>
+            {type === "bambu" && <div><label htmlFor="settingspage-f17" className="label">{t("printers.serial")}</label><input id="settingspage-f17" className="input" value={deviceId} onChange={(e) => setDeviceId(e.target.value)} /></div>}
+            {!isGeneric && <div><label htmlFor="settingspage-f18" className="label">{t("printers.apiKey")}</label><input id="settingspage-f18" className="input" type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} /></div>}
           </div>
           <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>{t("common:add")}</button></div>
         </div>
       )}
       {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("printers.model")}</th>
@@ -522,16 +528,16 @@ function AnnouncementsSettings() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold">{t("announcements.title")}</h2>
         <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("announcements.add")}</button>
       </div>
       {show && (
         <div className="card p-4 mb-4 space-y-3">
-          <div><label className="label">{t("announcements.titleLabel")}</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div><label className="label">{t("announcements.text")}</label><textarea className="input min-h-[5rem]" value={text} onChange={(e) => setText(e.target.value)} /></div>
-          <div><label className="label">{t("announcements.audience")}</label>
-            <select className="input w-48" value={audience} onChange={(e) => setAudience(e.target.value)}>
+          <div><label htmlFor="settingspage-f19" className="label">{t("announcements.titleLabel")}</label><input id="settingspage-f19" className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div><label htmlFor="settingspage-f20" className="label">{t("announcements.text")}</label><textarea id="settingspage-f20" className="input min-h-[5rem]" value={text} onChange={(e) => setText(e.target.value)} /></div>
+          <div><label htmlFor="settingspage-f21" className="label">{t("announcements.audience")}</label>
+            <select id="settingspage-f21" className="input w-48" value={audience} onChange={(e) => setAudience(e.target.value)}>
               {AUDIENCES.map((value) => <option key={value} value={value}>{t(`announcements.audiences.${value}`)}</option>)}
             </select>
           </div>
@@ -539,7 +545,7 @@ function AnnouncementsSettings() {
         </div>
       )}
       {isLoading && <p className="text-gray-500 text-sm">{t("common:loading")}</p>}
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("announcements.titleLabel")}</th><th className="px-4 py-3 text-left font-medium">{t("announcements.audience")}</th>
@@ -605,9 +611,9 @@ function SeasonEditor() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("seasonDetails.title")}</h2>
-        <select className="input text-sm w-64" value={selId || seasons?.[0]?.id || ""} onChange={(e) => setSelId(e.target.value)}>
+        <select aria-label={t("seasonDetails.season")} className="input text-sm w-full sm:w-64" value={selId || seasons?.[0]?.id || ""} onChange={(e) => setSelId(e.target.value)}>
           {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name} {s.is_active ? t("activeSuffix") : ""}</option>))}
         </select>
       </div>
@@ -618,8 +624,8 @@ function SeasonEditor() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {DATE_FIELDS.map((key) => (
             <div key={key}>
-              <label className="label">{t(`seasonDetails.dateField.${key}`)}</label>
-              <input type="date" className="input" value={dates[key] ?? ""} onChange={(e) => setDates({ ...dates, [key]: e.target.value })} />
+              <label htmlFor={`settingspage-f22-${key}`} className="label">{t(`seasonDetails.dateField.${key}`)}</label>
+              <input id={`settingspage-f22-${key}`} type="date" className="input" value={dates[key] ?? ""} onChange={(e) => setDates({ ...dates, [key]: e.target.value })} />
             </div>
           ))}
         </div>
@@ -634,20 +640,20 @@ function SeasonEditor() {
       <div className="card p-4 space-y-3">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("seasonDetails.extra")}</h3>
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[10rem]"><label className="label">{t("announcements.titleLabel")}</label><input className="input" value={evTitle} onChange={(e) => setEvTitle(e.target.value)} placeholder={t("seasonDetails.titlePlaceholder")} /></div>
-          <div><label className="label">{t("seasonDetails.kind")}</label><select className="input" value={evType} onChange={(e) => setEvType(e.target.value)}><option value="deadline">{t("seasonDetails.deadline")}</option><option value="event">{t("seasonDetails.event")}</option></select></div>
-          <div><label className="label">{t("common:date")}</label><input type="date" className="input" value={evDate} onChange={(e) => setEvDate(e.target.value)} /></div>
+          <div className="flex-1 min-w-[10rem]"><label htmlFor="settingspage-f23" className="label">{t("announcements.titleLabel")}</label><input id="settingspage-f23" className="input" value={evTitle} onChange={(e) => setEvTitle(e.target.value)} placeholder={t("seasonDetails.titlePlaceholder")} /></div>
+          <div><label htmlFor="settingspage-f24" className="label">{t("seasonDetails.kind")}</label><select id="settingspage-f24" className="input" value={evType} onChange={(e) => setEvType(e.target.value)}><option value="deadline">{t("seasonDetails.deadline")}</option><option value="event">{t("seasonDetails.event")}</option></select></div>
+          <div><label htmlFor="settingspage-f25" className="label">{t("common:date")}</label><input id="settingspage-f25" type="date" className="input" value={evDate} onChange={(e) => setEvDate(e.target.value)} /></div>
           <button className="btn-primary text-sm disabled:opacity-40" disabled={!evTitle || !evDate || addEventM.isPending} onClick={() => addEventM.mutate()}>{t("seasonDetails.add")}</button>
         </div>
         <div className="divide-y dark:divide-gray-800">
           {events?.map((ev: any) => (
-            <div key={ev.id} className="flex items-center justify-between py-2 text-sm">
-              <div className="flex items-center gap-3">
+            <div key={ev.id} className="flex items-center justify-between gap-2 py-1 text-sm">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="text-gray-500 w-24">{formatDate(ev.event_date)}</span>
                 <span className={ev.event_type === "event" ? "badge-blue" : "badge-yellow"}>{ev.event_type === "event" ? t("seasonDetails.event") : t("seasonDetails.deadline")}</span>
                 <span className="text-gray-900 dark:text-white">{ev.title}</span>
               </div>
-              <button className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => delEventM.mutate(ev.id)} title={t("common:delete")}><Trash2 className="w-4 h-4" /></button>
+              <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => void confirmThen(t("seasonDetails.confirmDelete", { title: ev.title }), () => delEventM.mutate(ev.id))} title={t("common:delete")} aria-label={t("seasonDetails.deleteEntry", { title: ev.title })}><Trash2 className="w-4 h-4" aria-hidden="true" /></button>
             </div>
           ))}
           {events?.length === 0 && <p className="py-3 text-gray-400">{t("seasonDetails.noExtra")}</p>}
@@ -694,13 +700,13 @@ function LevelsSettings() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-semibold">{t("levels.title")}</h2></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4"><h2 className="text-lg font-semibold">{t("levels.title")}</h2></div>
       <div className="card p-4 mb-4 flex flex-wrap items-end gap-3">
-        <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Senior" /></div>
-        <div><label className="label">{t("levels.code")}</label><input className="input w-28" value={code} onChange={(e) => setCode(e.target.value)} placeholder="SR" /></div>
+        <div><label htmlFor="settingspage-f26" className="label">{t("common:name")}</label><input id="settingspage-f26" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Senior" /></div>
+        <div><label htmlFor="settingspage-f27" className="label">{t("levels.code")}</label><input id="settingspage-f27" className="input w-28" value={code} onChange={(e) => setCode(e.target.value)} placeholder="SR" /></div>
         <button className="btn-primary text-sm disabled:opacity-40" disabled={!name || !code || createM.isPending} onClick={() => createM.mutate()}>{t("levels.add")}</button>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("common:name")}</th><th className="px-4 py-3 text-left font-medium">{t("levels.code")}</th>
@@ -717,7 +723,7 @@ function LevelsSettings() {
                 <td className="px-4 py-3"><span className={l.is_active ? "badge-green" : "badge-gray"}>{l.is_active ? t("common:active") : t("common:inactive")}</span></td>
                 <td className="px-4 py-3 text-right space-x-2">
                   <button className="btn-secondary text-xs" disabled={toggleM.isPending} onClick={() => toggleM.mutate(l)}>{l.is_active ? t("deactivate") : t("activate")}</button>
-                  <button className="btn-danger text-xs" disabled={delM.isPending} onClick={() => { if (confirm(t("levels.confirmDelete", { name: l.name }))) delM.mutate(l.id); }}>{t("common:delete")}</button>
+                  <button className="btn-danger text-xs" disabled={delM.isPending} onClick={() => void confirmThen(t("levels.confirmDelete", { name: l.name }), () => delM.mutate(l.id))}>{t("common:delete")}</button>
                 </td>
               </tr>
             ))}
@@ -763,7 +769,7 @@ function SeasonModulesSettings() {
   if (loadingSeasons) return <p className="text-gray-500 text-sm">{t("common:loading")}</p>;
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold">{t("modules.title")}</h2>
         <button onClick={handleSave} disabled={!draft || saveMutation.isPending} className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t("common:save")}</button>
       </div>
@@ -826,23 +832,23 @@ function RolesSettings() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold">{t("roles.title")}</h2>
         <button className="btn-primary text-sm" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("roles.addButton")}</button>
       </div>
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className="label">{t("common:name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("roles.namePlaceholder")} /></div>
-            <div><label className="label">{t("roles.description")}</label><input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+            <div><label htmlFor="settingspage-f28" className="label">{t("common:name")}</label><input id="settingspage-f28" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("roles.namePlaceholder")} /></div>
+            <div><label htmlFor="settingspage-f29" className="label">{t("roles.description")}</label><input id="settingspage-f29" className="input" value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
           </div>
-          <div>
-            <label className="label">{t("roles.permissions")}</label>
+          <div role="group" aria-labelledby="new-role-permissions">
+            <p id="new-role-permissions" className="label">{t("roles.permissions")}</p>
             <div className="flex flex-wrap gap-1.5">
               {perms?.map((p: any) => {
                 const on = selPerms.includes(p.name);
                 return (
-                  <button key={p.id} type="button" title={p.description ?? ""}
+                  <button key={p.id} type="button" aria-pressed={on} title={p.description ?? ""}
                     onClick={() => setSelPerms((prev) => on ? prev.filter((x) => x !== p.name) : [...prev, p.name])}
                     className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
                     {p.name}
@@ -854,7 +860,7 @@ function RolesSettings() {
           <div className="flex justify-end"><button className="btn-primary text-sm disabled:opacity-40" disabled={!name || createM.isPending} onClick={() => createM.mutate()}>{t("roles.create")}</button></div>
         </div>
       )}
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800"><tr>
             <th className="px-4 py-3 text-left font-medium">{t("roles.role")}</th>
@@ -869,11 +875,11 @@ function RolesSettings() {
                 <td className="px-4 py-3 text-gray-500">{r.description ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">
                   {editRole && editRole.id === r.id ? (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1" role="group" aria-label={t("roles.permissions")}>
                       {perms?.map((p: any) => {
                         const on = editRole.names.includes(p.name);
                         return (
-                          <button key={p.id} type="button" title={p.description ?? ""}
+                          <button key={p.id} type="button" aria-pressed={on} title={p.description ?? ""}
                             onClick={() => setEditRole({ id: r.id, names: on ? editRole.names.filter((x) => x !== p.name) : [...editRole.names, p.name] })}
                             className={clsx("px-2 py-0.5 rounded-full text-xs font-mono border", on ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700")}>
                             {p.name}
@@ -918,17 +924,18 @@ export default function SettingsPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><Settings className="w-6 h-6" />{t("title")}</h1>
-      <div className="flex gap-6">
-        <aside className="w-48 shrink-0">
-          <nav className="space-y-1">
+      {/* Phones: the section navigation becomes a horizontally scrolling row above the content. */}
+      <div className="flex flex-col gap-6 md:flex-row">
+        <aside className="md:w-48 md:shrink-0">
+          <nav aria-label={t("title")} className="-mx-1 flex gap-1 overflow-x-auto pb-1 md:mx-0 md:block md:space-y-1 md:overflow-visible">
             {NAV.map(({ to, icon: Icon, label }) => (
-              <NavLink key={to} to={to} className={({ isActive }) => clsx("flex items-center gap-2 px-3 py-2 rounded-lg text-sm", isActive ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800")}>
-                <Icon className="w-4 h-4" />{t(`nav.${label}`)}
+              <NavLink key={to} to={to} className={({ isActive }) => clsx("flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-3 py-2 rounded-lg text-sm", isActive ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800")}>
+                <Icon className="w-4 h-4" aria-hidden="true" />{t(`nav.${label}`)}
               </NavLink>
             ))}
           </nav>
         </aside>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <Routes>
             <Route path="users" element={<UsersSettings />} />
             <Route path="roles" element={<RolesSettings />} />

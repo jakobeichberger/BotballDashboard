@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 
 interface Props {
@@ -8,9 +9,11 @@ interface Props {
 }
 
 export default function ProtectedRoute({ requireRole, requirePermission, children }: Props) {
-  const { accessToken, hasRole, hasPermission, user } = useAuthStore();
+  const { t } = useTranslation();
+  const { accessToken, offlineSession, hasRole, hasPermission, user } = useAuthStore();
 
-  if (!accessToken) {
+  // An offline cold start signs in read-only from the cached profile.
+  if (!accessToken && !offlineSession) {
     return <Navigate to="/login" replace />;
   }
 
@@ -18,7 +21,7 @@ export default function ProtectedRoute({ requireRole, requirePermission, childre
   // profile with the permissions: wait for it instead of redirecting a deep
   // link or a reload to the start page.
   if ((requireRole || requirePermission) && !user) {
-    return <div className="p-6 text-gray-500" role="status">Laden…</div>;
+    return <div className="p-6 text-gray-500" role="status">{t("loadingEllipsis")}</div>;
   }
 
   if (requireRole && !hasRole(requireRole) && !user?.is_superuser) {

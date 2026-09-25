@@ -52,7 +52,9 @@
     "teamNotes": "Notizen zum Team",
     "editTeam": "{{name}} bearbeiten",
     "deleteTeam": "{{name}} löschen",
-    "confirmDeleteTeam": "{{name}} mit allen Scouting-Notizen und beobachteten Punkten löschen?"
+    "confirmDeleteTeam": "{{name}} mit allen Scouting-Notizen und beobachteten Punkten löschen?",
+    "confirmDeleteObservation": "Beobachtung ({{score}} Punkte) löschen?",
+    "confirmDeleteNote": "Notiz löschen?"
   },
   "scans": {
     "cropAlt": "Bildausschnitt für {{label}}",
@@ -82,7 +84,8 @@
       "not_integer": "keine Ganzzahl",
       "sum_out_of_range": "Summenregel verletzt",
       "anchors_not_found": "Anker nicht gefunden, Ausschnitt prüfen"
-    }
+    },
+    "template": "Vorlage"
   },
   "backToScoreboard": "Zurück zur Rangliste",
   "saving": "Speichern…",
@@ -176,7 +179,9 @@
     "noTeams": "Keine Teams der Ausgangsstufe in dieser Saison registriert.",
     "notePlaceholder": "Notiz (z. B. ECER-Sieger)",
     "qualify": "Qualifizieren",
-    "register": "Qualifizierte Teams für dieses Event registrieren"
+    "register": "Qualifizierte Teams für dieses Event registrieren",
+    "confirmRevoke": "Qualifikation von {{team}} für {{level}} zurückziehen?",
+    "revokeShort": "Zurückziehen"
   },
   "schema": {
     "problem": {
@@ -295,7 +300,12 @@
     "open": "Offen",
     "confirm": "Bestätigen",
     "noPracticeRuns": "Noch keine Übungsläufe",
-    "noScores": "Noch keine Wertungen"
+    "noScores": "Noch keine Wertungen",
+    "confirmDelete": "Wertung von {{team}} (Runde {{round}}, {{points}} Punkte) endgültig löschen?",
+    "editFor": "Wertung von {{team}}, Runde {{round}} bearbeiten",
+    "confirmFor": "Wertung von {{team}}, Runde {{round}} bestätigen",
+    "deleteFor": "Wertung von {{team}}, Runde {{round}} löschen",
+    "schemaLoadFailed": "Das Wertungsschema konnte nicht geladen werden."
   },
   "scoreboard": {
     "disqualified": "Disqualifiziert (rote Karte)",
@@ -327,7 +337,8 @@
       "aerial": "Aerial",
       "overall": "Gesamtranking"
     },
-    "noSeason": "Keine aktive Saison gefunden"
+    "noSeason": "Keine aktive Saison gefunden",
+    "unknownTeam": "Unbekanntes Team"
   },
   "formulas": {
     "saveFailed": "Speichern fehlgeschlagen",
@@ -354,7 +365,9 @@
     "bracketWeightsHint": "Wird laut Game Review pro Turnier bekanntgegeben. Steht in den Formeln als <code>bracket_weight</code> zur Verfügung.",
     "saveWeights": "Gewichtung speichern",
     "bracketLabel": "Bracket {{index}}",
-    "bracketWeight": "Gewichtung {{index}}"
+    "bracketWeight": "Gewichtung {{index}}",
+    "keyLabel": "Schlüssel der Formel {{number}}",
+    "expressionLabel": "Ausdruck für {{key}}"
   },
   "scoreSheets": {
     "title": "Scoring-Sheets",
@@ -415,7 +428,8 @@
       "applyToSchema": "Felder direkt in das Scoring-Schema dieser Saison/Stufe übernehmen",
       "confirm": "{{count}} Felder bestätigen",
       "confirming": "Wird gespeichert …",
-      "confirmError": "Fehler beim Speichern. Bitte erneut versuchen."
+      "confirmError": "Fehler beim Speichern. Bitte erneut versuchen.",
+      "removeRow": "Zeile {{row}} ({{key}}) entfernen"
     },
     "layout": {
       "title": "OCR-Layout",
@@ -484,7 +498,10 @@
         "sumBounds": "Summenregel {{name}}: Minimum oder Maximum angeben.",
         "sumRange": "Summenregel {{name}}: Das Minimum liegt über dem Maximum."
       }
-    }
+    },
+    "downloadFailed": "Das PDF konnte nicht heruntergeladen werden.",
+    "downloadFor": "PDF von {{label}} herunterladen",
+    "deleteFor": "{{label}} löschen"
   },
   "penalty": {
     "legend": "Strafen",

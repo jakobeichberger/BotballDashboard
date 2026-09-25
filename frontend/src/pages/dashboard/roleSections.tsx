@@ -64,7 +64,7 @@ export function JurorPanel({ juror }: { juror: JurorSection }) {
                     {u.entered_by_name && <span className="text-gray-500"> · {t("juror.by", { name: u.entered_by_name })}</span>}
                   </span>
                   {u.entered_by_team_member && <span className="badge-yellow text-xs">{t("juror.mentorEntry")}</span>}
-                  {u.is_disqualified && <span className="badge-red text-xs">DQ</span>}
+                  {u.is_disqualified && <span className="badge-red text-xs" title={t("common:disqualified")}>{t("common:dqShort")}</span>}
                   <span className="tabular-nums font-medium">{fmtNum(u.total_score)}</span>
                 </li>
               ))}
@@ -146,7 +146,7 @@ function MentorTeamCard({ team, modules }: { team: MentorTeam; modules?: string[
                   <span className="flex-1">{t("round", { round: s.round_number })}</span>
                   {s.is_practice && <span className="badge-yellow text-xs">{t("mentor.practice")}</span>}
                   {!s.is_practice && !s.confirmed && <span className="badge-gray text-xs">{t("mentor.unconfirmed")}</span>}
-                  {s.is_disqualified && <span className="badge-red text-xs">DQ</span>}
+                  {s.is_disqualified && <span className="badge-red text-xs" title={t("common:disqualified")}>{t("common:dqShort")}</span>}
                   <span className="w-14 text-right font-medium tabular-nums">{fmtNum(s.total_score)}</span>
                 </li>
               ))}

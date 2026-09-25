@@ -198,5 +198,10 @@
     "runs": "Runs",
     "total": "Total",
     "empty": "No alliance runs yet."
-  }
+  },
+  "discardEntries": "The entries for this match have not been saved yet. Discard them and switch to the other match?",
+  "discardEntriesConfirm": "Discard",
+  "schemaLoadFailed": "The scoring schema could not be loaded.",
+  "publicLoadFailed": "The event could not be loaded – please check the connection.",
+  "liveTitle": "Botball Live"
 }

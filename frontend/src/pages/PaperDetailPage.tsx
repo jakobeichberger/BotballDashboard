@@ -14,6 +14,9 @@ import { labelMap } from "@/i18n/labels";
 import { formatFileSize } from "@/lib/teams";
 import { DeadlineBanner } from "@/modules/papers/DeadlineBanner";
 import { VersionDiff } from "@/modules/papers/VersionDiff";
+import { confirmAction } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
+import { downloadFile } from "@/lib/download";
 import {
   ADMIN_STATUS_OPTIONS,
   EDITABLE_STATUSES,
@@ -179,7 +182,7 @@ export default function PaperDetailPage() {
     qc.invalidateQueries({ queryKey: ["paper-history", id] });
     qc.invalidateQueries({ queryKey: ["papers"] });
   };
-  const onError = (e: unknown) => alert(apiErrorMessage(e));
+  const onError = (e: unknown) => toast.error(apiErrorMessage(e));
 
   const saveReviewM = useMutation({
     mutationFn: (submit: boolean) => {
@@ -268,18 +271,9 @@ export default function PaperDetailPage() {
 
   const handleDownload = async (version?: number, name?: string) => {
     try {
-      const res = await api.get(`/papers/${id}/download`, {
-        params: version ? { version } : undefined,
-        responseType: "blob",
-      });
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name ?? paper?.file_name ?? "paper.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      alert(t("detail.fileUnavailable"));
+      await downloadFile(`/papers/${id}/download`, name ?? paper?.file_name ?? "paper.pdf", version ? { version } : undefined);
+    } catch (error) {
+      toast.apiError(error, t("detail.fileUnavailable"));
     }
   };
 
@@ -317,8 +311,8 @@ export default function PaperDetailPage() {
 
       {/* Header */}
       <div className="card p-6">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-start gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <h1 className="flex min-w-0 items-start gap-2 break-words text-2xl font-bold text-gray-900 dark:text-white">
             <FileText className="w-6 h-6 mt-1 shrink-0" />
             {paper.title}
           </h1>
@@ -361,7 +355,7 @@ export default function PaperDetailPage() {
               </div>
             )}
             {paper.final_score != null && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Award className="w-4 h-4 text-primary-500" />
                 <span className="text-gray-500">{t("detail.finalResult")}</span>
                 <span className="font-semibold text-gray-900 dark:text-white">{Math.round(paper.final_score * 100)}%</span>
@@ -392,6 +386,7 @@ export default function PaperDetailPage() {
         <h2 id="paper-versions-heading" className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <History className="w-4 h-4" /> {t("detail.versions", { count: paper.versions?.length ?? 0 })}
         </h2>
+        <div className="table-scroll">
         <table className="w-full text-sm">
           <tbody className="divide-y dark:divide-gray-800">
             {versions.map((v) => (
@@ -413,6 +408,7 @@ export default function PaperDetailPage() {
             )}
           </tbody>
         </table>
+      </div>
         <VersionDiff paperId={paper.id} versions={paper.versions ?? []} />
         {canWritePaper && (
           <div className="border-t p-4 flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-800/40">
@@ -493,8 +489,8 @@ export default function PaperDetailPage() {
                 <input className="input flex-1" aria-label={t("detail.reason")} placeholder={t("detail.reasonOptional")} value={statusReason} onChange={(e) => setStatusReason(e.target.value)} />
                 <button
                   disabled={!newStatus || setStatusM.isPending}
-                  onClick={() => {
-                    if (newStatus === "disqualified_ai" && !confirm(t("detail.confirmDisqualify"))) return;
+                  onClick={async () => {
+                    if (newStatus === "disqualified_ai" && !(await confirmAction({ message: t("detail.confirmDisqualify"), tone: "danger", confirmLabel: t("detail.apply") }))) return;
                     setStatusM.mutate(newStatus);
                   }}
                   className="btn-secondary text-sm disabled:opacity-40"
@@ -546,7 +542,7 @@ export default function PaperDetailPage() {
       {/* ── Reviewer form ────────────────────────────────────────────── */}
       {isAssigned && (
         <section className="card p-6 space-y-4" aria-labelledby="my-review-heading">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id="my-review-heading" className="font-semibold text-gray-900 dark:text-white">
               {t("detail.myReview")} {paper.current_version ? `(v${paper.current_version})` : ""}
             </h2>
@@ -611,7 +607,7 @@ export default function PaperDetailPage() {
               <button disabled={saveReviewM.isPending} onClick={() => saveReviewM.mutate(false)} className="btn-secondary text-sm disabled:opacity-40">
                 {t("detail.saveDraft")}
               </button>
-              <button disabled={saveReviewM.isPending} onClick={() => { if (confirm(t("detail.confirmSubmitReview"))) saveReviewM.mutate(true); }} className="btn-primary text-sm disabled:opacity-40">
+              <button disabled={saveReviewM.isPending} onClick={() => void confirmAction({ message: t("detail.confirmSubmitReview") }).then((ok) => ok && saveReviewM.mutate(true))} className="btn-primary text-sm disabled:opacity-40">
                 <Send className="w-4 h-4" /> {t("detail.submitReview")}
               </button>
               <span className="text-xs text-gray-400">{t("detail.submitReviewHint")}</span>
@@ -630,7 +626,7 @@ export default function PaperDetailPage() {
                 <span className="text-sm text-gray-600 dark:text-gray-300">
                   {userName(r.reviewer_id)} · {t("detail.round", { round: r.revision_number })}{r.version_number ? ` · v${r.version_number}` : ""}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {r.recommendation && (<span className={RECOMMENDATION_BADGE[r.recommendation] ?? "badge-gray"}>{RECOMMENDATION_LABEL[r.recommendation] ?? r.recommendation}</span>)}
                   <span className={r.is_submitted ? "badge-green" : "badge-yellow"}>{r.is_submitted ? t("detail.reviewSubmitted") : t("detail.reviewDraft")}</span>
                   {isAdmin && r.is_submitted && reviewOpen && r.revision_number === paper.revision_number && (
@@ -651,6 +647,7 @@ export default function PaperDetailPage() {
       {(isAdmin || isAssigned) && (
         <section className="card overflow-hidden">
           <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white">{t("detail.assignedReviewers", { count: paper.assignments?.length ?? 0 })}</h2>
+          <div className="table-scroll">
           <table className="w-full text-sm">
             <tbody className="divide-y dark:divide-gray-800">
               {paper.assignments?.map((a) => (
@@ -682,6 +679,7 @@ export default function PaperDetailPage() {
               )}
             </tbody>
           </table>
+        </div>
         </section>
       )}
 

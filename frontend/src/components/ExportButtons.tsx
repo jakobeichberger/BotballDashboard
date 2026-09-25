@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Download, FileText, Loader2, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { api } from "@/lib/api";
+import { downloadFile } from "@/lib/download";
 
 interface ExportButtonProps {
   url: string;
@@ -10,19 +10,6 @@ interface ExportButtonProps {
   variant?: "pdf" | "csv";
 }
 
-async function downloadFile(url: string, filename: string): Promise<void> {
-  const response = await api.get(url, { responseType: "blob" });
-  const blob = new Blob([response.data]);
-  const href = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement("a");
-    a.href = href;
-    a.download = filename;
-    a.click();
-  } finally {
-    URL.revokeObjectURL(href);
-  }
-}
 
 export function ExportButton({ url, filename, label, variant = "pdf" }: ExportButtonProps) {
   const { t } = useTranslation();

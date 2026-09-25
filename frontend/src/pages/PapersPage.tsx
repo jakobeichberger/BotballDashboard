@@ -132,7 +132,7 @@ export default function PapersPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <FileText className="w-6 h-6" />
           {t("title")}
@@ -164,7 +164,7 @@ export default function PapersPage() {
 
       {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">{t("workload.title")}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-gray-500">{t("workload.summary", { open: item.open, overdue: item.overdue, completed: item.completed })}</p></div>)}</div></section>}
 
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>

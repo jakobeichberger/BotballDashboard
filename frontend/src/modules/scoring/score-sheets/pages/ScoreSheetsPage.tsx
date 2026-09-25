@@ -22,6 +22,10 @@ import { scoreSheetApi, type ScoreSheetTemplateListItem } from '../api/scoreShee
 import ScoreSheetUploadForm from '../components/ScoreSheetUploadForm'
 import FieldCandidateEditor from '../components/FieldCandidateEditor'
 import OcrLayoutEditor from '../components/OcrLayoutEditor'
+import Modal from '@/components/Modal'
+import { confirmAction } from '@/lib/confirm'
+import { downloadFile } from '@/lib/download'
+import { toast } from '@/lib/toast'
 
 const OCR_STATUS_BADGE: Record<string, string> = {
   pending:    'badge badge-gray',
@@ -76,72 +80,82 @@ export default function ScoreSheetsPage() {
     },
   })
 
-  const handleDelete = (sheet: ScoreSheetTemplateListItem) => {
-    if (!confirm(t('scoreSheets.deleteConfirm', { label: sheet.label }))) return
+  const handleDelete = async (sheet: ScoreSheetTemplateListItem) => {
+    if (!(await confirmAction({ message: t('scoreSheets.deleteConfirm', { label: sheet.label }), tone: 'danger' }))) return
     deleteSheet.mutate(sheet.id)
+  }
+
+  // The file endpoint needs the bearer token: a plain link would get a 401.
+  const handleDownload = async (sheet: ScoreSheetTemplateListItem) => {
+    try {
+      await downloadFile(scoreSheetApi.downloadUrl(sheet.id), undefined, undefined, `${sheet.label}.pdf`)
+    } catch (error) {
+      toast.apiError(error, t('scoreSheets.downloadFailed'))
+    }
   }
 
   return (
     <div className="flex flex-col h-full gap-4 p-4 lg:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{t('scoreSheets.title')}</h1>
           <p className="text-sm text-gray-500 mt-0.5">{t('scoreSheets.subtitle')}</p>
         </div>
         <button
+          type="button"
           className="btn btn-primary"
           onClick={() => setShowUpload(true)}
         >
-          + {t('scoreSheets.upload.button')}
+          <span aria-hidden="true">+</span> {t('scoreSheets.upload.button')}
         </button>
       </div>
 
       {/* Upload modal */}
-      {showUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">
-            <h2 className="text-lg font-semibold mb-4">{t('scoreSheets.upload.title')}</h2>
-            <ScoreSheetUploadForm
-              seasonId={seasonId!}
-              competitionLevelId={competitionLevelId}
-              onSuccess={() => {
-                setShowUpload(false)
-                queryClient.invalidateQueries({ queryKey: ['score-sheets', seasonId] })
-              }}
-              onCancel={() => setShowUpload(false)}
-            />
-          </div>
-        </div>
-      )}
+      <Modal open={showUpload} title={t('scoreSheets.upload.title')} onClose={() => setShowUpload(false)}>
+        <ScoreSheetUploadForm
+          seasonId={seasonId!}
+          competitionLevelId={competitionLevelId}
+          onSuccess={() => {
+            setShowUpload(false)
+            queryClient.invalidateQueries({ queryKey: ['score-sheets', seasonId] })
+          }}
+          onCancel={() => setShowUpload(false)}
+        />
+      </Modal>
 
       {/* Main content */}
-      <div className="flex flex-1 gap-4 min-h-0">
+      <div className="flex flex-1 flex-col gap-4 min-h-0 lg:flex-row">
         {/* Left: sheet list */}
-        <div className="w-full lg:w-80 shrink-0 flex flex-col gap-2 overflow-y-auto">
+        <div className="w-full lg:w-80 shrink-0 flex flex-col gap-2 lg:overflow-y-auto">
           {isLoading && (
-            <p className="text-sm text-gray-500 py-4 text-center">{t('common:loading')}</p>
+            <p role="status" className="text-sm text-gray-500 py-4 text-center">{t('common:loading')}</p>
           )}
 
           {!isLoading && sheets.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">
-              <p className="text-2xl mb-2">📄</p>
+              <p className="text-2xl mb-2" aria-hidden="true">📄</p>
               <p>{t('scoreSheets.empty')}</p>
             </div>
           )}
 
           {sheets.map((sheet) => (
-            <button
+            <div
               key={sheet.id}
-              type="button"
-              onClick={() => setSelectedId(sheet.id)}
               className={[
-                'w-full text-left rounded-lg border p-3 transition-colors',
+                'w-full rounded-lg border transition-colors',
                 selectedId === sheet.id
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
                   : 'border-gray-200 dark:border-gray-700 hover:border-blue-300',
               ].join(' ')}
             >
+              {/* Selecting and the row actions are separate controls: a button must not contain links or buttons. */}
+              <button
+                type="button"
+                onClick={() => setSelectedId(sheet.id)}
+                aria-pressed={selectedId === sheet.id}
+                className="block w-full rounded-t-lg p-3 pb-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">{sheet.label}</p>
@@ -161,47 +175,47 @@ export default function ScoreSheetsPage() {
 
               {sheet.confirmed_fields_count != null && (
                 <p className="text-xs text-green-600 dark:text-green-400 mt-1.5">
-                  ✓ {sheet.confirmed_fields_count} {t('scoreSheets.fields.confirmed')}
+                  <span aria-hidden="true">✓ </span>{sheet.confirmed_fields_count} {t('scoreSheets.fields.confirmed')}
                 </p>
               )}
+              </button>
 
               {/* Actions row */}
-              <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-                <a
-                  href={scoreSheetApi.downloadUrl(sheet.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              <div className="flex flex-wrap gap-1 px-2 pb-2">
+                <button
+                  type="button"
+                  onClick={() => void handleDownload(sheet)}
+                  className="min-h-11 rounded px-2 text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  aria-label={t('scoreSheets.downloadFor', { label: sheet.label })}
                 >
                   {t('scoreSheets.download')}
-                </a>
+                </button>
                 {!sheet.is_active && (
                   <>
-                    <span className="text-gray-300">·</span>
                     <button
                       type="button"
                       onClick={() => setActive.mutate(sheet.id)}
-                      className="text-xs text-gray-600 dark:text-gray-400 hover:underline"
+                      className="min-h-11 rounded px-2 text-xs text-gray-600 hover:underline dark:text-gray-400"
                     >
                       {t('scoreSheets.setActive')}
                     </button>
-                    <span className="text-gray-300">·</span>
                     <button
                       type="button"
-                      onClick={() => handleDelete(sheet)}
-                      className="text-xs text-red-500 hover:underline"
+                      onClick={() => void handleDelete(sheet)}
+                      className="min-h-11 rounded px-2 text-xs text-red-600 hover:underline"
+                      aria-label={t('scoreSheets.deleteFor', { label: sheet.label })}
                     >
                       {t('common:delete')}
                     </button>
                   </>
                 )}
               </div>
-            </button>
+            </div>
           ))}
         </div>
 
         {/* Right: field editor */}
-        <div className="flex-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-4 lg:p-6">
+        <div className="min-w-0 flex-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-4 lg:p-6">
           {!selectedSheet ? (
             <div className="flex h-full items-center justify-center text-gray-400 text-sm">
               {t('scoreSheets.selectToEdit')}
@@ -213,7 +227,7 @@ export default function ScoreSheetsPage() {
             </div>
           ) : (
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <h2 className="font-semibold">{selectedSheet.label}</h2>
                 <span className="text-sm text-gray-500">{selectedSheet.file_name}</span>
               </div>

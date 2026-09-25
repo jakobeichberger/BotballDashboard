@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CATEGORY_LABEL } from "@/lib/teams";
 import { api } from "@/lib/api";
+import { apiErrorMessage } from "@/lib/errors";
 import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
 import {
   Calculator,
@@ -183,7 +184,7 @@ export default function FormulasPage() {
       queryClient.invalidateQueries({ queryKey: ["formulas", seasonId, category] });
     },
     onError: (err: any) => {
-      setSaveError(err?.response?.data?.detail ?? t("formulas.saveFailed"));
+      setSaveError(apiErrorMessage(err, t("formulas.saveFailed")));
     },
   });
 
@@ -336,9 +337,9 @@ export default function FormulasPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Editor ───────────────────────────────────────────────────────── */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <div className="card p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium">{t("formulas.formulas")}</h2>
               <button className="btn-secondary" onClick={add}>
                 <Plus className="w-4 h-4" />
@@ -355,39 +356,47 @@ export default function FormulasPage() {
                   key={i}
                   className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
-                      className="input font-mono max-w-[16rem]"
+                      className="input min-w-0 flex-1 font-mono sm:max-w-[16rem]"
+                      aria-label={t("formulas.keyLabel", { number: i + 1 })}
                       placeholder={t("schema.keyPlaceholder")}
                       value={f.key}
                       onChange={(e) => update(i, { key: e.target.value })}
                     />
                     <span className="text-gray-400">=</span>
-                    <div className="flex-1" />
+                    <div className="hidden flex-1 sm:block" />
                     <button
-                      className="btn-secondary px-2"
+                      type="button"
+                      className="btn-secondary min-h-11 min-w-11 justify-center px-2"
                       title={t("rules.up")}
+                      aria-label={t("rules.up")}
                       onClick={() => move(i, -1)}
                     >
-                      <ArrowUp className="w-4 h-4" />
+                      <ArrowUp className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="btn-secondary px-2"
+                      type="button"
+                      className="btn-secondary min-h-11 min-w-11 justify-center px-2"
                       title={t("rules.down")}
+                      aria-label={t("rules.down")}
                       onClick={() => move(i, 1)}
                     >
-                      <ArrowDown className="w-4 h-4" />
+                      <ArrowDown className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="btn-danger px-2"
+                      type="button"
+                      className="btn-danger min-h-11 min-w-11 justify-center px-2"
                       title={t("formulas.remove")}
+                      aria-label={t("formulas.remove")}
                       onClick={() => remove(i)}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </div>
                   <textarea
                     className="input font-mono text-sm"
+                    aria-label={t("formulas.expressionLabel", { key: f.key || i + 1 })}
                     rows={2}
                     spellCheck={false}
                     placeholder="3/4 * ((n - rank(seed_total) + 1) / n) + 1/4 * ..."
@@ -424,7 +433,7 @@ export default function FormulasPage() {
 
           {/* ── Preview ────────────────────────────────────────────────────── */}
           <div className="card p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium">{t("formulas.preview")}</h2>
               {previewing ? (
                 <span className="text-sm text-gray-500">{t("formulas.calculating")}</span>
@@ -463,7 +472,7 @@ export default function FormulasPage() {
                   <tbody>
                     {preview.rows.map((r) => (
                       <tr key={r.team_id} className="border-b dark:border-gray-800">
-                        <td className="py-1.5 pr-3 text-gray-500">{r.rank ?? "DQ"}</td>
+                        <td className="py-1.5 pr-3 text-gray-500">{r.rank ?? t("common:dqShort")}</td>
                         <td className="py-1.5 pr-3">{r.team_name ?? r.team_id}</td>
                         {columns.map((c) => (
                           <td key={c} className="py-1.5 pr-3 font-mono text-xs">
@@ -486,7 +495,7 @@ export default function FormulasPage() {
         </div>
 
         {/* ── Reference ─────────────────────────────────────────────────────── */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="card p-4">
             <h2 className="font-medium mb-2">{t("formulas.variables")}</h2>
             <dl className="space-y-1.5 text-sm">

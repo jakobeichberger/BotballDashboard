@@ -96,7 +96,8 @@
     "type": "Art",
     "label": "Bezeichnung",
     "blockAfter": "Uploads danach sperren",
-    "create": "Frist anlegen"
+    "create": "Frist anlegen",
+    "confirmDelete": "Frist „{{name}}“ ({{date}}) löschen?"
   },
   "title": "Paper Review",
   "reviewsCsv": "Reviews CSV",

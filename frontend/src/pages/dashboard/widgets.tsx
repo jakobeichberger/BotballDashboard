@@ -60,8 +60,8 @@ export function SectionCard({
 }) {
   const headingId = `${id}-heading`;
   return (
-    <section className="card p-6 mb-6" aria-labelledby={headingId}>
-      <div className="flex items-center justify-between mb-4">
+    <section className="card mb-6 min-w-0 p-4 sm:p-6" aria-labelledby={headingId}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 id={headingId} className="text-lg font-semibold text-gray-900 dark:text-white">
           {title}
         </h2>
@@ -160,6 +160,7 @@ export function RankingList({
     return <p className="text-sm text-gray-500">{t("noScores")}</p>;
   }
   return (
+    <div className="table-scroll">
     <table className="w-full text-sm">
       <caption className="sr-only">{t("ranking.caption")}</caption>
       <thead>
@@ -183,6 +184,7 @@ export function RankingList({
         ))}
       </tbody>
     </table>
+  </div>
   );
 }
 

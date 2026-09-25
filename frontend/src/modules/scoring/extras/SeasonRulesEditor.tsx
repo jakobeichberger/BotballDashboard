@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import type { ChecklistItem, RuleSet, TiebreakerCriterion, TiebreakerPreset } from "./types";
+import { apiErrorMessage } from "@/lib/errors";
 
 const EMPTY: Omit<RuleSet, "season_id"> = { tiebreakers: [], finals_replay: false, end_contact_bonus_percent: 25, referee_checklist: [] };
 
@@ -20,7 +21,7 @@ export default function SeasonRulesEditor({ seasonId, onMessage }: { seasonId: s
   const save = useMutation({
     mutationFn: async () => api.put(`/scoring/seasons/${seasonId}/rules`, draft),
     onSuccess: () => { onMessage(t("rules.saved")); queryClient.invalidateQueries({ queryKey: ["scoring-rules", seasonId] }); },
-    onError: (error: any) => onMessage(typeof error.response?.data?.detail === "string" ? error.response.data.detail : t("rules.saveFailed")),
+    onError: (error: any) => onMessage(apiErrorMessage(error, t("rules.saveFailed"))),
   });
   const loadPreset = () => {
     const preset = presets.data?.find((item) => item.id === presetId);

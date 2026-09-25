@@ -5,6 +5,8 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { phaseLabel } from "@/api/analytics";
 import type { EventPhase } from "@/api/types";
+import { confirmAction } from "@/lib/confirm";
+import { apiErrorMessage } from "@/lib/errors";
 
 export const PHASE_TYPES = ["seeding", "double_seeding", "double_elimination", "alliance", "final"] as const;
 export const PHASE_STATUSES = ["draft", "scheduled", "live", "completed"] as const;
@@ -31,7 +33,7 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
     queryClient.invalidateQueries({ queryKey: ["event-phases", eventId] });
     queryClient.invalidateQueries({ queryKey: ["event-bracket", eventId] });
   };
-  const fail = (e: any) => setError(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : t("common:actionFailed"));
+  const fail = (e: any) => setError(apiErrorMessage(e, t("common:actionFailed")));
   // sort_order is unique per event: append after the highest one in use.
   const nextSortOrder = Math.max(-1, ...(phases.data ?? []).map((item) => item.sort_order)) + 1;
   const addPhase = useMutation({
@@ -95,7 +97,7 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
                 aria-label={t("setup.deletePhase", { name: item.name })}
                 title={phaseLocked(item) ? t("setup.phaseLockedDelete") : t("common:delete")}
                 disabled={phaseLocked(item) || deletePhase.isPending}
-                onClick={() => { if (confirm(t("setup.confirmDeletePhase", { name: item.name }))) deletePhase.mutate(item.id); }}
+                onClick={() => void confirmAction({ message: t("setup.confirmDeletePhase", { name: item.name }), tone: "danger" }).then((ok) => ok && deletePhase.mutate(item.id))}
               ><Trash2 className="h-4 w-4" /></button>
             </span>
           </li>

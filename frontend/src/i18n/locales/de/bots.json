@@ -40,6 +40,7 @@
     "noFunctionality": "Keine Beschreibung der Funktionsweise vorhanden.",
     "noImage": "Kein Bild hochgeladen",
     "imageTypes": "PNG, JPEG, GIF oder WebP",
-    "uploadImage": "Bild hochladen"
+    "uploadImage": "Bild hochladen",
+    "chooseImage": "Bilddatei wählen"
   }
 }

@@ -132,7 +132,8 @@
     "empty": "Noch keine Mitglieder hinterlegt.",
     "roleLabel": "Rolle",
     "addFailed": "Mitglied konnte nicht hinzugefügt werden.",
-    "add": "Mitglied hinzufügen"
+    "add": "Mitglied hinzufügen",
+    "confirmRemove": "{{name}} aus dem Team entfernen?"
   },
   "detail": {
     "accountLinked": "Konto verknüpft",

@@ -83,6 +83,7 @@ function FieldComparison({ perf }: { perf: TeamPerformance }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <div className="table-scroll">
       <table className="w-full text-sm self-start">
         <caption className="sr-only">{t("performance.fieldsCaption")}</caption>
         <thead>
@@ -110,6 +111,7 @@ function FieldComparison({ perf }: { perf: TeamPerformance }) {
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
@@ -164,6 +166,7 @@ export function TeamPerformanceView({ perf }: { perf: TeamPerformance }) {
       </SectionCard>
 
       <SectionCard title={t("performance.phases")} id="perf-phases">
+        <div className="table-scroll">
         <table className="w-full text-sm">
           <caption className="sr-only">{t("performance.phasesCaption")}</caption>
           <thead><tr className="text-left text-gray-500">
@@ -182,9 +185,11 @@ export function TeamPerformanceView({ perf }: { perf: TeamPerformance }) {
             ))}
           </tbody>
         </table>
+      </div>
         {perf.season_events.length > 1 && (
           <>
             <h3 className="mt-6 mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">{t("performance.seasonEvents")}</h3>
+            <div className="table-scroll">
             <table className="w-full text-sm">
               <caption className="sr-only">{t("performance.seasonEventsCaption")}</caption>
               <thead><tr className="text-left text-gray-500">
@@ -201,6 +206,7 @@ export function TeamPerformanceView({ perf }: { perf: TeamPerformance }) {
                 ))}
               </tbody>
             </table>
+          </div>
           </>
         )}
       </SectionCard>

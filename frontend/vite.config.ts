@@ -3,11 +3,40 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
+// Lazy chunks left out of the precache (file names come from the page
+// modules, "charts" from manualChunks below).
+const ADMIN_CHUNKS = [
+  "charts",
+  "SettingsPage",
+  "EventSetupPage",
+  "ScoreSheetsPage",
+  "FormulasPage",
+  "StatisticsPage",
+  "PerformancePage",
+  "TeamSeasonMatrixPage",
+  "PrintJobDetailPage",
+];
+
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        // The shared chunk Rollup creates for recharts (statistics pages) gets
+        // a stable name, so the service worker can leave it out of the
+        // precache. (manualChunks would also pull React & co. into it.)
+        chunkFileNames(chunk) {
+          return chunk.moduleIds.some((id) => id.includes("/node_modules/recharts/"))
+            ? "assets/charts-[hash].js"
+            : "assets/[name]-[hash].js";
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // The update prompt (components/UpdatePrompt) activates a new worker.
+      registerType: "prompt",
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
@@ -32,6 +61,9 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // Charts and admin-only pages are not needed offline at the scoring
+        // table; the service worker caches them on first use instead (sw.ts).
+        globIgnores: ADMIN_CHUNKS.map((name) => `assets/${name}-*.js`),
       },
       devOptions: {
         enabled: false,

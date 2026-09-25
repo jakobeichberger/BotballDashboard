@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { useAuthStore } from "@/store/authStore";
 import { formatDateTime } from "@/i18n/format";
+import { confirmAction } from "@/lib/confirm";
 import {
   NEXT_STATUSES,
   PRINT_FILE_ACCEPT,
@@ -218,7 +219,7 @@ export default function PrintJobDetailPage() {
             </label>
           )}
           {canCancel && (
-            <button className="btn-secondary text-sm" disabled={cancelM.isPending} onClick={() => { if (window.confirm(t("detail.confirmCancel"))) cancelM.mutate(); }}>
+            <button className="btn-secondary text-sm" disabled={cancelM.isPending} onClick={() => void confirmAction({ message: t("detail.confirmCancel") }).then((ok) => ok && cancelM.mutate())}>
               <XCircle className="w-4 h-4" /> {canAdmin ? t("common:cancel") : t("withdraw")}
             </button>
           )}

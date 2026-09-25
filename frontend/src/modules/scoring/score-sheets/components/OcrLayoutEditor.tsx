@@ -33,6 +33,7 @@ import {
   rulesProblem,
 } from '../layout'
 import OcrValidationRulesEditor from './OcrValidationRulesEditor'
+import { apiErrorMessage } from '@/lib/errors'
 
 const EDGES = ['x', 'y', 'width', 'height'] as const
 type DrawMode = 'fields' | 'anchors'
@@ -100,7 +101,7 @@ export default function OcrLayoutEditor({
         validation_rules: compactRules(rules),
       }),
     onSuccess: () => { setMessage(t('scoreSheets.layout.saved')); onSaved() },
-    onError: (e: any) => setMessage(typeof e?.response?.data?.detail === 'string' ? e.response.data.detail : t('scoreSheets.layout.saveFailed')),
+    onError: (e: any) => setMessage(apiErrorMessage(e, t('scoreSheets.layout.saveFailed'))),
   })
 
   const point = (event: PointerEvent<HTMLDivElement>) => {
@@ -304,6 +305,7 @@ export default function OcrLayoutEditor({
             </div>
             <p className="text-xs text-gray-500">{t('scoreSheets.anchors.hint')}</p>
             {anchors.length > 0 && (
+              <div className="table-scroll">
               <table className="mt-2 w-full text-sm">
                 <thead>
                   <tr className="text-left text-gray-500">
@@ -347,6 +349,7 @@ export default function OcrLayoutEditor({
                   ))}
                 </tbody>
               </table>
+            </div>
             )}
             {anchors.length > 0 && anchors.length < MIN_ANCHORS && (
               <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{t('scoreSheets.anchors.tooFew', { min: MIN_ANCHORS })}</p>

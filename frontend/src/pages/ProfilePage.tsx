@@ -8,15 +8,13 @@ import { useAuthStore } from "@/store/authStore";
 import { useThemeStore, type Theme } from "@/store/themeStore";
 import { usePushSubscription } from "@/hooks/usePushNotifications";
 import i18n from "@/i18n/config";
-import { apiErrorMessage, passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { confirmAction } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
+import { saveBlob } from "@/lib/download";
 
 function downloadJson(data: unknown, filename: string) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  saveBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), filename);
 }
 
 /** Push categories (backend: modules.dashboard.notifications.CATEGORIES). */
@@ -54,7 +52,7 @@ export default function ProfilePage() {
 
   const [deletePw, setDeletePw] = useState("");
 
-  const onErr = (e: any) => alert(apiErrorMessage(e, t("common:actionFailed")));
+  const onErr = (e: unknown) => toast.apiError(e, t("common:actionFailed"));
   const newPwProblem = newPw ? passwordProblem(newPw, user?.email) : null;
 
   const push = usePushSubscription();
@@ -83,14 +81,14 @@ export default function ProfilePage() {
       // refresh cookie of this device yields a fresh one.
       const token = await restoreAccessToken();
       if (token) setAccessToken(token);
-      alert(t("passwordChanged"));
+      toast.success(t("passwordChanged"));
     },
     onError: onErr,
   });
 
   const emailM = useMutation({
     mutationFn: () => api.post("/auth/me/email", { new_email: newEmail, current_password: emailPw }),
-    onSuccess: () => { setNewEmail(""); setEmailPw(""); qc.invalidateQueries({ queryKey: ["auth", "me"] }); alert(t("emailChanged")); },
+    onSuccess: () => { setNewEmail(""); setEmailPw(""); qc.invalidateQueries({ queryKey: ["auth", "me"] }); toast.success(t("emailChanged")); },
     onError: onErr,
   });
 
@@ -244,7 +242,7 @@ export default function ProfilePage() {
           <label className="label" htmlFor="delete-password">{t("confirmPassword")}</label>
           <input id="delete-password" className="input" type="password" value={deletePw} onChange={(e) => setDeletePw(e.target.value)} />
           <button className="btn-danger text-sm disabled:opacity-40" disabled={!deletePw || deleteM.isPending}
-                  onClick={() => { if (confirm(t("confirmDelete"))) deleteM.mutate(); }}>
+                  onClick={() => void confirmAction({ message: t("confirmDelete"), tone: "danger" }).then((ok) => ok && deleteM.mutate())}>
             <Trash2 className="w-4 h-4" /> {t("deleteAccount")}
           </button>
         </div>
