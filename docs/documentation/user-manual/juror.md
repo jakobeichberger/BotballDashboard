@@ -97,7 +97,7 @@ Gelbe und rote Karte sowie „disqualifiziert" sind Felder jeder Wertung. Ihre W
 3. Der Server liest die Felder im Hintergrund lokal aus. Es werden keine Bilder an externe Dienste geschickt. Der Scan wechselt auf **Review erforderlich**.
 4. Erkannte Werte mit den Bildausschnitten vergleichen, korrigieren und mit **Geprüft übernehmen** als Wertung speichern.
 
-Schlägt die Erkennung fehl, lässt sie sich erneut anstoßen.
+Unsichere Werte sind gelb markiert, mit Konfidenz und Grund. Schlägt die Erkennung ganz fehl, lässt sie sich derzeit nur über die API erneut anstoßen (`POST …/score-sheet-scans/{id}/retry`).
 
 ---
 

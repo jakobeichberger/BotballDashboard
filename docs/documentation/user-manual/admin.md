@@ -129,7 +129,7 @@ In der Event-Verwaltung unter **Score-Sheet**. Jede Speicherung ist eine neue, v
 
 ### Score-Sheet-PDFs und OCR-Layout
 
-Unter **Rangliste → Score-Sheets** (`/events/…/scoring/score-sheets`, `scoring:admin`) lädst du das offizielle PDF hoch. Der Worker extrahiert daraus Feldkandidaten. Diese kannst du bestätigen und ins Schema übernehmen. Für die OCR von Fotos legst du Anker und Feldbereiche der Vorlage fest.
+Unter **Rangliste → Score-Sheets** (`/events/…/scoring/score-sheets`, `scoring:admin`) lädst du das offizielle PDF hoch. Der Worker extrahiert daraus Feldkandidaten. Diese kannst du bestätigen und ins Schema übernehmen. Die OCR von Fotos braucht zusätzlich das Layout der Vorlage: Anker, Feldbereiche und Prüfregeln. Das Layout wird derzeit über die API gesetzt (`PATCH /api/scoring/score-sheets/{id}/layout`), eine Oberfläche dafür fehlt.
 
 ### Tie-Breaker und Sonderregeln (pro Saison)
 
@@ -216,7 +216,7 @@ Eine Qualifikation lässt sich wieder entfernen.
   - intern `internal_draft`, `internal_review`, `internal_revision`, `internal_final`, diese warnen nur.
 
   Ohne offizielle Einreichungs-Deadline gilt die Paper-Deadline der Saison. Eine Deadline gilt bis Tagesende in der Zeitzone des Events. Mit `papers:admin` darf man übersteuern.
-- **Reviewer zuweisen:** Einzeln auf der Paper-Detailseite, oder **automatisch** bis N Reviewer pro Paper, zuerst mit Vorschau. Reviewer aus dem Team selbst oder von derselben Schule werden abgelehnt. **Reviewer-Auslastung** und **Erinnern** gibt es pro Zuweisung.
+- **Reviewer zuweisen:** Einzeln auf der Paper-Detailseite, oder **automatisch** bis N Reviewer pro Paper, zuerst mit Vorschau. Reviewer aus dem Team selbst oder von derselben Schule werden abgelehnt. Die **Reviewer-Auslastung** zeigt offene Reviews je Person. Fällige Zuweisungen erinnert der Server automatisch. Eine zusätzliche manuelle Erinnerung geht derzeit nur über die API (`POST /api/papers/{id}/assignments/{assignment_id}/remind`).
 - **Status:**
   - `draft` → `submitted` → `under_review` → `revision_requested` → `resubmitted` → `accepted`/`rejected`;
   - `disqualified_ai` für KI-Missbrauch (Score 0, keine Revision).

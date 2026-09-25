@@ -1,65 +1,54 @@
 # Offene Fragen
 
-Fragen die noch nicht beantwortet wurden. Werden hier protokolliert und nach Beantwortung in die jeweiligen Modul-Dokumente übernommen.
+Protokoll der Fachfragen aus der Planung. Beantwortete Fragen sind abgehakt. Wo die Antwort umgesetzt ist, steht die Stelle im Code dabei (Stand: Commit `aa61752`, Migration `0029`). Neue offene Punkte gehören nach [todo.md](todo.md).
 
 ---
 
-## Infrastruktur & Tech-Stack
+## Infrastruktur und Tech-Stack
 
-- [x] **Backend-Framework:** ✅ FastAPI (async, Pydantic, automatische OpenAPI-Docs)
-- [x] **Monorepo-Tool:** ✅ pnpm Workspaces (kein Turborepo/Nx-Overhead nötig)
-- [x] **Hosting:** ✅ Self-hosted auf Proxmox, Docker Compose, Traefik als Reverse Proxy
+- [x] **Backend-Framework:** FastAPI (async, Pydantic, OpenAPI). Umgesetzt.
+- [x] **Monorepo-Tool:** kein Workspace-Tool nötig. `backend/` mit pip, `frontend/` mit pnpm.
+- [x] **Hosting:** Self-hosted auf Proxmox, Docker Compose, Traefik. Umgesetzt mit `scripts/proxmox-setup.sh`, `scripts/update.sh` und `scripts/verify-deployment.sh`.
 
----
+## Auth und Rechte
 
-## Auth & Rechtesystem
+- [x] **Social Login:** nein, nur E-Mail und Passwort. Passwort-Reset per E-Mail ist umgesetzt (`/api/auth/password-reset/*`).
+- [x] **Admin-Oberfläche:** eigene UI. Umgesetzt unter `/settings/*`: Benutzer, Rollen mit editierbaren Rechten, Saisons, Stufen, Drucker, Ankündigungen.
 
-- [x] **Social Login:** ✅ Kein OAuth2 / Social Login – nur E-Mail + Passwort
-- [x] **Admin-Oberfläche:** ✅ Eigene Admin-UI zur Benutzerverwaltung
+## Scoring
 
----
+- [x] **Gesamtscore-Formel:** aus den PDFs übernommen. Umgesetzt als konfigurierbare Formel-Sets (`modules/scoring/formula_engine.py`) mit den Presets ECER 2025, Regional 2026, GCER 2026, Aerial und JBC.
+- [x] **Scoring-Sheet-Felder 2024/2025:** vollständig. Umgesetzt als strukturierte Vorlagen (`modules/scoring/sheet_templates.py`).
+- [ ] **Scoring-Sheet-Felder 2026:** Die Spielelemente sind bekannt, die exakten Punktwerte nicht. Die Vorlage enthält die Struktur, die Werte trägt die Organisation im Schema-Editor ein. Kein Blocker.
+- [x] **Yellow/Red Card:** in `docs/modules/05-scoring.md` dokumentiert. Die Wirkung ist umgesetzt: DQ-Runde = 0, rote Karte ⇒ Team ohne Rang. Ein Schalter in der Oberfläche fehlt noch (todo.md).
+- [x] **3D-Druck-Regeln für Roboterteile:** 2025 max. 4 Teile PLA, 2026 max. 6 Teile PLA/PETG. Umgesetzt über Kontingente pro Event und Team und die Druck-Checkliste pro Saison.
+- [x] **GCER-Qualifikation:** 1–2 Teams, manuelle Freigabe durch Admins. Umgesetzt: `POST /api/scoring/levels/{id}/qualify`, Qualifikationspanel in der Event-Verwaltung, Registrierung der Qualifizierten.
+- [x] **Alliance-Matches bei GCER:** pro Turnierphase aktivierbar. Umgesetzt als Phasentyp `alliance`; Partnerpaare, deren Score die Summe beider Seiten ist.
+- [x] **Sichtbarkeit der Vorbereitung:** Teams sehen nur eigene Übungsläufe. Umgesetzt mit `matches.is_practice`. Übungsläufe zählen nirgends für Ranglisten.
 
-## Scoring-Modul
+## Paper-Review
 
-- [x] **Gesamtscore-Formel:** ✅ Aus PDFs extrahiert – siehe `docs/modules/05-scoring.md`
-- [x] **Scoring-Sheet-Felder 2024/2025:** ✅ Vollständig aus PDFs extrahiert – siehe `docs/modules/05-scoring.md`
-- [ ] **Scoring-Sheet-Felder 2026:** Spielelemente bekannt, exakte Multiplikator-Werte werden über dynamische Admin-UI manuell eingetragen (kein Blocker)
-- [x] **Yellow/Red Card System:** ✅ Dokumentiert in `docs/modules/05-scoring.md`
-- [x] **3D-Druck-Roboterteile-Regeln:** ✅ 2025: max. 4 Teile PLA; 2026: max. 6 Teile PLA/PETG
-- [x] **GCER Qualifikationsschwelle:** ✅ 1–2 Teams, manuelle Freigabe durch Admin
-- [x] **Alliance-Matches bei GCER:** ✅ Nicht immer – aktivierbar pro Turnier-Phase durch Admin
-- [x] **Öffentlichkeit der Prep-Phase:** ✅ Auch für Teams selbst sichtbar (nur eigene Scores, keine anderen Teams)
+- [x] **Paper-Struktur und Format:** IEEE A4, 2-spaltig, max. 5 Seiten. Formverstöße werden als **Formalabzug** erfasst.
+- [x] **Einreichung:** im System statt über Moodle. Umgesetzt mit Versionen, Deadlines und Sperre nach Abgabe.
+- [x] **Präsentation:** ausgewählte Papers 10 Min. + 5 Min. Q&A. Wird außerhalb des Systems organisiert.
+- [x] **Paper-Kategorien 2026:** fachliche Info. Das System bildet sie nicht als eigenes Feld ab.
+- [x] **Score-Integration:** `AdaptedDocScore = ½·DocScore + ½·PaperScore`, `PriaOpenOverall = DE + Seeding + ½·PaperScore`. Umgesetzt im Standard-Formel-Set (ECER 2025).
+- [x] **Deadlines 2026:** Einreichung 15. März, Annahme 29. März, Final 5. April. Pflegbar als offizielle und interne Paper-Deadlines pro Saison (`/api/papers/deadlines`).
+- [x] **Reviewer pro Paper:** beliebig viele, Admin entscheidet. Umgesetzt, dazu eine automatische Zuweisung bis N.
+- [x] **Blind Review:** nein gegenüber der Organisation. Teams sehen ihr Feedback ohne Namen der Reviewer.
+- [x] **Interne Review-Runden:** beliebig viele. Umgesetzt über `revision_number` und Versionen.
 
----
+## 3D-Druck
 
-## Paper-Review-Modul
-
-- [x] **Paper-Struktur:** ✅ Abstract → Introduction → (State of the Art) → Concept/Design → Implementation → Results/Conclusion
-- [x] **Format:** ✅ IEEE A4-Template, 2-spaltig, 10pt, single-spaced, max. 5 Seiten inkl. Abbildungen & Referenzen
-- [x] **Einreichung:** ✅ PDF via moodle.pria.at (wird durch unser System abgelöst)
-- [x] **Präsentation:** ✅ Ausgewählte Papers: bis 10 Min. Vortrag + 5 Min. Q&A
-- [x] **Paper-Kategorien 2026:** ✅ Multi Agent Systems / Embracing Educational Robotics / Engineering / STEM Projects
-- [x] **Score-Integration:** ✅ `AdaptedDocScore = ½·DocScore + ½·PaperScore` / `PriaOpenOverall = DE + Seeding + ½·PaperScore`
-- [x] **Deadlines 2026:** ✅ Einreichung 15. März, Annahme 29. März, Final 5. April
-- [x] **Anzahl Reviewer pro Paper:** ✅ Beliebig viele – Admin entscheidet je Paper
-- [x] **Blind Review:** ✅ Kein Blind Review – Reviewer sieht welches Team einreicht
-- [x] **Interne Review-Runden:** ✅ Beliebig viele, auch unterschiedlich je Team
-
----
-
-## 3D-Druck-Modul
-
-- [x] **Drucker-Inventar:** ✅ ~5 Drucker (Bambu Lab, Ender/OctoPrint, ggf. Prusa). Adapter vorbereitet.
-- [x] **Credentials-Verwaltung:** ✅ Verschlüsselt in DB, Installationsanleitung dokumentiert
-- [x] **Limits pro Team:** ✅ Soft Limits (Warnung) + Hard Limits (Stop) in Stunden/Gramm/Jobs
-- [x] **Filament-Tracking:** ✅ Ja – pro Job, Team und Saison
-
----
+- [x] **Drucker-Inventar:** Bambu Lab, OctoPrint und manuelle Drucker. Adapter umgesetzt (`modules/printing/adapters.py`).
+- [x] **Credentials:** Fernet-verschlüsselt in der Datenbank.
+- [x] **Limits pro Team:** Soft-Limit (Warnung) und Hard-Limit (Teile, optional Gramm). Umgesetzt pro Event und Team. Zeitlimits in Stunden gibt es nicht.
+- [x] **Filament-Tracking:** pro Job, Team (Kontingent) und Spule.
 
 ## Allgemein
 
-- [x] **PDF-Lesbarkeit:** ✅ `poppler-utils` installiert
-- [x] **Mehrsprachigkeit:** ✅ Deutsch + Englisch, 1-Klick-Umschalter, i18next
-- [x] **Benachrichtigungen:** ✅ Primär eigener SMTP-Server + SendGrid/Mailgun als Fallback; PWA Push-Notifications via Web Push API
-- [x] **Öffentliches Scoreboard:** ✅ Intern (hinter Login/Firewall) + separate öffentliche Version die extern gehostet werden kann
-- [x] **Dark/Light Mode:** ✅ Systemeinstellung wird erkannt, manueller Umschalter, Einstellung im Profil gespeichert
+- [x] **PDF-Lesbarkeit:** `poppler-utils` (pdftotext) im Backend-Image.
+- [x] **Mehrsprachigkeit:** Deutsch und Englisch mit Umschalter, gespeichert im Konto. Viele Seiten sind noch nicht übersetzt (todo.md).
+- [x] **Benachrichtigungen:** SMTP für E-Mail, Web Push (VAPID). Einstellungen pro Kategorie, Benachrichtigungszentrale. Scheitert SMTP, wird SendGrid als Rückfall genutzt, wenn `SENDGRID_API_KEY` gesetzt ist. Mailgun ist nicht eingebunden. Ohne `SMTP_HOST` werden keine E-Mails verschickt.
+- [x] **Öffentliches Scoreboard:** interne Ranglisten und eine öffentliche Event-Seite `/public/<slug>` mit Freigaben pro Bereich, Live-Stream und QR-Code. Eine getrennte, extern gehostete Version gibt es nicht. Die öffentliche Seite läuft in derselben Installation.
+- [x] **Dark/Light Mode:** Systemeinstellung, Umschalter, im Profil gespeichert.

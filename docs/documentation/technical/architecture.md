@@ -44,7 +44,7 @@ Dienste in `docker-compose.yml`: `traefik`, `db`, `redis`, `backend`, `worker`, 
 | Rechte | `require_permission`, `require_any_permission`, `assert_team_access` (`core/auth.py`) |
 | Hintergrundjobs | Celery mit Redis als Broker (`core/celery_app.py`) |
 | Live-Daten | Redis Pub/Sub (`core/live.py`) → WebSocket |
-| Benachrichtigungen | Transaktionale Outbox (`core/domain_events.py`, Tabelle `notification_events`) → Web Push (pywebpush, VAPID) und E-Mail (aiosmtplib) |
+| Benachrichtigungen | Transaktionale Outbox (`core/domain_events.py`, Tabelle `notification_events`) → Web Push (pywebpush, VAPID) und E-Mail (aiosmtplib, SendGrid als Rückfall) |
 | PDF | reportlab (Exporte), pypdf (Paper-Diff), pdftotext (Score-Sheet-Vorlagen) |
 | OCR | OpenCV und Tesseract, lokal im Worker |
 | Verschlüsselung | Fernet für Drucker-Zugangsdaten (`PRINTER_CREDENTIAL_ENCRYPTION_KEY`) |
