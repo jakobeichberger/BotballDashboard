@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.domain_events import emit_event
 from core.exceptions import NotFoundError, ValidationError
+from core.mail_templates import i18n_payload
 from modules.paper_review.models import (
     DEADLINE_TYPES,
     OFFICIAL_DEADLINE_TYPES,
@@ -235,6 +236,9 @@ async def queue_paper_deadline_reminders(db: AsyncSession, today: date | None = 
 
     queued = 0
     for key, season_id, deadline_type, due, label in targets:
+        # A label typed in for the deadline is kept as is; built-in type
+        # names are translated per recipient.
+        custom = None if label in (TYPE_LABELS.get(deadline_type), "Paper submission") else label
         days = due_dates[due]
         when = _due_text(days)
         stem = f"paper-deadline:{key}:{due.isoformat()}:{days}"
@@ -246,6 +250,14 @@ async def queue_paper_deadline_reminders(db: AsyncSession, today: date | None = 
                     payload={
                         "title": f"{label} {when}",
                         "message": (f"Your open paper reviews are due {when} ({due.isoformat()})."),
+                        **i18n_payload(
+                            "paper_deadline_reminder",
+                            kind="review",
+                            deadline_type=deadline_type,
+                            due=due.isoformat(),
+                            days=days,
+                            label=custom,
+                        ),
                         "userId": reviewer_id,
                         "url": "/papers",
                     },
@@ -269,6 +281,14 @@ async def queue_paper_deadline_reminders(db: AsyncSession, today: date | None = 
                 payload={
                     "title": f"{label} {when}",
                     "message": f"{action}. {label}: {due.isoformat()} ({when}).",
+                    **i18n_payload(
+                        "paper_deadline_reminder",
+                        kind="revision" if deadline_type in REVISION_TYPES else "submission",
+                        deadline_type=deadline_type,
+                        due=due.isoformat(),
+                        days=days,
+                        label=custom,
+                    ),
                     "userIds": user_ids,
                     "emails": emails,
                     "url": "/papers",

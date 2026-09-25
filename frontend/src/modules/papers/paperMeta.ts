@@ -1,5 +1,7 @@
 // Shared paper-review vocabulary: status labels, review criteria and the local
 // API shapes added with migration 0023 (not yet in the generated client).
+import i18n from "@/i18n/config";
+import { labelMap, labelMapKeys } from "@/i18n/labels";
 
 export const PAPER_STATUS_BADGE: Record<string, string> = {
   draft: "badge-gray",
@@ -12,16 +14,16 @@ export const PAPER_STATUS_BADGE: Record<string, string> = {
   disqualified_ai: "badge-red",
 };
 
-export const PAPER_STATUS_LABEL: Record<string, string> = {
-  draft: "Entwurf",
-  submitted: "Eingereicht",
-  under_review: "In Prüfung",
-  revision_requested: "Überarbeitung",
-  resubmitted: "Neu eingereicht",
-  accepted: "Angenommen",
-  rejected: "Abgelehnt",
-  disqualified_ai: "Disqualifiziert (KI)",
-};
+export const PAPER_STATUS_LABEL = labelMap("papers:status", [
+  "draft",
+  "submitted",
+  "under_review",
+  "revision_requested",
+  "resubmitted",
+  "accepted",
+  "rejected",
+  "disqualified_ai",
+]);
 
 /** Statuses an organizer can set by hand. */
 export const ADMIN_STATUS_OPTIONS = [
@@ -38,12 +40,7 @@ export const EDITABLE_STATUSES = new Set(["draft", "revision_requested"]);
 /** Statuses that still need reviewer attention. */
 export const OPEN_REVIEW_STATUSES = new Set(["submitted", "resubmitted", "under_review"]);
 
-export const RECOMMENDATION_LABEL: Record<string, string> = {
-  accept: "Annehmen",
-  revision_minor: "Kleine Überarbeitung",
-  revision_major: "Große Überarbeitung",
-  reject: "Ablehnen",
-};
+export const RECOMMENDATION_LABEL = labelMap("papers:recommendation", ["accept", "revision_minor", "revision_major", "reject"]);
 export const RECOMMENDATION_BADGE: Record<string, string> = {
   accept: "badge-green",
   revision_minor: "badge-yellow",
@@ -54,13 +51,22 @@ export const RECOMMENDATION_BADGE: Record<string, string> = {
 export type CriterionKey = "content" | "implementation" | "results" | "language" | "format";
 
 /** The five criteria of the spec (module 06), each scored 0–10 with a comment. */
-export const REVIEW_CRITERIA: { key: CriterionKey; label: string; hint: string }[] = [
-  { key: "content", label: "Inhalt", hint: "Concept / Design" },
-  { key: "implementation", label: "Technische Umsetzung", hint: "Implementation" },
-  { key: "results", label: "Ergebnisse", hint: "Results / Conclusion" },
-  { key: "language", label: "Sprache", hint: "Sprachliche Qualität" },
-  { key: "format", label: "Formales", hint: "IEEE-Format, max. 5 Seiten" },
-];
+function criterion(key: CriterionKey): { key: CriterionKey; label: string; hint: string } {
+  labelMapKeys.add(`papers:criterion.${key}.label`);
+  labelMapKeys.add(`papers:criterion.${key}.hint`);
+  return {
+    key,
+    get label() {
+      return i18n.t(`papers:criterion.${key}.label`);
+    },
+    get hint() {
+      return i18n.t(`papers:criterion.${key}.hint`);
+    },
+  };
+}
+
+/** The five criteria of the spec (module 06), labels in the active language. */
+export const REVIEW_CRITERIA = (["content", "implementation", "results", "language", "format"] as const).map(criterion);
 
 type CriterionScores = { [K in CriterionKey as `score_${K}`]: number | null };
 type CriterionComments = { [K in CriterionKey as `comment_${K}`]: string | null };
@@ -131,14 +137,14 @@ export interface PaperDeadlineRow {
   is_hard_block: boolean;
 }
 
-export const DEADLINE_TYPE_LABEL: Record<string, string> = {
-  official_submission: "Offizielle Einreichung",
-  official_final: "Offizielle finale Abgabe",
-  internal_draft: "Interner Entwurf",
-  internal_review: "Interne Review-Frist",
-  internal_revision: "Interne Überarbeitung",
-  internal_final: "Interne finale Abgabe",
-};
+export const DEADLINE_TYPE_LABEL = labelMap("papers:deadlineType", [
+  "official_submission",
+  "official_final",
+  "internal_draft",
+  "internal_review",
+  "internal_revision",
+  "internal_final",
+]);
 export const OFFICIAL_DEADLINE_TYPES = new Set(["official_submission", "official_final"]);
 
 /** Internal deadlines that have passed: a warning, never a lock. */
@@ -224,7 +230,7 @@ export interface PaperStats {
 
 /**
  * Human-readable time left until `cutoff` ("3 T 4 Std", "5 Std 12 Min",
- * "12 Min"), or null once it has passed.
+ * "12 Min" / "3 d 4 h", …), or null once it has passed.
  */
 export function formatCountdown(cutoff: string | Date, now: Date = new Date()): string | null {
   const ms = new Date(cutoff).getTime() - now.getTime();
@@ -233,13 +239,13 @@ export function formatCountdown(cutoff: string | Date, now: Date = new Date()): 
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);
   const mins = minutes % 60;
-  if (days > 0) return `${days} T ${hours} Std`;
-  if (hours > 0) return `${hours} Std ${mins} Min`;
-  return `${Math.max(mins, 1)} Min`;
+  if (days > 0) return i18n.t("papers:countdown.days", { days, hours });
+  if (hours > 0) return i18n.t("papers:countdown.hours", { hours, mins });
+  return i18n.t("papers:countdown.minutes", { mins: Math.max(mins, 1) });
 }
 
 /** Axios error → message for the user (the API returns `message`, FastAPI `detail`). */
-export function apiErrorMessage(error: unknown, fallback = "Aktion fehlgeschlagen."): string {
+export function apiErrorMessage(error: unknown, fallback = i18n.t("common:actionFailed")): string {
   const data = (error as { response?: { data?: { message?: string; detail?: unknown } } })
     ?.response?.data;
   if (typeof data?.message === "string") return data.message;

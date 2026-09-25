@@ -1,0 +1,175 @@
+{
+  "title": "Settings",
+  "create": "Create",
+  "activate": "Activate",
+  "deactivate": "Deactivate",
+  "activeSuffix": "(active)",
+  "activeBadge": "active",
+  "nav": {
+    "users": "Users",
+    "roles": "Roles",
+    "seasons": "Seasons",
+    "seasonDetails": "Season details",
+    "modules": "Season modules",
+    "levels": "Competition levels",
+    "printers": "Printers",
+    "announcements": "Announcements"
+  },
+  "users": {
+    "title": "Users",
+    "create": "+ Create user",
+    "roles": "Roles",
+    "passwordSet": "Password set. All of the user's sessions have been signed out.",
+    "newPasswordFor": "New password for {{email}}",
+    "confirmDelete": "Delete user \"{{name}}\"? Personal data is removed, the history is kept anonymously."
+  },
+  "seasons": {
+    "title": "Seasons",
+    "create": "+ Create season",
+    "year": "Year",
+    "gameTheme": "Game theme",
+    "eventStart": "Event start",
+    "eventEnd": "Event end",
+    "cloneTitle": "Clone season",
+    "cloneHint": "Copies modules, phases, events (as drafts), scoring schemas, formulas, bracket weights and deadlines – shifted by the difference in years. Results and registrations are not copied.",
+    "clone": "Clone",
+    "finish": "Finish",
+    "archive": "Archive",
+    "unarchive": "Restore from archive",
+    "confirmArchive": "Archive season \"{{name}}\"? It is read-only afterwards.",
+    "copyName": "{{name}} (copy)",
+    "export": "Export",
+    "confirmDelete": "Delete season \"{{name}}\"? Only seasons without registrations and results can be deleted.",
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "finished": "Finished",
+      "archived": "Archived"
+    }
+  },
+  "spools": {
+    "title": "Filament spools",
+    "material": "Material",
+    "color": "Colour",
+    "brand": "Brand",
+    "grams": "Grams",
+    "add": "+ Spool",
+    "remaining": "Remaining",
+    "empty": "No spools"
+  },
+  "quotas": {
+    "usedParts": "{{used}} + {{open}} open",
+    "openGrams": "+ {{grams}} g open",
+    "softLimit": "Soft limit",
+    "hardLimit": "Hard limit",
+    "maxGrams": "Max. grams",
+    "title": "Print quotas",
+    "event": "Event for quotas",
+    "hint": "Open jobs count towards the hard limit. Above the soft limit a warning is shown; admins can override the hard limit when submitting. Empty grams field = no gram limit.",
+    "team": "Team",
+    "used": "Used",
+    "softLimitParts": "Soft limit (parts)",
+    "hardLimitParts": "Hard limit (parts)",
+    "empty": "No teams registered for this event"
+  },
+  "printers": {
+    "title": "Printers",
+    "add": "+ Add printer",
+    "model": "Model",
+    "type": "Type",
+    "apiUrl": "API URL / host",
+    "serial": "Serial number",
+    "apiKey": "API key / access code"
+  },
+  "announcements": {
+    "title": "Announcements",
+    "add": "+ Announcement",
+    "titleLabel": "Title",
+    "text": "Text",
+    "audience": "Audience",
+    "audiences": {
+      "all": "Everyone",
+      "teams": "Teams",
+      "reviewers": "Reviewers",
+      "jurors": "Jurors",
+      "internal": "Internal"
+    },
+    "saveDraft": "Save as draft",
+    "published": "Published",
+    "draft": "Draft",
+    "publish": "Publish",
+    "empty": "No announcements"
+  },
+  "seasonDetails": {
+    "title": "Season details",
+    "dates": "Dates & deadlines",
+    "dateField": {
+      "registration_open": "Registration opens",
+      "registration_close": "Registration closes",
+      "event_start": "Event start",
+      "event_end": "Event end",
+      "paper_submission_deadline": "Paper deadline",
+      "print_submission_deadline": "Print deadline"
+    },
+    "saveDates": "Save dates",
+    "extra": "Additional deadlines & events",
+    "titlePlaceholder": "e.g. kickoff meeting",
+    "kind": "Type",
+    "deadline": "Deadline",
+    "event": "Event",
+    "add": "+ Add",
+    "noExtra": "No additional dates.",
+    "phases": "Phases",
+    "phaseInfo": "({{type}}, {{rounds}} rounds)"
+  },
+  "levels": {
+    "title": "Competition levels",
+    "code": "Code",
+    "add": "+ Level",
+    "order": "Order",
+    "qualifiesFrom": "Qualifies from",
+    "orderOf": "Order {{name}}",
+    "qualifiesFromOf": "{{name}} qualifies from",
+    "none": "– none –",
+    "confirmDelete": "Delete level \"{{name}}\"?"
+  },
+  "modules": {
+    "title": "Season modules",
+    "active": "Active modules",
+    "categories": "Active categories",
+    "module": {
+      "use_seeding": {
+        "label": "Seeding (robot game)",
+        "description": "Qualification rounds with point scoring"
+      },
+      "use_double_elimination": {
+        "label": "Double elimination",
+        "description": "Knockout tournament with bracket A/B"
+      },
+      "use_aerial": {
+        "label": "Aerial",
+        "description": "Drone competition with 4 runs"
+      },
+      "use_documentation_scoring": {
+        "label": "Documentation",
+        "description": "Parts 1/2/3 + onsite (0–100 each)"
+      },
+      "use_paper_scoring": {
+        "label": "Paper scoring",
+        "description": "Scientific paper (0–1)"
+      }
+    }
+  },
+  "roles": {
+    "title": "Roles",
+    "addButton": "+ Create role",
+    "namePlaceholder": "e.g. head-juror",
+    "description": "Description",
+    "permissions": "Permissions",
+    "create": "Create role",
+    "role": "Role",
+    "system": "System",
+    "permissionCount": "{{count}} permissions",
+    "edit": "Edit permissions"
+  }
+}

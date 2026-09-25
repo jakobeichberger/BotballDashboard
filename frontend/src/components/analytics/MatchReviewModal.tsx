@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import Modal from "@/components/Modal";
 import { EventLink } from "@/components/EventLink";
 import { api } from "@/lib/api";
 import type { Anomaly } from "@/api/analytics";
+import { formatDateTime } from "@/i18n/format";
 
 /**
  * Double-check a flagged run: raw values, revision history and the reasons it
  * was flagged, with the juror's confirm action right there.
  */
 export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomaly | null; onClose: () => void }) {
+  const { t } = useTranslation("analytics");
   const qc = useQueryClient();
   const matchId = anomaly?.match_id;
   const { data: match } = useQuery({
@@ -33,9 +36,9 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
   if (!anomaly) return null;
   const confirmed = !!match?.confirmed_at || anomaly.confirmed;
   return (
-    <Modal open={!!anomaly} title={`Lauf prüfen: ${anomaly.team_name}, Runde ${anomaly.round_number}`} onClose={onClose}>
+    <Modal open={!!anomaly} title={t("review.title", { team: anomaly.team_name, round: anomaly.round_number })} onClose={onClose}>
       <div className="space-y-4 text-sm">
-        <ul className="space-y-1" aria-label="Auffälligkeiten">
+        <ul className="space-y-1" aria-label={t("review.reasons")}>
           {anomaly.reasons.map((r, i) => (
             <li key={i} className={r.severity === "error" ? "text-red-700 dark:text-red-400" : "text-yellow-700 dark:text-yellow-400"}>
               • {r.message}
@@ -44,7 +47,7 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
         </ul>
         {match && (
           <table className="w-full">
-            <caption className="text-left font-medium text-gray-700 dark:text-gray-300">Eingetragene Werte (Summe {match.total_score})</caption>
+            <caption className="text-left font-medium text-gray-700 dark:text-gray-300">{t("review.values", { total: match.total_score })}</caption>
             <tbody>
               {Object.entries(match.raw_scores ?? {}).map(([key, value]) => (
                 <tr key={key} className="border-t border-gray-100 dark:border-gray-800">
@@ -57,12 +60,12 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
         )}
         {revisions && revisions.length > 1 && (
           <div>
-            <p className="font-medium text-gray-700 dark:text-gray-300">Änderungen</p>
+            <p className="font-medium text-gray-700 dark:text-gray-300">{t("review.changes")}</p>
             <ol className="mt-1 space-y-0.5 text-xs text-gray-500">
               {revisions.map((rev) => (
                 <li key={rev.id}>
-                  Rev. {rev.revision}: {rev.previous_total_score ?? "—"} → {rev.new_total_score}
-                  {rev.reason ? ` (${rev.reason})` : ""} · {new Date(rev.created_at).toLocaleString("de-DE")}
+                  {t("review.revision", { revision: rev.revision })} {rev.previous_total_score ?? "—"} → {rev.new_total_score}
+                  {rev.reason ? ` (${rev.reason})` : ""} · {formatDateTime(rev.created_at)}
                 </li>
               ))}
             </ol>
@@ -70,13 +73,13 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
         )}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 dark:border-gray-800">
           {anomaly.scheduled_match_id ? (
-            <EventLink to="/schedule" className="text-primary-600 hover:underline dark:text-primary-400">Im Zeitplan ansehen</EventLink>
+            <EventLink to="/schedule" className="text-primary-600 hover:underline dark:text-primary-400">{t("review.viewInSchedule")}</EventLink>
           ) : <span />}
           {confirmed ? (
-            <span className="badge-green">Bestätigt</span>
+            <span className="badge-green">{t("review.confirmed")}</span>
           ) : (
             <button type="button" className="btn-primary text-sm" onClick={() => confirm.mutate()} disabled={confirm.isPending}>
-              <CheckCircle2 className="h-4 w-4" /> Wert ist korrekt – bestätigen
+              <CheckCircle2 className="h-4 w-4" /> {t("review.confirm")}
             </button>
           )}
         </div>

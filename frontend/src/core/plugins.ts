@@ -63,7 +63,7 @@ export const modules: readonly ModuleDefinition[] = [
       { path: "calendar", component: lazy(() => import("@/pages/CalendarPage")), permission: "seasons:read", label: { de: "Deadlines", en: "Deadlines" }, icon: "calendar", navigation: true },
     ],
     dashboardWidgets: [],
-    translations: ["common", "dashboard"],
+    translations: ["common", "auth", "dashboard", "profile", "analytics"],
   },
   {
     id: "teams",
@@ -75,7 +75,7 @@ export const modules: readonly ModuleDefinition[] = [
       { path: "bots/:id", component: lazy(() => import("@/pages/BotDetailPage")), permission: "teams:read", label: { de: "Roboter", en: "Robot" }, icon: "bots", navigation: false, module: "bots" },
     ],
     dashboardWidgets: [{ id: "teams", permission: "teams:read", audience: "mentor", label: { de: "Teams", en: "Teams" } }],
-    translations: ["teams"],
+    translations: ["teams", "bots"],
   },
   {
     id: "events",
@@ -92,7 +92,7 @@ export const modules: readonly ModuleDefinition[] = [
       { path: "admin/*", component: lazy(() => import("@/pages/SettingsPage")), permission: "users:read", label: { de: "Admin-Einstellungen", en: "Admin settings" }, icon: "settings", navigation: true },
     ],
     dashboardWidgets: [],
-    translations: ["common"],
+    translations: ["common", "settings"],
   },
   {
     id: "scoring",
@@ -112,7 +112,7 @@ export const modules: readonly ModuleDefinition[] = [
       { path: "formulas", component: lazy(() => import("@/pages/FormulasPage")), permission: "scoring:formulas", label: { de: "Punkteformeln", en: "Scoring formulas" }, icon: "scoring", navigation: true },
     ],
     dashboardWidgets: [{ id: "matches", permission: "scoring:read", audience: "juror", label: { de: "Wertungen", en: "Scores" } }],
-    translations: ["scoring", "events"],
+    translations: ["scoring", "events", "analytics"],
   },
   {
     id: "papers",

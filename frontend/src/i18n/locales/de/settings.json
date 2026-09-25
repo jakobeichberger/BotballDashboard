@@ -1,0 +1,175 @@
+{
+  "title": "Einstellungen",
+  "create": "Anlegen",
+  "activate": "Aktivieren",
+  "deactivate": "Deaktivieren",
+  "activeSuffix": "(aktiv)",
+  "activeBadge": "aktiv",
+  "nav": {
+    "users": "Benutzer",
+    "roles": "Rollen",
+    "seasons": "Saisons",
+    "seasonDetails": "Saison-Details",
+    "modules": "Saison-Module",
+    "levels": "Wettbewerbsstufen",
+    "printers": "Drucker",
+    "announcements": "Ankündigungen"
+  },
+  "users": {
+    "title": "Benutzer",
+    "create": "+ Benutzer anlegen",
+    "roles": "Rollen",
+    "passwordSet": "Passwort gesetzt. Alle Sitzungen des Benutzers wurden beendet.",
+    "newPasswordFor": "Neues Passwort für {{email}}",
+    "confirmDelete": "Benutzer \"{{name}}\" löschen? Persönliche Daten werden entfernt, die Historie bleibt anonym erhalten."
+  },
+  "seasons": {
+    "title": "Saisons",
+    "create": "+ Saison anlegen",
+    "year": "Jahr",
+    "gameTheme": "Spielthema",
+    "eventStart": "Event-Start",
+    "eventEnd": "Event-Ende",
+    "cloneTitle": "Saison klonen",
+    "cloneHint": "Übernimmt Module, Phasen, Events (als Entwurf), Scoring-Schemas, Formeln, Bracket-Gewichte und Fristen – verschoben um die Jahresdifferenz. Ergebnisse und Anmeldungen werden nicht kopiert.",
+    "clone": "Klonen",
+    "finish": "Abschließen",
+    "archive": "Archivieren",
+    "unarchive": "Aus Archiv holen",
+    "confirmArchive": "Saison \"{{name}}\" archivieren? Danach ist sie schreibgeschützt.",
+    "copyName": "{{name}} (Kopie)",
+    "export": "Export",
+    "confirmDelete": "Saison \"{{name}}\" löschen? Nur Saisons ohne Anmeldungen und Ergebnisse können gelöscht werden.",
+    "status": {
+      "draft": "Entwurf",
+      "active": "Aktiv",
+      "finished": "Abgeschlossen",
+      "archived": "Archiviert"
+    }
+  },
+  "spools": {
+    "title": "Filament-Spulen",
+    "material": "Material",
+    "color": "Farbe",
+    "brand": "Marke",
+    "grams": "Gramm",
+    "add": "+ Spule",
+    "remaining": "Rest",
+    "empty": "Keine Spulen"
+  },
+  "quotas": {
+    "usedParts": "{{used}} + {{open}} offen",
+    "openGrams": "+ {{grams}} g offen",
+    "softLimit": "Soft-Limit",
+    "hardLimit": "Hard-Limit",
+    "maxGrams": "Max. Gramm",
+    "title": "Druck-Kontingente",
+    "event": "Event für Kontingente",
+    "hint": "Offene Aufträge zählen zum Hard-Limit. Über dem Soft-Limit wird gewarnt, Admins können das Hard-Limit beim Einreichen überschreiben. Leeres Gramm-Feld = kein Gramm-Limit.",
+    "team": "Team",
+    "used": "Genutzt",
+    "softLimitParts": "Soft-Limit (Teile)",
+    "hardLimitParts": "Hard-Limit (Teile)",
+    "empty": "Keine Teams für dieses Event angemeldet"
+  },
+  "printers": {
+    "title": "Drucker",
+    "add": "+ Drucker hinzufügen",
+    "model": "Modell",
+    "type": "Typ",
+    "apiUrl": "API-URL / Host",
+    "serial": "Seriennummer",
+    "apiKey": "API-Key / Access Code"
+  },
+  "announcements": {
+    "title": "Ankündigungen",
+    "add": "+ Ankündigung",
+    "titleLabel": "Titel",
+    "text": "Text",
+    "audience": "Zielgruppe",
+    "audiences": {
+      "all": "Alle",
+      "teams": "Teams",
+      "reviewers": "Reviewer",
+      "jurors": "Juroren",
+      "internal": "Intern"
+    },
+    "saveDraft": "Als Entwurf speichern",
+    "published": "Veröffentlicht",
+    "draft": "Entwurf",
+    "publish": "Veröffentlichen",
+    "empty": "Keine Ankündigungen"
+  },
+  "seasonDetails": {
+    "title": "Saison-Details",
+    "dates": "Termine & Fristen",
+    "dateField": {
+      "registration_open": "Registrierung offen",
+      "registration_close": "Registrierung Ende",
+      "event_start": "Event-Start",
+      "event_end": "Event-Ende",
+      "paper_submission_deadline": "Paper-Deadline",
+      "print_submission_deadline": "Druck-Deadline"
+    },
+    "saveDates": "Termine speichern",
+    "extra": "Zusätzliche Deadlines & Events",
+    "titlePlaceholder": "z. B. Kickoff-Meeting",
+    "kind": "Art",
+    "deadline": "Deadline",
+    "event": "Event",
+    "add": "+ Hinzufügen",
+    "noExtra": "Keine zusätzlichen Termine.",
+    "phases": "Phasen",
+    "phaseInfo": "({{type}}, {{rounds}} Runden)"
+  },
+  "levels": {
+    "title": "Wettbewerbsstufen",
+    "code": "Code",
+    "add": "+ Stufe",
+    "order": "Reihenfolge",
+    "qualifiesFrom": "Qualifiziert aus",
+    "orderOf": "Reihenfolge {{name}}",
+    "qualifiesFromOf": "{{name}} qualifiziert aus",
+    "none": "– offen –",
+    "confirmDelete": "Stufe \"{{name}}\" löschen?"
+  },
+  "modules": {
+    "title": "Saison-Module",
+    "active": "Aktive Module",
+    "categories": "Aktive Kategorien",
+    "module": {
+      "use_seeding": {
+        "label": "Seeding (Robot Game)",
+        "description": "Qualifikationsrunden mit Punktewertung"
+      },
+      "use_double_elimination": {
+        "label": "Double Elimination",
+        "description": "K.O.-Turnier mit Bracket A/B"
+      },
+      "use_aerial": {
+        "label": "Aerial",
+        "description": "Drohnen-Wettbewerb mit 4 Runs"
+      },
+      "use_documentation_scoring": {
+        "label": "Dokumentation",
+        "description": "Teil 1/2/3 + Onsite (je 0–100)"
+      },
+      "use_paper_scoring": {
+        "label": "Paper-Scoring",
+        "description": "Wissenschaftliche Arbeit (0–1)"
+      }
+    }
+  },
+  "roles": {
+    "title": "Rollen",
+    "addButton": "+ Rolle anlegen",
+    "namePlaceholder": "z. B. head-juror",
+    "description": "Beschreibung",
+    "permissions": "Berechtigungen",
+    "create": "Rolle anlegen",
+    "role": "Rolle",
+    "system": "System",
+    "permissionCount": "{{count}} Rechte",
+    "edit": "Rechte bearbeiten"
+  }
+}

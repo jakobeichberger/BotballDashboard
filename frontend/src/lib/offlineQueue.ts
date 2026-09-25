@@ -10,6 +10,7 @@
  * (see the request interceptor in lib/api.ts).
  */
 import { createStore, del, entries, get, set, type UseStore } from "idb-keyval";
+import i18n from "@/i18n/config";
 
 export type QueuedScoreStatus = "pending" | "syncing" | "conflict" | "error";
 
@@ -145,7 +146,7 @@ function detailOf(error: HttpError): string {
   const detail = error.response?.data?.detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((item) => (item as { msg?: string }).msg ?? String(item)).join("; ");
-  return error.message ?? "Unbekannter Fehler";
+  return error.message ?? i18n.t("printing:cancel.unknownError");
 }
 
 interface ExistingMatch {
@@ -195,7 +196,7 @@ export function syncQueuedScores(client: SyncClient, userId?: string | null): Pr
             if (conflict) {
               await updateQueuedScore(entry.id, {
                 status: "conflict",
-                error: "Für dieses Team und Match wurde inzwischen bereits eine Wertung erfasst.",
+                error: i18n.t("common:pendingScores.conflictExisting"),
               });
               failed += 1;
               continue;

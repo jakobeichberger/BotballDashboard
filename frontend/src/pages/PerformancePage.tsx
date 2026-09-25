@@ -14,8 +14,10 @@ import {
 } from "recharts";
 import { Activity, ArrowDownRight, ArrowUpRight, Minus, TrendingUp } from "lucide-react";
 import clsx from "clsx";
+import { useTranslation } from "react-i18next";
+import { formatDate } from "@/i18n/format";
 import {
-  PHASE_LABELS,
+  phaseLabel,
   fmtNum,
   usePerformanceOverview,
   useTeamPerformance,
@@ -25,34 +27,36 @@ import { AXIS_TICK, GRID, SERIES } from "@/components/analytics/chartTheme";
 import { StatGrid, SectionCard } from "./dashboard/widgets";
 
 function TrendIcon({ slope }: { slope: number | null }) {
-  if (slope == null || Math.abs(slope) < 0.5) return <Minus className="inline h-4 w-4 text-gray-400" aria-label="gleichbleibend" />;
+  const { t } = useTranslation("analytics");
+  if (slope == null || Math.abs(slope) < 0.5) return <Minus className="inline h-4 w-4 text-gray-400" aria-label={t("trend.flat")} />;
   return slope > 0
-    ? <ArrowUpRight className="inline h-4 w-4 text-green-600" aria-label="steigend" />
-    : <ArrowDownRight className="inline h-4 w-4 text-red-600" aria-label="fallend" />;
+    ? <ArrowUpRight className="inline h-4 w-4 text-green-600" aria-label={t("trend.up")} />
+    : <ArrowDownRight className="inline h-4 w-4 text-red-600" aria-label={t("trend.down")} />;
 }
 
 /** Score per run in order; practice and official runs are separate series. */
 export function ScoreTrendChart({ runs }: { runs: TeamPerformance["runs"] }) {
+  const { t } = useTranslation("analytics");
   const data = runs
     .filter((r) => !r.is_disqualified)
     .map((r, i) => ({
       name: `${i + 1}`,
-      label: `${r.is_practice ? "Übung" : PHASE_LABELS[r.phase] ?? r.phase} · Runde ${r.round_number}${r.created_at ? ` · ${new Date(r.created_at).toLocaleDateString("de-DE")}` : ""}`,
+      label: `${r.is_practice ? t("practice") : phaseLabel(r.phase)} · ${t("round", { round: r.round_number })}${r.created_at ? ` · ${formatDate(r.created_at)}` : ""}`,
       official: r.is_practice ? null : r.total_score,
       practice: r.is_practice ? r.total_score : null,
     }));
-  if (!data.length) return <p className="text-sm text-gray-500">Noch keine Läufe.</p>;
+  if (!data.length) return <p className="text-sm text-gray-500">{t("performance.noRuns")}</p>;
   return (
     <div className="h-64" data-testid="score-trend-chart">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
           <CartesianGrid stroke={GRID} vertical={false} />
-          <XAxis dataKey="name" tick={AXIS_TICK} label={{ value: "Lauf", position: "insideBottomRight", offset: -4, fontSize: 11 }} />
+          <XAxis dataKey="name" tick={AXIS_TICK} label={{ value: t("performance.run"), position: "insideBottomRight", offset: -4, fontSize: 11 }} />
           <YAxis tick={AXIS_TICK} width={40} />
           <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.label ?? ""} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Line type="monotone" dataKey="official" name="Wettbewerb" stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} connectNulls />
-          <Line type="monotone" dataKey="practice" name="Übung (intern)" stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4, fill: "#fff" }} connectNulls />
+          <Line type="monotone" dataKey="official" name={t("performance.official")} stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} connectNulls />
+          <Line type="monotone" dataKey="practice" name={t("performance.practiceInternal")} stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4, fill: "#fff" }} connectNulls />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -60,8 +64,9 @@ export function ScoreTrendChart({ runs }: { runs: TeamPerformance["runs"] }) {
 }
 
 function FieldComparison({ perf }: { perf: TeamPerformance }) {
+  const { t } = useTranslation("analytics");
   const rows = perf.fields.filter((f) => f.team_avg != null || f.field_avg != null);
-  if (!rows.length) return <p className="text-sm text-gray-500">Keine Einzelwertungen vorhanden.</p>;
+  if (!rows.length) return <p className="text-sm text-gray-500">{t("performance.noFields")}</p>;
   const data = rows.map((f) => ({ label: f.label, team: f.team_avg, field: f.field_avg }));
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -74,17 +79,17 @@ function FieldComparison({ perf }: { perf: TeamPerformance }) {
             <Tooltip />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Bar dataKey="team" name={perf.team_name} fill={SERIES.primary} radius={[0, 4, 4, 0]} barSize={10} />
-            <Bar dataKey="field" name="Ø Teilnehmerfeld" fill={SERIES.muted} radius={[0, 4, 4, 0]} barSize={10} />
+            <Bar dataKey="field" name={t("performance.fieldAvg")} fill={SERIES.muted} radius={[0, 4, 4, 0]} barSize={10} />
           </BarChart>
         </ResponsiveContainer>
       </div>
       <table className="w-full text-sm self-start">
-        <caption className="sr-only">Punkte pro Aufgabe: Team gegen Teilnehmerfeld</caption>
+        <caption className="sr-only">{t("performance.fieldsCaption")}</caption>
         <thead>
           <tr className="text-left text-gray-500">
-            <th scope="col" className="py-1 font-medium">Aufgabe</th>
-            <th scope="col" className="py-1 text-right font-medium">Team Ø</th>
-            <th scope="col" className="py-1 text-right font-medium">Feld Ø</th>
+            <th scope="col" className="py-1 font-medium">{t("performance.task")}</th>
+            <th scope="col" className="py-1 text-right font-medium">{t("performance.teamAvg")}</th>
+            <th scope="col" className="py-1 text-right font-medium">{t("performance.fieldAvgShort")}</th>
             <th scope="col" className="py-1 text-right font-medium">Δ</th>
           </tr>
         </thead>
@@ -93,8 +98,8 @@ function FieldComparison({ perf }: { perf: TeamPerformance }) {
             <tr key={f.key} className="border-t border-gray-100 dark:border-gray-800">
               <td className="py-1">
                 {f.label}
-                {perf.strengths.includes(f.key) && <span className="badge-green ml-2 text-xs">Stärke</span>}
-                {perf.weaknesses.includes(f.key) && <span className="badge-red ml-2 text-xs">Schwäche</span>}
+                {perf.strengths.includes(f.key) && <span className="badge-green ml-2 text-xs">{t("performance.strength")}</span>}
+                {perf.weaknesses.includes(f.key) && <span className="badge-red ml-2 text-xs">{t("performance.weakness")}</span>}
               </td>
               <td className="py-1 text-right tabular-nums">{fmtNum(f.team_avg)}</td>
               <td className="py-1 text-right tabular-nums">{fmtNum(f.field_avg)}</td>
@@ -110,63 +115,64 @@ function FieldComparison({ perf }: { perf: TeamPerformance }) {
 }
 
 export function TeamPerformanceView({ perf }: { perf: TeamPerformance }) {
+  const { t } = useTranslation("analytics");
   const p = perf.ranking_preview;
   const s = perf.summary;
   return (
     <div data-testid="team-performance">
       <StatGrid
-        ariaLabel="Leistungskennzahlen"
+        ariaLabel={t("performance.metrics")}
         items={[
-          { label: "Ø Wettbewerb", value: `${fmtNum(s.official_avg)} (${s.official_runs})`, icon: Activity },
-          { label: "Bester Lauf", value: fmtNum(s.official_best), icon: TrendingUp },
-          { label: "Ø Übung", value: `${fmtNum(s.practice_avg)} (${s.practice_runs})`, icon: Activity },
-          { label: "Trend pro Lauf", value: s.trend_per_run == null ? "—" : `${s.trend_per_run > 0 ? "+" : ""}${fmtNum(s.trend_per_run)}`, icon: TrendingUp },
+          { label: t("performance.officialAvg"), value: `${fmtNum(s.official_avg)} (${s.official_runs})`, icon: Activity },
+          { label: t("history.col.bestRun"), value: fmtNum(s.official_best), icon: TrendingUp },
+          { label: t("performance.practiceAvg"), value: `${fmtNum(s.practice_avg)} (${s.practice_runs})`, icon: Activity },
+          { label: t("performance.trendPerRun"), value: s.trend_per_run == null ? "—" : `${s.trend_per_run > 0 ? "+" : ""}${fmtNum(s.trend_per_run)}`, icon: TrendingUp },
         ]}
       />
 
-      <SectionCard title="Ranking-Vorschau – wenn das Event jetzt enden würde" id="perf-preview">
+      <SectionCard title={t("performance.preview")} id="perf-preview">
         <dl className="grid gap-4 sm:grid-cols-3 text-sm">
           <div>
-            <dt className="text-gray-500">Seeding</dt>
+            <dt className="text-gray-500">{t("history.col.seeding")}</dt>
             <dd className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
-              {p.seeding_rank ? `${p.seeding_rank}.` : "—"} <span className="text-sm font-normal text-gray-500">von {p.seeding_teams}</span>
+              {p.seeding_rank ? `${p.seeding_rank}.` : "—"} <span className="text-sm font-normal text-gray-500">{t("performance.of", { total: p.seeding_teams })}</span>
             </dd>
-            <dd className="text-gray-500">Score {fmtNum(p.seeding_score)}</dd>
+            <dd className="text-gray-500">{t("performance.score", { score: fmtNum(p.seeding_score) })}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Gesamtwertung ({perf.category})</dt>
+            <dt className="text-gray-500">{t("performance.overall", { category: perf.category })}</dt>
             <dd className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
-              {p.overall_rank ? `${p.overall_rank}.` : "—"} <span className="text-sm font-normal text-gray-500">von {p.overall_teams}</span>
+              {p.overall_rank ? `${p.overall_rank}.` : "—"} <span className="text-sm font-normal text-gray-500">{t("performance.of", { total: p.overall_teams })}</span>
             </dd>
-            <dd className="text-gray-500">Score {fmtNum(p.overall_score, 3)}</dd>
+            <dd className="text-gray-500">{t("performance.score", { score: fmtNum(p.overall_score, 3) })}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Abstand zum nächsten Seeding-Rang</dt>
+            <dt className="text-gray-500">{t("performance.gap")}</dt>
             <dd className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">{p.points_to_next_rank != null ? `+${fmtNum(p.points_to_next_rank)}` : "—"}</dd>
-            <dd className="text-gray-500">Punkte im Seeding-Schnitt</dd>
+            <dd className="text-gray-500">{t("performance.gapHint")}</dd>
           </div>
         </dl>
       </SectionCard>
 
-      <SectionCard title="Score-Verlauf" id="perf-trend">
+      <SectionCard title={t("performance.scoreTrend")} id="perf-trend">
         <ScoreTrendChart runs={perf.runs} />
-        <p className="mt-2 text-xs text-gray-500">Übungsläufe (gestrichelt) sind intern und zählen nicht zur Rangliste.</p>
+        <p className="mt-2 text-xs text-gray-500">{t("performance.practiceHint")}</p>
       </SectionCard>
 
-      <SectionCard title="Stärken & Schwächen je Aufgabe" id="perf-fields">
+      <SectionCard title={t("performance.strengths")} id="perf-fields">
         <FieldComparison perf={perf} />
       </SectionCard>
 
-      <SectionCard title="Phasen-Vergleich" id="perf-phases">
+      <SectionCard title={t("performance.phases")} id="perf-phases">
         <table className="w-full text-sm">
-          <caption className="sr-only">Scores je Phase</caption>
+          <caption className="sr-only">{t("performance.phasesCaption")}</caption>
           <thead><tr className="text-left text-gray-500">
-            {["Phase", "Läufe", "Ø", "Median", "Min", "Max"].map((h) => <th key={h} scope="col" className="py-1 font-medium">{h}</th>)}
+            {[t("performance.phase"), t("history.col.runs"), "Ø", t("statistics.median"), "Min", "Max"].map((h) => <th key={h} scope="col" className="py-1 font-medium">{h}</th>)}
           </tr></thead>
           <tbody>
             {perf.phases.map((ph) => (
               <tr key={ph.phase} className="border-t border-gray-100 dark:border-gray-800">
-                <td className="py-1">{ph.phase === "practice" ? <span className="badge-yellow text-xs">Übung</span> : PHASE_LABELS[ph.phase] ?? ph.phase}</td>
+                <td className="py-1">{ph.phase === "practice" ? <span className="badge-yellow text-xs">{t("practice")}</span> : phaseLabel(ph.phase)}</td>
                 <td className="py-1 tabular-nums">{ph.n}</td>
                 <td className="py-1 tabular-nums">{fmtNum(ph.mean)}</td>
                 <td className="py-1 tabular-nums">{fmtNum(ph.median)}</td>
@@ -178,11 +184,11 @@ export function TeamPerformanceView({ perf }: { perf: TeamPerformance }) {
         </table>
         {perf.season_events.length > 1 && (
           <>
-            <h3 className="mt-6 mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Events dieser Saison (Vorbereitung ↔ Turnier)</h3>
+            <h3 className="mt-6 mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">{t("performance.seasonEvents")}</h3>
             <table className="w-full text-sm">
-              <caption className="sr-only">Vergleich der Events der Saison</caption>
+              <caption className="sr-only">{t("performance.seasonEventsCaption")}</caption>
               <thead><tr className="text-left text-gray-500">
-                {["Event", "Übung Ø", "Wettbewerb Ø", "Bester Lauf"].map((h) => <th key={h} scope="col" className="py-1 font-medium">{h}</th>)}
+                {[t("history.col.event"), t("history.col.practiceAvg"), t("performance.officialAvgShort"), t("history.col.bestRun")].map((h) => <th key={h} scope="col" className="py-1 font-medium">{h}</th>)}
               </tr></thead>
               <tbody>
                 {perf.season_events.map((e) => (
@@ -204,6 +210,7 @@ export function TeamPerformanceView({ perf }: { perf: TeamPerformance }) {
 
 /** Performance dashboard (spec 05): team comparison + per-team drill-down. */
 export default function PerformancePage() {
+  const { t } = useTranslation("analytics");
   const { eventId = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const { data: overview, isLoading } = usePerformanceOverview(eventId);
@@ -215,18 +222,18 @@ export default function PerformancePage() {
   return (
     <div className="p-6">
       <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-        <Activity className="w-6 h-6" /> Performance-Dashboard
+        <Activity className="w-6 h-6" /> {t("performance.title")}
       </h1>
 
-      <SectionCard title="Teamvergleich" id="perf-overview">
-        {isLoading && <p className="text-sm text-gray-500">Laden…</p>}
-        {!isLoading && sorted.length === 0 && <p className="text-sm text-gray-500">Keine Teams mit Daten – Mentor:innen sehen hier nur das eigene Team.</p>}
+      <SectionCard title={t("performance.comparison")} id="perf-overview">
+        {isLoading && <p className="text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
+        {!isLoading && sorted.length === 0 && <p className="text-sm text-gray-500">{t("performance.noTeams")}</p>}
         {sorted.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <caption className="sr-only">Teams nach aktuellem Durchschnitt</caption>
+              <caption className="sr-only">{t("performance.comparisonCaption")}</caption>
               <thead><tr className="text-left text-gray-500">
-                {["Team", "Seeding", "Ø Wettbewerb", "Bester", "Ø Übung", "Trend", ""].map((h, i) => <th key={h || i} scope="col" className="py-1 pr-3 font-medium">{h}</th>)}
+                {[t("history.col.team"), t("history.col.seeding"), t("performance.officialAvg"), t("performance.best"), t("performance.practiceAvg"), t("performance.trend"), ""].map((h, i) => <th key={h || i} scope="col" className="py-1 pr-3 font-medium">{h}</th>)}
               </tr></thead>
               <tbody>
                 {sorted.map((row) => (
@@ -238,8 +245,8 @@ export default function PerformancePage() {
                     <td className="py-1.5 pr-3 tabular-nums">{fmtNum(row.practice_avg)} ({row.practice_runs})</td>
                     <td className="py-1.5 pr-3"><TrendIcon slope={row.trend_per_run} /></td>
                     <td className="py-1.5 text-right">
-                      <button type="button" className="text-xs text-primary-600 hover:underline dark:text-primary-400" onClick={() => setParams({ team: row.team_id })} aria-label={`Details ${row.team_name}`}>
-                        Details
+                      <button type="button" className="text-xs text-primary-600 hover:underline dark:text-primary-400" onClick={() => setParams({ team: row.team_id })} aria-label={t("performance.detailsFor", { team: row.team_name })}>
+                        {t("performance.details")}
                       </button>
                     </td>
                   </tr>
@@ -252,14 +259,14 @@ export default function PerformancePage() {
 
       {selected && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{perf?.team_name ?? "Team"}</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{perf?.team_name ?? t("history.col.team")}</h2>
           <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <input type="checkbox" checked={includePractice} onChange={(e) => setIncludePractice(e.target.checked)} />
-            Übungsläufe in Stärken/Schwächen einbeziehen
+            {t("performance.includePractice")}
           </label>
         </div>
       )}
-      {isError && <p className="card p-6 text-sm text-red-600">Keine Berechtigung für dieses Team oder keine Daten.</p>}
+      {isError && <p className="card p-6 text-sm text-red-600">{t("performance.noAccess")}</p>}
       {perf && <TeamPerformanceView perf={perf} />}
     </div>
   );

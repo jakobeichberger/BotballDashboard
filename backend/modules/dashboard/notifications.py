@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.mail_templates import render_notification
 from modules.dashboard.models import NotificationEvent, NotificationRead
 
 CATEGORIES: tuple[str, ...] = (
@@ -77,18 +78,33 @@ def is_addressed_to(payload: dict, user_id: str) -> bool:
     return bool(payload.get("broadcast")) or user_id in recipients_of(payload)
 
 
-def _title(item: NotificationEvent) -> str:
+def _title(item: NotificationEvent, language: str | None = None) -> str:
+    message = render_notification(item.payload, language)
+    if message:
+        return message.subject
     return item.payload.get("title") or item.event_type.replace("_", " ").title()
 
 
-def _body(item: NotificationEvent) -> str:
+def _body(item: NotificationEvent, language: str | None = None) -> str:
+    message = render_notification(item.payload, language)
+    if message:
+        return message.summary
     return item.payload.get("message") or item.payload.get("body") or ""
 
 
 async def list_for_user(
-    db: AsyncSession, user_id: str, *, limit: int = 30, unread_only: bool = False
+    db: AsyncSession,
+    user_id: str,
+    *,
+    limit: int = 30,
+    unread_only: bool = False,
+    language: str | None = None,
 ) -> tuple[list[dict], int]:
-    """Recent notifications addressed to `user_id` and the unread count."""
+    """Recent notifications addressed to `user_id` and the unread count.
+
+    Templated notifications are rendered in `language` (the user's profile
+    language); others keep the text they were queued with.
+    """
     rows = list(
         (
             await db.execute(
@@ -121,8 +137,8 @@ async def list_for_user(
                 "event_id": row.event_id,
                 "event_type": row.event_type,
                 "category": category_of(row.event_type, row.payload),
-                "title": _title(row),
-                "body": _body(row),
+                "title": _title(row, language),
+                "body": _body(row, language),
                 "url": row.payload.get("url"),
                 "created_at": row.created_at,
                 "read": is_read,

@@ -4,7 +4,6 @@ import { clearApiCache } from "@/lib/offlineCache";
 import { api, restoreAccessToken } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
-import i18n from "@/i18n/config";
 
 let restorationStarted = false;
 
@@ -30,8 +29,8 @@ export function useCurrentUser() {
   });
   useEffect(() => {
     if (!query.data) return;
+    // Also applies the profile language (see the store subscription in i18n/config).
     setUser(query.data);
-    if (query.data.preferred_language) i18n.changeLanguage(query.data.preferred_language);
     // The profile is the source of truth across devices (User.theme).
     useThemeStore.getState().syncFromProfile(query.data.theme);
   }, [query.data, setUser]);

@@ -3,8 +3,15 @@
   "bracket": {
     "title": "Bracket",
     "label": "Bracket {{label}}",
-    "section": { "winner": "Winners bracket", "loser": "Losers bracket", "final": "Finals" },
-    "kind": { "minor": "minor", "major": "major" },
+    "section": {
+      "winner": "Winners bracket",
+      "loser": "Losers bracket",
+      "final": "Finals"
+    },
+    "kind": {
+      "minor": "minor",
+      "major": "major"
+    },
     "grandFinal": "Grand final",
     "resetFinal": "Reset final",
     "notNeeded": "not needed",
@@ -12,7 +19,11 @@
     "pickWinner": "{{team}} wins {{match}}"
   },
   "notPublic": "This event is not publicly available.",
-  "connection": { "connecting": "Connecting", "connected": "Connected", "disconnected": "Disconnected" },
+  "connection": {
+    "connecting": "Connecting",
+    "connected": "Connected",
+    "disconnected": "Disconnected"
+  },
   "toggleRotation": "Toggle rotation",
   "fullscreen": "Fullscreen",
   "qrAlt": "QR code for this event",
@@ -71,5 +82,87 @@
   "reason_finals_replay": "Final: a tie is replayed",
   "reason_replay": "no tie-breaker decides",
   "tiebreaker": "Decided by",
-  "bonus": "incl. contact bonus {{bonus}}"
+  "bonus": "incl. contact bonus {{bonus}}",
+  "matchStatus": {
+    "scheduled": "scheduled",
+    "called": "called",
+    "running": "running",
+    "completed": "completed",
+    "cancelled": "cancelled"
+  },
+  "eventStatus": {
+    "draft": "Draft",
+    "published": "Published",
+    "live": "Live",
+    "completed": "Completed",
+    "archived": "Archived"
+  },
+  "setup": {
+    "saved": "Event saved.",
+    "saveFailed": "The event could not be saved.",
+    "seasonCreated": "The season was created and selected.",
+    "title": "Event setup",
+    "firstEvent": "Set up the first event",
+    "firstSeason": "Create the first season",
+    "seasonName": "Season name",
+    "createSeason": "Create season",
+    "season": "Season",
+    "chooseSeason": "Choose season",
+    "slug": "Slug",
+    "timezone": "Time zone",
+    "venue": "Venue",
+    "tables": "Tables",
+    "public": "Public access",
+    "publicFlag": {
+      "public_scoreboard": "Scoreboard",
+      "public_schedule": "Schedule",
+      "public_results": "Results",
+      "public_announcements": "Announcements"
+    },
+    "save": "Save event",
+    "phases": "Phases",
+    "phaseName": "Phase name",
+    "addPhase": "Add phase",
+    "teams": "Teams ({{count}})",
+    "registerTeam": "Register team",
+    "announcements": "Public announcements",
+    "announcementTitle": "Title",
+    "announcementBody": "Message",
+    "publish": "Publish",
+    "modules": "Active modules",
+    "moduleBlocked": "Disabled for the season",
+    "moduleStaysInactive": " – stays inactive"
+  },
+  "schedulePage": {
+    "seedsTaken": "Seed list taken from the seeding ({{count}} teams).",
+    "seedsFailed": "The seed list could not be taken over.",
+    "resultFailed": "The result could not be saved.",
+    "generateFailed": "The schedule could not be generated.",
+    "updateFailed": "The schedule change could not be saved.",
+    "title": "Schedule & brackets",
+    "seedsHint": "Take the seed list (seed_number) per category from the seeding ranking",
+    "seeds": "Seeds from seeding",
+    "phase": "Tournament phase",
+    "choosePhase": "Choose phase",
+    "startTime": "Start time",
+    "generate": "Generate",
+    "col": {
+      "time": "Time",
+      "code": "Code",
+      "phase": "Phase",
+      "round": "Round",
+      "table": "Table",
+      "teams": "Teams",
+      "action": "Action"
+    },
+    "timeOf": "Time {{code}}",
+    "tableOf": "Table {{code}}",
+    "statusOf": "Status {{code}}",
+    "empty": "No schedule yet.",
+    "brackets": "Brackets",
+    "bracketHint": "Click the winner to save the result. Winner and loser advance automatically; a correction is possible as long as the next match has not been played."
+  },
+  "seed": "Seed",
+  "best": "Best",
+  "pointsShort": "{{points}} pts"
 }

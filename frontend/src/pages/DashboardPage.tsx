@@ -10,14 +10,8 @@ import ReviewerDashboard from "./dashboard/ReviewerDashboard";
 import UserDashboard from "./dashboard/UserDashboard";
 import { useDashboardSummary } from "@/api/analytics";
 
-const ROLE_LABELS = {
-  admin: "Administrator",
-  reviewer: "Reviewer",
-  user: "Teilnehmer",
-};
-
 export default function DashboardPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("dashboard");
   const { eventId = "" } = useParams();
   const role = useDashboardRole();
   const user = useAuthStore((state) => state.user);
@@ -101,22 +95,22 @@ export default function DashboardPage() {
       <header className="mb-6">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {t("nav.dashboard")}
+            {t("common:nav.dashboard")}
           </h1>
-          <span className="badge-gray text-xs" aria-label={`Rolle: ${ROLE_LABELS[role]}`}>
-            {ROLE_LABELS[role]}
+          <span className="badge-gray text-xs" aria-label={t("roleLabel", { role: t(`role.${role}`) })}>
+            {t(`role.${role}`)}
           </span>
         </div>
         {user?.display_name && (
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            Willkommen, {user.display_name}
+            {t("welcome", { name: user.display_name })}
           </p>
         )}
         {context && (
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {event
-              ? `Aktives Event: ${event.name}`
-              : `Aktive Saison: ${season.name} (${season.year})`}
+              ? t("activeEvent", { name: event.name })
+              : t("activeSeason", { name: season.name, year: season.year })}
           </p>
         )}
       </header>

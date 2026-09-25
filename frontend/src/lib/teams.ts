@@ -2,6 +2,9 @@
 // registration details, season roster, versioned documents, 3D-print
 // compliance checklist). Not yet part of the generated client.
 import { api } from "@/lib/api";
+import i18n from "@/i18n/config";
+import { formatNumber } from "@/i18n/format";
+import { labelMap } from "@/i18n/labels";
 
 export type TeamCategory = "botball" | "open" | "aerial" | "jbc";
 export type FeeStatus = "pending" | "paid" | "waived";
@@ -25,15 +28,10 @@ export interface TeamSeasonRegistration {
   address: string | null;
 }
 
-export const CATEGORY_LABEL: Record<string, string> = {
-  botball: "Botball",
-  open: "Open",
-  aerial: "Aerial",
-  jbc: "JBC",
-};
-export const FEE_LABEL: Record<string, string> = { pending: "offen", paid: "bezahlt", waived: "erlassen" };
+export const CATEGORY_LABEL = labelMap("teams:category", ["botball", "open", "aerial", "jbc"]);
+export const FEE_LABEL = labelMap("teams:fee", ["pending", "paid", "waived"]);
 export const FEE_BADGE: Record<string, string> = { pending: "badge-yellow", paid: "badge-green", waived: "badge-gray" };
-export const KIT_LABEL: Record<string, string> = { not_sent: "nicht versandt", sent: "versandt", received: "erhalten" };
+export const KIT_LABEL = labelMap("teams:kit", ["not_sent", "sent", "received"]);
 
 export type SeasonForm = Pick<
   TeamSeasonRegistration,
@@ -93,12 +91,7 @@ export interface TeamDocument {
   versions: TeamDocumentVersion[];
 }
 
-export const DOCUMENT_CATEGORY_LABEL: Record<string, string> = {
-  project_plan: "Projektplan",
-  presentation: "Präsentation",
-  code_documentation: "Code-Dokumentation",
-  other: "Sonstiges",
-};
+export const DOCUMENT_CATEGORY_LABEL = labelMap("teams:documentCategory", ["project_plan", "presentation", "code_documentation", "other"]);
 
 /** PDFs and images; the backend checks the content, not the extension. */
 export const DOCUMENT_ACCEPT = "application/pdf,image/png,image/jpeg,image/gif,image/webp,.pdf,.png,.jpg,.jpeg,.gif,.webp";
@@ -141,7 +134,7 @@ export function complianceUrl(teamId: string, seasonId: string, suffix = ""): st
 export function complianceHint(status?: ComplianceStatus | null): string | null {
   if (!status || status.total === 0 || status.complete) return null;
   const open = status.total - status.checked;
-  return `Die 3D-Druck-Checkliste des Teams ist unvollständig (${open} von ${status.total} Punkten offen). Der Auftrag wird trotzdem angenommen.`;
+  return i18n.t("teams:compliance.incompleteHint", { open, total: status.total });
 }
 
 /** Download a protected file (bearer token) and hand it to the browser. */
@@ -160,8 +153,9 @@ export async function downloadBlob(url: string, fileName: string, params?: Recor
 
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+  if (bytes < 1024 * 1024) return `${formatNumber(bytes / 1024, oneDecimal)} KB`;
+  return `${formatNumber(bytes / 1024 / 1024, oneDecimal)} MB`;
 }
 
 // ── Team search ──────────────────────────────────────────────────────────────

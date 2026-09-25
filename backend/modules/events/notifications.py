@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.domain_events import emit_event
+from core.mail_templates import i18n_payload
 from modules.auth.models import User
 from modules.events.models import Event, MatchParticipant, ScheduledMatch
 from modules.seasons.models import SeasonEvent
@@ -132,8 +133,17 @@ async def queue_deadline_reminders(db: AsyncSession, today: date | None = None) 
             db,
             "deadline_reminder",
             payload={
+                # English title/message stay as the untranslated fallback; mail,
+                # push and the notification center render `i18n` per recipient.
                 "title": f"Deadline {when}: {deadline.title}",
                 "message": message,
+                **i18n_payload(
+                    "deadline_reminder",
+                    title=deadline.title,
+                    due=deadline.event_date.isoformat(),
+                    days=days,
+                    description=deadline.description,
+                ),
                 "userIds": user_ids,
                 "emails": emails,
                 "url": "/",

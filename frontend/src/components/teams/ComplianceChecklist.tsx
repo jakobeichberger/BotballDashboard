@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ClipboardCheck, ShieldCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { apiErrorMessage } from "@/modules/papers/paperMeta";
 import { complianceUrl, type ComplianceStatus } from "@/lib/teams";
@@ -22,6 +23,7 @@ export function ComplianceChecklist({
   canTick: boolean;
   canVerify: boolean;
 }) {
+  const { t } = useTranslation("teams");
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [newItem, setNewItem] = useState("");
@@ -66,20 +68,20 @@ export function ComplianceChecklist({
     onError,
   });
 
-  if (isLoading) return <p className="px-4 py-3 text-sm text-gray-500">Checkliste wird geladen...</p>;
+  if (isLoading) return <p className="px-4 py-3 text-sm text-gray-500">{t("compliance.loading")}</p>;
   if (!status || !Array.isArray(status.items)) return null;
 
   return (
     <div className="p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <ClipboardCheck className="h-4 w-4 text-gray-500" aria-hidden />
-        <span>{status.checked} von {status.total} Punkten bestätigt</span>
+        <span>{t("compliance.progress", { checked: status.checked, total: status.total })}</span>
         {status.is_verified ? (
-          <span className="badge-green">von Organisation geprüft</span>
+          <span className="badge-green">{t("compliance.verified")}</span>
         ) : status.complete && status.total > 0 ? (
-          <span className="badge-blue">vollständig, Prüfung offen</span>
+          <span className="badge-blue">{t("compliance.completePending")}</span>
         ) : status.total > 0 ? (
-          <span className="badge-yellow">unvollständig</span>
+          <span className="badge-yellow">{t("compliance.incomplete")}</span>
         ) : null}
         {canVerify && status.total > 0 && (
           <button
@@ -87,17 +89,17 @@ export function ComplianceChecklist({
             disabled={verifyM.isPending || (!status.is_verified && !status.complete)}
             onClick={() => verifyM.mutate(!status.is_verified)}
           >
-            <ShieldCheck className="h-4 w-4" /> {status.is_verified ? "Prüfung zurücknehmen" : "Als geprüft markieren"}
+            <ShieldCheck className="h-4 w-4" /> {status.is_verified ? t("compliance.unverify") : t("compliance.verify")}
           </button>
         )}
       </div>
 
       {status.total === 0 && (
         <p className="text-sm text-gray-500">
-          Für diese Saison ist noch keine 3D-Druck-Checkliste hinterlegt.
+          {t("compliance.none")}
           {canVerify && (
             <button className="btn-secondary ml-2 text-xs" disabled={seedM.isPending} onClick={() => seedM.mutate()}>
-              Standardregeln übernehmen
+              {t("compliance.useDefaults")}
             </button>
           )}
         </p>
@@ -118,7 +120,7 @@ export function ComplianceChecklist({
               <p className="font-medium text-gray-900 dark:text-white">{entry.item.label}</p>
               {entry.item.description && <p className="text-xs text-gray-500">{entry.item.description}</p>}
             </div>
-            {entry.verified_at && <CheckCircle2 className="h-4 w-4 text-green-600" aria-label="geprüft" />}
+            {entry.verified_at && <CheckCircle2 className="h-4 w-4 text-green-600" aria-label={t("compliance.itemVerified")} />}
           </li>
         ))}
       </ul>
@@ -130,12 +132,12 @@ export function ComplianceChecklist({
         >
           <input
             className="input flex-1"
-            placeholder="Weiteren Punkt ergänzen, z. B. „Max. 6 Teile (2026)“"
-            aria-label="Neuer Checklistenpunkt"
+            placeholder={t("compliance.newItemPlaceholder")}
+            aria-label={t("compliance.newItem")}
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
           />
-          <button className="btn-secondary text-sm" disabled={!newItem.trim() || addM.isPending}>Hinzufügen</button>
+          <button className="btn-secondary text-sm" disabled={!newItem.trim() || addM.isPending}>{t("common:add")}</button>
         </form>
       )}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

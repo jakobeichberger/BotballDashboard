@@ -7,6 +7,7 @@ import { useState, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { scoreSheetApi, type UploadScoreSheetParams } from '../api/scoreSheets'
+import { formatFileSize } from '@/lib/teams'
 
 interface Props {
   seasonId: string
@@ -16,7 +17,7 @@ interface Props {
 }
 
 export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onSuccess, onCancel }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('scoring')
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -91,14 +92,14 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
         {file ? (
           <div className="text-center">
             <p className="text-sm font-medium text-green-600 dark:text-green-400">✓ {file.name}</p>
-            <p className="text-xs text-gray-500 mt-1">{(file.size / 1024).toFixed(0)} KB</p>
+            <p className="text-xs text-gray-500 mt-1">{formatFileSize(file.size)}</p>
           </div>
         ) : (
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {t('scoreSheets.upload.dropzone')}
             </p>
-            <p className="text-xs text-gray-400 mt-1">PDF, max. 20 MB</p>
+            <p className="text-xs text-gray-400 mt-1">{t('scoreSheets.upload.limit')}</p>
           </div>
         )}
       </div>
@@ -113,7 +114,7 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
           required
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="z.B. ECER 2026 Official Score Sheet"
+          placeholder={t('scoreSheets.upload.labelPlaceholder')}
           className="input w-full"
         />
       </div>
@@ -142,7 +143,7 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
             type="text"
             value={gameTheme}
             onChange={(e) => setGameTheme(e.target.value)}
-            placeholder="z.B. Warehouse & Logistics"
+            placeholder={t('scoreSheets.upload.gameThemePlaceholder')}
             className="input w-full"
           />
         </div>
@@ -151,7 +152,7 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
       {/* Actions */}
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onCancel} className="btn btn-ghost">
-          {t('common.cancel')}
+          {t('common:cancel')}
         </button>
         <button
           type="submit"

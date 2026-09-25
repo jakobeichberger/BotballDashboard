@@ -54,7 +54,7 @@ describe("ScoreEntryPage", () => {
     await fillForm();
     fireEvent.click(screen.getByRole("button", { name: /Wertung prüfen & speichern/ }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByTestId("confirm-total")).toHaveTextContent("15.00");
+    expect(within(dialog).getByTestId("confirm-total")).toHaveTextContent("15,00");
     expect(api.post).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Verbindlich absenden" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));

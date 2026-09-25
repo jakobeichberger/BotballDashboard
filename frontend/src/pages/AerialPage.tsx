@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import { aerialMean } from "@/lib/scoring";
 import { EventLink } from "@/components/EventLink";
 import { Plane, ArrowLeft, Save } from "lucide-react";
+import { formatNumber } from "@/i18n/format";
 
 interface AerialEntry {
   team_id: string;
@@ -22,6 +24,7 @@ interface Team {
 }
 
 export default function AerialPage() {
+  const { t } = useTranslation("scoring");
   const queryClient = useQueryClient();
   // Results belong to the event of the current route, not the season's first event.
   const { base } = useScoringScope();
@@ -82,19 +85,19 @@ export default function AerialPage() {
   // Same rule as the backend and the formula engine: mean of every run.
   const meanOfRuns = (e: Partial<AerialEntry>): string => {
     const mean = aerialMean([e.run1, e.run2, e.run3, e.run4]);
-    return mean == null ? "–" : mean.toFixed(1);
+    return mean == null ? "–" : formatNumber(mean, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   };
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <EventLink to="/scoreboard" aria-label="Zurück zur Rangliste" className="text-gray-400 hover:text-gray-600">
+          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-gray-400 hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
           </EventLink>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Plane className="w-6 h-6 text-sky-500" />
-            Aerial – Ergebnisse
+            {t("aerial.title")}
           </h1>
         </div>
         <button
@@ -103,30 +106,30 @@ export default function AerialPage() {
           className="btn-primary text-sm flex items-center gap-2"
         >
           <Save className="w-4 h-4" />
-          {saveMutation.isPending ? "Speichern…" : "Speichern"}
+          {saveMutation.isPending ? t("saving") : t("common:save")}
         </button>
       </div>
 
       {saveMutation.isSuccess && (
-        <div className="mb-4 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">Gespeichert</div>
+        <div className="mb-4 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">{t("profile:saved")}</div>
       )}
 
       <p className="text-sm text-gray-500 mb-4">
-        Score = Durchschnitt aller Läufe. Nur Felder mit Wert ≥ 0 werden gespeichert.
+        {t("aerial.hint")}
       </p>
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
               {[1, 2, 3, 4].map((n) => (
                 <th key={n} className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">
-                  Run {n}
+                  {t("aerial.run", { number: n })}
                 </th>
               ))}
               <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">
-                Score (⌀ aller Läufe)
+                {t("aerial.score")}
               </th>
             </tr>
           </thead>
@@ -149,7 +152,7 @@ export default function AerialPage() {
                         onChange={(ev) =>
                           setField(team.id, run, ev.target.value === "" ? null : Number(ev.target.value))
                         }
-                        aria-label={`Run ${i + 1} für ${team.name}`}
+                        aria-label={t("aerial.runFor", { number: i + 1, team: team.name })}
                         className="input text-sm w-24 text-center"
                         placeholder="–"
                       />

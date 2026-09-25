@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Save, Trophy } from "lucide-react";
 import { api, isQueuedResponse } from "@/lib/api";
+import { formatScore } from "@/i18n/format";
 import { useEvent } from "@/hooks/useEvents";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useAuthStore } from "@/store/authStore";
@@ -97,7 +98,7 @@ export default function EventScoringPage() {
       end_contact: endContact,
       tiebreak_values: tiebreak,
       idempotency_key: crypto.randomUUID(),
-    }, { offlineLabel: [teamLabel(teamId), currentMatch?.code, `${total.toFixed(2)} P.`].filter(Boolean).join(" · ") }),
+    }, { offlineLabel: [teamLabel(teamId), currentMatch?.code, t("pointsShort", { points: formatScore(total) })].filter(Boolean).join(" · ") }),
     onSuccess: ({ data }) => {
       setConfirming(false);
       setMessage(isQueuedResponse(data) ? t("scoreQueued") : t("scoreSaved"));
@@ -155,7 +156,7 @@ export default function EventScoringPage() {
 
         {scheduledMatchId && outcome.data?.sides && <OutcomeCard outcome={outcome.data} teamName={teamName} />}
 
-        <div className="sticky bottom-0 card flex items-center justify-between gap-4 border-primary-200 p-4"><div><p className="text-sm text-gray-500">{t("calculatedTotal")}</p><p className="text-3xl font-bold">{total.toFixed(2)}</p></div><button className="btn-primary flex min-h-12 items-center gap-2" disabled={disabled || save.isPending || !teamId || sheet.errors.length > 0}><Save />{t("reviewScore")}</button></div>
+        <div className="sticky bottom-0 card flex items-center justify-between gap-4 border-primary-200 p-4"><div><p className="text-sm text-gray-500">{t("calculatedTotal")}</p><p className="text-3xl font-bold">{formatScore(total)}</p></div><button className="btn-primary flex min-h-12 items-center gap-2" disabled={disabled || save.isPending || !teamId || sheet.errors.length > 0}><Save />{t("reviewScore")}</button></div>
         <p className="text-sm text-gray-500">{t("officialHint")}</p>{message && <p role="status" className="rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">{message}</p>}
       </form>
       <ScoreConfirmDialog
@@ -174,7 +175,7 @@ export default function EventScoringPage() {
         onConfirm={() => save.mutate()}
         onCancel={() => setConfirming(false)}
       />
-      <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><div className="card overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-100 dark:bg-gray-800"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">Seed</th><th className="p-3 text-right">Best</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t dark:border-gray-800"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{item.seed_score.toFixed(2)}</td><td className="p-3 text-right">{item.best_score.toFixed(2)}</td><td className="p-3 text-xs text-gray-500">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
+      <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><div className="card overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-100 dark:bg-gray-800"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">{t("seed")}</th><th className="p-3 text-right">{t("best")}</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t dark:border-gray-800"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{formatScore(item.seed_score)}</td><td className="p-3 text-right">{formatScore(item.best_score)}</td><td className="p-3 text-xs text-gray-500">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
     </div>
   );
 }

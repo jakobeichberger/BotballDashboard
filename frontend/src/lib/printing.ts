@@ -1,6 +1,9 @@
 // Shared types and helpers for the 3D printing pages. Local interfaces until
 // the generated API client is regenerated with the new printing fields.
 import { api } from "@/lib/api";
+import i18n from "@/i18n/config";
+import { labelMap } from "@/i18n/labels";
+import { formatFileSize } from "@/lib/teams";
 
 export type PrintJobStatus =
   | "pending"
@@ -58,9 +61,9 @@ export interface PrintJobCancelled extends PrintJob {
 
 /** Message to show after a cancel, or null when there is nothing to report. */
 export function cancelNotice(job: PrintJobCancelled): string | null {
-  if (job.printer_cancel === "sent") return `Druck am Drucker abgebrochen. ${job.printer_message ?? ""}`.trim();
+  if (job.printer_cancel === "sent") return `${i18n.t("printing:cancel.sent")} ${job.printer_message ?? ""}`.trim();
   if (job.printer_cancel === "failed") {
-    return `Auftrag storniert, aber der Drucker hat den Abbruch nicht bestätigt: ${job.printer_message ?? "unbekannter Fehler"}. Bitte den Druck am Gerät stoppen.`;
+    return i18n.t("printing:cancel.failed", { message: job.printer_message ?? i18n.t("printing:cancel.unknownError") });
   }
   return job.printer_message ?? null;
 }
@@ -121,31 +124,20 @@ export const STATUS_BADGE: Record<PrintJobStatus, string> = {
   rejected: "badge-red",
 };
 
-export const STATUS_LABEL: Record<PrintJobStatus, string> = {
-  pending: "Ausstehend",
-  approved: "Genehmigt",
-  queued: "In Warteschlange",
-  printing: "Druckt",
-  completed: "Fertig",
-  failed: "Fehlgeschlagen",
-  cancelled: "Abgebrochen",
-  rejected: "Abgelehnt",
-};
+export const STATUS_LABEL = labelMap<PrintJobStatus>("printing:status", [
+  "pending",
+  "approved",
+  "queued",
+  "printing",
+  "completed",
+  "failed",
+  "cancelled",
+  "rejected",
+]);
 
-export const PRINTER_TYPE_LABEL: Record<string, string> = {
-  bambu: "Bambu LAN",
-  octoprint: "OctoPrint",
-  generic: "Manuell (ohne Adapter)",
-};
+export const PRINTER_TYPE_LABEL = labelMap("printing:printerType", ["bambu", "octoprint", "generic"]);
 
-export const PRINTER_STATE_LABEL: Record<string, string> = {
-  idle: "Bereit",
-  printing: "Druckt",
-  paused: "Pausiert",
-  completed: "Fertig",
-  failed: "Fehler",
-  offline: "Offline",
-};
+export const PRINTER_STATE_LABEL = labelMap("printing:printerState", ["idle", "printing", "paused", "completed", "failed", "offline"]);
 
 // Mirrors JOB_TRANSITIONS in backend/modules/printing/service.py. Rejecting
 // needs a reason and has its own endpoint, so it is not a plain transition.
@@ -173,13 +165,10 @@ export function formatDuration(seconds: number | null | undefined): string {
 }
 
 export function formatBytes(bytes: number | null | undefined): string {
-  if (bytes == null) return "—";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return bytes == null ? "—" : formatFileSize(bytes);
 }
 
-export function apiError(error: unknown, fallback = "Aktion fehlgeschlagen."): string {
+export function apiError(error: unknown, fallback = i18n.t("common:actionFailed")): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
   return typeof detail === "string" ? detail : fallback;
 }

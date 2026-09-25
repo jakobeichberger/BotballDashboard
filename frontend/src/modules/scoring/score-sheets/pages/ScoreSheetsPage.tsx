@@ -29,7 +29,7 @@ const OCR_STATUS_BADGE: Record<string, string> = {
 }
 
 export default function ScoreSheetsPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation('scoring')
   const { seasonId, competitionLevelId } = useParams<{
     seasonId: string
     competitionLevelId?: string
@@ -117,7 +117,7 @@ export default function ScoreSheetsPage() {
         {/* Left: sheet list */}
         <div className="w-full lg:w-80 shrink-0 flex flex-col gap-2 overflow-y-auto">
           {isLoading && (
-            <p className="text-sm text-gray-500 py-4 text-center">{t('common.loading')}</p>
+            <p className="text-sm text-gray-500 py-4 text-center">{t('common:loading')}</p>
           )}
 
           {!isLoading && sheets.length === 0 && (
@@ -188,7 +188,7 @@ export default function ScoreSheetsPage() {
                       onClick={() => handleDelete(sheet)}
                       className="text-xs text-red-500 hover:underline"
                     >
-                      {t('common.delete')}
+                      {t('common:delete')}
                     </button>
                   </>
                 )}
@@ -206,7 +206,7 @@ export default function ScoreSheetsPage() {
           ) : selectedSheet.ocr_status === 'processing' || selectedSheet.ocr_status === 'pending' ? (
             <div className="flex flex-col items-center justify-center gap-3 h-full text-gray-500">
               <div className="animate-spin h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent" />
-              <p className="text-sm">{t('scoreSheets.ocr.processing')}</p>
+              <p className="text-sm">{t('scoreSheets.ocr.processingHint')}</p>
             </div>
           ) : (
             <div>

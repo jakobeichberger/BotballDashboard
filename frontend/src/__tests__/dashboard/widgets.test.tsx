@@ -132,7 +132,7 @@ describe("RankingList", () => {
     );
     const table = screen.getByRole("table");
     expect(within(table).getByText("Alpha Bots")).toBeInTheDocument();
-    expect(within(table).getByText("42.5")).toBeInTheDocument();
+    expect(within(table).getByText("42,5")).toBeInTheDocument();
   });
 
   it("prefers an inline team_name over the map", () => {
@@ -159,7 +159,7 @@ describe("ReviewQueue", () => {
       />
     );
     expect(screen.getByText("CV Navigation")).toBeInTheDocument();
-    expect(screen.getByText("under_review")).toBeInTheDocument();
+    expect(screen.getByText("In Prüfung")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /öffnen/i })[0]).toHaveAttribute("href", "/papers");
   });
 });

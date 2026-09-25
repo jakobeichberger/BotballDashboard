@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { History } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { EventLink } from "@/components/EventLink";
 import { fmtNum, type TeamHistoryRow } from "@/api/analytics";
 import { AXIS_TICK, GRID, SERIES } from "./chartTheme";
@@ -15,6 +16,7 @@ function label(row: TeamHistoryRow) {
  * share an axis), and the table the charts are drawn from.
  */
 export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHistoryRow[]; isLoading?: boolean }) {
+  const { t } = useTranslation("analytics");
   const data = useMemo(
     () =>
       (rows ?? []).map((r) => ({
@@ -31,18 +33,18 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
   return (
     <section className="card overflow-hidden" aria-labelledby="team-history-heading">
       <h2 id="team-history-heading" className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-        <History className="w-4 h-4" aria-hidden="true" /> Historie & Mehrjahresvergleich ({rows?.length ?? 0})
+        <History className="w-4 h-4" aria-hidden="true" /> {t("history.title", { count: rows?.length ?? 0 })}
       </h2>
-      {isLoading && <p className="p-4 text-sm text-gray-500">Laden…</p>}
+      {isLoading && <p className="p-4 text-sm text-gray-500">{t("common:loadingEllipsis")}</p>}
       {!isLoading && (!rows || rows.length === 0) && (
-        <p className="px-4 py-8 text-center text-gray-400">Noch keine Event-Teilnahmen.</p>
+        <p className="px-4 py-8 text-center text-gray-400">{t("history.empty")}</p>
       )}
       {rows && rows.length > 0 && (
         <>
           {rows.length > 1 && (
             <div className="grid gap-4 p-4 lg:grid-cols-2">
               <figure>
-                <figcaption className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Seeding-Score je Event</figcaption>
+                <figcaption className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t("history.scoreChart")}</figcaption>
                 <div className="h-56" data-testid="history-score-chart">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
@@ -50,13 +52,13 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
                       <XAxis dataKey="name" tick={AXIS_TICK} interval="preserveStartEnd" />
                       <YAxis tick={AXIS_TICK} width={40} />
                       <Tooltip />
-                      <Line type="monotone" dataKey="seeding" name="Seeding-Score" stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                      <Line type="monotone" dataKey="seeding" name={t("history.seedingScore")} stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </figure>
               <figure>
-                <figcaption className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Platzierung je Event (oben = besser)</figcaption>
+                <figcaption className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t("history.rankChart")}</figcaption>
                 <div className="h-56" data-testid="history-rank-chart">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
@@ -65,8 +67,8 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
                       <YAxis reversed allowDecimals={false} domain={[1, maxRank]} tick={AXIS_TICK} width={32} />
                       <Tooltip />
                       <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Line type="monotone" dataKey="seedingRank" name="Seeding-Rang" stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} connectNulls />
-                      <Line type="monotone" dataKey="overallRank" name="Gesamtrang" stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4 }} connectNulls />
+                      <Line type="monotone" dataKey="seedingRank" name={t("history.seedingRank")} stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                      <Line type="monotone" dataKey="overallRank" name={t("history.overallRank")} stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4 }} connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -75,10 +77,20 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
           )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <caption className="sr-only">Ergebnisse des Teams je Event</caption>
+              <caption className="sr-only">{t("history.caption")}</caption>
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  {["Saison", "Event", "Seeding", "Seed-Score", "Gesamt", "Gesamt-Score", "Läufe", "Bester Lauf", ...(showPractice ? ["Übung Ø"] : [])].map((h) => (
+                  {[
+                    t("history.col.season"),
+                    t("history.col.event"),
+                    t("history.col.seeding"),
+                    t("history.col.seedScore"),
+                    t("history.col.overall"),
+                    t("history.col.overallScore"),
+                    t("history.col.runs"),
+                    t("history.col.bestRun"),
+                    ...(showPractice ? [t("history.col.practiceAvg")] : []),
+                  ].map((h) => (
                     <th key={h} scope="col" className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-400">{h}</th>
                   ))}
                 </tr>

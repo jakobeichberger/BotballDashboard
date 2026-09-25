@@ -123,7 +123,7 @@ describe("BoxPlotList", () => {
       />,
     );
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByRole("img", { name: /runde 1: min 10.0, q1 20.0, median 30.0/i })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /runde 1: min 10,0, q1 20,0, median 30,0/i })).toBeInTheDocument();
   });
 });
 
@@ -157,10 +157,10 @@ describe("TeamHistoryPanel", () => {
     );
     expect(screen.getByRole("link", { name: "ECER 2026" })).toBeInTheDocument();
     expect(screen.getAllByText("3/10")).toHaveLength(2);
-    expect(screen.getAllByText("0.812")).toHaveLength(2);
+    expect(screen.getAllByText("0,812")).toHaveLength(2);
     // Practice column only appears when the API sent practice data.
     expect(screen.getByText("Übung Ø")).toBeInTheDocument();
-    expect(screen.getByText("90.0 (4)")).toBeInTheDocument();
+    expect(screen.getByText("90,0 (4)")).toBeInTheDocument();
     expect(screen.getByTestId("history-score-chart")).toBeInTheDocument();
     expect(screen.getByTestId("history-rank-chart")).toBeInTheDocument();
   });

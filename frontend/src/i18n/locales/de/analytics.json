@@ -1,0 +1,212 @@
+{
+  "noData": "Keine Daten.",
+  "boxplot": {
+    "summary": "min {{min}}, Q1 {{q1}}, Median {{median}}, Q3 {{q3}}, max {{max}}"
+  },
+  "review": {
+    "title": "Lauf prüfen: {{team}}, Runde {{round}}",
+    "reasons": "Auffälligkeiten",
+    "values": "Eingetragene Werte (Summe {{total}})",
+    "changes": "Änderungen",
+    "revision": "Rev. {{revision}}:",
+    "viewInSchedule": "Im Zeitplan ansehen",
+    "confirmed": "Bestätigt",
+    "confirm": "Wert ist korrekt – bestätigen"
+  },
+  "history": {
+    "title": "Historie & Mehrjahresvergleich ({{count}})",
+    "empty": "Noch keine Event-Teilnahmen.",
+    "scoreChart": "Seeding-Score je Event",
+    "seedingScore": "Seeding-Score",
+    "rankChart": "Platzierung je Event (oben = besser)",
+    "seedingRank": "Seeding-Rang",
+    "overallRank": "Gesamtrang",
+    "caption": "Ergebnisse des Teams je Event",
+    "col": {
+      "season": "Saison",
+      "event": "Event",
+      "seeding": "Seeding",
+      "seedScore": "Seed-Score",
+      "overall": "Gesamt",
+      "overallScore": "Gesamt-Score",
+      "runs": "Läufe",
+      "bestRun": "Bester Lauf",
+      "practiceAvg": "Übung Ø",
+      "team": "Team"
+    }
+  },
+  "deadlines": {
+    "done": "erledigt",
+    "past": "vorbei",
+    "today": "heute",
+    "running": "läuft",
+    "tomorrow": "morgen",
+    "inDays_one": "in {{count}} Tag",
+    "inDays_other": "in {{count}} Tagen",
+    "none": "Keine anstehenden Deadlines.",
+    "label": "Deadlines",
+    "kind": {
+      "paper": "Paper",
+      "review": "Review",
+      "printing": "3D-Druck",
+      "registration": "Anmeldung",
+      "competition": "Wettbewerb",
+      "event": "Event",
+      "phase": "Phase",
+      "deadline": "Deadline",
+      "milestone": "Termin"
+    }
+  },
+  "calendar": {
+    "previousMonth": "Vorheriger Monat",
+    "nextMonth": "Nächster Monat",
+    "weekday": {
+      "mon": "Mo",
+      "tue": "Di",
+      "wed": "Mi",
+      "thu": "Do",
+      "fri": "Fr",
+      "sat": "Sa",
+      "sun": "So"
+    }
+  },
+  "timeline": {
+    "status": {
+      "planned": "geplant",
+      "active": "aktiv",
+      "finished": "abgeschlossen"
+    },
+    "noDate": "ohne Termin",
+    "noEvents": "Für diese Saison sind noch keine Events angelegt.",
+    "label": "Ablauf {{season}}"
+  },
+  "feed": {
+    "intro": "Abonniere deine Deadlines in Outlook, Google oder Apple Kalender. Die Adresse ist persönlich – wer sie kennt, sieht deine Termine.",
+    "download": ".ics herunterladen",
+    "rotate": "Neue Abo-Adresse erzeugen",
+    "create": "Abo-Adresse erzeugen",
+    "revoke": "Abo widerrufen",
+    "activeSince": "Abo aktiv seit {{date}}",
+    "lastUsed": ", zuletzt abgerufen {{date}}",
+    "shownOnce": ". Die Adresse wird aus Sicherheitsgründen nur einmal angezeigt.",
+    "address": "Abo-Adresse",
+    "copied": "Kopiert",
+    "copy": "Kopieren"
+  },
+  "calendarPage": {
+    "title": "Deadlines & Saisonablauf",
+    "season": "Saison",
+    "allRelevant": "Alle für mich relevanten",
+    "timeline": "Saison-Timeline {{season}}",
+    "deadlineCalendar": "Deadline-Kalender",
+    "showPast": "Vergangene zeigen",
+    "view": "Ansicht",
+    "list": "Liste",
+    "month": "Monat",
+    "legend": "Legende",
+    "legendItem": {
+      "red": "Paper (offiziell)",
+      "orange": "Paper intern / Reviews / Deadlines",
+      "blue": "ECER / Turnier",
+      "purple": "GCER",
+      "green": "3D-Druck",
+      "gray": "Anmeldung"
+    },
+    "ical": "Kalender-Abo (iCal)"
+  },
+  "practice": "Übung",
+  "round": "Runde {{round}}",
+  "roundShort": "R{{round}}",
+  "reason": {
+    "out_of_range": "Unmöglicher Wert",
+    "invalid_value": "Ungültiger Wert",
+    "total_mismatch": "Summe passt nicht",
+    "team_outlier": "Ausreißer (Team)",
+    "field_outlier": "Ausreißer (Feld)",
+    "jump": "Sprung"
+  },
+  "heatmap": {
+    "caption": "Durchschnittliche Punkte je Team und Aufgabe; Farbe relativ zum besten Team der Aufgabe",
+    "ofBest": "{{percent}} % des besten Teams",
+    "hint": "Dunkler = näher am besten Team dieser Aufgabe. Helle Zeilen zeigen schwache Aufgabenbereiche."
+  },
+  "anomalies": {
+    "none": "Keine auffälligen Läufe.",
+    "label": "Auffällige Läufe",
+    "error": "Fehler",
+    "warning": "Warnung",
+    "summary": "{{team}} · Runde {{round}} · {{points}} Punkte",
+    "confirmed": "bestätigt",
+    "check": "Prüfen"
+  },
+  "statistics": {
+    "title": "Statistik & Anomalien",
+    "includePractice": "Übungsläufe einbeziehen",
+    "loadFailed": "Statistiken konnten nicht geladen werden.",
+    "overview": "Überblick",
+    "teams": "Teams",
+    "unconfirmed": "Unbestätigt",
+    "anomalous": "Auffällig",
+    "toCheck": "Zu prüfende Läufe ({{count}})",
+    "checksHint": "Geprüft werden unmögliche Werte, Summen, die nicht zu den Einzelwerten passen, Ausreißer gegenüber den übrigen Läufen des Teams (robuster z-Wert) und gegenüber allen Läufen (3×IQR) sowie unplausible Sprünge.",
+    "perRound": "Verteilung je Runde",
+    "perRoundLabel": "Boxplots je Runde",
+    "perField": "Verteilung je Aufgabe (Punkte)",
+    "perFieldLabel": "Boxplots je Aufgabe",
+    "heatmap": "Heatmap: Punkte je Team und Aufgabe",
+    "trend": "Trend über die Runden",
+    "mean": "Mittelwert",
+    "median": "Median",
+    "trendPerTeam": "Trend je Team",
+    "scores": "Scores",
+    "trendPerRun": "Trend / Lauf"
+  },
+  "trend": {
+    "flat": "gleichbleibend",
+    "up": "steigend",
+    "down": "fallend"
+  },
+  "performance": {
+    "title": "Performance-Dashboard",
+    "noRuns": "Noch keine Läufe.",
+    "run": "Lauf",
+    "official": "Wettbewerb",
+    "practiceInternal": "Übung (intern)",
+    "noFields": "Keine Einzelwertungen vorhanden.",
+    "fieldAvg": "Ø Teilnehmerfeld",
+    "fieldsCaption": "Punkte pro Aufgabe: Team gegen Teilnehmerfeld",
+    "task": "Aufgabe",
+    "teamAvg": "Team Ø",
+    "fieldAvgShort": "Feld Ø",
+    "strength": "Stärke",
+    "weakness": "Schwäche",
+    "metrics": "Leistungskennzahlen",
+    "officialAvg": "Ø Wettbewerb",
+    "officialAvgShort": "Wettbewerb Ø",
+    "practiceAvg": "Ø Übung",
+    "trendPerRun": "Trend pro Lauf",
+    "preview": "Ranking-Vorschau – wenn das Event jetzt enden würde",
+    "of": "von {{total}}",
+    "score": "Score {{score}}",
+    "overall": "Gesamtwertung ({{category}})",
+    "gap": "Abstand zum nächsten Seeding-Rang",
+    "gapHint": "Punkte im Seeding-Schnitt",
+    "scoreTrend": "Score-Verlauf",
+    "practiceHint": "Übungsläufe (gestrichelt) sind intern und zählen nicht zur Rangliste.",
+    "strengths": "Stärken & Schwächen je Aufgabe",
+    "phases": "Phasen-Vergleich",
+    "phasesCaption": "Scores je Phase",
+    "phase": "Phase",
+    "seasonEvents": "Events dieser Saison (Vorbereitung ↔ Turnier)",
+    "seasonEventsCaption": "Vergleich der Events der Saison",
+    "comparison": "Teamvergleich",
+    "noTeams": "Keine Teams mit Daten – Mentor:innen sehen hier nur das eigene Team.",
+    "comparisonCaption": "Teams nach aktuellem Durchschnitt",
+    "best": "Bester",
+    "trend": "Trend",
+    "detailsFor": "Details {{team}}",
+    "details": "Details",
+    "includePractice": "Übungsläufe in Stärken/Schwächen einbeziehen",
+    "noAccess": "Keine Berechtigung für dieses Team oder keine Daten."
+  }
+}

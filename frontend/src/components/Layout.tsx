@@ -35,7 +35,7 @@ import { useEvent, useEvents } from "@/hooks/useEvents";
 import { isModuleEnabled, useEventModules } from "@/hooks/useEventModules";
 import { useOfflineSync } from "@/hooks/useOfflineQueue";
 import NotificationCenter from "@/components/NotificationCenter";
-import i18n from "@/i18n/config";
+import i18n, { localized } from "@/i18n/config";
 import { navigationRoutes } from "@/core/plugins";
 import { api } from "@/lib/api";
 
@@ -79,7 +79,7 @@ export default function Layout() {
     setTheme(order[(order.indexOf(theme) + 1) % order.length]);
   };
   const toggleLanguage = () => {
-    const language = i18n.language === "de" ? "en" : "de";
+    const language = i18n.resolvedLanguage === "de" ? "en" : "de";
     i18n.changeLanguage(language);
     // Persist to the profile so the choice follows the user to other devices.
     if (user) {
@@ -152,7 +152,7 @@ export default function Layout() {
               }
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
-              {i18n.language === "en" ? label.en : label.de}
+              {localized(label)}
             </NavLink>
           );
         })}
@@ -179,7 +179,7 @@ export default function Layout() {
           aria-label={t("changeLanguage")}
         >
           <Globe className="h-4 w-4" aria-hidden="true" />
-          {i18n.language === "de" ? "Deutsch" : "English"}
+          {t("languageName")}
         </button>
         <button
           type="button"
@@ -188,7 +188,7 @@ export default function Layout() {
           aria-label={t("changeTheme")}
         >
           <ThemeIcon className="h-4 w-4" aria-hidden="true" />
-          {theme}
+          {t(`theme.${theme}`)}
         </button>
         <button
           type="button"
@@ -203,7 +203,7 @@ export default function Layout() {
             to={`/events/${eventId}/profile`}
             className="block truncate rounded-lg px-3 pt-2 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
           >
-            {user.display_name} · Profil
+            {user.display_name} · {t("nav.profile")}
           </NavLink>
         )}
       </div>

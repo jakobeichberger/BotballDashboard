@@ -3,8 +3,15 @@
   "bracket": {
     "title": "Bracket",
     "label": "Bracket {{label}}",
-    "section": { "winner": "Winner-Bracket", "loser": "Loser-Bracket", "final": "Finale" },
-    "kind": { "minor": "Minor", "major": "Major" },
+    "section": {
+      "winner": "Winner-Bracket",
+      "loser": "Loser-Bracket",
+      "final": "Finale"
+    },
+    "kind": {
+      "minor": "Minor",
+      "major": "Major"
+    },
     "grandFinal": "Grand Final",
     "resetFinal": "Reset-Finale",
     "notNeeded": "nicht nötig",
@@ -12,7 +19,11 @@
     "pickWinner": "{{team}} gewinnt {{match}}"
   },
   "notPublic": "Dieses Event ist nicht öffentlich verfügbar.",
-  "connection": { "connecting": "Verbindung wird hergestellt", "connected": "Verbunden", "disconnected": "Getrennt" },
+  "connection": {
+    "connecting": "Verbindung wird hergestellt",
+    "connected": "Verbunden",
+    "disconnected": "Getrennt"
+  },
   "toggleRotation": "Rotation umschalten",
   "fullscreen": "Vollbild",
   "qrAlt": "QR-Code zu diesem Event",
@@ -71,5 +82,87 @@
   "reason_finals_replay": "Finale: Gleichstand wird wiederholt",
   "reason_replay": "Kein Tie-Breaker entscheidet",
   "tiebreaker": "Entschieden durch",
-  "bonus": "inkl. Kontakt-Bonus {{bonus}}"
+  "bonus": "inkl. Kontakt-Bonus {{bonus}}",
+  "matchStatus": {
+    "scheduled": "geplant",
+    "called": "aufgerufen",
+    "running": "läuft",
+    "completed": "beendet",
+    "cancelled": "abgesagt"
+  },
+  "eventStatus": {
+    "draft": "Entwurf",
+    "published": "Veröffentlicht",
+    "live": "Live",
+    "completed": "Abgeschlossen",
+    "archived": "Archiviert"
+  },
+  "setup": {
+    "saved": "Event gespeichert.",
+    "saveFailed": "Event konnte nicht gespeichert werden.",
+    "seasonCreated": "Saison wurde angelegt und ausgewählt.",
+    "title": "Event-Verwaltung",
+    "firstEvent": "Erstes Event einrichten",
+    "firstSeason": "Erste Saison anlegen",
+    "seasonName": "Saisonname",
+    "createSeason": "Saison anlegen",
+    "season": "Saison",
+    "chooseSeason": "Saison wählen",
+    "slug": "Slug",
+    "timezone": "Zeitzone",
+    "venue": "Ort",
+    "tables": "Tische",
+    "public": "Öffentliche Freigaben",
+    "publicFlag": {
+      "public_scoreboard": "Rangliste",
+      "public_schedule": "Zeitplan",
+      "public_results": "Ergebnisse",
+      "public_announcements": "Ankündigungen"
+    },
+    "save": "Event speichern",
+    "phases": "Phasen",
+    "phaseName": "Phasenname",
+    "addPhase": "Phase hinzufügen",
+    "teams": "Teams ({{count}})",
+    "registerTeam": "Team registrieren",
+    "announcements": "Öffentliche Ankündigungen",
+    "announcementTitle": "Titel",
+    "announcementBody": "Nachricht",
+    "publish": "Veröffentlichen",
+    "modules": "Aktive Module",
+    "moduleBlocked": "In der Saison deaktiviert",
+    "moduleStaysInactive": " – bleibt inaktiv"
+  },
+  "schedulePage": {
+    "seedsTaken": "Setzliste aus dem Seeding übernommen ({{count}} Teams).",
+    "seedsFailed": "Setzliste konnte nicht übernommen werden.",
+    "resultFailed": "Ergebnis konnte nicht gespeichert werden.",
+    "generateFailed": "Zeitplan konnte nicht erzeugt werden.",
+    "updateFailed": "Zeitplanänderung konnte nicht gespeichert werden.",
+    "title": "Zeitplan & Brackets",
+    "seedsHint": "Setzliste (seed_number) je Kategorie aus der Seeding-Rangliste übernehmen",
+    "seeds": "Seeds aus Seeding",
+    "phase": "Turnierphase",
+    "choosePhase": "Phase wählen",
+    "startTime": "Startzeit",
+    "generate": "Generieren",
+    "col": {
+      "time": "Zeit",
+      "code": "Code",
+      "phase": "Phase",
+      "round": "Runde",
+      "table": "Tisch",
+      "teams": "Teams",
+      "action": "Aktion"
+    },
+    "timeOf": "Zeit {{code}}",
+    "tableOf": "Tisch {{code}}",
+    "statusOf": "Status {{code}}",
+    "empty": "Noch kein Zeitplan vorhanden.",
+    "brackets": "Brackets",
+    "bracketHint": "Sieger anklicken, um das Ergebnis zu speichern. Sieger und Verlierer werden automatisch weitergeleitet; eine Korrektur ist möglich, solange das Folgematch noch nicht gespielt ist."
+  },
+  "seed": "Seed",
+  "best": "Best",
+  "pointsShort": "{{points}} P."
 }

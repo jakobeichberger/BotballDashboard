@@ -41,9 +41,10 @@ const plugin: PluginDefinition = {
     // { id: 'performance', component: …, defaultSize: 'medium', permission: 'scoring:read' },
   ],
 
+  // The texts live in the central "scoring" namespace (src/i18n/locales).
   i18n: {
-    de: () => import('./score-sheets/i18n/de.json'),
-    en: () => import('./score-sheets/i18n/en.json'),
+    de: () => import('@/i18n/locales/de/scoring.json'),
+    en: () => import('@/i18n/locales/en/scoring.json'),
   },
 }
 
