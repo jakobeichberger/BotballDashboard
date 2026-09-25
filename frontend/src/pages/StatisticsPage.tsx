@@ -35,7 +35,7 @@ export function Heatmap({ heatmap }: { heatmap: EventStatistics["heatmap"] }) {
               {team.values.map((cell) => (
                 <td
                   key={cell.key}
-                  className={clsx("min-w-[4.5rem] border border-flaeche px-2 py-1 text-center tabular-nums", heatTextClass(cell.ratio))}
+                  className={clsx("min-w-18 border border-flaeche px-2 py-1 text-center tabular-nums", heatTextClass(cell.ratio))}
                   style={{ backgroundColor: heatColor(cell.ratio) }}
                   title={cell.ratio != null ? t("heatmap.ofBest", { percent: Math.round(cell.ratio * 100) }) : undefined}
                 >

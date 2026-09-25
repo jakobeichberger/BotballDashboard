@@ -536,7 +536,7 @@ function AnnouncementsSettings() {
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div><label htmlFor="settingspage-f19" className="label">{t("announcements.titleLabel")}</label><input id="settingspage-f19" className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div><label htmlFor="settingspage-f20" className="label">{t("announcements.text")}</label><textarea id="settingspage-f20" className="input min-h-[5rem]" value={text} onChange={(e) => setText(e.target.value)} /></div>
+          <div><label htmlFor="settingspage-f20" className="label">{t("announcements.text")}</label><textarea id="settingspage-f20" className="input min-h-20" value={text} onChange={(e) => setText(e.target.value)} /></div>
           <div><label htmlFor="settingspage-f21" className="label">{t("announcements.audience")}</label>
             <select id="settingspage-f21" className="input w-48" value={audience} onChange={(e) => setAudience(e.target.value)}>
               {AUDIENCES.map((value) => <option key={value} value={value}>{t(`announcements.audiences.${value}`)}</option>)}
@@ -639,7 +639,7 @@ function SeasonEditor() {
       <div className="card p-4 space-y-3">
         <h3 className="text-sm font-semibold text-fg">{t("seasonDetails.extra")}</h3>
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[10rem]"><label htmlFor="settingspage-f23" className="label">{t("announcements.titleLabel")}</label><input id="settingspage-f23" className="input" value={evTitle} onChange={(e) => setEvTitle(e.target.value)} placeholder={t("seasonDetails.titlePlaceholder")} /></div>
+          <div className="flex-1 min-w-40"><label htmlFor="settingspage-f23" className="label">{t("announcements.titleLabel")}</label><input id="settingspage-f23" className="input" value={evTitle} onChange={(e) => setEvTitle(e.target.value)} placeholder={t("seasonDetails.titlePlaceholder")} /></div>
           <div><label htmlFor="settingspage-f24" className="label">{t("seasonDetails.kind")}</label><select id="settingspage-f24" className="input" value={evType} onChange={(e) => setEvType(e.target.value)}><option value="deadline">{t("seasonDetails.deadline")}</option><option value="event">{t("seasonDetails.event")}</option></select></div>
           <div><label htmlFor="settingspage-f25" className="label">{t("common:date")}</label><input id="settingspage-f25" type="date" className="input" value={evDate} onChange={(e) => setEvDate(e.target.value)} /></div>
           <button className="btn-primary text-sm disabled:opacity-40" disabled={!evTitle || !evDate || addEventM.isPending} onClick={() => addEventM.mutate()}>{t("seasonDetails.add")}</button>
@@ -930,7 +930,7 @@ export default function SettingsPage() {
         <aside className="md:w-48 md:shrink-0">
           <nav aria-label={t("title")} className="-mx-1 flex gap-1 overflow-x-auto pb-1 md:mx-0 md:block md:space-y-1 md:overflow-visible">
             {NAV.map(({ to, icon: Icon, label }) => (
-              <NavLink key={to} to={to} className={({ isActive }) => clsx("flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-eng border px-3 py-2 font-ui text-sm tracking-ui transition-colors", isActive ? "border-primary/30 bg-primary/[0.08] font-semibold text-akzent shadow-[inset_3px_0_0_theme(colors.primary.DEFAULT)]" : "border-transparent text-leise hover:bg-flaeche-2 hover:text-fg")}>
+              <NavLink key={to} to={to} className={({ isActive }) => clsx("flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-eng border px-3 py-2 font-ui text-sm tracking-ui transition-colors", isActive ? "border-primary/30 bg-primary/8 font-semibold text-akzent shadow-[inset_3px_0_0_var(--color-primary)]" : "border-transparent text-leise hover:bg-flaeche-2 hover:text-fg")}>
                 <Icon className="w-4 h-4" aria-hidden="true" />{t(`nav.${label}`)}
               </NavLink>
             ))}

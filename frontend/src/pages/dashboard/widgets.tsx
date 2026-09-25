@@ -89,7 +89,7 @@ export function PhaseTimeline({ phases }: { phases: Array<any> }) {
           key={phase.id}
           className={clsx(
             "flex min-h-12 items-center gap-3 rounded-eng border px-3 py-2",
-            phase.is_active ? "border-primary/40 bg-primary/[0.06] shadow-[inset_3px_0_0_theme(colors.primary.DEFAULT)]" : "border-rand bg-flaeche-2",
+            phase.is_active ? "border-primary/40 bg-primary/6 shadow-[inset_3px_0_0_var(--color-primary)]" : "border-rand bg-flaeche-2",
           )}
         >
           <span
@@ -143,7 +143,7 @@ export function ShortcutGrid({
         <li key={to}>
           <Link
             to={to}
-            className="card-interactive flex h-full min-h-[6.5rem] flex-col items-center justify-center gap-2 px-3 py-4 text-center transition-transform hover:-translate-y-px"
+            className="card-interactive flex h-full min-h-26 flex-col items-center justify-center gap-2 px-3 py-4 text-center transition-transform hover:-translate-y-px"
           >
             <Icon className="h-7 w-7 text-akzent" strokeWidth={1.75} aria-hidden="true" />
             <span className="font-ui text-[0.95rem] font-bold leading-tight tracking-ui text-fg">{label}</span>
@@ -174,7 +174,7 @@ export function RankingList({
           <tr>
             <th scope="col">{t("ranking.place")}</th>
             <th scope="col">{t("ranking.team")}</th>
-            <th scope="col" className="!text-right">{t("ranking.points")}</th>
+            <th scope="col" className="text-right!">{t("ranking.points")}</th>
           </tr>
         </thead>
         <tbody>

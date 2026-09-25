@@ -119,7 +119,7 @@ export default function BotDetailPage() {
                 <div className="sm:col-span-2 lg:col-span-3"><label htmlFor="botdetailpage-f4" className="label">{t("form.sensors")}</label><input id="botdetailpage-f4" className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} /></div>
               </div>
               <div><label htmlFor="botdetailpage-f5" className="label">{t("form.description")}</label><input id="botdetailpage-f5" className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-              <div><label htmlFor="botdetailpage-f6" className="label">{t("form.functionality")}</label><textarea id="botdetailpage-f6" className="input min-h-[8rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })} /></div>
+              <div><label htmlFor="botdetailpage-f6" className="label">{t("form.functionality")}</label><textarea id="botdetailpage-f6" className="input min-h-32" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })} /></div>
               <div className="flex items-center gap-2">
                 <button className="btn-primary text-sm disabled:opacity-40" disabled={!form.name || updateM.isPending} onClick={() => updateM.mutate()}><Save className="w-4 h-4" /> {t("common:save")}</button>
                 <button className="btn-secondary text-sm" onClick={() => setEditing(false)}><X className="w-4 h-4" /> {t("common:cancel")}</button>
@@ -173,7 +173,7 @@ export default function BotDetailPage() {
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <input type="file" accept="image/*" aria-label={t("detail.chooseImage")} onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                   className="min-w-0 max-w-full text-xs text-leise file:mr-2 file:btn file:btn-secondary file:text-xs" />
+                   className="min-w-0 max-w-full text-xs text-leise file-btn-secondary file:mr-2 file:text-xs" />
             <button disabled={!file || uploadM.isPending} onClick={() => uploadM.mutate()} className="btn-primary text-sm disabled:opacity-40">
               <Upload className="w-4 h-4" /> {t("detail.uploadImage")}
             </button>

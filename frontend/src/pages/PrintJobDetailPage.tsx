@@ -158,7 +158,7 @@ export default function PrintJobDetailPage() {
         <ArrowLeft className="w-4 h-4" /> {t("detail.back")}
       </EventLink>
 
-      {info && <p role="status" className="rounded-lg border border-warning/45 bg-warning/[0.08] p-3 text-sm text-warning">{info}</p>}
+      {info && <p role="status" className="rounded-lg border border-warning/45 bg-warning/8 p-3 text-sm text-warning">{info}</p>}
       {message && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/[0.07] p-3 text-sm text-danger">{message}</p>}
 
       {/* Header */}
@@ -199,7 +199,7 @@ export default function PrintJobDetailPage() {
         )}
         {job.quota_override && <p className="mt-2 text-xs text-warning">{t("detail.quotaOverride")}</p>}
         {(job.rule_warnings ?? []).length > 0 && (
-          <ul role="status" className="mt-3 flex flex-col gap-1.5 rounded-lg border border-warning/45 bg-warning/[0.08] p-3 text-sm text-warning">
+          <ul role="status" className="mt-3 flex flex-col gap-1.5 rounded-lg border border-warning/45 bg-warning/8 p-3 text-sm text-warning">
             {(job.rule_warnings ?? []).map((code) => (
               <li key={code} className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

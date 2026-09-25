@@ -55,7 +55,7 @@ export default function TimeoutCardsPanel({ eventId, registrations }: { eventId:
       </div>
       {canRecord && (
         <form className="mb-4 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (teamId) record.mutate(); }}>
-          <select aria-label={t("timeouts.team")} className="input min-w-[12rem] flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+          <select aria-label={t("timeouts.team")} className="input min-w-48 flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
             <option value="">{t("timeouts.team")}</option>
             {registrations.filter((r) => !used.has(r.team_id)).map((r) => <option key={r.team_id} value={r.team_id}>{r.team_name}</option>)}
           </select>

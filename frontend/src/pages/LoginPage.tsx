@@ -60,7 +60,7 @@ export default function LoginPage() {
           <Wordmark onDark className="text-2xl" />
         </div>
         <div className="max-w-xl">
-          <p className="eyebrow !text-rot-auf-dunkel">{t("login.heroEyebrow")}</p>
+          <p className="eyebrow text-rot-auf-dunkel!">{t("login.heroEyebrow")}</p>
           <p className="mt-4 font-display text-[clamp(2.4rem,4.4vw,3.6rem)] font-extrabold leading-[1.05] tracking-display">
             {t("login.heroTitle")}
           </p>

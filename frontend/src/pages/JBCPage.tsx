@@ -94,7 +94,7 @@ export default function JBCPage() {
               const result = saved(team.team_id);
               const value = team.team_id in draft ? draft[team.team_id] : result?.points ?? null;
               return (
-                <tr key={team.team_id} className={team.team_id in draft ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
+                <tr key={team.team_id} className={team.team_id in draft ? "bg-warning/8" : "hover:bg-flaeche-2"}>
                   <td className="px-4 py-2"><div className="font-medium text-fg">{team.team_name}</div><div className="font-mono text-xs text-leise">{team.team_number ?? ""}</div></td>
                   <td className="px-4 py-2 text-center">
                     <input type="number" min={0} step={0.5} className="input mx-auto w-24 text-center text-sm" aria-label={t("jbc.pointsFor", { team: team.team_name })} value={value ?? ""} disabled={!!result?.challenges?.length} title={result?.challenges?.length ? t("jbc.fromChallenges") : undefined} onChange={(e) => setDraft((prev) => ({ ...prev, [team.team_id]: e.target.value === "" ? null : Number(e.target.value) }))} />

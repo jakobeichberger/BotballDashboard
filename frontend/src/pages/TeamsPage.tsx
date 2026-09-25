@@ -208,7 +208,7 @@ export default function TeamsPage() {
       </div>
 
       <form role="search" className="filter-bar mb-6" onSubmit={(e) => e.preventDefault()}>
-        <label className="flex-1 min-w-[12rem] text-sm font-medium">
+        <label className="flex-1 min-w-48 text-sm font-medium">
           {t("filter.search")}
           <span className="relative mt-1 block">
             <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-leise" aria-hidden="true" />

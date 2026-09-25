@@ -144,7 +144,7 @@ export default function AerialPage() {
       />
 
       <div className="filter-bar">
-        <label className="min-w-[12rem]">
+        <label className="min-w-48">
           <span className="label">{t("aerial.category")}</span>
           <select className="input" value={category} onChange={(e) => { setChosen(e.target.value); setExtraRuns(0); }}>
             <option value={ALL}>{t("aerial.allTeams")}</option>
@@ -180,7 +180,7 @@ export default function AerialPage() {
               const runs = runsOf(team.id);
               const dirty = !!draft[team.id];
               return (
-                <tr key={team.id} className={dirty ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
+                <tr key={team.id} className={dirty ? "bg-warning/8" : "hover:bg-flaeche-2"}>
                   <td className="px-4 py-2">
                     <div className="font-medium">{team.name}</div>
                     <div className="text-xs text-leise font-mono">{team.team_number ?? team.id}</div>

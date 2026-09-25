@@ -245,7 +245,7 @@ export default function DocScoringPage() {
                 const docScore = regional == null ? "–" : formatNumber(regional, fourDecimals);
                 const formulaValue = formulaDocScore(team.id);
                 return (
-                  <tr key={team.id} className={dirty ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
+                  <tr key={team.id} className={dirty ? "bg-warning/8" : "hover:bg-flaeche-2"}>
                     <td className="px-4 py-2">
                       <div className="font-medium">{team.name}</div>
                       <div className="text-xs text-leise font-mono">{team.team_number ?? team.id}</div>
@@ -293,7 +293,7 @@ export default function DocScoringPage() {
                 const e = effectivePaper(paper.team_id);
                 const dirty = !!paperDraft[paper.team_id];
                 return (
-                  <tr key={paper.id} className={dirty ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
+                  <tr key={paper.id} className={dirty ? "bg-warning/8" : "hover:bg-flaeche-2"}>
                     <td className="px-4 py-2 font-mono text-xs text-leise">{paper.team_id}</td>
                     <td className="px-4 py-2 text-fg">{paper.title}</td>
                     <td className="px-4 py-2">

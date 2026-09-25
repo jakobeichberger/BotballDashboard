@@ -113,7 +113,7 @@ export default function ScoutingPage() {
           <thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("scouting.team")}</th><th className="p-3 text-left">{t("scouting.country")}</th><th className="p-3 text-left">{t("scouting.source")}</th><th className="p-3 text-right">{t("scouting.seed")}</th><th className="p-3 text-right">{t("scouting.best")}</th><th className="p-3 text-right">{t("scouting.runs")}</th></tr></thead>
           <tbody>
             {ranking.data?.map((entry) => (
-              <tr key={`${entry.kind}-${entry.team_id}`} className={`border-t ${entry.kind === "internal" ? "bg-primary/[0.06]" : ""}`}>
+              <tr key={`${entry.kind}-${entry.team_id}`} className={`border-t ${entry.kind === "internal" ? "bg-primary/6" : ""}`}>
                 <td className="p-3 font-bold">{entry.rank}</td>
                 <td className="p-3">{entry.kind === "external" ? <button type="button" className="text-left underline-offset-2 hover:underline" onClick={() => setSelected(entry.team_id)}>{entry.team_name}</button> : entry.team_name}{entry.team_number && <span className="ml-1 text-xs text-leise">({entry.team_number})</span>}</td>
                 <td className="p-3">{entry.country ?? "–"}</td>

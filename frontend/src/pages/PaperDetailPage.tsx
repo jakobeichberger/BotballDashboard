@@ -318,7 +318,7 @@ export default function PaperDetailPage() {
       {/* Header */}
       <div className="card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <h1 className="page-title flex min-w-0 items-start gap-2 break-words">
+          <h1 className="page-title flex min-w-0 items-start gap-2 wrap-break-word">
             <FileText className="h-7 w-7 mt-1 shrink-0 text-akzent" />
             {paper.title}
           </h1>
@@ -425,7 +425,7 @@ export default function PaperDetailPage() {
                   accept="application/pdf"
                   aria-label={t("detail.newVersionPdf")}
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="text-xs text-leise file:mr-2 file:btn file:btn-secondary file:text-xs"
+                  className="text-xs text-leise file-btn-secondary file:mr-2 file:text-xs"
                 />
                 <button
                   disabled={!file || uploadM.isPending || deadlineLocked}
@@ -588,7 +588,7 @@ export default function PaperDetailPage() {
                   onChange={(e) => setForm({ ...form, [`score_${c.key}`]: e.target.value })}
                 />
                 <textarea
-                  className="input min-h-[2.5rem]"
+                  className="input min-h-10"
                   aria-label={t("detail.commentFor", { criterion: c.label })}
                   placeholder={t("detail.comment")}
                   value={form[`comment_${c.key}`]}
@@ -607,15 +607,15 @@ export default function PaperDetailPage() {
 
             <div>
               <label className="label" htmlFor="review-comments">{t("detail.overallComment")}</label>
-              <textarea id="review-comments" className="input min-h-[5rem]" value={form.comments} onChange={(e) => setForm({ ...form, comments: e.target.value })} placeholder={t("detail.feedbackPlaceholder")} />
+              <textarea id="review-comments" className="input min-h-20" value={form.comments} onChange={(e) => setForm({ ...form, comments: e.target.value })} placeholder={t("detail.feedbackPlaceholder")} />
             </div>
             <div>
               <label className="label" htmlFor="review-revision-notes">{t("detail.revisionNotes")}</label>
-              <textarea id="review-revision-notes" className="input min-h-[4rem]" value={form.revision_notes} onChange={(e) => setForm({ ...form, revision_notes: e.target.value })} placeholder={t("detail.revisionNotesPlaceholder")} />
+              <textarea id="review-revision-notes" className="input min-h-16" value={form.revision_notes} onChange={(e) => setForm({ ...form, revision_notes: e.target.value })} placeholder={t("detail.revisionNotesPlaceholder")} />
             </div>
             <div>
               <label className="label" htmlFor="review-private-notes">{t("detail.privateNotes")}</label>
-              <textarea id="review-private-notes" className="input min-h-[3rem]" value={form.private_notes} onChange={(e) => setForm({ ...form, private_notes: e.target.value })} />
+              <textarea id="review-private-notes" className="input min-h-12" value={form.private_notes} onChange={(e) => setForm({ ...form, private_notes: e.target.value })} />
             </div>
 
             <div className="flex items-center gap-2">

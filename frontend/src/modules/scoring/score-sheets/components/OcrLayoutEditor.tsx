@@ -251,7 +251,7 @@ export default function OcrLayoutEditor({
               {fields.map((field) => {
                 const region = regionOf(field.key)
                 return (
-                  <tr key={field.key} className={`border-t border-rand ${field.key === active ? 'bg-primary/[0.06]' : ''}`}>
+                  <tr key={field.key} className={`border-t border-rand ${field.key === active ? 'bg-primary/6' : ''}`}>
                     <td className="py-1 pr-2">
                       <button type="button" className="text-left hover:underline" onClick={() => setActive(field.key)}>
                         {field.label} <span className="font-mono text-xs text-leise">{field.key}</span>

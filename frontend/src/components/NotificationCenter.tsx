@@ -118,7 +118,7 @@ export default function NotificationCenter({ variant = "header" }: { variant?: "
                     type="button"
                     className={clsx(
                       "block w-full border-b border-rand px-4 py-3 text-left text-sm last:border-0 hover:bg-flaeche-2",
-                      !item.read && "bg-primary/[0.06] shadow-[inset_3px_0_0_theme(colors.primary.DEFAULT)]",
+                      !item.read && "bg-primary/6 shadow-[inset_3px_0_0_var(--color-primary)]",
                     )}
                     onClick={() => openItem(item)}
                   >
@@ -138,7 +138,7 @@ export default function NotificationCenter({ variant = "header" }: { variant?: "
           <div className="border-t border-rand bg-flaeche-2 p-1.5">
             <button
               type="button"
-              className="flex min-h-11 w-full items-center gap-2 rounded-eng px-2.5 text-left font-ui text-sm font-semibold tracking-ui text-fg hover:bg-fg/[0.06]"
+              className="flex min-h-11 w-full items-center gap-2 rounded-eng px-2.5 text-left font-ui text-sm font-semibold tracking-ui text-fg hover:bg-fg/6"
               aria-pressed={push.isSubscribed}
               onClick={() => (push.isSubscribed ? push.unsubscribe.mutate() : push.subscribe.mutate())}
             >

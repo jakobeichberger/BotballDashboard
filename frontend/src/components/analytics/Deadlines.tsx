@@ -119,7 +119,7 @@ export function MonthCalendar({ entries, initial }: { entries: DeadlineEntry[]; 
           const key = cell ? dayKey(cell) : `empty-${i}`;
           const items = cell ? byDay[key] ?? [] : [];
           return (
-            <div key={key} role="gridcell" className={clsx("min-h-[4.5rem] bg-flaeche p-1", !cell && "bg-flaeche-2")}>
+            <div key={key} role="gridcell" className={clsx("min-h-18 bg-flaeche p-1", !cell && "bg-flaeche-2")}>
               {cell && (
                 <>
                   <span className={clsx("inline-block rounded px-1 tabular-nums", key === today ? "bg-primary text-white" : "text-leise")}>{cell.getDate()}</span>
@@ -165,7 +165,7 @@ export function SeasonTimelineView({ timeline }: { timeline?: SeasonTimeline }) 
   return (
     <ol className="flex gap-3 overflow-x-auto pb-2" aria-label={t("timeline.label", { season: timeline.season_name })}>
       {timeline.events.map((e, index) => (
-        <li key={e.id} className="flex min-w-[13rem] flex-1 items-stretch gap-3">
+        <li key={e.id} className="flex min-w-52 flex-1 items-stretch gap-3">
           <div className={clsx("flex-1 rounded-lg border p-3", STATUS_STYLE[e.status] ?? STATUS_STYLE.planned)}>
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5 font-medium">
