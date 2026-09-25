@@ -1,25 +1,49 @@
 # BotballDashboard
 
-Webbasierte Plattform zur vollständigen Verwaltung und Auswertung des Botball-Wettbewerbs – Teams, Saisons, Scoring, Paper-Review und 3D-Druck in einem System.
+Webbasierte Plattform für die Organisation und Auswertung von Botball-Turnieren. Saisons, Events, Teams, Wertung am Spieltisch, Brackets, Paper-Review und 3D-Druck laufen in einem System. Das Backend ist FastAPI, das Frontend React (PWA). Betrieben wird es selbst gehostet mit Docker Compose.
+
+Stand: Migration `0029` · Änderungen: [CHANGELOG.md](CHANGELOG.md) · offene Aufgaben: [docs/todo.md](docs/todo.md)
 
 ---
 
-## Status: Implementiert ✓
+## Funktionen
 
-| # | Modul | Typ | Status |
-|---|---|---|---|
-| 01 | [Infrastruktur](docs/modules/01-infrastruktur.md) | Basis | ✅ Implementiert |
-| 02 | [Auth & Rechtesystem](docs/modules/02-auth.md) | Kern | ✅ Implementiert |
-| 03 | [Saisonverwaltung](docs/modules/03-saisonverwaltung.md) | Kern | ✅ Implementiert |
-| 04 | [Teamverwaltung](docs/modules/04-teamverwaltung.md) | Kern | ✅ Implementiert |
-| 05 | [Scoring-Modul](docs/modules/05-scoring.md) | Modul | ✅ Implementiert |
-| 06 | [Paper-Review-Modul](docs/modules/06-paper-review.md) | Modul | ✅ Implementiert |
-| 07 | [3D-Druck-Modul](docs/modules/07-3d-druck.md) | Modul | ✅ Implementiert |
-| 08 | [Dashboard & Visualisierung](docs/modules/08-dashboard.md) | Kern | ✅ Implementiert |
-| 09 | [Mobile App / PWA](docs/modules/09-mobile-pwa.md) | Frontend | ✅ Implementiert |
-| 10 | [Testing](docs/modules/10-testing.md) | Querschnitt | ✅ Implementiert |
-| 11 | [Dokumentation](docs/modules/11-dokumentation.md) | Querschnitt | ✅ Implementiert |
-| – | [PDF- & CSV-Export](docs/modules/) | Feature | ✅ Implementiert |
+**Turnier**
+- Eventzentriert: Eine Saison hält das Regelwerk, jedes Event (Regional, ECER, GCER) hat eigene Teams, Phasen, Zeitplan, Wertungen und Ranglisten. Die Oberfläche läuft unter `/events/:eventId/…`, dazu kommt ein Einrichtungsassistent unter `/setup`.
+- Module pro Event schaltbar: Seeding, Double Elimination, Paper, Dokumentation, Aerial, 3D-Druck, Bot-Galerie.
+- Zeitplan-Generator für Seeding, Double Seeding, Double-Elimination-Bracket (Loser-Bracket, Grand Final, Reset-Finale, automatisches Weiterrücken) und Alliance-Paare.
+- Öffentliche Event-Seite `/public/<slug>` mit Freigaben pro Bereich, Live-Aktualisierung über WebSocket, Rotation, Vollbild und QR-Code.
+
+**Wertung**
+- Strukturierte Score-Sheets:
+  - Bereiche, Multiplikatoren, Entweder-oder, Seiten A/B;
+  - Vorlagen 2024/2025/2026;
+  - Versionierung pro Event.
+- Sonderregeln der Saison:
+  - Tie-Breaker-Presets aus den Game Reviews, Finals-Replay;
+  - Kontakt-Bonus, „Runde verloren";
+  - Schiedsrichter-Checkliste.
+- Seeding nach Game Review, Ränge je Kategorie. Gesamtwertung über eine sichere Formel-Engine mit Presets (ECER 2025, Regional 2026, GCER 2026, Aerial, JBC) und Vorschau mit echten Daten.
+- Mobile Wertung mit Offline-Queue, Bestätigung durch die Jury, vollständiger Revisions-Historie und lokaler OCR von Score-Sheet-Fotos.
+- Scouting (externe Teams, Beobachtungen, Gegner-Rangliste) und GCER-Qualifikation.
+
+**Paper-Review**
+- Ein Paper pro Team und Saison, PDF-Versionen mit Text-Diff.
+- Offizielle und interne Deadlines mit Durchsetzung und Erinnerungen.
+- Automatische Reviewer-Zuweisung, fünf Kriterien, Feedback für Teams, Formalabzug, Finalisierung zum Paper-Score.
+
+**3D-Druck**
+- Druckaufträge mit Datei-Upload.
+- Kontingente pro Event und Team (Soft- und Hard-Limit).
+- Bambu Lab (MQTT) und OctoPrint mit Live-Status, manuelle Drucker.
+- Filament-Spulen, 3D-Druck-Checkliste pro Saison.
+
+**Teams, Analyse, Konto**
+- Teams mit Suche, Saison-Details, Kader, versionierten Dokumenten und Mehrjahres-Historie.
+- Performance, Statistik mit Anomalie-Erkennung, rollenbezogene Dashboards.
+- Deadline-Kalender mit iCal-Abo, Exporte als CSV und PDF.
+- Web Push mit Kategorien, Benachrichtigungszentrale, E-Mail-Erinnerungen.
+- Passwort-Reset, Theme und Sprache im Profil, DSGVO-Datenexport und Kontolöschung.
 
 ---
 
@@ -27,216 +51,145 @@ Webbasierte Plattform zur vollständigen Verwaltung und Auswertung des Botball-W
 
 | Schicht | Technologie |
 |---|---|
-| **Backend** | Python 3.11 · FastAPI · SQLAlchemy 2.0 async · Alembic |
-| **Datenbank** | PostgreSQL 16 · Redis 7 |
-| **Frontend** | React 18 · TypeScript · Vite · Tailwind CSS (dark mode) |
-| **State / Data** | Zustand · TanStack Query · Zod · React Hook Form |
-| **i18n** | i18next (DE + EN, 1-Klick-Wechsel) |
-| **PWA** | vite-plugin-pwa · Web Push API (pywebpush) |
-| **Auth** | JWT (15 min Access · 30 d Refresh HttpOnly Cookie) · RBAC |
-| **Infrastruktur** | Docker Compose · Traefik (SSL/Let's Encrypt) · Proxmox |
-| **E-Mail** | SMTP (primär) · SendGrid (Fallback) |
-| **3D-Druck** | Bambu Lab · OctoPrint · Fernet-verschlüsselte API-Keys |
+| Backend | Python 3.11 · FastAPI · SQLAlchemy 2.0 async · Alembic · Pydantic v2 |
+| Hintergrund | Celery-Worker und -Beat (OCR mit OpenCV/Tesseract, Drucker-Polling, Outbox, Erinnerungen) |
+| Daten | PostgreSQL 16 · Redis 7 (Broker, Live-Stream, Rate-Limits, Token-Sperrliste) |
+| Frontend | React 18 · TypeScript · Vite · Tailwind CSS · TanStack Query · Zustand · Recharts |
+| i18n | i18next (Deutsch/Englisch; noch nicht alle Seiten übersetzt) |
+| PWA | vite-plugin-pwa (Workbox) · Web Push (pywebpush/VAPID) · IndexedDB-Offline-Queue |
+| Auth | PyJWT (HS256) · bcrypt · Refresh-Token als HttpOnly-Cookie · rollenbasierte Rechte mit Team-Scoping |
+| E-Mail | SMTP, SendGrid als Rückfall |
+| Betrieb | Docker Compose · Traefik (Let's Encrypt) · Prometheus · Alertmanager · verschlüsselte Backups (age) |
 
 ---
 
 ## Schnellstart
 
-### Proxmox / Debian LXC – One-Call Setup
+### Proxmox / Debian LXC
 
-Auf einem frischen **Debian 12 LXC-Container** genügt ein einziger Befehl:
+Auf einem frischen **Debian-12-LXC-Container**:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/jakobeichberger/BotballDashboard/main/scripts/proxmox-setup.sh)
 ```
 
-Das Script erledigt automatisch:
-- Docker-, Node.js- und pnpm-Installation
-- Repository klonen
-- Interaktive `.env`-Konfiguration (Domain, DB, SMTP optional, Monitoring optional). Alle Secrets werden erzeugt, auch der Fernet-Schlüssel und das age-Schlüsselpaar für Backups.
-- Datenverzeichnisse `/data/db` und `/data/backups` anlegen
-- Images bauen und **alle** Dienste starten: Traefik, Backend, Worker, Beat, Frontend, DB, Redis, Backup, optional Prometheus/Alertmanager
-- VAPID-Schlüssel, erster Admin, `scripts/verify-deployment.sh`
+Das Skript macht Folgendes:
 
-> SMTP-Konfiguration ist **optional** – bei Bedarf kann sie übersprungen werden.
+- installiert Docker, Node.js und pnpm und klont das Repository;
+- fragt die `.env` ab (Domain, SMTP optional, Monitoring optional) und erzeugt alle Secrets, auch den Fernet-Schlüssel und das age-Schlüsselpaar für Backups;
+- baut die Images und startet **alle** Dienste: Traefik, Backend, Worker, Beat, Frontend, PostgreSQL, Redis, Backup, optional Prometheus und Alertmanager;
+- legt die VAPID-Schlüssel und den ersten Admin an und prüft die Installation mit `scripts/verify-deployment.sh`.
 
 Updates: `./scripts/update.sh` (git pull → Images neu bauen → `up -d` → Prüfung). Details: [Proxmox-Setup](docs/documentation/installation/proxmox-setup.md), [Update](docs/documentation/installation/update.md).
 
----
-
-### Manuelle Installation
-
-#### Voraussetzungen
-- Docker & Docker Compose
-- (Optional) pnpm 10 für lokale Frontend-Entwicklung
-
-#### Produktion
+### Manuelle Installation (Produktion)
 
 ```bash
 cp .env.example .env
 # Pflicht: APP_SECRET_KEY, JWT_SECRET_KEY, POSTGRES_PASSWORD (je ≥ 24 Zeichen),
 # PRINTER_CREDENTIAL_ENCRYPTION_KEY (Fernet), DOMAIN, APP_BASE_URL, ALLOWED_ORIGINS,
-# TRAEFIK_EMAIL, AGE_RECIPIENT (Backups) – Befehle zum Erzeugen stehen in .env.example
+# TRAEFIK_EMAIL, AGE_RECIPIENT (Backups) – die Befehle zum Erzeugen stehen in .env.example
 
-make up          # baut und startet alle Container inkl. Traefik und Backup
+make up          # docker compose up -d --build (inkl. Traefik, Worker, Beat, Backup)
 make verify      # scripts/verify-deployment.sh
-make update      # späteres Update: git pull + Images neu bauen + up -d
+make update      # später: git pull + Images neu bauen + up -d + Prüfung
 ```
 
-Siehe [Quickstart](docs/documentation/installation/quickstart.md).
+In Produktion verweigert das Backend den Start mit Standard-Secrets oder einem ungültigen Fernet-Schlüssel. Den ersten Admin legst du mit `docker compose exec -e ADMIN_PASSWORD='…' backend python scripts/create_admin.py --email … --name …` an. Danach führt `/` zum Einrichtungsassistenten. Siehe [Quickstart](docs/documentation/installation/quickstart.md) und [Konfiguration](docs/documentation/installation/configuration.md).
 
-#### Entwicklung
+### Entwicklung
 
 ```bash
-make dev         # Backend + DB + Redis + Frontend mit Hot-Reload
+make dev         # Stack ohne Traefik, Hot-Reload für Backend und Frontend
 ```
 
-Für die Entwicklung ist keine `.env` nötig (`docker-compose.dev.yml` setzt `APP_ENV=development` und Dev-Zugangsdaten). `.env.example` ist die Produktionsvorlage: Wer sie für die Entwicklung kopiert, setzt `COMPOSE_PROFILES=` leer, sonst startet auch der Backup-Dienst.
+Eine `.env` ist nicht nötig, `docker-compose.dev.yml` setzt `APP_ENV=development` und die Dev-Zugangsdaten. Wer `.env.example` für die Entwicklung kopiert, setzt `COMPOSE_PROFILES=` leer, sonst startet auch der Backup-Dienst.
 
-#### Pre-commit-Hooks
+- Frontend: http://localhost:5173
+- API und Swagger UI: http://localhost:8000/api/docs (nur im Dev-Modus)
+- Login: `admin@dev.local` / `admin1234` (wird beim Start angelegt)
+
+Ohne Docker: im Backend `pip install -e ".[dev]"`, dann `alembic upgrade head` und `uvicorn main:app --reload`; im Frontend `pnpm install` und `pnpm dev`. Tests:
+
+```bash
+cd backend && pytest -q && ruff check . && ruff format --check . && mypy .
+cd frontend && pnpm lint && pnpm exec tsc --noEmit && pnpm test && pnpm build
+```
+
+### Pre-commit-Hooks
 
 ```bash
 pipx install pre-commit      # oder: pip install pre-commit
-pre-commit install           # ab jetzt vor jedem Commit
-pre-commit run --all-files   # einmalig alles prüfen
+pre-commit install
+pre-commit run --all-files
 ```
 
-`.pre-commit-config.yaml` führt ruff (check + format) für `backend/`, eslint für `frontend/src` (vorher `pnpm install` in `frontend/`), shellcheck für die Shell-Skripte und einen YAML-Check aus. Das sind dieselben Prüfungen wie in der CI.
+Die Hooks sind ruff (check und format) für `backend/`, eslint für `frontend/src` (vorher `pnpm install` in `frontend/`), shellcheck und ein YAML-Check.
 
-Danach erreichbar:
-- Frontend: http://localhost:5173
-- Backend API + Swagger: http://localhost:8000/api/docs
-
-**Standard-Login (Dev):**
-
-| | |
-|---|---|
-| E-Mail | `admin@dev.local` |
-| Passwort | `admin1234` |
-
-> Der Dev-Admin wird beim ersten Start automatisch angelegt.
-
-### Nützliche Make-Befehle
+### Make-Befehle
 
 | Befehl | Beschreibung |
 |---|---|
-| `make up` | Produktion starten |
-| `make down` | Alle Container stoppen |
+| `make up` / `make down` | Produktion starten / stoppen |
 | `make dev` | Entwicklungsmodus |
-| `make migrate` | DB-Migrationen ausführen |
-| `make migrate-create MSG="name"` | Neue Migration generieren |
-| `make logs` | Live-Logs aller Container |
-| `make shell-backend` | Shell im Backend-Container |
-| `make shell-db` | psql in der Datenbank |
-| `make vapid-keys` | VAPID-Schlüsselpaar generieren |
-| `make fernet-key` | Fernet-Key für Drucker-Credentials |
-| `make update` | Update: git pull, Images neu bauen, neu starten, prüfen |
-| `make verify` | Installation prüfen (PASS/WARN/FAIL) |
-| `make backup-now` / `make backup-status` | Backup sofort erstellen / Backup-Status |
+| `make migrate` / `make migrate-down` | Migrationen anwenden / eine zurück |
+| `make migrate-create MSG="name"` | Neue Migration erzeugen |
+| `make logs` | Live-Logs |
+| `make shell-backend` / `make shell-db` | Shell im Backend / psql |
+| `make test-backend` / `make test-frontend` | Tests |
+| `make vapid-keys` / `make fernet-key` | Schlüssel erzeugen |
+| `make update` / `make verify` | Update / Installation prüfen |
+| `make backup-now` / `make backup-status` | Backup sofort / Backup-Status |
 
 ---
 
 ## Architektur
 
+Modularer Monolith mit statischen Registries: `backend/core/modules.py` für die Router, `frontend/src/core/plugins.ts` für Routen, Navigation und Rechte. Laufzeit-Plugins gibt es bewusst nicht.
+
 ```
-KERN
-├── Auth               (User, Role, Permission, Refresh-Cookie)
-├── Saison             (jährliches Regelwerk und Scoring-Vorlagen)
-├── Event              (Teams, Phasen, Zeitplan, Freigaben, Zeitzone)
-└── Turnier            (Schedule, Bracket, Match, ScoreRevision, Ranking)
-
-STATISCHE MODULE
-├── Scoring            (dynamische Schemas, mobile Eingabe, Audit)
-│   └── Score-Sheets   (lokale OpenCV/Tesseract-Pipeline, Pflicht-Review)
-├── Paper-Review       (Auslastung, Fristen, Erinnerungen, Statushistorie)
-└── 3D-Druck           (OctoPrint/Bambu, Zustandsautomat, Worker-Polling)
-
-ÜBERGREIFEND
-├── Public Live        (Rangliste, Zeitplan, Ansagen, QR, Redis Pub/Sub)
-├── Dashboard          (rechtebezogene Widgets, Notification-Outbox)
-└── Betrieb            (Readiness, Prometheus, Backups, strukturierte Logs)
+Traefik ─┬─ /api → backend (FastAPI) ─┬─ PostgreSQL
+         │                             └─ Redis ─ worker / beat (Celery)
+         └─ /    → frontend (nginx, SPA/PWA)
 ```
 
-**Modul-Mechanismus:** Die Anwendung ist ein statischer modularer Monolith. Backend- und Frontend-Register werden beim Build kompiliert; installierbare Laufzeit-Plugins gibt es bewusst nicht.
+- `backend/modules/`: `auth`, `seasons`, `events`, `teams`, `scoring` (inkl. `score_sheets`), `paper_review`, `printing`, `dashboard`, `exports`, `bots`.
+- Live-Daten über Redis Pub/Sub, veröffentlicht nach dem Commit, an `WS /api/v1/public/events/{slug}/ws`.
+- Benachrichtigungen über eine transaktionale Outbox, die der Worker zustellt.
+- Einheitliches Fehlerformat `{code, message, fieldErrors, requestId}`.
+
+Details: [Architektur](docs/documentation/technical/architecture.md) · [Modul-Registry](docs/documentation/technical/plugins.md) · [Datenbank](docs/documentation/technical/database.md) (60 Tabellen, ERD, Migrationen `0001`–`0029`) · [API-Referenz](docs/documentation/technical/api-reference.md).
 
 ---
 
-## Datenbank-Migrationen
+## Rollen
 
-Migrationen laufen automatisch beim Container-Start via `scripts/migrate-then-start.sh`.
-
-| Migration | Inhalt |
+| Rolle | Rechte (Migrationen `0002`–`0017`) |
 |---|---|
-| `0001` | Score-Sheet-Templates (OCR-Pipeline) |
-| `0002` | Auth: User, Role, Permission, Token, PushSubscription (5 Rollen seeded) |
-| `0003` | Seasons: Season, SeasonPhase, CompetitionLevel (ECER/GCER/Junior seeded) |
-| `0004` | Teams: Team, TeamMember, TeamSeasonRegistration |
-| `0005` | Scoring: ScoringSchema, Match, Ranking |
-| `0006` | Paper Review: Paper, ReviewerAssignment, PaperReview |
-| `0007` | 3D-Druck: Printer, PrintJob, TeamSeasonPrintQuota, FilamentSpool |
-| `0008` | Dashboard: Announcement, AuditLog |
-| `0009` | Wettbewerbsmodule und Kategorien |
-| `0010` | Events, Registrierungen, Phasen, Zeitplan, Revisionen und Datenmigration |
-| `0011` | Lokale Score-Sheet-Scans und OCR-Review |
-| `0012` | Paper-/Print-Workflows, Notification-Outbox und Constraints |
+| **admin** | alle |
+| **juror** | `scoring:read/write/admin` · `events:read/write` · `teams:read` · `seasons:read` · `dashboard:read` |
+| **reviewer** | `papers:read/review` · `teams:read` · `seasons:read` · `events:read` · `dashboard:read` |
+| **mentor** | `teams:read/write` · `scoring:read/write` · `papers:read/write` · `printing:read/write` · `seasons:read` · `events:read` · `dashboard:read`. Schreibrechte nur fürs eigene Team. |
+| **guest** | `scoring:read` · `teams:read` · `seasons:read` · `events:read` · `dashboard:read` |
+
+Admins können Rechte ändern und eigene Rollen anlegen. Vollständige Matrix und Restrisiken: [docs/SECURITY.md](docs/SECURITY.md).
 
 ---
 
-## API-Übersicht
+## Dokumentation
 
-Alle Endpunkte unter `/api/`. Swagger UI unter `/api/docs` (nur im Dev-Modus).
-
-| Bereich | Präfix | Authentifizierung |
-|---|---|---|
-| Auth | `/api/auth/` | Teils öffentlich |
-| Events | `/api/v1/events/{eventId}/` | Eventbezogene Permissions |
-| Öffentliche Events | `/api/v1/public/events/{slug}/` | Nur Lesen, ohne Login |
-| Saisons | `/api/seasons/` | JWT erforderlich |
-| Teams | `/api/teams/` | `teams:read/write` |
-| Scoring | `/api/scoring/` | `scoring:read/write/admin` |
-| Score-Sheets | `/api/scoring/score-sheets` | `scoring:admin` |
-| Paper Review | `/api/papers/` | `papers:read/review/admin` |
-| 3D-Druck | `/api/printing/` | `printing:read/write/admin` |
-| Dashboard | `/api/dashboard/` | `dashboard:read` |
-| Live-Kanal | `/api/v1/public/events/{slug}/ws` | Öffentlich, Redis Pub/Sub |
-
----
-
-## Rollen & Berechtigungen
-
-| Rolle | Permissions |
+| Dokument | Inhalt |
 |---|---|
-| **admin** | Alle Berechtigungen |
-| **juror** | scoring:read/write/admin · teams:read · dashboard:read |
-| **reviewer** | papers:read/review · teams:read · dashboard:read |
-| **mentor** | teams:read · scoring:read · papers:read · printing:read/write |
-| **guest** | scoring:read · dashboard:read · seasons:read |
+| [docs/documentation/index.md](docs/documentation/index.md) | Einstieg in die Gesamtdokumentation |
+| [Quickstart](docs/documentation/installation/quickstart.md) · [Konfiguration](docs/documentation/installation/configuration.md) · [Anforderungen](docs/documentation/installation/requirements.md) | Installation |
+| [Proxmox-Setup](docs/documentation/installation/proxmox-setup.md) · [Update](docs/documentation/installation/update.md) · [Deployment](docs/documentation/technical/deployment.md) · [Betrieb](docs/operations.md) | Betrieb, Backups, Monitoring |
+| [Benutzerhandbuch](docs/documentation/user-manual/index.md) | Grundlagen für alle Rollen |
+| [Admin](docs/documentation/user-manual/admin.md) · [Juror](docs/documentation/user-manual/juror.md) · [Reviewer](docs/documentation/user-manual/reviewer.md) · [Mentor](docs/documentation/user-manual/mentor.md) · [Gast](docs/documentation/user-manual/guest.md) · [FAQ](docs/documentation/user-manual/faq.md) | Handbücher |
+| [Architektur](docs/documentation/technical/architecture.md) · [API](docs/documentation/technical/api-reference.md) · [Datenbank](docs/documentation/technical/database.md) · [Modul-Registry](docs/documentation/technical/plugins.md) | Technik |
+| [SECURITY.md](docs/SECURITY.md) · [todo.md](docs/todo.md) · [done.md](docs/done.md) · [OPEN_ITEMS.md](docs/OPEN_ITEMS.md) · [audit-2026-09.md](docs/audit-2026-09.md) | Sicherheit und Projektstand |
+| [docs/modules/](docs/modules/) | Ursprüngliche Modul-Spezifikationen (01–11) |
 
----
-
-## Vollständige Dokumentation
-
-| Dokument | Beschreibung |
-|---|---|
-| [docs/documentation/installation/quickstart.md](docs/documentation/installation/quickstart.md) | Schnellstart-Anleitung |
-| [docs/documentation/installation/configuration.md](docs/documentation/installation/configuration.md) | Alle .env-Variablen |
-| [scripts/proxmox-setup.sh](scripts/proxmox-setup.sh) | One-Call Proxmox Installer |
-| [docs/documentation/installation/proxmox-setup.md](docs/documentation/installation/proxmox-setup.md) | Proxmox-Setup: LXC, Skript, Test auf dem eigenen Server |
-| [docs/documentation/installation/update.md](docs/documentation/installation/update.md) | Update und Rollback |
-| [docs/documentation/technical/deployment.md](docs/documentation/technical/deployment.md) | Dienste, Health/Readiness, Deploy-Workflow, Monitoring |
-| [docs/documentation/technical/architecture.md](docs/documentation/technical/architecture.md) | Systemarchitektur |
-| [docs/documentation/technical/database.md](docs/documentation/technical/database.md) | Datenbankschema |
-| [docs/documentation/technical/api-reference.md](docs/documentation/technical/api-reference.md) | API-Referenz |
-| [docs/documentation/technical/plugins.md](docs/documentation/technical/plugins.md) | Statische Modul-Registry |
-| [docs/operations.md](docs/operations.md) | Readiness, Alarme, Backups (außer Haus, Wiederherstellung) und Event-Probelauf |
-| [docs/documentation/user-manual/admin.md](docs/documentation/user-manual/admin.md) | Handbuch: Admin |
-| [docs/documentation/user-manual/juror.md](docs/documentation/user-manual/juror.md) | Handbuch: Juror |
-| [docs/documentation/user-manual/reviewer.md](docs/documentation/user-manual/reviewer.md) | Handbuch: Reviewer |
-| [docs/documentation/user-manual/mentor.md](docs/documentation/user-manual/mentor.md) | Handbuch: Mentor |
-
----
-
-## Referenzdokumente
+### Referenzdokumente
 
 | Datei | Beschreibung |
 |---|---|
@@ -244,3 +197,4 @@ Alle Endpunkte unter `/api/`. Swagger UI unter `/api/docs` (nur im Dev-Modus).
 | [`docs/assets/2026 Call for Papers v1.0.pdf`](<docs/assets/2026 Call for Papers v1.0.pdf>) | Call for Papers 2026 |
 | [`docs/assets/2025 Botball Game Review v1.2.pdf`](<docs/assets/2025 Botball Game Review v1.2.pdf>) | Game Review 2025 |
 | [`docs/assets/2025 Call for Papers v1.0.pdf`](<docs/assets/2025 Call for Papers v1.0.pdf>) | Call for Papers 2025 |
+| [`docs/assets/Results 2025.xlsx`](<docs/assets/Results 2025.xlsx>) | Ergebnisse ECER 2025 (Referenz für die Formel-Engine) |

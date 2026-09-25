@@ -65,7 +65,7 @@ Regression tests: `backend/tests/integration/test_security_scoping.py` and the m
 - **Password reset:** single-use token, stored hashed, valid 1 h. The request endpoint always answers 204, so it does not reveal whether an account exists.
 - **Password policy:** at least 10 characters, not a single repeated character, not the e-mail address.
 - **Rate limits** (Redis, per client IP): login, refresh, password change, e-mail change, account deletion, password reset request and confirm, and all upload endpoints. Behind Traefik the real client IP is used (`--proxy-headers`, `FORWARDED_ALLOW_IPS`).
-- **Self-update:** `PATCH /auth/me` uses a dedicated schema (`display_name`, `preferred_language`, `theme`), so users cannot change their own roles, status or superuser flag. `is_superuser` is absent from all input schemas. `create_admin.py` grants it only with `--superuser`.
+- **Self-update:** `PATCH /auth/me` uses a dedicated schema (`display_name`, `preferred_language`, `theme`), so users cannot change their own roles, status or superuser flag. `is_superuser` is absent from all input schemas. `create_admin.py` makes a newly created account a superuser with the admin role. When resetting an existing account (`--reset`), it grants superuser status only with `--superuser`.
 
 ## Files and input
 

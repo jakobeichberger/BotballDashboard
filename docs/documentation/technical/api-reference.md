@@ -128,7 +128,7 @@ Die Rechte werden in den Migrationen angelegt (`0002`, `0010`, `0012`, `0013`, `
 | `printing:read` / `printing:write` / `printing:admin` | Druckjobs ansehen / einreichen / Drucker, Kontingente, Freigaben |
 | `dashboard:read` / `dashboard:write` | Dashboard ansehen / Ankündigungen verwalten |
 
-Die Zuordnung zu den Rollen steht in [SECURITY.md](../../SECURITY.md#rollen-und-rechte).
+Die Zuordnung zu den Rollen steht in [SECURITY.md](../../SECURITY.md#roles-and-permissions).
 
 ---
 

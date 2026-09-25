@@ -60,7 +60,7 @@ Damit Mentoren ihr Team bearbeiten können, muss ihr Konto mit einem Teammitglie
 - **Rechte einer Rolle ändern:** Häkchen setzen und speichern. Der Admin-Rolle lassen sich die kritischen Rechte nicht entziehen.
 - **Eigene Rolle anlegen:** Name, Beschreibung, Rechte-Auswahl. Beispiele: „Druck-Team" mit `printing:*`, „Formel-Verantwortliche" mit `scoring:formulas`.
 
-Superuser (bei der Installation mit `create_admin.py --superuser`) bestehen jede Rechteprüfung, unabhängig von ihren Rollen.
+Superuser bestehen jede Rechteprüfung, unabhängig von ihren Rollen. `create_admin.py` legt neue Konten als Superuser mit der Rolle `admin` an. Beim Zurücksetzen eines bestehenden Kontos (`--reset`) wird der Superuser-Status nur mit `--superuser` vergeben. In der Oberfläche lässt er sich nicht setzen.
 
 ---
 
