@@ -746,12 +746,12 @@ build_images() {
   info "Pulling base images (postgres, redis, traefik, monitoring)..."
   docker compose pull --ignore-buildable --quiet 2>/dev/null || true
 
-  # backend, worker, beat and backup all run the backend image; build every
+  # backend, the workers, beat and backup all run the backend image; build every
   # one that is part of the active profiles (COMPOSE_PROFILES in .env).
   local services=() service
   for service in $(docker compose config --services); do
     case "${service}" in
-      backend|worker|beat|backup) services+=("${service}") ;;
+      backend|worker|worker-ocr|beat|backup) services+=("${service}") ;;
     esac
   done
   info "Building backend image for: ${services[*]}..."

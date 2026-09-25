@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy.exc import IntegrityError
 
+from core.audit import AuditMiddleware
 from core.config import get_settings
 from core.logging import configure_logging
 from core.metrics import observe_request, render_metrics
@@ -146,42 +147,10 @@ async def integrity_error_handler(request: Request, _exc: IntegrityError):
     )
 
 
-@app.middleware("http")
-async def audit_successful_mutations(request: Request, call_next):
-    """Record successful API mutations without making audit failures user-facing."""
-    response = await call_next(request)
-    if (
-        not getattr(request.app.state, "testing", False)
-        and request.method in {"POST", "PUT", "PATCH", "DELETE"}
-        and request.url.path.startswith("/api/")
-        and response.status_code < 400
-    ):
-        try:
-            from core.audit import log_action
-            from core.auth import decode_token
-            from core.database import AsyncSessionLocal
-
-            user_id = None
-            authorization = request.headers.get("authorization", "")
-            if authorization.lower().startswith("bearer "):
-                try:
-                    user_id = decode_token(authorization.split(" ", 1)[1]).get("sub")
-                except Exception:
-                    user_id = None
-            async with AsyncSessionLocal() as session:
-                await log_action(
-                    session,
-                    f"{request.method} {request.url.path}",
-                    user_id=user_id,
-                    resource_type="api",
-                    resource_id=request.url.path,
-                    ip_address=request.client.host if request.client else None,
-                )
-                await session.commit()
-        except Exception:
-            # User-facing mutations must not fail when audit storage is unavailable.
-            pass
-    return response
+# Record successful API mutations. The audit row is written in the request's
+# own transaction (get_db) instead of a second session per write request; see
+# core.audit.AuditMiddleware. Registered here to keep its place in the stack.
+app.add_middleware(AuditMiddleware)
 
 
 # CORS

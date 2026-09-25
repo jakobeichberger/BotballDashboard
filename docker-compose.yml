@@ -1,5 +1,5 @@
 # Profiles:
-#   (none)      traefik, db, redis, backend, worker, beat, frontend
+#   (none)      traefik, db, redis, backend, worker, worker-ocr, beat, frontend
 #   production  + backup      (encrypted daily backups, needs AGE_RECIPIENT)
 #   monitoring  + prometheus, blackbox, alertmanager
 # Enable them with COMPOSE_PROFILES in .env (e.g. COMPOSE_PROFILES=production,monitoring)
@@ -119,12 +119,14 @@ services:
       retries: 3
       start_period: 3m
 
-  # ── Background worker (local OCR + printer polling) ───────────
+  # ── Background workers (see core/celery_app.py for the queues) ─
+  # worker: notifications, printer polling and other periodic jobs.
+  # worker-ocr: score-sheet OCR only, so a pile of scans never delays them.
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A core.celery_app:celery_app worker --loglevel=INFO --concurrency=2
+    command: celery -A core.celery_app:celery_app worker -Q default,periodic --loglevel=INFO --concurrency=2
     env_file:
       - path: .env
         required: false
@@ -135,6 +137,31 @@ services:
     volumes:
       - uploads:/app/uploads
       - vapid:/app/vapid:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A core.celery_app:celery_app inspect ping -d celery@$$HOSTNAME | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker-ocr:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A core.celery_app:celery_app worker -Q ocr --loglevel=INFO --concurrency=2
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy

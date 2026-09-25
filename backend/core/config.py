@@ -22,9 +22,24 @@ class Settings(BaseSettings):
     postgres_db: str = "botball"
     postgres_user: str = "botball"
     postgres_password: str = "botball"
+    # SQL statement logging is opt-in (DB_ECHO=true): logging every statement
+    # of every request slows a development instance down noticeably.
+    db_echo: bool = False
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    # Connections older than this are replaced before use, so a PostgreSQL or
+    # proxy restart (or an idle timeout on the way) never hands out a dead one.
+    db_pool_recycle_seconds: int = 1800
 
     # Redis
     redis_url: str = "redis://redis:6379/0"
+    # Computed ranking/results payloads are cached in Redis ("redis"), in the
+    # process ("memory"; tests, single instance) or not at all ("none"). Every
+    # live ranking/schedule update invalidates them; the TTL bounds how long a
+    # change that announces nothing (a renamed team, an edited formula) can
+    # take to show up.
+    cache_backend: str = "redis"
+    ranking_cache_ttl_seconds: int = 120
 
     # JWT
     jwt_secret_key: str = "change-me-jwt"
