@@ -11,12 +11,14 @@ from core.auth import assert_team_access, has_elevated_access, own_team_ids, req
 from core.config import get_settings
 from core.database import get_db
 from core.rate_limit import rate_limit
+from core.task_queue import enqueue_after_commit
 from modules.scoring.schemas import MatchResponse
 from modules.scoring.score_sheets import scan_service
 from modules.scoring.score_sheets.schemas import (
     ScoreSheetScanAccept,
     ScoreSheetScanResponse,
 )
+from modules.seasons.lifecycle import ensure_writable
 
 router = APIRouter(prefix="/v1/events", tags=["score-sheet-scans"])
 
@@ -26,6 +28,13 @@ ALLOWED_SCAN_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"
 # (scoring:admin) review all of them; everyone else with scoring:read – mentors,
 # guests – only sees the scans of their own teams.
 _SCAN_REVIEWER = "scoring:admin"
+
+
+def _queue_ocr(db: AsyncSession, scan_id: str) -> None:
+    """Hand the scan to the OCR worker once its row is committed."""
+    from modules.scoring.score_sheets.tasks import process_scan
+
+    enqueue_after_commit(db, process_scan, scan_id)
 
 
 @router.post(
@@ -52,24 +61,18 @@ async def upload_scan(
         raise HTTPException(status_code=400, detail="Uploaded scan is empty")
     if len(content) > get_settings().max_upload_size_mb * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Uploaded scan exceeds the size limit")
-    await file.seek(0)
-    file_path, _ = await scan_service.save_scan_upload(file, str(event_id))
+    # Validates template, team, match, season and file content before the file
+    # is written.
     scan = await scan_service.create_scan(
         db,
         event_id=str(event_id),
         template_id=str(template_id),
         team_id=str(team_id),
         scheduled_match_id=str(scheduled_match_id) if scheduled_match_id else None,
-        file_path=file_path,
+        content=content,
         created_by=current_user.id,
     )
-    await db.flush()
-    try:
-        from modules.scoring.score_sheets.tasks import process_scan
-
-        process_scan.delay(scan.id)
-    except Exception:
-        pass
+    _queue_ocr(db, scan.id)
     return scan
 
 
@@ -112,12 +115,11 @@ async def retry_scan(
     await assert_team_access(db, current_user, scan.team_id, _SCAN_REVIEWER)
     if scan.status not in ("failed", "queued"):
         raise HTTPException(status_code=409, detail="Only queued or failed scans can be retried")
+    await ensure_writable(db, event_id=scan.event_id)
     scan.status = "queued"
     scan.error = None
     await db.flush()
-    from modules.scoring.score_sheets.tasks import process_scan
-
-    process_scan.delay(scan.id)
+    _queue_ocr(db, scan.id)
     return scan
 
 

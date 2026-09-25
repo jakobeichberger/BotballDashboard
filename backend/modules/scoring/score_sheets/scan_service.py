@@ -2,34 +2,88 @@
 
 from __future__ import annotations
 
+import io
+import os
 import re
 import subprocess
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import UploadFile
+from fastapi import HTTPException
+from PIL import Image, UnidentifiedImageError
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from core.exceptions import ConflictError, NotFoundError, ValidationError
+from core.files import remove_on_rollback
 from modules.events.models import Event, EventRegistration, ScheduledMatch
 from modules.scoring import service as scoring_service
 from modules.scoring.score_sheets.models import ScoreSheetScan, ScoreSheetTemplate
 from modules.scoring.score_sheets.schemas import OcrValidationRules
+from modules.seasons.lifecycle import ensure_writable
 from modules.teams.models import Team
 
+# ── Input limits ──────────────────────────────────────────────────────────────
+#
+# A score sheet is one A4 page; at 300 dpi that is about 8.7 MP. A PNG of a few
+# KB can declare billions of pixels, and decoding it would take gigabytes (a
+# decompression bomb), so images are measured from their header first.
+MAX_SCAN_PIXELS = 40_000_000
+# OpenCV's own decoder cap, read when cv2 decodes its first image.
+os.environ.setdefault("OPENCV_IO_MAX_IMAGE_PIXELS", str(MAX_SCAN_PIXELS))
+# PDFs are rasterized at 150 dpi, the longer side capped at 3000 px, whatever
+# page size the PDF declares.
+PDF_RASTER_DPI = 150
+PDF_RASTER_MAX_SIDE = 3000
 
-async def save_scan_upload(file: UploadFile, event_id: str) -> tuple[Path, int]:
-    directory = Path(get_settings().upload_dir) / "score_sheet_scans" / event_id
-    directory.mkdir(parents=True, exist_ok=True)
-    original = re.sub(r"[^A-Za-z0-9._-]", "_", Path(file.filename or "scan.jpg").name)
-    destination = directory / f"{uuid.uuid4()}_{original}"
-    content = await file.read()
-    destination.write_bytes(content)
-    return destination, len(content)
+_PDF_MAGIC = b"%PDF-"
+# Detected image format -> stored extension. GIF and anything else is refused.
+SCAN_TYPES = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}
+
+
+class ScanImageTooLarge(ValueError):
+    pass
+
+
+def assert_scan_dimensions(source: Path | bytes) -> None:
+    """Refuse images with more than MAX_SCAN_PIXELS pixels without decoding them.
+
+    Raises ValueError for data that is not a readable image and
+    ScanImageTooLarge for an image that is too large.
+    """
+    try:
+        with Image.open(io.BytesIO(source) if isinstance(source, bytes) else source) as image:
+            width, height = image.size
+    except Image.DecompressionBombError as exc:
+        raise ScanImageTooLarge("Score sheet image is too large") from exc
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError("Uploaded score sheet is not a readable image") from exc
+    if width * height > MAX_SCAN_PIXELS:
+        raise ScanImageTooLarge(
+            f"Score sheet image is too large ({width}x{height} px, "
+            f"at most {MAX_SCAN_PIXELS // 1_000_000} MP)"
+        )
+
+
+def scan_extension(content: bytes) -> str:
+    """Stored extension of an accepted scan (by content, not by name); 415 otherwise."""
+    if content.startswith(_PDF_MAGIC):
+        return ".pdf"
+    try:
+        with Image.open(io.BytesIO(content)) as image:
+            kind = image.format
+    except (UnidentifiedImageError, Image.DecompressionBombError, OSError):
+        kind = None
+    if kind not in SCAN_TYPES:
+        raise HTTPException(status_code=415, detail="PDF, JPEG, PNG or WebP required")
+    return SCAN_TYPES[kind]
+
+
+def _scan_directory(event_id: str) -> Path:
+    return Path(get_settings().upload_dir) / "score_sheet_scans" / event_id
 
 
 async def create_scan(
@@ -39,9 +93,14 @@ async def create_scan(
     template_id: str,
     team_id: str,
     scheduled_match_id: str | None,
-    file_path: Path,
+    content: bytes,
     created_by: str,
 ) -> ScoreSheetScan:
+    """Validate an uploaded score sheet, then store it and create the scan row.
+
+    Everything is checked before the file touches the disk; the file is named
+    by its detected type and removed again if the transaction rolls back.
+    """
     event = await db.get(Event, event_id)
     template = await db.get(ScoreSheetTemplate, template_id)
     if not event:
@@ -62,6 +121,22 @@ async def create_scan(
         scheduled = await db.get(ScheduledMatch, scheduled_match_id)
         if not scheduled or scheduled.event_id != event_id:
             raise ValidationError("Scheduled match does not belong to this event")
+        await scoring_service.assert_match_participant(db, scheduled_match_id, team_id)
+    await ensure_writable(db, event_id=event_id)
+    extension = scan_extension(content)
+    if extension != ".pdf":
+        try:
+            assert_scan_dimensions(content)
+        except ScanImageTooLarge as exc:
+            raise ValidationError(str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=415, detail=str(exc)) from exc
+
+    directory = _scan_directory(event_id)
+    directory.mkdir(parents=True, exist_ok=True)
+    file_path = directory / f"{uuid.uuid4()}{extension}"
+    file_path.write_bytes(content)
+    remove_on_rollback(db, file_path)
     scan = ScoreSheetScan(
         event_id=event_id,
         template_id=template_id,
@@ -73,7 +148,11 @@ async def create_scan(
         created_by=created_by,
     )
     db.add(scan)
-    await db.flush()
+    try:
+        await db.flush()
+    except Exception:
+        file_path.unlink(missing_ok=True)
+        raise
     return scan
 
 
@@ -110,7 +189,21 @@ def _rasterize(path: Path, output_directory: Path) -> Path:
         return path
     target = output_directory / "page"
     result = subprocess.run(
-        ["pdftoppm", "-f", "1", "-singlefile", "-png", str(path), str(target)],
+        [
+            "pdftoppm",
+            "-f",
+            "1",
+            "-l",
+            "1",
+            "-singlefile",
+            "-r",
+            str(PDF_RASTER_DPI),
+            "-scale-to",
+            str(PDF_RASTER_MAX_SIDE),
+            "-png",
+            str(path),
+            str(target),
+        ],
         capture_output=True,
         text=True,
         timeout=60,
@@ -396,6 +489,11 @@ def run_local_ocr(scan: ScoreSheetScan, template: ScoreSheetTemplate) -> list[di
     crop_directory = Path(scan.file_url).parent / scan.id / "crops"
     crop_directory.mkdir(parents=True, exist_ok=True)
     image_path = _rasterize(Path(scan.file_url), crop_directory.parent)
+    # Measured from the header before anything is decoded (decompression bombs).
+    try:
+        assert_scan_dimensions(image_path)
+    except ValueError as exc:
+        raise RuntimeError(str(exc)) from exc
     image = cv2.imread(str(image_path))
     if image is None:
         raise RuntimeError("Uploaded score sheet is not a readable image")
