@@ -99,6 +99,19 @@ ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
 exclude = ["alembic/versions", "tests"]
 
+[tool.coverage.run]
+source = ["."]
+# Application code only: the tests themselves, migrations and operator
+# scripts (exercised by CI's migration and deployment jobs) are not counted.
+omit = ["tests/*", "alembic/*", "scripts/*"]
+
+[tool.coverage.report]
+# pytest --cov fails below this. About two points under the measured total
+# (Sept 2026: 77.9 %); raise it as coverage grows towards the targets
+# of docs/modules/10-testing.md.
+fail_under = 76
+skip_empty = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
