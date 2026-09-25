@@ -19,20 +19,9 @@ Stand: 2026-09-25, Commit `aa61752`, Migration `0029`. Hier steht nur, was im Co
   - Paper-Statushistorie (`/api/papers/{id}/history`);
   - OCR-Scan erneut verarbeiten (`…/score-sheet-scans/{id}/retry`);
   - OCR-Layout einer Score-Sheet-Vorlage (`PATCH /api/scoring/score-sheets/{id}/layout`).
-- [ ] **Saison klonen ist unvollständig.** `modules/seasons/portability.py::clone_season` kopiert weder die Tie-Breaker- und Sonderregeln (`scoring_rule_sets`) noch die Paper-Deadlines (`paper_deadlines`) noch die Druck-Checkliste (`print_compliance_items`).
-- [ ] **Rollennamen statt Rechten im Frontend.**
-  - `ScoreboardPage.tsx` zeigt die Buttons „Score-Sheets", „DE/Aerial/Doku eingeben" nur für die Rolle `admin` und „Wertung erfassen" nur für `admin`/`juror`/`mentor`.
-  - `ScoreEntryPage.tsx` (`canManageAll`) prüft ebenfalls Rollennamen.
-
-  Eigene Rollen mit `scoring:admin` sehen die Buttons deshalb nicht. Die Routen selbst sind korrekt über Rechte geschützt.
 - [ ] **i18n unvollständig.** Nur `DashboardPage`, `PublicEventPage` und `EventScoringPage` (plus Layout und Komponenten) nutzen `useTranslation`. 27 Seiten enthalten fest deutschen Text. Die Rückfallsprache ist `de` (`frontend/src/i18n/config.ts`), laut Spezifikation Englisch.
 - [ ] **Registry-Felder ungenutzt.** `dashboardWidgets` und `translations` in `frontend/src/core/plugins.ts` liest keine Komponente. Entweder anbinden oder entfernen.
 - [ ] **Score-Sheet 2026.** Die Vorlage enthält nur die Struktur aus dem Game Review. Die Punktwerte trägt die Organisation im Schema-Editor ein.
-
-## Produktentscheidungen
-
-- [ ] **Öffentliche Ranglisten-Endpunkte.** `/api/scoring/seasons|events/{id}/ranking*` und `…/aerial-ranking` sind ohne Login lesbar und ignorieren die `public_*`-Flags und den Event-Status. Das ist gewollt (Test `test_ranking_public_no_auth`), gibt aber Ranglisten von Entwurfs-Events preis, wenn jemand die ID kennt. Entscheidung: an die Freigaben koppeln oder so lassen.
-- [ ] **Gäste und OCR-Scans.** `guest` hat `scoring:read` und kann damit Scans aller Teams einschließlich der Bildausschnitte abrufen. Soll das so bleiben?
 
 ## Qualität und Betrieb
 
@@ -40,7 +29,6 @@ Stand: 2026-09-25, Commit `aa61752`, Migration `0029`. Hier steht nur, was im Co
 - [ ] **Keine Coverage-Schwellen.** Das Backend läuft mit `--cov`, aber ohne `fail_under`. Vitest hat keine thresholds. Prettier gibt es nicht (Pre-commit: ruff, eslint, shellcheck, YAML).
 - [ ] **Passwort-Policy:** mindestens 10 Zeichen, kein Wiederholungszeichen, nicht die E-Mail. Es gibt keine Prüfung gegen bekannte geleakte Passwörter.
 - [ ] **Off-site-Backup** ist dokumentiert (`BACKUP_HOST_DIR` plus rsync/rclone per Cron, siehe [operations.md](operations.md)), wird aber nicht von der Installation eingerichtet.
-- [ ] **Redis-Ausfall:** Rate-Limits und die Access-Token-Sperrliste lassen dann alles durch (fail open). Das ist beabsichtigt, damit Login und Wiederherstellung möglich bleiben, sollte aber im Monitoring sichtbar sein.
 
 ## Bewusst nicht geplant
 
