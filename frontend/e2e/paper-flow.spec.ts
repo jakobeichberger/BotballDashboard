@@ -55,7 +55,7 @@ test("paper cycle: submit, review, finalize, feedback", async ({ page, sessions 
   await openPaper(admin, title);
   await admin.getByLabel(/reviewer zuweisen|assign reviewer/i).selectOption({ label: "E2E Reviewer (reviewer@test.local)" });
   await admin.getByRole("button", { name: /^(zuweisen|assign)$/i }).click();
-  await expect(admin.getByRole("cell", { name: "E2E Reviewer" })).toBeVisible();
+  await expect(admin.getByRole("cell", { name: "E2E Reviewer", exact: true })).toBeVisible();
 
   // 3. The reviewer scores all five criteria and submits.
   const reviewer = await sessions.open("reviewer");
