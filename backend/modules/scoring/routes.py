@@ -359,7 +359,7 @@ async def _extended_ranking(
     names_result = await db.execute(
         select(Team.id, Team.name).where(Team.id.in_([r.team_id for r in rankings]))
     )
-    names = dict(names_result.all())
+    names = {team_id: name for team_id, name in names_result.all()}
     return [
         TeamRankingEntry(
             rank=r.rank,
