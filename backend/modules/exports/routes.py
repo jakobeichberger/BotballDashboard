@@ -1,9 +1,15 @@
-"""Export routes – PDF and CSV downloads."""
+"""Export routes – PDF and CSV downloads.
+
+reportlab is synchronous and CPU-bound; PDFs are built in the threadpool
+(run_in_threadpool) from plain data, so a large report does not stall every
+other request of this API process while it renders.
+"""
 
 import csv
 import io
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +31,7 @@ from modules.paper_review.service import list_papers
 from modules.printing.service import list_print_jobs, list_printers
 from modules.scoring.formula_service import compute_overall_ranking
 from modules.scoring.service import get_ranking, list_matches
+from modules.scoring.visibility import team_scope
 from modules.seasons.service import get_season
 from modules.teams.models import Team
 from modules.teams.service import get_team, list_teams
@@ -97,7 +104,8 @@ async def export_event_ranking_pdf(
     event = await get_event(db, event_id)
     ranking = await get_ranking(db, event_id=event.id)
     teams = await _event_teams_map(db, event.id)
-    content = build_ranking_pdf(
+    content = await run_in_threadpool(
+        build_ranking_pdf,
         event.name,
         "",
         [
@@ -125,6 +133,57 @@ async def _overall_entries(db: AsyncSession, event) -> list[dict]:
     season = await get_season(db, event.season_id)
     categories = list(season.active_categories or ["botball"])
     return await compute_overall_ranking(db, event.id, categories)
+
+
+@router.get("/events/{event_id}/results.xlsx")
+async def export_event_results_xlsx(
+    event_id: str,
+    _=Depends(require_any_permission("scoring:read", "dashboard:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """All results in the layout of the official ECER results spreadsheet
+    (Teams, Botball & Open, Aerial, Alliance, Junior Botball Challenge)."""
+    from modules.exports.ecer_results import build_results
+    from modules.exports.xlsx import build_xlsx
+
+    event = await get_event(db, event_id)
+    sheets = await build_results(db, event.id)
+    content = await run_in_threadpool(build_xlsx, sheets)
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="results-{event.slug}.xlsx"'},
+    )
+
+
+@router.get("/events/{event_id}/results.csv")
+async def export_event_results_csv(
+    event_id: str,
+    sheet: str = Query(
+        "Botball & Open",
+        max_length=100,
+        description="Teams, Botball & Open, Aerial, Alliance or Junior Botball Challenge",
+    ),
+    _=Depends(require_any_permission("scoring:read", "dashboard:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """One sheet of the ECER results layout as CSV (blocks per category)."""
+    from core.exceptions import NotFoundError
+    from modules.exports.ecer_results import build_results
+
+    event = await get_event(db, event_id)
+    sheets = {s.name.lower(): s for s in await build_results(db, event.id)}
+    chosen = sheets.get(sheet.lower())
+    if chosen is None:
+        raise NotFoundError(f"No results sheet '{sheet}' (available: {', '.join(sheets)})")
+    buf = io.StringIO()
+    _SafeWriter(buf).writerows(chosen.rows)
+    slug = "".join(ch if ch.isalnum() else "-" for ch in chosen.name.lower()).strip("-")
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="results-{event.slug}-{slug}.csv"'},
+    )
 
 
 @router.get("/events/{event_id}/overall-ranking.csv")
@@ -169,7 +228,9 @@ async def export_event_overall_ranking_pdf(
 ):
     event = await get_event(db, event_id)
     season = await get_season(db, event.season_id)
-    content = build_overall_ranking_pdf(event.name, season.name, await _overall_entries(db, event))
+    content = await run_in_threadpool(
+        build_overall_ranking_pdf, event.name, season.name, await _overall_entries(db, event)
+    )
     return Response(
         content=content,
         media_type="application/pdf",
@@ -180,11 +241,13 @@ async def export_event_overall_ranking_pdf(
 @router.get("/events/{event_id}/matches.csv")
 async def export_event_matches_csv(
     event_id: str,
-    _=Depends(require_any_permission("scoring:read")),
+    current_user=Depends(require_any_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     event = await get_event(db, event_id)
-    matches = await list_matches(db, event_id=event.id)
+    # Practice runs of other teams stay with those teams (organizers get all).
+    scope = await team_scope(db, current_user)
+    matches = await list_matches(db, event_id=event.id, team_scope=scope)
     teams = await _event_teams_map(db, event.id)
     buf = io.StringIO()
     writer = _SafeWriter(buf)
@@ -249,7 +312,8 @@ async def export_ranking_pdf(
     ranking = await get_ranking(db, season_id, competition_level_id)
     teams = await _teams_map(db, season_id)
 
-    pdf_bytes = build_ranking_pdf(
+    pdf_bytes = await run_in_threadpool(
+        build_ranking_pdf,
         season_name=season.name,
         competition_level=competition_level_name or "",
         ranking_rows=[
@@ -314,11 +378,12 @@ async def export_ranking_csv(
 @router.get("/seasons/{season_id}/matches.csv")
 async def export_matches_csv(
     season_id: str,
-    _=Depends(require_any_permission("scoring:read")),
+    current_user=Depends(require_any_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     season = await get_season(db, season_id)
-    matches = await list_matches(db, season_id)
+    scope = await team_scope(db, current_user)
+    matches = await list_matches(db, season_id, team_scope=scope)
     teams = await _teams_map(db, season_id)
 
     buf = io.StringIO()
@@ -348,7 +413,8 @@ async def export_matches_csv(
                 "Ja" if m.is_disqualified else "Nein",
                 "Ja" if m.yellow_card else "Nein",
                 "Ja" if m.red_card else "Nein",
-                m.notes or "",
+                # Notes are the jurors' or the team's own: not for other teams.
+                (m.notes or "") if scope is None or m.team_id in scope else "",
                 m.created_at.strftime("%d.%m.%Y %H:%M"),
             ]
         )
@@ -389,7 +455,8 @@ async def export_papers_pdf(
             }
         )
 
-    pdf_bytes = build_paper_review_pdf(
+    pdf_bytes = await run_in_threadpool(
+        build_paper_review_pdf,
         season_name=season.name,
         papers=papers_data,
         teams_by_id=teams,
@@ -569,7 +636,8 @@ async def export_printing_pdf(
         for j in jobs
     ]
 
-    pdf_bytes = build_print_report_pdf(
+    pdf_bytes = await run_in_threadpool(
+        build_print_report_pdf,
         season_name=season.name,
         jobs=jobs_data,
         teams_by_id=teams,
@@ -606,7 +674,9 @@ async def export_teams_pdf(
         for t in teams
     ]
 
-    pdf_bytes = build_team_list_pdf(season_name=season.name, teams=teams_data)
+    pdf_bytes = await run_in_threadpool(
+        build_team_list_pdf, season_name=season.name, teams=teams_data
+    )
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -721,7 +791,8 @@ async def export_team_report_pdf(
     await assert_team_access(db, current_user, team_id, TEAM_REPORT_ELEVATED)
     team = await get_team(db, team_id)
     history = await team_history(db, team_id, include_practice=True)
-    content = build_team_report_pdf(
+    content = await run_in_threadpool(
+        build_team_report_pdf,
         {
             "name": team.name,
             "team_number": team.team_number,

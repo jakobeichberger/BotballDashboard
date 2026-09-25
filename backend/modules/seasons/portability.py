@@ -238,8 +238,14 @@ async def clone_season(db: AsyncSession, source_id: str, name: str, year: int) -
                 finals_replay=rule_set.finals_replay,
                 end_contact_bonus_percent=rule_set.end_contact_bonus_percent,
                 referee_checklist=[dict(item) for item in rule_set.referee_checklist or []],
+                seeding_tiebreakers=rule_set.seeding_tiebreakers,
+                doc_max_points=dict(rule_set.doc_max_points) if rule_set.doc_max_points else None,
             )
         )
+
+    from modules.seasons.categories import copy_categories
+
+    await copy_categories(db, source.id, clone.id)
 
     paper_deadlines = await db.execute(
         select(PaperDeadline).where(PaperDeadline.season_id == source.id)
@@ -289,8 +295,8 @@ def _row(obj: Any, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
 
 
 async def _rows(db: AsyncSession, query, exclude: tuple[str, ...] = ()) -> list[dict[str, Any]]:
-    result = await db.execute(query)
-    return [_row(item, exclude) for item in result.scalars().all()]
+    items: list[Any] = list((await db.execute(query)).scalars().all())
+    return [_row(item, exclude) for item in items]
 
 
 async def export_season(db: AsyncSession, season_id: str) -> dict[str, Any]:
@@ -303,9 +309,15 @@ async def export_season(db: AsyncSession, season_id: str) -> dict[str, Any]:
     )
     from modules.paper_review.models import Paper, PaperStatusHistory
     from modules.printing.models import PrintJob
-    from modules.scoring.competition_models import AerialResult, DEResult, DocumentationScore
+    from modules.scoring.competition_models import (
+        AerialResult,
+        DEResult,
+        DocumentationScore,
+        JBCResult,
+    )
     from modules.scoring.formula_models import ScoringBracketWeight, ScoringFormula
     from modules.scoring.models import Match, Ranking, ScoreRevision, ScoringSchema
+    from modules.seasons.models import SeasonCategory
     from modules.seasons.service import get_season
     from modules.teams.models import Team, TeamSeasonRegistration
 
@@ -360,6 +372,10 @@ async def export_season(db: AsyncSession, season_id: str) -> dict[str, Any]:
         ),
         "documentation_scores": await _rows(
             db, select(DocumentationScore).where(DocumentationScore.season_id == season_id)
+        ),
+        "jbc_results": await _rows(db, select(JBCResult).where(JBCResult.season_id == season_id)),
+        "categories": await _rows(
+            db, select(SeasonCategory).where(SeasonCategory.season_id == season_id)
         ),
         "scoring_schemas": await _rows(
             db, select(ScoringSchema).where(ScoringSchema.season_id == season_id)

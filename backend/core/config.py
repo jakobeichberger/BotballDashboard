@@ -1,7 +1,8 @@
 from functools import lru_cache
+from typing import Literal
 
 from cryptography.fernet import Fernet
-from pydantic import model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -9,11 +10,16 @@ from sqlalchemy.engine import URL
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Application
-    app_env: str = "production"
+    # Application – only these three values. Everything except "development"
+    # is held to the production secret check below; before, any other value
+    # ("prod", "staging", "Production") silently skipped it.
+    app_env: Literal["development", "test", "production"] = "production"
     app_secret_key: str = "change-me"
     app_base_url: str = "http://localhost:8000"
     allowed_origins: str = "http://localhost:5173"
+    # Log level for the API, worker and beat (DEBUG, INFO, WARNING, ...).
+    # Empty means DEBUG in development and INFO otherwise.
+    log_level: str = ""
 
     # Database – individual components so passwords with special characters
     # are never embedded in a URL string (avoids URL-encoding pitfalls).
@@ -22,9 +28,24 @@ class Settings(BaseSettings):
     postgres_db: str = "botball"
     postgres_user: str = "botball"
     postgres_password: str = "botball"
+    # SQL statement logging is opt-in (DB_ECHO=true): logging every statement
+    # of every request slows a development instance down noticeably.
+    db_echo: bool = False
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    # Connections older than this are replaced before use, so a PostgreSQL or
+    # proxy restart (or an idle timeout on the way) never hands out a dead one.
+    db_pool_recycle_seconds: int = 1800
 
     # Redis
     redis_url: str = "redis://redis:6379/0"
+    # Computed ranking/results payloads are cached in Redis ("redis"), in the
+    # process ("memory"; tests, single instance) or not at all ("none"). Every
+    # live ranking/schedule update invalidates them; the TTL bounds how long a
+    # change that announces nothing (a renamed team, an edited formula) can
+    # take to show up.
+    cache_backend: str = "redis"
+    ranking_cache_ttl_seconds: int = 120
 
     # JWT
     jwt_secret_key: str = "change-me-jwt"
@@ -33,6 +54,10 @@ class Settings(BaseSettings):
     # Where logged-out access tokens are remembered until they expire:
     # "redis" (shared by all API instances) or "memory" (one process; tests).
     token_denylist_backend: str = "redis"
+    # bcrypt work factor for new password hashes. 12 is the production value;
+    # the test suite lowers it (tests/conftest.py) because hashing dominates
+    # its runtime. Existing hashes keep the factor they were created with.
+    bcrypt_rounds: int = Field(default=12, ge=4, le=31)
 
     # Email – an empty SMTP_HOST disables SMTP (SendGrid is still tried when
     # SENDGRID_API_KEY is set).
@@ -47,7 +72,6 @@ class Settings(BaseSettings):
 
     # Web Push
     vapid_private_key: str = ""
-    vapid_public_key: str = ""
     vapid_admin_email: str = "admin@example.com"
 
     # 3D Print – Fernet key (urlsafe base64 of 32 bytes). Required in production.
@@ -56,14 +80,22 @@ class Settings(BaseSettings):
     # Files
     upload_dir: str = "/app/uploads"
     max_upload_size_mb: int = 20
+    # Page limit of a paper PDF (call for papers 2026: at most 5 pages
+    # including figures and references); 0 switches the check off.
+    paper_max_pages: int = 5
     # Print job files (STL/3MF/G-code) are much larger than papers or photos,
     # so they have their own limit. A reverse proxy in front of the API must
     # accept at least max(MAX_UPLOAD_SIZE_MB, PRINT_UPLOAD_MAX_MB) + 1 MB.
     print_upload_max_mb: int = 100
 
+    @field_validator("app_env", mode="before")
+    @classmethod
+    def normalise_app_env(cls, value: object) -> object:
+        return value.strip().lower() if isinstance(value, str) else value
+
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
-        if self.app_env != "production":
+        if self.app_env == "development":
             return self
 
         invalid: list[str] = []
@@ -93,6 +125,9 @@ class Settings(BaseSettings):
                 "`python3 -c 'from cryptography.fernet import Fernet; "
                 "print(Fernet.generate_key().decode())'` (or `make fernet-key`)."
             )
+        if self.bcrypt_rounds < 10:
+            # Only the test suite may use cheap hashes (tests/conftest.py).
+            raise ValueError("Unsafe production configuration: BCRYPT_ROUNDS must be at least 10.")
         return self
 
     @property

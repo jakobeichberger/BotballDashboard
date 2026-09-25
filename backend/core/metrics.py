@@ -12,7 +12,7 @@ DURATION: defaultdict[tuple[str, str], list[float]] = defaultdict(lambda: [0.0, 
 # pass-through is counted here so the monitoring can alert on it. Both series
 # exist from the start: Prometheus' increase() needs a sample before the first
 # failure to see it.
-REDIS_FAIL_OPEN: dict[str, int] = {"rate_limit": 0, "token_denylist": 0}
+REDIS_FAIL_OPEN: dict[str, int] = {"cache": 0, "rate_limit": 0, "token_denylist": 0}
 
 
 def record_redis_fail_open(component: str) -> None:

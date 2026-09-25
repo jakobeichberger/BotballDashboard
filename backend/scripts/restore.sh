@@ -3,12 +3,15 @@
 # contents of a backup archive created by backup.sh.
 #
 # Stop every service that writes to the database or the uploads first
-# (backend, worker, beat, backup), then run – see docs/operations.md:
+# (backend, worker, beat, backup), then run – see docs/operations.md. The
+# container runs as uid 10001 on a read-only root: the identity must be
+# readable by that uid, and TMPDIR must point to a disk-backed directory large
+# enough for the decrypted archive:
 #
 #   docker compose run --rm --no-deps \
-#     -v /root/botball-backup-identity.txt:/run/age-identity:ro \
+#     -v /data/restore-work:/restore-work -e TMPDIR=/restore-work \
+#     -e AGE_IDENTITY=/restore-work/age-identity \
 #     -v <backups volume or dir>:/backups:ro \
-#     -e AGE_IDENTITY=/run/age-identity \
 #     backend /app/scripts/restore.sh --yes /backups/botball-TIMESTAMP.tar.gz.age
 set -eu
 
@@ -33,6 +36,22 @@ pg() {
     --port="${POSTGRES_PORT:-5432}" --username="${POSTGRES_USER}" "$@"
 }
 
+# pg_restore of a newer major version than the server writes settings the
+# server does not know (pg_restore 17 → "SET transaction_timeout", rejected by
+# PostgreSQL 16). Render the archive to SQL first, drop those lines, then load
+# it with psql, stopping at the first error. Rendering to a file (not a pipe)
+# keeps a pg_restore failure from turning into a silently partial restore.
+restore_dump() {
+  target_db="$1"
+  dump="$2"
+  sql="${work_dir}/restore.sql"
+  pg_restore --no-owner --file="$sql" "$dump" || return 1
+  sed -i '/^SET transaction_timeout = /d' "$sql" || return 1
+  pg psql --dbname="$target_db" --quiet --no-psqlrc --set=ON_ERROR_STOP=1 \
+    --file="$sql" >/dev/null || return 1
+  rm -f "$sql"
+}
+
 echo "==> Verifying and decrypting $archive"
 if [ -f "${archive}.sha256" ]; then
   (cd "$(dirname "$archive")" && sha256sum -c "$(basename "$archive").sha256")
@@ -42,7 +61,10 @@ mkdir "${work_dir}/data"
 tar -xzf "${work_dir}/backup.tar.gz" -C "${work_dir}/data"
 [ -f "${work_dir}/data/database.dump" ] || { echo "ERROR: archive contains no database.dump" >&2; exit 1; }
 if [ -f "${work_dir}/data/uploads.sha256" ]; then
-  (cd "${work_dir}/data" && sha256sum --quiet -c uploads.sha256)
+  # sha256sum -c rejects an empty manifest; a backup without uploads has one.
+  if [ -s "${work_dir}/data/uploads.sha256" ]; then
+    (cd "${work_dir}/data" && sha256sum --quiet -c uploads.sha256)
+  fi
 fi
 restored_uploads="${work_dir}/data/${upload_dir#/}"
 [ -d "$restored_uploads" ] || { echo "ERROR: archive has no ${upload_dir#/} directory" >&2; exit 1; }
@@ -58,7 +80,7 @@ fi
 echo "==> Recreating database ${POSTGRES_DB}"
 pg dropdb --maintenance-db=postgres "$POSTGRES_DB"
 pg createdb --maintenance-db=postgres --owner="$POSTGRES_USER" "$POSTGRES_DB"
-pg pg_restore --dbname="$POSTGRES_DB" --exit-on-error --no-owner "${work_dir}/data/database.dump"
+restore_dump "$POSTGRES_DB" "${work_dir}/data/database.dump"
 
 echo "==> Replacing uploads in ${upload_dir}"
 mkdir -p "$upload_dir"

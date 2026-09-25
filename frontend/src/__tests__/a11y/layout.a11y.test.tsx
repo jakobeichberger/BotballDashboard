@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { axe, toHaveNoViolations } from "jest-axe";
@@ -7,6 +7,9 @@ import Layout from "@/components/Layout";
 import { useAuthStore } from "@/store/authStore";
 
 expect.extend(toHaveNoViolations);
+
+// No real requests from jsdom (events, modules, notifications).
+vi.mock("@/lib/api", () => ({ api: { get: vi.fn().mockResolvedValue({ data: [] }), post: vi.fn(), patch: vi.fn() } }));
 
 vi.mock("react-i18next", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-i18next")>();
@@ -62,6 +65,21 @@ describe("Layout accessibility", () => {
   it("renders content inside a main landmark", () => {
     renderLayout();
     expect(screen.getByRole("main")).toBeInTheDocument();
+  });
+
+  it("opens the mobile drawer with focus inside and closes it with Escape", () => {
+    renderLayout();
+    const menu = screen.getByRole("button", { name: "Menü öffnen" });
+    expect(menu).toHaveAttribute("aria-expanded", "false");
+    menu.focus();
+    fireEvent.click(menu);
+    expect(menu).toHaveAttribute("aria-expanded", "true");
+    const drawer = screen.getByRole("dialog", { name: "Hauptnavigation" });
+    expect(drawer).toContainElement(document.activeElement as HTMLElement);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(menu).toHaveAttribute("aria-expanded", "false");
+    expect(menu).toHaveFocus();
   });
 
   it("has no axe violations", async () => {

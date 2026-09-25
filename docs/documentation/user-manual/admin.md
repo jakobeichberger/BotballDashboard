@@ -83,11 +83,21 @@ Superuser bestehen jede Rechteprüfung, unabhängig von ihren Rollen. `create_ad
 **Einstellungen → Saison-Module** (`/settings/modules`):
 
 - Saison-Flags: Seeding, Double Elimination, Dokumentation, Aerial, Paper-Score in der Wertung;
-- aktive Kategorien: `botball`, `open`, `aerial`, `jbc`.
+- aktive Kategorien aus der Kategorienliste der Saison;
+- **Kategorien der Saison:** Schlüssel, Bezeichnung DE/EN, Art (Botball, Open, Aerial, JBC, eigene), Standard-Formelvorlage, Aerial-Läufe (angezeigt / gewertet) und „Rang je Kurs" (GCER: Gesamtwertung zusätzlich pro DE-Bracket). Ohne eigene Liste gelten Botball, ECER Open, Aerial Junior, Aerial Senior und Junior Botball Challenge. Ein Schlüssel, den noch eine Anmeldung nutzt, lässt sich nicht entfernen.
 
 Ein hier abgeschaltetes Modul bleibt in allen Events der Saison inaktiv.
 
 **Einstellungen → Wettbewerbsstufen** (`/settings/levels`): Stufen wie ECER, GCER oder Junior mit Reihenfolge und „qualifiziert aus" (z. B. GCER aus ECER).
+
+**Beispiel: Saison ECER 2027 anlegen.** Die Daten der Ankündigung auf ecer.eraa.at (ECER 2027, 5.–9. April 2027, Linzer Technikum, Linz; Botball-Anmeldeschluss 15. Dezember 2026) liegen als Beispiel in `backend/modules/seasons/examples.py`. Sie werden nie automatisch angelegt:
+
+```bash
+docker compose exec backend python scripts/example_season_2027.py          # Daten anzeigen
+docker compose exec backend python scripts/example_season_2027.py --apply  # als Entwurf anlegen
+```
+
+Die Saison entsteht als Entwurf mit Termin „Botball registration closes" (15.12.2026), den Kategorien Botball, ECER Open, Aerial Junior/Senior und JBC und den Formelvorlagen von ECER 2026 als Ausgangspunkt. Spielthema, Score-Sheet und Formeln 2027 erscheinen im Januar 2027 und müssen danach geprüft werden.
 
 ---
 
@@ -158,14 +168,17 @@ Abschnitt **Tie-Breaker & Sonderregeln (Saison)** in der Event-Verwaltung:
   - optional „nur nach einem Replay".
 - **Finale wiederholen statt Tie-Breaker.**
 - **Bonus bei Kontakt am Spielende** in % des Gegner-Scores, Standard 25 %.
-- **Schiedsrichter-Checkliste:** Prüfpunkte, die vor dem Bestätigen eines Scores abgehakt werden, optional als Pflicht.
+- **Tie-Breaker auch auf Seeding anwenden:** standardmäßig aus – gleiche Seed-Scores teilen sich den Rang wie im Game Review und bei ECER 2026. Die Gesamtwertung rechnet immer mit dem angezeigten Seeding-Rang.
+- **Maximalpunkte der Dokumentation** je Periode (2026: P1 100, P2 95, P3 100, Onsite 100; Knopf „Bewertungsbögen 2026").
+- **Schiedsrichter-Checkliste:** Prüfpunkte, die vor dem Bestätigen eines Scores abgehakt werden, optional als Pflicht. Vorlage „Botball 2026 (Game Review v1.4)" mit dem Wortlaut der Packaging-Bin-Regel.
+- **Timeout-Karten:** auf der Wertungsseite; jedes Team hat einen 3-Minuten-Timeout pro Turnier, ein zweiter wird abgelehnt.
 
 ### Punkteformeln
 
 **Punkteformeln** (`/events/…/formulas`, Recht `scoring:formulas`): Die Gesamtwertung wird pro Kategorie aus einem Formel-Set berechnet, so wie in den Game-Dokumenten formuliert.
 
-- Standard ist das ECER-2025-Set.
-- **Vorlage laden:** Presets ECER 2025 (Botball/Open), Regional 2026, GCER 2026, Aerial, JBC.
+- Standard ist das ECER-2025-Set bzw. die Standardvorlage der Kategorie.
+- **Vorlage laden:** ECER 2026 Botball (Dokumentation je Periode relativ zum Besten) und ECER Open, ECER 2025 (Botball/Open), Regional 2025/2026, GCER 2026, Aerial 2025 (Schnitt aller Läufe) und 2026 (beste drei), JBC (Seeding) und JBC 2026 (Punkte für gelöste Challenges).
 - Die Seite zeigt Variablen und Funktionen als Hilfe, dazu die Auswertungsreihenfolge.
 - **Vorschau mit echten Daten:** rechnet den Entwurf gegen die Ergebnisse des Events, ohne zu speichern.
 - **Bracket-Gewichtung** je Kategorie für die Saison. Pro Event lassen sich in der Event-Verwaltung eigene Gewichte setzen.
@@ -280,7 +293,9 @@ Teams sehen das Feedback entschiedener Runden ohne Namen der Reviewer.
 
 ## Auswertung und Exporte
 
-- **Rangliste & Ergebnisse:** Seeding je Kategorie mit entscheidendem Tie-Breaker, DE, Aerial, Gesamtwertung aus dem Formel-Set. Rot-karierte Teams stehen mit „DQ" statt Rang. Exporte als CSV und PDF.
+- **Rangliste & Ergebnisse:** Seeding je Kategorie mit entscheidendem Tie-Breaker, DE, Aerial, Gesamtwertung aus dem Formel-Set. Rot-karierte Teams stehen mit „DQ" statt Rang. Exporte als CSV und PDF sowie **„Ergebnisse (ECER-Format)"** als XLSX mit den Blättern und Spalten der offiziellen ECER-Ergebnisse.
+- **JBC-Punkte** (Rangliste → „JBC-Punkte"): Punkte für gelöste Challenges je Team.
+- **Awards** (`/events/…/awards`): ECER- oder GCER-Awards anlegen, „Aus Ranglisten berechnen" füllt die berechneten Awards, Jury-Awards über Nominierungen und „Entscheidung speichern" (`awards:admin` oder `scoring:admin`), „Veröffentlichen" zeigt sie auf der öffentlichen Event-Seite; Export als PDF/CSV.
 - **Statistik & Anomalien** (`scoring:admin`):
   - Boxplots je Runde und Aufgabe;
   - Heatmap Team × Aufgabe;
@@ -301,6 +316,6 @@ Einen Log- oder Audit-Bereich gibt es in der Oberfläche nicht:
 
 - Jede erfolgreiche Änderung über die API steht in der Datenbanktabelle `audit_logs` (Aktion, Nutzer, IP, Zeit).
 - Score-Änderungen stehen zusätzlich als Revisionen je Wertung bzw. Event.
-- Anwendungslogs: `docker compose logs backend worker beat`.
+- Anwendungslogs: `docker compose logs backend worker worker-ocr beat`.
 
 Backups, Updates, Monitoring und Wiederherstellung beschreiben [Deployment](../technical/deployment.md), [Update](../installation/update.md) und [docs/operations.md](../../operations.md).

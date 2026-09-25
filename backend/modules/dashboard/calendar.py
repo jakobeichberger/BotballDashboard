@@ -63,16 +63,20 @@ async def is_organizer(db: AsyncSession, user) -> bool:
     return await has_elevated_access(db, user, ORGANIZER_PERMISSIONS)
 
 
-async def relevant_season_ids(db: AsyncSession, user) -> set[str]:
+async def relevant_season_ids(
+    db: AsyncSession, user, *, team_ids: set[str] | None = None
+) -> set[str]:
     """Seasons whose deadlines concern `user` when no season is chosen.
 
     Everyone gets the active season(s) — a mentor whose team is not registered
     yet still needs the registration deadline. Team members additionally get
     every season their team is registered for, per season or per event.
+    `team_ids` are the user's own teams, when the caller already has them.
     """
     active = await db.execute(select(Season.id).where(Season.is_active.is_(True)))
     ids = set(active.scalars().all())
-    team_ids = await own_team_ids(db, user)
+    if team_ids is None:
+        team_ids = await own_team_ids(db, user)
     if team_ids:
         registered = await db.execute(
             select(TeamSeasonRegistration.season_id).where(
@@ -139,12 +143,17 @@ async def collect_deadlines(
     season_ids: set[str],
     *,
     since: date | None = None,
+    team_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Every dated entry of the given seasons that concerns `user`."""
+    """Every dated entry of the given seasons that concerns `user`.
+
+    `team_ids` are the user's own teams, when the caller already has them.
+    """
     if not season_ids:
         return []
     organizer = await is_organizer(db, user)
-    team_ids = await own_team_ids(db, user)
+    if team_ids is None:
+        team_ids = await own_team_ids(db, user)
     seasons = list(
         (await db.execute(select(Season).where(Season.id.in_(season_ids)))).scalars().all()
     )
@@ -287,6 +296,8 @@ async def collect_deadlines(
         )
     )
     for assignment, paper in assignments.all():
+        if assignment.due_at is None:  # excluded by the query; narrows the type
+            continue
         entries.append(
             _entry(
                 f"review-{assignment.id}",

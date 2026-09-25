@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import EventScoringPage from "@/pages/EventScoringPage";
+import ConfirmHost from "@/components/ConfirmHost";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 
@@ -47,6 +48,7 @@ function renderPage() {
         <Routes>
           <Route path="/events/:eventId/scoring" element={<EventScoringPage />} />
         </Routes>
+        <ConfirmHost />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -80,10 +82,10 @@ describe("EventScoringPage (mobile scoring)", () => {
     expect(within(screen.getByRole("navigation")).getByText(/^S-1 ·/)).toBeInTheDocument();
   });
 
-  it("switches matches with a horizontal swipe", async () => {
-    const { container } = renderPage();
+  it("switches matches with a horizontal swipe on the match bar", async () => {
+    renderPage();
     await waitFor(() => expect(screen.getAllByRole("option", { name: /S-2/ }).length).toBeGreaterThan(0));
-    const page = container.firstElementChild as HTMLElement;
+    const page = screen.getByRole("navigation");
     fireEvent.touchStart(page, { touches: [{ clientX: 300, clientY: 100 }] });
     fireEvent.touchEnd(page, { changedTouches: [{ clientX: 100, clientY: 110 }] });
     expect(within(screen.getByRole("navigation")).getByText(/^S-1 ·/)).toBeInTheDocument();
@@ -94,6 +96,51 @@ describe("EventScoringPage (mobile scoring)", () => {
     fireEvent.touchStart(page, { touches: [{ clientX: 100, clientY: 100 }] });
     fireEvent.touchEnd(page, { changedTouches: [{ clientX: 200, clientY: 400 }] });
     expect(within(screen.getByRole("navigation")).getByText(/^S-2 ·/)).toBeInTheDocument();
+  });
+
+  it("ignores swipes on the score form", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Nächstes Match" }));
+    const input = screen.getByRole("spinbutton");
+    fireEvent.touchStart(input, { touches: [{ clientX: 300, clientY: 100 }] });
+    fireEvent.touchEnd(input, { changedTouches: [{ clientX: 100, clientY: 100 }] });
+    expect(within(screen.getByRole("navigation")).getByText(/^S-1 ·/)).toBeInTheDocument();
+  });
+
+  it("asks before switching matches would discard entered values", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Nächstes Match" }));
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "4" } });
+
+    // Cancel: stay on the match, keep the value.
+    fireEvent.click(screen.getByRole("button", { name: "Nächstes Match" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(within(screen.getByRole("navigation")).getByText(/^S-1 ·/)).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton")).toHaveValue(4);
+
+    // Confirm: switch and start empty.
+    fireEvent.click(screen.getByRole("button", { name: "Nächstes Match" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Verwerfen" }));
+    await waitFor(() => expect(within(screen.getByRole("navigation")).getByText(/^S-2 ·/)).toBeInTheDocument());
+    expect(screen.getByRole("spinbutton")).toHaveValue(null);
+  });
+
+  it("tells a missing schema apart from a failed load", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      url.endsWith("/scoring-schema") ? Promise.reject({ response: { status: 500, data: {} } }) : Promise.resolve({ data: [] }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/events/ev-2/scoring"]}>
+          <Routes><Route path="/events/:eventId/scoring" element={<EventScoringPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Serverfehler/);
+    expect(screen.getByRole("button", { name: "Erneut versuchen" })).toBeInTheDocument();
   });
 
   it("asks for confirmation with a summary before the official submit", async () => {

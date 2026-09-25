@@ -19,8 +19,8 @@ export function DeadlineBanner({ deadline }: { deadline?: PaperDeadline | null }
 
   const internal = passedInternalDeadlines(deadline);
   const internalWarning = internal.length > 0 && (
-    <div role="status" className="card flex flex-wrap items-center gap-2 border-yellow-200 p-3 text-sm dark:border-yellow-900">
-      <ShieldAlert className="h-4 w-4 text-yellow-600" aria-hidden />
+    <div role="status" className="card flex flex-wrap items-center gap-2 border-warning/45 p-3 text-sm">
+      <ShieldAlert className="h-4 w-4 text-warning" aria-hidden />
       <span>
         {t("deadlineBanner.internalPassed")}{" "}
         {internal
@@ -40,11 +40,11 @@ export function DeadlineBanner({ deadline }: { deadline?: PaperDeadline | null }
     return (
       <>
       {internalWarning}
-      <div role="status" className="card flex flex-wrap items-center gap-2 border-blue-200 p-3 text-sm dark:border-blue-900">
-        <Clock className="h-4 w-4 text-blue-600" aria-hidden />
+      <div role="status" className="card flex flex-wrap items-center gap-2 border-info/40 p-3 text-sm">
+        <Clock className="h-4 w-4 text-info" aria-hidden />
         <span>
           {t("deadlineBanner.deadline")} <time dateTime={deadline.cutoff_at} className="font-medium">{when}</time>
-          <span className="text-gray-500"> ({deadline.timezone})</span>
+          <span className="text-leise"> ({deadline.timezone})</span>
         </span>
         <span className="badge-blue ml-auto">{t("deadlineBanner.remaining", { remaining })}</span>
       </div>
@@ -52,11 +52,11 @@ export function DeadlineBanner({ deadline }: { deadline?: PaperDeadline | null }
     );
   }
   return (
-    <div role="status" className="card flex flex-wrap items-center gap-2 border-red-200 p-3 text-sm dark:border-red-900">
+    <div role="status" className="card flex flex-wrap items-center gap-2 border-danger/40 p-3 text-sm">
       {deadline.can_override ? (
-        <ShieldAlert className="h-4 w-4 text-yellow-600" aria-hidden />
+        <ShieldAlert className="h-4 w-4 text-warning" aria-hidden />
       ) : (
-        <Lock className="h-4 w-4 text-red-600" aria-hidden />
+        <Lock className="h-4 w-4 text-danger" aria-hidden />
       )}
       <span>
         {t("deadlineBanner.passedAt")} <time dateTime={deadline.cutoff_at} className="font-medium">{when}</time>.{" "}

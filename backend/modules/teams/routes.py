@@ -17,6 +17,7 @@ from modules.events.module_access import require_module
 from modules.teams import compliance, documents, service
 from modules.teams.schemas import (
     MENTOR_SEASON_FIELDS,
+    MENTOR_TEAM_FIELDS,
     ComplianceCheckUpdate,
     ComplianceItemCreate,
     ComplianceItemResponse,
@@ -85,7 +86,7 @@ async def list_teams(
     q: str | None = Query(None, max_length=200, description="Name, number, school or city"),
     country: str | None = Query(None, max_length=100),
     status: str | None = Query(None, pattern="^(active|archived)$"),
-    category: str | None = Query(None, pattern="^(botball|open|aerial|jbc)$"),
+    category: str | None = Query(None, pattern=r"^[a-z][a-z0-9_]{0,19}$"),
     _=Depends(require_permission("teams:read")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -296,7 +297,19 @@ async def update_team(
     db: AsyncSession = Depends(get_db),
 ):
     await assert_team_access(db, current_user, team_id, "teams:admin")
-    return await service.update_team(db, team_id, **body.model_dump(exclude_unset=True))
+    changes = body.model_dump(exclude_unset=True)
+    if not await has_elevated_access(db, current_user, "teams:admin"):
+        # Mentors edit the team profile only. Organizer fields sent back
+        # unchanged (as an edit form does) are no change and pass.
+        team = await service.get_team(db, team_id)
+        forbidden = sorted(
+            key
+            for key, value in changes.items()
+            if key not in MENTOR_TEAM_FIELDS and getattr(team, key) != value
+        )
+        if forbidden:
+            raise ForbiddenError(f"Only organizers may change: {', '.join(forbidden)}")
+    return await service.update_team(db, team_id, **changes)
 
 
 @router.delete("/{team_id}", status_code=204)

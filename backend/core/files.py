@@ -56,6 +56,38 @@ def ensure_within(base_dir: Path, target: Path) -> Path:
     return target_resolved
 
 
+_ROLLBACK_FILES_KEY = "files_removed_on_rollback"
+
+
+def remove_on_rollback(db, path: Path) -> None:
+    """Delete `path` if the session's transaction is rolled back.
+
+    For files written before the row that references them is committed: a
+    failed request must not leave an orphaned upload behind.
+    """
+    from sqlalchemy import event as sa_event
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    session = db.sync_session if isinstance(db, AsyncSession) else db
+    pending: list[Path] | None = session.info.get(_ROLLBACK_FILES_KEY)
+    if pending is None:
+        pending = session.info[_ROLLBACK_FILES_KEY] = []
+        sa_event.listen(session, "after_commit", _keep_files)
+        sa_event.listen(session, "after_rollback", _remove_files)
+    pending.append(path)
+
+
+def _keep_files(session) -> None:
+    session.info.get(_ROLLBACK_FILES_KEY, []).clear()
+
+
+def _remove_files(session) -> None:
+    pending = session.info.get(_ROLLBACK_FILES_KEY, [])
+    for path in pending:
+        Path(path).unlink(missing_ok=True)
+    pending.clear()
+
+
 def assert_upload_size(file, *, max_mb: int | None = None) -> None:
     """Reject an oversized upload *before* it is read into memory.
 

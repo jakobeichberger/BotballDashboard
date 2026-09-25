@@ -21,11 +21,12 @@ export interface ScoringScope {
   season?: ScoringSeason;
   /**
    * API prefix for the result resources (de-results, doc-scores, aerial-…,
-   * ranking/…). Event-scoped under /events/:eventId; outside an event route it
-   * falls back to the season routes, which the backend resolves to the
-   * season's default event.
+   * ranking/…) of the event. Undefined outside /events/:eventId: results only
+   * exist per event (the season-scoped result routes were removed).
    */
   base?: string;
+  /** Event or season still loading: show a loading state, not "no season". */
+  isLoading: boolean;
 }
 
 /**
@@ -40,13 +41,13 @@ export function useScoringScope(): ScoringScope {
   const [searchParams] = useSearchParams();
   const seasonParam = searchParams.get("season_id") ?? "";
 
-  const { data: event } = useQuery<{ id: string; season_id: string }>({
+  const { data: event, isLoading: eventLoading } = useQuery<{ id: string; season_id: string }>({
     queryKey: ["events", eventId],
     queryFn: async () => (await api.get(`/v1/events/${eventId}`)).data,
     enabled: !!eventId,
   });
 
-  const { data: activeSeason } = useQuery<ScoringSeason | null>({
+  const { data: activeSeason, isLoading: activeLoading } = useQuery<ScoringSeason | null>({
     queryKey: ["seasons", "active"],
     queryFn: async () => (await api.get("/seasons/active")).data,
     enabled: !eventId,
@@ -54,17 +55,14 @@ export function useScoringScope(): ScoringScope {
 
   const seasonId = eventId ? event?.season_id : seasonParam || activeSeason?.id;
 
-  const { data: eventSeason } = useQuery<ScoringSeason>({
+  const { data: eventSeason, isLoading: eventSeasonLoading } = useQuery<ScoringSeason>({
     queryKey: ["seasons", seasonId],
     queryFn: async () => (await api.get(`/seasons/${seasonId}`)).data,
     enabled: !!eventId && !!seasonId,
   });
 
   const season = eventId ? eventSeason : activeSeason;
-  const base = eventId
-    ? `/scoring/events/${eventId}`
-    : seasonId
-      ? `/scoring/seasons/${seasonId}`
-      : undefined;
-  return { eventId, seasonId, season: season ?? undefined, base };
+  const base = eventId ? `/scoring/events/${eventId}` : undefined;
+  const isLoading = eventId ? eventLoading || eventSeasonLoading : activeLoading;
+  return { eventId, seasonId, season: season ?? undefined, base, isLoading };
 }

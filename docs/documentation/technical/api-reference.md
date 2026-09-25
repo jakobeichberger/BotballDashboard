@@ -141,7 +141,7 @@ Legende Recht: `öffentlich` = ohne Token · `Login` = jeder angemeldete Nutzer 
 | Methode | Pfad | Recht | Zweck |
 |---|---|---|---|
 | GET | `/api/system/health` | öffentlich | Liveness: `{"status": "ok", "version": …}` |
-| GET | `/api/system/readiness` | öffentlich | Prüft PostgreSQL, Redis und einen Celery-Worker; 200 `ready` oder 503 `not_ready` mit `checks` |
+| GET | `/api/system/readiness` | intern | Prüft PostgreSQL, Redis und einen Celery-Worker (Ping höchstens alle 15 s); 200 `ready` oder 503 `not_ready` mit `checks`. Traefik leitet den Pfad nicht nach außen; Docker-Healthchecks und Prometheus fragen `backend:8000` direkt |
 | GET | `/api/system/metrics` | intern | Prometheus-Metriken; Anfragen mit `X-Forwarded-For` (also über Traefik) erhalten 404 |
 
 ### Auth & Konto (`/api/auth`)
@@ -195,6 +195,8 @@ Legende Recht: `öffentlich` = ohne Token · `Login` = jeder angemeldete Nutzer 
 | GET | `/api/seasons/{season_id}/events` | `seasons:read` | Termine und Deadlines der Saison (`season_events`) |
 | POST | `/api/seasons/{season_id}/events` | `seasons:write` | Termin/Deadline anlegen |
 | DELETE | `/api/seasons/{season_id}/events/{event_id}` | `seasons:write` | Termin/Deadline löschen |
+| GET | `/api/seasons/{season_id}/categories` | `seasons:read` | Kategorien der Saison (Schlüssel, Bezeichnungen DE/EN, Art, Formelvorlage, Aerial-Läufe, Rang je Kurs); ohne eigene Liste die Standard-Kategorien |
+| PUT | `/api/seasons/{season_id}/categories` | `seasons:write` | Kategorienliste ersetzen; 409, wenn ein entfernter Schlüssel noch von Anmeldungen genutzt wird |
 
 ### Events (`/api/v1/events`)
 
@@ -255,6 +257,8 @@ Nur Events mit Status `published`, `live` oder `completed`. Jede Teilansicht ver
 | GET | `/api/v1/public/events/{slug}/qr.svg` | öffentlich | QR-Code auf `APP_BASE_URL/public/{slug}` |
 | WS | `/api/v1/public/events/{slug}/ws` | mind. ein `public_*`-Flag | Live-Stream des Events (Redis Pub/Sub) |
 
+Den angemeldeten Live-Stream `WS /api/v1/events/{event_id}/ws` (`events:read`) beschreibt der Abschnitt „Live-Stream“.
+
 ### Teams (`/api/teams`)
 
 | Methode | Pfad | Recht | Zweck |
@@ -314,27 +318,48 @@ Nur Events mit Status `published`, `live` oder `completed`. Jede Teilansicht ver
 | GET | `/api/scoring/seasons/{season_id}/ranking` | öffentlich | Seeding-Rangliste (siehe Restrisiken in SECURITY.md) |
 | GET | `/api/scoring/seasons/{season_id}/ranking/extended` | öffentlich | Seeding-Rangliste mit Teamnamen und Kategorie |
 | GET | `/api/scoring/events/{event_id}/ranking/extended` | öffentlich | dasselbe für ein Event, Ränge je Kategorie |
-| GET | `/api/scoring/seasons/{season_id}/ranking/overall` | öffentlich | Gesamtwertung aus dem Formel-Set der Saison |
 | GET | `/api/scoring/events/{event_id}/ranking/overall` | öffentlich | Gesamtwertung eines Events |
 | GET | `/api/scoring/scheduled-matches/{scheduled_match_id}/outcome` | `scoring:read` | Sieger eines Duells und was entschied (Punkte, Tie-Breaker, DQ, Replay) |
 
 #### DE, Aerial, Dokumentation
 
-Jede Route gibt es in einer Saison-Variante (`/seasons/{season_id}/…`, optional `?event_id=`, sonst Standard-Event) und einer Event-Variante (`/events/{event_id}/…`). Beide antworten mit 404, wenn das Modul für das Event aus ist.
+Die Ergebnisse gehören zu einem Event (`/events/{event_id}/…`); die früheren Saison-Varianten sind entfernt. Jede Route antwortet mit 404, wenn das Modul für das Event aus ist.
 
 | Methode | Pfad | Recht | Zweck |
 |---|---|---|---|
-| GET | `/api/scoring/{seasons/{season_id}\|events/{event_id}}/de-results` | `scoring:read` · Modul `double_elimination` | DE-Ergebnisse |
+| GET | `/api/scoring/events/{event_id}/de-results` | `scoring:read` · Modul `double_elimination` | DE-Ergebnisse |
 | PUT | `…/de-results` | `scoring:admin` · Modul `double_elimination` | DE-Ergebnisse (Liste) speichern |
 | PUT | `…/de-results/{team_id}` | `scoring:admin` · Modul `double_elimination` | DE-Ergebnis eines Teams |
 | GET | `…/aerial-results` | `scoring:read` · Modul `aerial` | Aerial-Läufe |
-| GET | `…/aerial-ranking` | öffentlich · Modul `aerial` | Aerial-Rangliste (Ø aller Läufe) |
-| PUT | `…/aerial-results` | `scoring:admin` · Modul `aerial` | Aerial-Läufe speichern |
+| GET | `…/aerial-ranking` | öffentlich · Modul `aerial` | Aerial-Rangliste je Kategorie (Score nach der Formel der Kategorie) |
+| PUT | `…/aerial-results` | `scoring:admin` · Modul `aerial` | Aerial-Läufe speichern (`runs`: Liste; `run1`–`run4` werden noch angenommen) |
 | PUT | `…/aerial-results/{team_id}` | `scoring:admin` · Modul `aerial` | Aerial-Läufe eines Teams |
 | GET | `…/doc-scores` | `scoring:read` · Modul `documentation` | Doku-Bewertungen |
 | PUT | `…/doc-scores` | `scoring:admin` · Modul `documentation` | Doku-Bewertungen speichern |
 | PUT | `…/doc-scores/{team_id}` | `scoring:admin` · Modul `documentation` | Doku-Bewertung eines Teams |
 | GET | `/api/scoring/events/{event_id}/de-placement` | `scoring:read` | DE-Platzierung aus dem Bracket, inkl. Tie-Breaker |
+| GET | `/api/scoring/events/{event_id}/jbc-results` | `scoring:read` | Junior Botball Challenge: Punkte für gelöste Challenges |
+| GET | `…/jbc-ranking` | öffentlich (wie Ranglisten) | JBC-Rangliste |
+| PUT | `…/jbc-results` · `…/jbc-results/{team_id}` | `scoring:admin` | JBC-Punkte (oder Challenge-Liste) speichern |
+| GET | `/api/scoring/events/{event_id}/timeouts` | `scoring:read` | Genutzte Timeout-Karten |
+| POST | `…/timeouts` | `scoring:admin` | Timeout eines Teams erfassen; 409 beim zweiten im Turnier |
+| DELETE | `…/timeouts/{team_id}` | `scoring:admin` | Irrtümlich erfassten Timeout zurücknehmen |
+| GET | `/api/scoring/referee-checklist-presets` | `scoring:read` | Vorlagen der Schiedsrichter-Checkliste (2026: Game Review v1.4) |
+
+#### Awards (`/api/awards`)
+
+| Methode | Pfad | Recht | Zweck |
+|---|---|---|---|
+| GET | `/api/awards/templates` | `scoring:read` | Vorlagen ECER und GCER |
+| GET | `/api/awards/events/{event_id}` | `scoring:read` | Awards des Events mit Nominierungen und Ergebnissen |
+| POST | `/api/awards/events/{event_id}/templates/{template_id}` | `awards:admin` oder `scoring:admin` | Fehlende Awards der Vorlage anlegen |
+| POST | `/api/awards/events/{event_id}/awards` · PUT/DELETE `/api/awards/{award_id}` | `awards:admin` oder `scoring:admin` | Eigene Awards verwalten |
+| POST | `/api/awards/events/{event_id}/compute` | `awards:admin` oder `scoring:admin` | Berechnete Awards aus den Ranglisten füllen |
+| POST/DELETE | `/api/awards/{award_id}/nominations[/{team_id}]` | `awards:admin` oder `scoring:admin` | Nominierung |
+| PUT | `/api/awards/{award_id}/results` | `awards:admin` oder `scoring:admin` | Entscheidung der Jury (ersetzt die Ergebnisse) |
+| PUT | `/api/awards/events/{event_id}/publish` | `awards:admin` oder `scoring:admin` | Auf der öffentlichen Seite zeigen/verbergen |
+| GET | `/api/awards/events/{event_id}/export.csv` · `.pdf` | `scoring:read` | Export |
+| GET | `/api/v1/public/events/{slug}/awards` | öffentlich | Veröffentlichte Awards (404 bis zur Veröffentlichung) |
 
 #### Score-Sheet-Vorlagen (PDF)
 
@@ -489,6 +514,8 @@ CSV-Dateien sind UTF-8 mit BOM. Zellen, die mit `=`, `+`, `-` oder `@` beginnen,
 | GET | `/api/exports/events/{event_id}/ranking.csv` · `.pdf` | `scoring:read` oder `dashboard:read` | Seeding-Rangliste des Events |
 | GET | `/api/exports/events/{event_id}/overall-ranking.csv` · `.pdf` | `scoring:read` oder `dashboard:read` | Gesamtwertung mit allen Formelwerten |
 | GET | `/api/exports/events/{event_id}/matches.csv` | `scoring:read` | Alle Wertungen des Events |
+| GET | `/api/exports/events/{event_id}/results.xlsx` | `scoring:read` oder `dashboard:read` | Alle Ergebnisse im Format der offiziellen ECER-Ergebnisse (Teams, Botball & Open, Aerial, Alliance, Junior Botball Challenge) |
+| GET | `/api/exports/events/{event_id}/results.csv?sheet=…` | `scoring:read` oder `dashboard:read` | Ein Blatt davon als CSV |
 | GET | `/api/exports/seasons/{season_id}/ranking.csv` · `.pdf` | `scoring:read` oder `dashboard:read` | Rangliste (Standard-Event der Saison) |
 | GET | `/api/exports/seasons/{season_id}/matches.csv` | `scoring:read` | Wertungen der Saison |
 | GET | `/api/exports/seasons/{season_id}/papers.csv` · `.pdf` | `papers:admin` | Paper-Übersicht |
@@ -515,10 +542,35 @@ CSV-Dateien sind UTF-8 mit BOM. Zellen, die mit `=`, `+`, `-` oder `@` beginnen,
 
 ## Live-Stream
 
-`WS /api/v1/public/events/{slug}/ws` ist der einzige WebSocket-Endpunkt. Nach dem Verbindungsaufbau sendet der Server `{"event": "connection", "payload": {"status": "connected"}}`. Danach reicht er die Nachrichten des Redis-Kanals `botball:live:{event_id}` weiter:
+Es gibt zwei WebSocket-Endpunkte mit demselben Nachrichtenformat:
+
+- `WS /api/v1/public/events/{slug}/ws`: öffentlich, nur für Events mit mindestens einem `public_*`-Flag (Großbildschirme, öffentliche Seite).
+- `WS /api/v1/events/{event_id}/ws`: angemeldet, für jedes Event, das der Benutzer lesen darf (`events:read`; Entwürfe nur mit `events:write`). Die angemeldeten Seiten nutzen ihn; solange er getrennt ist, fragen sie alle 15 s ab.
+
+Nach dem Verbindungsaufbau sendet der Server `{"event": "connection", "payload": {"status": "connected"}}`. Danach reicht er die Nachrichten des Redis-Kanals `botball:live:{event_id}` weiter:
 
 ```json
 {"event": "ranking_updated", "eventId": "…", "payload": {…}, "sentAt": "2026-06-01T09:30:00+00:00"}
 ```
 
-Die Ereignisse `ranking_updated`, `schedule_updated`, `announcement_published` und `announcement_removed` werden erst nach dem Datenbank-Commit veröffentlicht (`core/live.py::publish_after_commit`). Clients laden daraufhin die betroffenen Daten neu. Außerdem veröffentlicht der Outbox-Worker Benachrichtigungen, die mit `publicLive` markiert sind, auf demselben Kanal.
+Die Ereignisse `ranking_updated`, `schedule_updated`, `announcement_published` und `announcement_removed` werden erst nach dem Datenbank-Commit veröffentlicht (`core/live.py::publish_after_commit`). Clients laden daraufhin die betroffenen Daten neu. Außerdem veröffentlicht der Outbox-Worker Benachrichtigungen, die mit `publicLive` markiert sind, auf demselben Kanal. Jede andere Nachricht des Clients ist ein Ping; der Server antwortet `{"event": "pong"}`.
+
+### Anmeldung am Event-Stream
+
+Das Token steht nie in der URL (sonst landete es in Proxy- und Zugriffslogs). Der Client sendet es als erste Nachricht, spätestens nach 10 s:
+
+```json
+{"type": "auth", "token": "<Access-Token>"}
+```
+
+Der Server prüft es wie jede API-Anfrage (Signatur, Ablauf, Logout-Sperrliste, `token_version`, aktiver Benutzer), dazu `events:read` und die Entwurfsregel. Erst dann folgt `connection`. Bekommt der Client ein neues Access-Token, sendet er dieselbe Nachricht erneut; der Server antwortet `{"event": "auth", "payload": {"status": "ok"}}`. Alle 60 s und beim Ablauf des Tokens prüft der Server erneut, jeweils in einer eigenen kurzen Datenbanksitzung. Während des Streamens hält er keine Sitzung.
+
+| Close-Code | Bedeutung | Client |
+|---|---|---|
+| 4400 | Erste Nachricht keine Anmeldung oder zu spät | verbindet neu (mit Backoff) |
+| 4401 | Token ungültig, abgelaufen oder widerrufen, Benutzer deaktiviert | erneuert die Sitzung, verbindet neu |
+| 4403 | Kein `events:read` (mehr) | hört auf, fragt ab |
+| 4404 | Event unbekannt oder Entwurf ohne `events:write` | hört auf, fragt ab |
+| 1013 | Redis-Abonnement verloren | verbindet neu (mit Backoff) |
+
+Traefik leitet beide Pfade über den Router `api-ws` ohne Puffer-Middleware.

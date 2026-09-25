@@ -15,12 +15,22 @@ Two schema shapes are supported:
      side A ─┬─ section "Serving Station"
              │    fields:       Σ value × multiplier            = subtotal
              │    multipliers:  × boolean (checked → factor)
+             │                  × derived (a field of the section ≥ 1 → factor)
              │                  × count   (value × factor + offset)
              │                  × either  (max of the alternatives)
              │                                                   = section total
              └─ …                                   Σ sections  = side total
      side B ─── (same sections, own values)                      = side total
                                                     Σ sides     = Total A + B
+
+A *derived* multiplier (``source`` names a field of the same section) has no
+input of its own: it is on when that field's value is at least 1. The 2026
+Lower Start Box works that way — a Drum or Botguy scoring in the box doubles
+the area ("Drum ×2", "Botguy ×2"), so the juror counts the piece once instead
+of also ticking a box that could contradict the count.
+
+Multipliers of one section multiply with each other (2026 Packaging Bin:
+subtotal × (sorted baskets + 1) × returned baskets).
 
 A multiplier whose value is below 1 (e.g. "# of sorted stations" = 0, or an
 unchecked box) leaves the subtotal unchanged: on the paper sheets an empty
@@ -84,10 +94,15 @@ def normalize(fields: list[dict] | None, definition: dict | None) -> dict | None
     return None
 
 
+def is_derived(multiplier: dict) -> bool:
+    """A multiplier switched on by a field of its section instead of an input."""
+    return bool(multiplier.get("source"))
+
+
 def _multiplier_inputs(multiplier: dict) -> list[dict]:
     if "either" in multiplier:
-        return list(multiplier.get("either") or [])
-    return [multiplier]
+        return [o for o in multiplier.get("either") or [] if not is_derived(o)]
+    return [] if is_derived(multiplier) else [multiplier]
 
 
 def input_fields(definition: dict) -> list[dict]:
@@ -172,7 +187,7 @@ def _number(key: str, value: Any) -> float:
     try:
         return float(value)
     except (TypeError, ValueError):
-        raise ValidationError(f"Score for '{key}' must be a number")
+        raise ValidationError(f"Score for '{key}' must be a number") from None
 
 
 def _value(raw: dict, key: str, spec: dict) -> float:
@@ -185,6 +200,9 @@ def _value(raw: dict, key: str, spec: dict) -> float:
 
 def _effective(raw: dict, side: str | None, spec: dict) -> float:
     """Factor one multiplier input contributes; below 1 counts as neutral (×1)."""
+    if is_derived(spec):
+        source = raw_key(side, spec["source"])
+        return float(spec.get("factor", 1)) if _number(source, raw.get(source)) >= 1 else 1.0
     key = raw_key(side, spec["key"])
     value = _value(raw, key, spec)
     if spec.get("type", "boolean") == "boolean":

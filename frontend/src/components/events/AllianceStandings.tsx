@@ -29,10 +29,10 @@ export default function AllianceStandings({ eventId, phase }: { eventId: string;
   return (
     <section className="card mt-6 p-4" aria-labelledby={headingId}>
       <h2 id={headingId} className="mb-1 text-xl font-bold">{t("alliances.title", { phase: phase.name })}</h2>
-      <p className="mb-3 text-sm text-gray-500">{t("alliances.hint")}</p>
+      <p className="mb-3 text-sm text-leise">{t("alliances.hint")}</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-100 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
               <th scope="col" className="px-3 py-2 text-left">#</th>
               <th scope="col" className="px-3 py-2 text-left">{t("alliances.alliance")}</th>
@@ -41,19 +41,19 @@ export default function AllianceStandings({ eventId, phase }: { eventId: string;
               <th scope="col" className="px-3 py-2 text-right">{t("alliances.total")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {standings.data?.map((row) => (
               <tr key={row.team_ids.join("+")}>
                 <td className="px-3 py-2 font-bold">{row.rank}</td>
                 <td className="px-3 py-2">{row.team_names.map((name, index) => name || row.team_ids[index]).join(" + ")}</td>
-                <td className="px-3 py-2 tabular-nums text-gray-600 dark:text-gray-400">{row.runs.map((run) => formatScore(run.score)).join(" · ") || "–"}</td>
+                <td className="px-3 py-2 tabular-nums text-leise">{row.runs.map((run) => formatScore(run.score)).join(" · ") || "–"}</td>
                 <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatScore(row.best_score)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{formatScore(row.total_score)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!standings.isLoading && !standings.data?.length && <p className="p-4 text-center text-sm text-gray-500">{t("alliances.empty")}</p>}
+        {!standings.isLoading && !standings.data?.length && <p className="p-4 text-center text-sm text-leise">{t("alliances.empty")}</p>}
       </div>
     </section>
   );

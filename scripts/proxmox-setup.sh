@@ -13,16 +13,17 @@
 # What this script does:
 #   1.  Checks prerequisites (OS, root, network) and installs git/curl/python3/age
 #   2.  Installs Docker + Docker Compose plugin
-#   3.  Installs Node.js 20 + pnpm (needed to build the frontend on the host)
+#   3.  Installs Node.js 22 + pnpm (needed to build the frontend on the host)
 #   4.  Clones the repository (or updates if already cloned)
 #   5.  Interactively generates .env with all secrets (APP/JWT secrets, DB
 #       password, Fernet key, age backup key pair, compose profiles, alerts)
 #   6.  Creates the data directories (/data/db, /data/backups)
 #   7.  Builds the frontend on the host (esbuild/workbox run natively, no Docker)
-#   8.  Builds the backend image (backend, worker, beat, backup) and wraps dist/
+#   8.  Builds the backend image (backend, worker, worker-ocr, beat, backup and
+#       the volume-ownership init services) and wraps dist/
 #       into the nginx frontend image
 #   9.  Starts db/redis, repairs the DB role if needed, then starts the whole
-#       stack: traefik, backend, worker, beat, frontend, backup (profile
+#       stack: traefik, backend, worker, worker-ocr, beat, frontend, backup (profile
 #       "production") and optionally prometheus/blackbox/alertmanager
 #       (profile "monitoring")
 #   10. Generates VAPID keys, rebuilds the frontend with them
@@ -57,7 +58,7 @@ REPO_BRANCH="main"
 INSTALL_DIR="/opt/botballdashboard"
 DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
-NODE_MAJOR="20"
+NODE_MAJOR="22"
 PNPM_VERSION="10.29.3"
 # Private key that decrypts the backups. It must be copied OFF this machine.
 BACKUP_IDENTITY_FILE="/root/botball-backup-identity.txt"
@@ -746,12 +747,13 @@ build_images() {
   info "Pulling base images (postgres, redis, traefik, monitoring)..."
   docker compose pull --ignore-buildable --quiet 2>/dev/null || true
 
-  # backend, worker, beat and backup all run the backend image; build every
+  # backend, the workers, beat and backup all run the backend image; build every
   # one that is part of the active profiles (COMPOSE_PROFILES in .env).
   local services=() service
   for service in $(docker compose config --services); do
     case "${service}" in
-      backend|worker|beat|backup) services+=("${service}") ;;
+      backend|worker|worker-ocr|beat|backup|volume-permissions|backup-permissions)
+        services+=("${service}") ;;
     esac
   done
   info "Building backend image for: ${services[*]}..."
@@ -881,7 +883,7 @@ PYEOF
   done
 
   # db + redis are healthy: start everything in the active profiles –
-  # traefik, backend, worker, beat, frontend, backup ("production") and
+  # traefik, backend, worker, worker-ocr, beat, frontend, backup ("production") and
   # prometheus/blackbox/alertmanager ("monitoring").
   info "Starting all services (profiles: $(env_value COMPOSE_PROFILES))..."
   docker compose up -d --remove-orphans
@@ -1148,7 +1150,7 @@ main() {
 
   check_prerequisites   # 1
   install_docker        # 2
-  install_node          # 3  ← installs Node.js 20 + pnpm on the host
+  install_node          # 3  ← installs Node.js 22 + pnpm on the host
   setup_repository      # 4
   configure_env         # 5
   create_directories    # 6

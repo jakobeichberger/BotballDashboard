@@ -5,6 +5,8 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { phaseLabel } from "@/api/analytics";
 import type { EventPhase } from "@/api/types";
+import { confirmAction } from "@/lib/confirm";
+import { apiErrorMessage } from "@/lib/errors";
 
 export const PHASE_TYPES = ["seeding", "double_seeding", "double_elimination", "alliance", "final"] as const;
 export const PHASE_STATUSES = ["draft", "scheduled", "live", "completed"] as const;
@@ -31,7 +33,7 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
     queryClient.invalidateQueries({ queryKey: ["event-phases", eventId] });
     queryClient.invalidateQueries({ queryKey: ["event-bracket", eventId] });
   };
-  const fail = (e: any) => setError(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : t("common:actionFailed"));
+  const fail = (e: any) => setError(apiErrorMessage(e, t("common:actionFailed")));
   // sort_order is unique per event: append after the highest one in use.
   const nextSortOrder = Math.max(-1, ...(phases.data ?? []).map((item) => item.sort_order)) + 1;
   const addPhase = useMutation({
@@ -62,10 +64,10 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
   return (
     <section className="card p-5">
       <h2 className="mb-4 text-lg font-semibold">{t("setup.phases")}</h2>
-      {error && <p role="alert" className="mb-3 text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
       <ul className="mb-4 space-y-2">
         {phases.data?.map((item) => editing === item.id ? (
-          <li key={item.id} className="rounded bg-gray-50 p-2 text-sm dark:bg-gray-800">
+          <li key={item.id} className="rounded bg-flaeche-2 p-2 text-sm">
             <form className="grid gap-2 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); updatePhase.mutate(item); }}>
               <label className="text-xs font-medium">{t("setup.phaseName")}<input required minLength={2} className="input mt-1 w-full" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
               <label className="text-xs font-medium">{t("setup.phaseType")}
@@ -75,7 +77,7 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
                 <select className="input mt-1 w-full" value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })}>{PHASE_STATUSES.map((status) => <option key={status} value={status}>{t(`setup.phaseStatus.${status}`)}</option>)}</select>
               </label>
               <label className="text-xs font-medium">{t("setup.phaseRounds")}<input type="number" min={1} max={100} className="input mt-1 w-full" value={draft.rounds} onChange={(e) => setDraft({ ...draft, rounds: Number(e.target.value) })} /></label>
-              {phaseLocked(item) && <p className="text-xs text-amber-700 dark:text-amber-400 sm:col-span-2">{t("setup.phaseLockedHint")}</p>}
+              {phaseLocked(item) && <p className="text-xs text-warning sm:col-span-2">{t("setup.phaseLockedHint")}</p>}
               <div className="flex gap-2 sm:col-span-2">
                 <button className="btn-primary" disabled={updatePhase.isPending}>{t("common:save")}</button>
                 <button type="button" className="btn-secondary" onClick={() => setEditing(null)}><X className="h-4 w-4" />{t("common:cancel")}</button>
@@ -83,19 +85,19 @@ export default function PhaseManager({ eventId }: { eventId: string }) {
             </form>
           </li>
         ) : (
-          <li key={item.id} className="flex items-center justify-between gap-2 rounded bg-gray-50 p-2 text-sm dark:bg-gray-800">
+          <li key={item.id} className="flex items-center justify-between gap-2 rounded bg-flaeche-2 p-2 text-sm">
             <span>{item.sort_order + 1}. {item.name} · {phaseLabel(item.phase_type)} · {t("setup.roundsCount", { count: item.rounds })}
               <span className={`ml-2 ${item.status === "live" ? "badge-green" : item.status === "completed" ? "badge-blue" : "badge-gray"}`}>{t(`setup.phaseStatus.${item.status}`, { defaultValue: item.status })}</span>
             </span>
             <span className="flex shrink-0 gap-1">
-              <button type="button" className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={t("setup.editPhase", { name: item.name })} title={t("common:edit")} onClick={() => startEdit(item)}><Pencil className="h-4 w-4" /></button>
+              <button type="button" className="rounded p-1 text-leise hover:bg-flaeche-2" aria-label={t("setup.editPhase", { name: item.name })} title={t("common:edit")} onClick={() => startEdit(item)}><Pencil className="h-4 w-4" /></button>
               <button
                 type="button"
-                className="rounded p-1 text-red-600 hover:bg-red-50 disabled:opacity-40 dark:hover:bg-red-900/30"
+                className="rounded p-1 text-danger hover:bg-danger/10 disabled:opacity-40"
                 aria-label={t("setup.deletePhase", { name: item.name })}
                 title={phaseLocked(item) ? t("setup.phaseLockedDelete") : t("common:delete")}
                 disabled={phaseLocked(item) || deletePhase.isPending}
-                onClick={() => { if (confirm(t("setup.confirmDeletePhase", { name: item.name }))) deletePhase.mutate(item.id); }}
+                onClick={() => void confirmAction({ message: t("setup.confirmDeletePhase", { name: item.name }), tone: "danger" }).then((ok) => ok && deletePhase.mutate(item.id))}
               ><Trash2 className="h-4 w-4" /></button>
             </span>
           </li>

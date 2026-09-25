@@ -35,7 +35,7 @@ export default function BotImage({
 
   if (!imageName || !src) {
     return (
-      <div className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 ${className}`}>
+      <div className={`flex items-center justify-center bg-flaeche-2 ${className}`}>
         <BotIcon className="w-10 h-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
       </div>
     );

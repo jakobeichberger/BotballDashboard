@@ -373,32 +373,28 @@ class TestEventScoping:
         # Nothing leaked into the season's default (earliest) event.
         for kind in ("de-results", "doc-scores", "aerial-results"):
             default = await client.get(
-                f"/api/scoring/seasons/{season.id}/{kind}", headers=auth_headers
+                f"/api/scoring/events/{event.id}/{kind}", headers=auth_headers
             )
             assert default.json() == [], kind
-            scoped = await client.get(
-                f"/api/scoring/seasons/{season.id}/{kind}?event_id={gcer.id}",
-                headers=auth_headers,
-            )
+            scoped = await client.get(f"/api/scoring/events/{gcer.id}/{kind}", headers=auth_headers)
             assert scoped.json() != [], kind
 
     @pytest.mark.asyncio
-    async def test_season_overall_route_uses_the_same_default_event(
+    async def test_overall_route_ranks_only_its_event(
         self, client, db, season, event, auth_headers
     ):
-        """Season routes write the default event; the overall ranking must read it too."""
+        """Results are per event: the overall ranking of another event stays empty."""
         later = await _second_event(db, season)
         (alpha,) = await _teams(db, "Alpha")
         await _match(db, event, alpha, 100.0)
         await db.commit()
 
         resp = await client.get(
-            f"/api/scoring/seasons/{season.id}/ranking/overall", headers=auth_headers
+            f"/api/scoring/events/{event.id}/ranking/overall", headers=auth_headers
         )
         assert [e["team_name"] for e in resp.json()] == ["Alpha"]
         resp = await client.get(
-            f"/api/scoring/seasons/{season.id}/ranking/overall?event_id={later.id}",
-            headers=auth_headers,
+            f"/api/scoring/events/{later.id}/ranking/overall", headers=auth_headers
         )
         assert resp.json() == []
 
@@ -427,7 +423,8 @@ class TestEventScoping:
         resp = await client.put(
             f"/api/scoring/events/{event.id}/aerial-results",
             json=[
-                {"team_id": a.id, "run1": 20, "run2": 100, "run3": 80, "run4": 0},
+                {"team_id": a.id, "runs": [20, 100, 80, 0]},
+                # the former fixed columns are still accepted
                 {"team_id": b.id, "run1": 50, "run2": 50, "run3": 50, "run4": 50},
             ],
             headers=auth_headers,
@@ -436,12 +433,18 @@ class TestEventScoping:
         assert aerial[a.id]["score"] == pytest.approx(50.0)  # mean of all four runs
         assert aerial[a.id]["rank"] == aerial[b.id]["rank"] == 1  # tie shares the rank
 
+        assert aerial[b.id]["runs"] == [50, 50, 50, 50]
+
+        await client.post(
+            f"/api/scoring/formulas/seasons/{season.id}/presets/regional_2026_botball",
+            headers=auth_headers,
+        )
         resp = await client.put(
             f"/api/scoring/events/{event.id}/doc-scores/{a.id}",
             json={"part1": 100, "part2": 100, "part3": None, "onsite": 50},
             headers=auth_headers,
         )
-        # 0.2 + 0.2 + 0 (missing) + 0.4 · 0.5
+        # Regional preset: 0.2 + 0.2 + 0 (missing) + 0.4 · 0.5
         assert resp.json()["doc_score"] == pytest.approx(0.6)
 
 
@@ -494,7 +497,7 @@ class TestPresets:
         )
         assert resp.status_code == 200
         doc = next(f for f in resp.json() if f["key"] == "doc_score")
-        assert "0.4 * (onsite/100)" in doc["expression"]
+        assert "0.4 * safe_div(onsite, onsite_max)" in doc["expression"]
 
         resp = await client.post(
             f"/api/scoring/formulas/seasons/{season.id}/presets/nope", headers=auth_headers

@@ -1,12 +1,11 @@
 """Periodic due-date processing for reviewer assignments."""
 
-import asyncio
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
-from core.celery_app import celery_app
-from core.database import AsyncSessionLocal
+from core.celery_app import celery_app, run_task
+from core.database import WorkerSessionLocal
 from modules.paper_review.models import ReviewerAssignment
 from modules.paper_review.service import mark_reminder_sent
 
@@ -14,7 +13,7 @@ from modules.paper_review.service import mark_reminder_sent
 @celery_app.task(name="papers.process_review_deadlines")
 def process_review_deadlines() -> None:
     async def run() -> None:
-        async with AsyncSessionLocal() as db:
+        async with WorkerSessionLocal() as db:
             now = datetime.now(UTC)
             reminder_cutoff = now - timedelta(hours=24)
             result = await db.execute(
@@ -34,7 +33,7 @@ def process_review_deadlines() -> None:
                     await mark_reminder_sent(db, assignment.paper_id, assignment.id)
             await db.commit()
 
-    asyncio.run(run())
+    run_task(run)
 
 
 @celery_app.task(name="papers.deadline_reminders")
@@ -43,8 +42,8 @@ def paper_deadline_reminders() -> None:
     from modules.paper_review.deadlines import queue_paper_deadline_reminders
 
     async def run() -> None:
-        async with AsyncSessionLocal() as db:
+        async with WorkerSessionLocal() as db:
             await queue_paper_deadline_reminders(db)
             await db.commit()
 
-    asyncio.run(run())
+    run_task(run)

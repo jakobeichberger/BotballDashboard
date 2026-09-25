@@ -11,6 +11,7 @@
  */
 import { createStore, del, entries, get, set, type UseStore } from "idb-keyval";
 import i18n from "@/i18n/config";
+import { apiErrorMessage } from "@/lib/errors";
 
 export type QueuedScoreStatus = "pending" | "syncing" | "conflict" | "error";
 
@@ -21,7 +22,11 @@ export interface QueuedScore {
   url: string;
   body: Record<string, unknown>;
   eventId: string | null;
-  /** Who entered it; only that user's session replays it. */
+  /**
+   * Who entered it; only that user's session replays it. null (no profile was
+   * known yet) is never replayed automatically: a signed-in user has to claim
+   * the entry first (claimQueuedScore).
+   */
   userId: string | null;
   /** Human-readable summary for the pending list (team, match, total). */
   label: string;
@@ -119,6 +124,11 @@ export async function discardQueuedScore(id: string): Promise<void> {
   notify();
 }
 
+/** Take over an entry recorded without a known user, so this user's session sends it. */
+export async function claimQueuedScore(id: string, userId: string): Promise<void> {
+  await updateQueuedScore(id, { userId, status: "pending", error: undefined });
+}
+
 /** Mark an entry for another attempt; `force` skips the duplicate check. */
 export async function retryQueuedScore(id: string, force = false): Promise<void> {
   await updateQueuedScore(id, { status: "pending", error: undefined, force });
@@ -129,6 +139,7 @@ export async function retryQueuedScore(id: string, force = false): Promise<void>
 interface HttpError {
   response?: { status: number; data?: { detail?: unknown } };
   message?: string;
+  code?: string;
 }
 
 export interface SyncClient {
@@ -142,11 +153,9 @@ export interface SyncResult {
   remaining: number;
 }
 
+/** The reason shown next to the entry, in the UI language (lib/errors). */
 function detailOf(error: HttpError): string {
-  const detail = error.response?.data?.detail;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item) => (item as { msg?: string }).msg ?? String(item)).join("; ");
-  return error.message ?? i18n.t("printing:cancel.unknownError");
+  return apiErrorMessage(error, i18n.t("printing:cancel.unknownError"));
 }
 
 interface ExistingMatch {
@@ -171,14 +180,23 @@ async function findConflict(client: SyncClient, entry: QueuedScore): Promise<Exi
 let running: Promise<SyncResult> | null = null;
 
 /**
- * Replay every pending entry. Network failures and 5xx keep the entry pending
- * for the next attempt; 409 marks it as a conflict and other 4xx as an error,
- * both waiting for the user to retry or discard it.
+ * Entries shown to this user: their own, plus those recorded without a known
+ * user (which they may claim or discard). Nothing before the user is known.
  */
 export function belongsTo(entry: QueuedScore, userId: string | null | undefined): boolean {
-  return !entry.userId || !userId || entry.userId === userId;
+  return !!userId && (entry.userId === userId || !entry.userId);
 }
 
+/** Entries recorded without a known user wait to be claimed. */
+export function isUnclaimed(entry: QueuedScore): boolean {
+  return !entry.userId;
+}
+
+/**
+ * Replay every pending entry of this user. Network failures and 5xx keep the
+ * entry pending for the next attempt; 409 marks it as a conflict and other
+ * 4xx as an error, both waiting for the user to retry or discard it.
+ */
 export function syncQueuedScores(client: SyncClient, userId?: string | null): Promise<SyncResult> {
   running ??= (async () => {
     let synced = 0;
@@ -187,7 +205,8 @@ export function syncQueuedScores(client: SyncClient, userId?: string | null): Pr
       for (const entry of await listQueuedScores()) {
         // "syncing" left over from a closed tab counts as pending.
         if (entry.status !== "pending" && entry.status !== "syncing") continue;
-        if (!belongsTo(entry, userId)) continue;
+        // Strictly the author's session: another user must never submit it.
+        if (!userId || entry.userId !== userId) continue;
         if (typeof navigator !== "undefined" && !navigator.onLine) break;
         await updateQueuedScore(entry.id, { status: "syncing", attempts: entry.attempts + 1 });
         try {

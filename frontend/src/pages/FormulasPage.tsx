@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { CATEGORY_LABEL } from "@/lib/teams";
+import { useSeasonCategories } from "@/lib/categories";
 import { api } from "@/lib/api";
+import { apiErrorMessage } from "@/lib/errors";
 import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
 import {
   Calculator,
@@ -16,15 +17,6 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-
-const CATEGORIES = [
-  { key: "botball", label: "Botball" },
-  { key: "open", label: "PRIA Open" },
-  { key: "aerial", label: "Aerial" },
-  { key: "jbc", label: "JBC" },
-] as const;
-
-type Category = (typeof CATEGORIES)[number]["key"];
 
 interface Formula {
   key: string;
@@ -83,7 +75,7 @@ export default function FormulasPage() {
   const { t } = useTranslation("scoring");
   const { eventId = "" } = useParams();
   const queryClient = useQueryClient();
-  const [category, setCategory] = useState<Category>("botball");
+  const [category, setCategory] = useState<string>("botball");
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -96,6 +88,7 @@ export default function FormulasPage() {
     enabled: !!eventId,
   });
   const seasonId = event?.season_id ?? "";
+  const registry = useSeasonCategories(seasonId || undefined);
 
   const { data: reference } = useQuery<Reference>({
     queryKey: ["formula-reference"],
@@ -183,7 +176,7 @@ export default function FormulasPage() {
       queryClient.invalidateQueries({ queryKey: ["formulas", seasonId, category] });
     },
     onError: (err: any) => {
-      setSaveError(err?.response?.data?.detail ?? t("formulas.saveFailed"));
+      setSaveError(apiErrorMessage(err, t("formulas.saveFailed")));
     },
   });
 
@@ -234,7 +227,8 @@ export default function FormulasPage() {
 
   // Presets (ECER, regional, GCER, …) are loaded into the editor as a draft,
   // so they can be reviewed against the live preview before saving.
-  const presets = (reference?.presets ?? []).filter((p) => p.category === category);
+  // Presets are written for a category kind (botball, open, aerial, jbc).
+  const presets = (reference?.presets ?? []).filter((p) => p.category === registry.kindOf(category));
   const [presetId, setPresetId] = useState("");
   const loadPreset = (id: string) => {
     const preset = presets.find((p) => p.id === id);
@@ -257,22 +251,20 @@ export default function FormulasPage() {
   if (!seasonId) {
     return (
       <div className="card p-6">
-        <p className="text-gray-600 dark:text-gray-300">{t("events:loading")}</p>
+        <p className="text-leise">{t("events:loading")}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Calculator className="w-6 h-6 text-primary-600" />
-          <div>
-            <h1 className="text-xl font-semibold">{t("formulas.title")}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("formulas.subtitle")}
-            </p>
-          </div>
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="page-header !mb-0">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <Calculator className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("formulas.title")}
+          </h1>
+          <p className="page-subtitle">{t("formulas.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {presets.length > 0 && (
@@ -310,7 +302,7 @@ export default function FormulasPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((c) => (
+        {registry.categories.map((c) => (
           <button
             key={c.key}
             onClick={() => setCategory(c.key)}
@@ -320,14 +312,14 @@ export default function FormulasPage() {
                 : "btn-secondary"
             }
           >
-            {c.key === "open" ? c.label : CATEGORY_LABEL[c.key]}
+            {registry.label(c.key)}
           </button>
         ))}
       </div>
 
       {saveError && (
-        <div className="card p-4 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-          <div className="flex items-start gap-2 text-red-700 dark:text-red-300">
+        <div className="card p-4 border-danger/40 bg-danger/[0.07]">
+          <div className="flex items-start gap-2 text-danger">
             <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
             <span className="text-sm">{saveError}</span>
           </div>
@@ -336,9 +328,9 @@ export default function FormulasPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Editor ───────────────────────────────────────────────────────── */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <div className="card p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium">{t("formulas.formulas")}</h2>
               <button className="btn-secondary" onClick={add}>
                 <Plus className="w-4 h-4" />
@@ -346,48 +338,56 @@ export default function FormulasPage() {
               </button>
             </div>
 
-            {isLoading && <p className="text-sm text-gray-500">{t("common:loading")}</p>}
+            {isLoading && <p className="text-sm text-leise">{t("common:loading")}</p>}
 
             {formulas.map((f, i) => {
               const issues = issuesByKey[f.key] ?? [];
               return (
                 <div
                   key={i}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2"
+                  className="rounded-lg border border-rand p-3 space-y-2"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
-                      className="input font-mono max-w-[16rem]"
+                      className="input min-w-0 flex-1 font-mono sm:max-w-[16rem]"
+                      aria-label={t("formulas.keyLabel", { number: i + 1 })}
                       placeholder={t("schema.keyPlaceholder")}
                       value={f.key}
                       onChange={(e) => update(i, { key: e.target.value })}
                     />
-                    <span className="text-gray-400">=</span>
-                    <div className="flex-1" />
+                    <span className="text-leise">=</span>
+                    <div className="hidden flex-1 sm:block" />
                     <button
-                      className="btn-secondary px-2"
+                      type="button"
+                      className="btn-secondary min-h-11 min-w-11 justify-center px-2"
                       title={t("rules.up")}
+                      aria-label={t("rules.up")}
                       onClick={() => move(i, -1)}
                     >
-                      <ArrowUp className="w-4 h-4" />
+                      <ArrowUp className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="btn-secondary px-2"
+                      type="button"
+                      className="btn-secondary min-h-11 min-w-11 justify-center px-2"
                       title={t("rules.down")}
+                      aria-label={t("rules.down")}
                       onClick={() => move(i, 1)}
                     >
-                      <ArrowDown className="w-4 h-4" />
+                      <ArrowDown className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="btn-danger px-2"
+                      type="button"
+                      className="btn-danger min-h-11 min-w-11 justify-center px-2"
                       title={t("formulas.remove")}
+                      aria-label={t("formulas.remove")}
                       onClick={() => remove(i)}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </div>
                   <textarea
                     className="input font-mono text-sm"
+                    aria-label={t("formulas.expressionLabel", { key: f.key || i + 1 })}
                     rows={2}
                     spellCheck={false}
                     placeholder="3/4 * ((n - rank(seed_total) + 1) / n) + 1/4 * ..."
@@ -395,7 +395,7 @@ export default function FormulasPage() {
                     onChange={(e) => update(i, { expression: e.target.value })}
                   />
                   {issues.length > 0 && (
-                    <div className="text-sm text-red-600 dark:text-red-400 space-y-0.5">
+                    <div className="text-sm text-danger space-y-0.5">
                       {issues.slice(0, 3).map((issue, k) => (
                         <div key={k} className="flex items-start gap-1.5">
                           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -424,12 +424,12 @@ export default function FormulasPage() {
 
           {/* ── Preview ────────────────────────────────────────────────────── */}
           <div className="card p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium">{t("formulas.preview")}</h2>
               {previewing ? (
-                <span className="text-sm text-gray-500">{t("formulas.calculating")}</span>
+                <span className="text-sm text-leise">{t("formulas.calculating")}</span>
               ) : preview?.ok ? (
-                <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+                <span className="flex items-center gap-1.5 text-sm text-success">
                   <CheckCircle2 className="w-4 h-4" />
                   {t("formulas.calculated", { count: preview.rows.length })}
                 </span>
@@ -441,7 +441,7 @@ export default function FormulasPage() {
             {preview?.issues
               .filter((i) => !i.key)
               .map((issue, k) => (
-                <div key={k} className="text-sm text-red-600 dark:text-red-400">
+                <div key={k} className="text-sm text-danger">
                   {issue.message}
                 </div>
               ))}
@@ -450,7 +450,7 @@ export default function FormulasPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left border-b dark:border-gray-700">
+                    <tr className="text-left border-b">
                       <th className="py-2 pr-3">#</th>
                       <th className="py-2 pr-3">{t("scouting.team")}</th>
                       {columns.map((c) => (
@@ -462,8 +462,8 @@ export default function FormulasPage() {
                   </thead>
                   <tbody>
                     {preview.rows.map((r) => (
-                      <tr key={r.team_id} className="border-b dark:border-gray-800">
-                        <td className="py-1.5 pr-3 text-gray-500">{r.rank ?? "DQ"}</td>
+                      <tr key={r.team_id} className="border-b">
+                        <td className="py-1.5 pr-3 text-leise">{r.rank ?? t("common:dqShort")}</td>
                         <td className="py-1.5 pr-3">{r.team_name ?? r.team_id}</td>
                         {columns.map((c) => (
                           <td key={c} className="py-1.5 pr-3 font-mono text-xs">
@@ -478,7 +478,7 @@ export default function FormulasPage() {
             )}
 
             {preview && preview.rows.length === 0 && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-leise">
                 {t("formulas.noTeams")}
               </p>
             )}
@@ -486,16 +486,16 @@ export default function FormulasPage() {
         </div>
 
         {/* ── Reference ─────────────────────────────────────────────────────── */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="card p-4">
             <h2 className="font-medium mb-2">{t("formulas.variables")}</h2>
             <dl className="space-y-1.5 text-sm">
               {Object.entries(reference?.inputs ?? {}).map(([name, desc]) => (
                 <div key={name}>
-                  <dt className="font-mono text-xs text-primary-700 dark:text-primary-400">
+                  <dt className="font-mono text-xs text-akzent">
                     {name}
                   </dt>
-                  <dd className="text-gray-600 dark:text-gray-400 text-xs">{desc}</dd>
+                  <dd className="text-leise text-xs">{desc}</dd>
                 </div>
               ))}
             </dl>
@@ -503,25 +503,25 @@ export default function FormulasPage() {
 
           <div className="card p-4">
             <h2 className="font-medium mb-2">{t("formulas.functions")}</h2>
-            <p className="text-xs text-gray-500 mb-2">{t("formulas.perTeam")}</p>
+            <p className="text-xs text-leise mb-2">{t("formulas.perTeam")}</p>
             <dl className="space-y-1.5 text-sm mb-4">
               {(reference?.row_functions ?? []).map((f) => (
                 <div key={f.name}>
-                  <dt className="font-mono text-xs text-primary-700 dark:text-primary-400">
+                  <dt className="font-mono text-xs text-akzent">
                     {f.signature}
                   </dt>
-                  <dd className="text-gray-600 dark:text-gray-400 text-xs">{f.description}</dd>
+                  <dd className="text-leise text-xs">{f.description}</dd>
                 </div>
               ))}
             </dl>
-            <p className="text-xs text-gray-500 mb-2">{t("formulas.acrossTeams")}</p>
+            <p className="text-xs text-leise mb-2">{t("formulas.acrossTeams")}</p>
             <dl className="space-y-1.5 text-sm">
               {(reference?.scope_functions ?? []).map((f) => (
                 <div key={f.name}>
-                  <dt className="font-mono text-xs text-primary-700 dark:text-primary-400">
+                  <dt className="font-mono text-xs text-akzent">
                     {f.signature}
                   </dt>
-                  <dd className="text-gray-600 dark:text-gray-400 text-xs">{f.description}</dd>
+                  <dd className="text-leise text-xs">{f.description}</dd>
                 </div>
               ))}
             </dl>
@@ -529,10 +529,10 @@ export default function FormulasPage() {
 
           <div className="card p-4">
             <h2 className="font-medium mb-1">{t("formulas.order")}</h2>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-xs text-leise mb-2">
               {t("formulas.orderHint")}
             </p>
-            <div className="font-mono text-xs text-gray-600 dark:text-gray-400 break-words">
+            <div className="font-mono text-xs text-leise break-words">
               {columns.length > 0 ? columns.join(" → ") : "—"}
             </div>
           </div>

@@ -99,8 +99,11 @@ TIEBREAKER_PRESETS: dict[str, dict[str, Any]] = {
             _c("closest_to_botguy", "Robot closest to Botguy (cm)", direction="min"),
         ],
     },
+    # Game Review v1.4, "Tie Breakers & Special Scoring Conditions" (same
+    # order as v1.3). Criteria the score sheet cannot answer (sorted poms in
+    # baskets, stack height, …) are entered by the juror for the match.
     "botball_2026": {
-        "name": "Botball 2026 (Game Review v1.3)",
+        "name": "Botball 2026 (Game Review v1.4)",
         "finals_replay": True,
         "tiebreakers": [
             _c(
@@ -108,26 +111,34 @@ TIEBREAKER_PRESETS: dict[str, dict[str, Any]] = {
                 "Largest number of sorted cubes on the External Loading Docks",
                 "external_dock_sorted_cubes",
             ),
-            _c("cubes_on_pallets", "Largest number of cubes on pallets"),
+            # Sorted cubes on a dock are on a pallet by definition (rule 4a.i);
+            # unsorted dock cubes may stand on the dock itself and are left out.
             _c(
-                "sorted_poms_in_baskets",
-                "Largest number of sorted poms in baskets",
-                "bins_sorted_poms",
+                "cubes_on_pallets",
+                "Largest number of cubes on pallets",
+                "lower_start_box_cubes_on_pallets",
+                "upper_start_box_cubes_on_pallets",
+                "floor_cubes_on_pallets",
+                "internal_dock_sorted_cubes",
+                "external_dock_sorted_cubes",
             ),
+            _c("sorted_poms_in_baskets", "Largest number of sorted poms in baskets"),
             _c(
                 "pipes_on_posts",
                 "Largest number of pipes on Drum Storage posts",
-                "drum_pipes_on_posts",
+                "drum_pipes_unsorted",
+                "drum_pipes_sorted",
             ),
             _c(
                 "cones_in_start_boxes",
-                "Largest number of traffic cones in start boxes",
-                "start_traffic_cones",
+                "Largest number of traffic cones scoring in start boxes",
+                "lower_start_box_traffic_cones",
+                "upper_start_box_traffic_cones",
             ),
             _c("tallest_stack", "Tallest stack of scored cubes"),
             _c("floor_areas_both_colors", "Most Warehouse Floor Areas with both pom colors"),
-            _c("botguy_upper_start_box", "Botguy in Upper Start Box", "start_botguy_upper"),
-            _c("botguy_lower_start_box", "Botguy in Lower Start Box", "start_botguy_lower"),
+            _c("botguy_upper_start_box", "Botguy in Upper Start Box", "upper_start_box_botguy"),
+            _c("botguy_lower_start_box", "Botguy in Lower Start Box", "lower_start_box_botguy"),
             _c("floor_object_types", "Most different object types in Warehouse Floor Areas"),
             _c("fewest_on_black_tape", "Fewest game pieces on black tape", direction="min"),
             _c(

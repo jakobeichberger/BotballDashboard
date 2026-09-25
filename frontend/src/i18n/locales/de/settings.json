@@ -120,7 +120,10 @@
     "add": "+ Hinzufügen",
     "noExtra": "Keine zusätzlichen Termine.",
     "phases": "Phasen",
-    "phaseInfo": "({{type}}, {{rounds}} Runden)"
+    "phaseInfo": "({{type}}, {{rounds}} Runden)",
+    "season": "Saison",
+    "confirmDelete": "Eintrag „{{title}}“ löschen?",
+    "deleteEntry": "Eintrag „{{title}}“ löschen"
   },
   "levels": {
     "title": "Wettbewerbsstufen",
@@ -171,5 +174,29 @@
     "system": "System",
     "permissionCount": "{{count}} Rechte",
     "edit": "Rechte bearbeiten"
+  },
+  "categories": {
+    "title": "Kategorien der Saison",
+    "hint": "Schlüssel, Bezeichnungen und Wertung jeder Kategorie. Ein Schlüssel, der noch von Anmeldungen verwendet wird, kann nicht entfernt werden.",
+    "key": "Schlüssel",
+    "labelDe": "Bezeichnung (DE)",
+    "labelEn": "Bezeichnung (EN)",
+    "kind": "Art",
+    "preset": "Formel-Vorlage",
+    "presetDefault": "Standard der Art",
+    "runs": "Läufe",
+    "countedRuns": "Gewertete Läufe",
+    "allRuns": "alle",
+    "perCourse": "Rang je Kurs (DE-Bracket)",
+    "remove": "Kategorie entfernen",
+    "add": "Kategorie hinzufügen",
+    "saved": "Kategorien gespeichert",
+    "kinds": {
+      "botball": "Botball",
+      "open": "Open",
+      "aerial": "Aerial",
+      "jbc": "Junior Botball Challenge",
+      "custom": "Eigene"
+    }
   }
 }

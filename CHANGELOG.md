@@ -4,7 +4,25 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
-Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0030`.
+### Schulung „Von der Frage zum Auftrag“
+
+- `docs/schulung/`: Unterlagen für eine 60-minütige Schulung zum Arbeiten mit KI-Agenten am Beispiel dieses Projekts. Enthalten sind ein Lehrerleitfaden mit Ablauf, LEDVV als Aufbau für Aufträge, ein Spickzettel mit Übung, Kurz-Demos und Fallbeispiele.
+- Drehbuch für die Live-Vorführung „Gamedoc 2027 analysieren und in der App hinterlegen“ (`demo-gamedoc-2027.md`) mit Prompts, Klickweg und Plan B. Dazu kommen der Bogen 2026 als JSON (`demo/botball-2026-sheet.json`) und die erwartete Analyse (`demo/analyse-2026-erwartet.md`). Beide sind aus der Vorlage `botball_2026` erzeugt, alle 13 offiziellen Scoring-Beispiele wurden dabei nachgerechnet.
+
+### Botball 2026 und ECER 2026 (Migration `0034`)
+
+Abgleich mit den offiziellen Dokumenten (Game Review v1.4, Score-Sheet und Scoring Examples 2026, ECER Amendments 2026, Bewertungsbögen, Aerial Junior Rulebook, Call for Papers, Ergebnisse ECER 2026; Quellen in `docs/assets/README.md`).
+
+- **Score-Sheet 2026** vollständig (`botball_2026`), abgeleitete Multiplikatoren („Drum ×2" folgt dem Feld), Scoring Examples als gemeinsame Fixture; Tie-Breaker nach v1.4 mit den echten Feldern.
+- **Kategorien pro Saison** (Botball, ECER Open, Aerial Junior, Aerial Senior, Junior Botball Challenge, eigene) statt fester Liste; Gesamtwertung optional je Kurs (GCER).
+- **Formelvorlagen** `ecer_2026_botball` (Dokumentation je Periode relativ zum Besten – so rechnen die offiziellen Ergebnisse), `ecer_2026_open`, `aerial_2025`/`aerial_2026`, `jbc_2026`; `seed_rank` = angezeigter Seeding-Rang. Die ECER-2026-Ergebnisse sind Test-Fixture (alle 18 Botball-Teams).
+- **Aerial-Läufe als Liste**, gewertete Läufe pro Kategorie; **JBC-Punkte** für gelöste Challenges.
+- **Seeding-Tie-Breaker** als Saisonregel, standardmäßig aus (Gleichstand teilt den Rang). Maximalpunkte der Dokumentation je Periode (2026: 100/95/100/100); der gespeicherte Doku-Score folgt dem Formel-Set.
+- **Awards** (ECER/GCER-Vorlagen, berechnet oder per Jury, Veröffentlichung, Export) und **Ergebnis-Export im ECER-Format** (XLSX/CSV).
+- Timeout-Karte (einmal pro Turnier), Schiedsrichter-Checkliste 2026, 3D-Druck-Regeln (Material, Graustufen, Bauraum aus der STL, sechs Roboterteile, STL mit Periode 3), Paper: Benachrichtigungstermin, „auf der Bühne", Seitenlimit 5.
+- Beispieldaten ECER 2027 (Linz, 5.–9.4.2027, Botball-Anmeldeschluss 15.12.2026): `scripts/example_season_2027.py`, legt nichts automatisch an.
+
+Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0033`.
 
 ### Added
 
@@ -97,6 +115,9 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 
 ### Fixed
 
+- **Lesen nach dem Schreiben:** FastAPI führt den Commit in `get_db` erst aus, nachdem die Antwort gesendet ist. Ein Client konnte deshalb 201 bekommen und mit der nächsten Anfrage noch den alten Stand lesen, etwa eine neue Saison, die in der Liste fehlt, oder ein neues Team, das bei der Anmeldung „nicht gefunden“ wurde. `CommitBeforeResponseMiddleware` hält Antworten auf schreibende Anfragen zurück, bis committet ist. Scheitert der Commit, bekommt der Client 409 oder 500 statt eines falschen Erfolgs.
+- **Wiederherstellung von Backups:** Das Backup-Image bringt inzwischen `pg_restore` 17 mit, die Datenbank läuft auf PostgreSQL 16. `pg_restore` 17 setzt `transaction_timeout`, das PostgreSQL 16 nicht kennt, deshalb brachen `restore.sh` und `restore-test.sh` sofort ab. Beide Skripte erzeugen jetzt zuerst SQL, entfernen diese Einstellung und spielen den Rest mit `psql` ein, mit Abbruch beim ersten Fehler. Nachgestellt und geprüft mit `pg_dump`/`pg_restore` 17.11 gegen PostgreSQL 16. Die CI übergibt dem Restore-Test die Schlüsseldatei jetzt so, dass der Backup-Benutzer (uid 10001) sie lesen kann.
+- **Backups ohne Uploads:** Eine leere Prüfsummenliste (`uploads.sha256`) ließ `restore.sh` und `restore-test.sh` scheitern, weil `sha256sum -c` sie ablehnt. Eine frische Installation war damit nicht wiederherstellbar. Leere Listen werden jetzt übersprungen, manipulierte Dateien fallen weiterhin auf.
 - Worker und Beat starteten bei der Proxmox-Installation nicht (Readiness 503, keine OCR, keine Pushes).
 - Einrichtungsassistent: Die neue Saison blieb inaktiv, ein doppeltes Haupt-Event wurde angelegt.
 - DQ-Läufe wurden im Seeding weggelassen statt mit 0 gewertet. Negative Scores wurden nicht auf 0 gesetzt.
@@ -105,8 +126,28 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 - Bambu „FINISH" schloss frisch eingereihte Jobs ab.
 - Saison löschen löschte per CASCADE die ganze Historie. Jetzt 409, Archivieren stattdessen.
 - Score-Revisionen gingen beim Löschen einer Wertung verloren (`0025`).
+- Modelle und Migrationen wichen voneinander ab (`alembic check` meldete 27 Unterschiede): JSONB-Spalten, partielle und NULL-sichere Unique-Indizes, `CHECK`-Constraints und Index-Namen stehen jetzt auch in den Modellen, damit die SQLite-Tests dasselbe Schema prüfen wie PostgreSQL. `0033` ergänzt den Index `print_jobs(printer_id)` und macht `event_registrations.team_id` und `score_sheet_templates.uploaded_at` `NOT NULL`. `tests/postgres/test_schema_drift.py` hält beide Seiten in der CI deckungsgleich.
+- Der OCR-Auftrag eines Scans wurde vor dem Commit eingereiht. Der Worker fand die Zeile manchmal noch nicht, und der Scan blieb auf „queued". Jetzt nach dem Commit, ohne die Event-Loop zu blockieren.
 
 ### Security
+
+Sicherheitsreview 2026-09 (15 Befunde, jeweils mit Regressionstest; Restrisiken in [docs/SECURITY.md](docs/SECURITY.md)):
+
+- **Größenlimit für gestreamte Bodies:** Das Limit prüfte nur `Content-Length`. Anfragen ohne diesen Header (chunked) wurden vor der Anmeldung vollständig gepuffert (200 MB → 516 MB RSS). Eine ASGI-Middleware zählt jetzt die empfangenen Bytes und bricht mit 413 ab; Druckdateien behalten `PRINT_UPLOAD_MAX_MB`. Traefik lehnt API-Bodies über `API_MAX_BODY_BYTES` (102 MiB) ab.
+- **Duell-Wertungen nur für Teilnehmer:** Eine Wertung ließ sich an ein fremdes Head-to-Head-Match hängen und entschied dessen Ausgang. Saison-, Event- und Scan-Routen verlangen jetzt, dass das Team im Match spielt.
+- **OCR-Dekompressionsbomben:** Bilder werden vor dem Dekodieren anhand des Headers auf 40 MP begrenzt (Upload und Worker), `OPENCV_IO_MAX_IMAGE_PIXELS` ist gesetzt, PDFs werden mit 150 dpi und höchstens 3000 px Kantenlänge gerastert, der Worker hat ein Speicherlimit.
+- **SSRF über Push-Abos:** Endpunkte müssen `https`-URLs bekannter Push-Dienste sein (FCM, Mozilla, WNS, Apple), ohne IP-Literale, Zugangsdaten oder fremde Ports. Früher gespeicherte Abos werden nicht mehr kontaktiert, sondern gelöscht.
+- **Ankündigungen nach Zielgruppe:** Die Liste zeigte interne, Juroren-, Reviewer- und Team-Ankündigungen allen. Jetzt nach Rechten (Teams → `teams:write`, Reviewer → `papers:review`, Juroren → `scoring:admin`, intern → Organisatoren), abgelaufene werden ausgeblendet, unbekannte Zielgruppen abgelehnt.
+- **Übungsläufe und Notizen fremder Teams:** Match-Listen, Einzel-Match, Score-Historie, Audit-Trail und beide `matches.csv` zeigen sie nur noch dem eigenen Team und `scoring:admin`. Revisionen tragen dazu eine Kopie von `is_practice` (`0031`).
+- **PDF-Exporte:** Nutzertexte (Paper-Titel, Dateinamen, Saison-/Event-/Level-Namen, Kategorien) werden für reportlab escaped. Ein offener Tag machte den Export zum 500, `<img src>` ließ den Server URLs abrufen oder lokale Dateien einbetten.
+- **Team-Stammdaten:** Mentoren ändern nur noch Name, Schule, Ort und Land. Team-Nummer, Level, Aktiv-Status und Organisator-Notizen brauchen `teams:admin`; das Formular zeigt diese Felder nur Organisatoren.
+- **Container ohne Root:** `backend`, `worker`, `beat` und `backup` laufen als UID 10001, ohne Capabilities, mit `no-new-privileges`, Speicherlimits und (außer `backup`) schreibgeschütztem Root-Dateisystem. Die Init-Dienste `volume-permissions`/`backup-permissions` stellen bestehende Volumes automatisch um, siehe [Update-Anleitung](docs/documentation/installation/update.md#versionshinweis-container-ohne-root-rechte-security-update-2026-09). Wiederherstellung und Restore-Test brauchen geänderte Befehle ([docs/operations.md](docs/operations.md#restore-in-production)).
+- **Entwurfs-Events:** Unterrouten (`/v1/events/{id}/…`, `/scoring/events/{id}/…`, `?event_id=` …) und `/scoring/schemas` lieferten Entwürfe an Gäste und Mentoren. Jetzt 404 ohne `events:write`.
+- **Scan-Uploads:** Vorlage, Team, Match, Saison-Status und Dateityp (Magic Bytes, kein GIF) werden vor dem Schreiben geprüft; abgelehnte oder zurückgerollte Uploads hinterlassen keine Datei mehr. Upload und Wiederholung sind in archivierten Saisons gesperrt.
+- **Team-Dokumente** lassen sich nicht mehr aus einer archivierten Saison heraus- oder in sie hineinverschieben.
+- **Login:** bcrypt läuft in einem Worker-Thread statt auf der Event-Loop; unbekannte E-Mail-Adressen werden gegen einen Dummy-Hash geprüft, die Antwortzeit verrät keine Konten mehr.
+- **`APP_ENV`** akzeptiert nur `development`, `test` und `production`; alles außer `development` verlangt sichere Secrets. Werte wie `prod` oder `Production` übersprangen die Prüfung.
+- **Download-Namen:** Scouting-Bericht und Saison-Export setzen `Content-Disposition` aus bereinigten Namen statt aus dem Pfadparameter.
 
 - python-jose und `ecdsa` durch PyJWT ersetzt. Access-Tokens tragen eine `jti` und landen beim Logout auf einer Redis-Sperrliste. `token_version` beendet alle Sitzungen bei Passwortänderung, Reset, Deaktivierung und Löschung.
 - `ranking_updated`, `schedule_updated` und Ankündigungen werden erst nach dem Commit veröffentlicht.
@@ -114,6 +155,16 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 - Entwurfs-Saisons und -Events sehen nur Organisatoren. Kontaktdaten anderer Teams sind ausgeblendet. Team-Dokumente sind nur für das eigene Team sichtbar.
 - Rate-Limits für Passwort-Reset, E-Mail-Änderung, Kontolöschung und alle Uploads.
 - Passwörter aus einer mitgelieferten Liste von rund 2.300 häufigen oder geleakten Passwörtern (SecLists, ab 10 Zeichen, plus deutsche Muster) werden beim Anlegen, Ändern, Zurücksetzen und Setzen durch Admins abgelehnt, ohne Groß-/Kleinschreibung.
+
+### Performance
+
+- Öffentlicher WebSocket hält keine Datenbankverbindung mehr; ein Redis-Abo pro API-Prozess verteilt Live-Ereignisse an alle WebSockets. Geteilte Redis-Clients mit kurzen Timeouts für Veröffentlichen, Rate-Limit (jetzt atomar per Lua) und Cache.
+- Ranglisten, Gesamtwertung und öffentliche Ergebnisse werden pro Event versioniert in Redis gecacht und mit `ETag`/`304` ausgeliefert. Die Gesamtwertung lädt ihre Eingaben einmal für alle Kategorien.
+- Celery: eigene Queues (`ocr`, `periodic`, `default`) mit neuem Dienst `worker-ocr`, Beat-Aufträge verfallen, Tasks ohne Connection-Pool pro Event-Loop, Drucker werden gleichzeitig mit Timeout abgefragt.
+- Outbox: Zeilen werden beansprucht (`sending` mit Lease) und ohne offene Sperren versendet; nur die Push-Abos der Empfänger werden geladen. Neue Tabelle `notification_recipients` für die Benachrichtigungszentrale, Aufräumen nach 30 Tagen (`0032`).
+- Weniger Abfragen: Mentor-Dashboard und Team-Historie ohne N+1, Sammel-Wertungen sortieren die Rangliste einmal pro Anfrage, Audit-Zeile in der Transaktion der Anfrage, fehlende Indizes (`0032`), Seitenweise Abfrage (`limit`/`offset`) für Wertungslisten, öffentliche Ergebnisse und Zeitplan; Listen ohne `schema_snapshot`.
+- PDF-Exporte laufen im Threadpool. SQL-Logging nur noch mit `DB_ECHO=true`; `pool_pre_ping` und `pool_recycle` für die API.
+- Zusammenspiel mit dem Sicherheitsreview: Seitenweise Match-Listen filtern fremde Übungsläufe schon in der Abfrage (volle Seiten, keine Lücken) und blenden fremde Notizen aus. Gecachte Ranglisten und Ergebnisse enthalten nie Übungsläufe; Saison-Ranglisten ohne `event_id` prüfen den Entwurfsstatus des Standard-Events vor dem Cache, und öffentliche Seiten liefern Events einer Entwurfs-Saison nicht mehr aus. `worker-ocr` ist wie `worker` gehärtet (UID 10001, `cap_drop: ALL`, schreibgeschützt, `OCR_WORKER_MEM_LIMIT`, `OPENCV_IO_MAX_IMAGE_PIXELS`); `worker` braucht ohne OCR nur noch 1 GB (`WORKER_MEM_LIMIT`). Die Vorlagen-Extraktion wird wie Scans erst nach dem Commit in die Queue `ocr` gestellt.
 
 ## PR #23 – Frontend-Ausbau (#21) im eventzentrierten `main` (2026-09-24)
 

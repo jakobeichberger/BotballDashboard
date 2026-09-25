@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -16,13 +17,36 @@ from modules.dashboard.models import Announcement
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
+AnnouncementAudience = Literal["all", "teams", "reviewers", "jurors", "internal"]
+
+# Who reads an announcement of each audience. "all" is everyone signed in;
+# "internal" only the organizers who manage announcements (dashboard:write),
+# and those see every audience anyway.
+AUDIENCE_PERMISSIONS: dict[str, str] = {
+    "teams": "teams:write",  # mentors
+    "reviewers": "papers:review",
+    "jurors": "scoring:admin",
+}
+
+
+def visible_audiences(user) -> set[str] | None:
+    """Audiences `user` may read; None means every audience (organizers)."""
+    permissions = permissions_of(user)
+    if user.is_superuser or "dashboard:write" in permissions:
+        return None
+    return {"all"} | {
+        audience
+        for audience, permission in AUDIENCE_PERMISSIONS.items()
+        if permission in permissions
+    }
+
 
 class AnnouncementCreate(BaseModel):
     season_id: str | None = None
     event_id: str | None = None
     title: str
     body: str
-    audience: str = "all"
+    audience: AnnouncementAudience = "all"
     expires_at: datetime | None = None
 
 
@@ -50,12 +74,19 @@ async def list_announcements(
     db: AsyncSession = Depends(get_db),
 ):
     q = select(Announcement).order_by(Announcement.created_at.desc())
+    audiences = visible_audiences(current_user)
     if include_unpublished:
-        # Drafts are internal — only those who may publish may read them.
-        if not current_user.is_superuser and "dashboard:write" not in permissions_of(current_user):
+        # The management view: drafts and expired announcements included. Drafts
+        # are internal — only those who may publish may read them.
+        if audiences is not None:
             raise ForbiddenError("Missing permissions: dashboard:write")
     else:
-        q = q.where(Announcement.is_published.is_(True))
+        q = q.where(
+            Announcement.is_published.is_(True),
+            Announcement.expires_at.is_(None) | (Announcement.expires_at > datetime.now(UTC)),
+        )
+        if audiences is not None:
+            q = q.where(Announcement.audience.in_(audiences))
     if season_id:
         q = q.where(Announcement.season_id == season_id)
     if event_id:

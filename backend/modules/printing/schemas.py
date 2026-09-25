@@ -61,6 +61,9 @@ class PrintJobCreate(BaseModel):
     notes: str | None = None
     # printing:admin only: submit although the team's hard limit is reached.
     quota_override: bool = False
+    # robot parts count towards the 6-part limit; spares and jigs do not.
+    purpose: Literal["robot", "spare", "jig"] = "robot"
+    part_count: int = Field(default=1, ge=1, le=50)
 
 
 class PrintJobUpdate(BaseModel):
@@ -75,6 +78,10 @@ class PrintJobUpdate(BaseModel):
     actual_minutes: int | None = Field(default=None, ge=0)
     notes: str | None = None
     priority: int | None = None
+    purpose: Literal["robot", "spare", "jig"] | None = None
+    part_count: int | None = Field(default=None, ge=1, le=50)
+    # The STL was handed in with documentation Period 3.
+    stl_submitted: bool | None = None
 
 
 class PrintJobResponse(BaseModel):
@@ -91,6 +98,14 @@ class PrintJobResponse(BaseModel):
     file_size_bytes: int | None = None
     material: str
     color: str | None
+    purpose: str = "robot"
+    part_count: int = 1
+    bbox_x_mm: float | None = None
+    bbox_y_mm: float | None = None
+    bbox_z_mm: float | None = None
+    stl_submitted: bool = False
+    # material_not_allowed | color_not_greyscale | exceeds_build_volume
+    rule_warnings: list[str] = []
     estimated_grams: float | None
     actual_grams: float | None
     estimated_minutes: int | None
@@ -120,6 +135,17 @@ class PrintJobCreateResponse(PrintJobResponse):
     # Set when the team's 3D-print compliance checklist for the season is not
     # complete (the job is still accepted).
     compliance_warning: str | None = None
+
+
+class RobotPartsSummary(BaseModel):
+    """Printed robot parts of a team in a season against the game-review limit."""
+
+    team_id: str
+    season_id: str
+    used: int
+    limit: int
+    over_limit: bool
+    stl_missing: int
 
 
 class PrintJobCancelResponse(PrintJobResponse):

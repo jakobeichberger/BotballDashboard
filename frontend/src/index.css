@@ -1,85 +1,381 @@
+@import "./fonts.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  .sidebar-action {
-    @apply flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800;
-  }
-}
-
+/*
+ * Design tokens (WehrFlow design DNA, adapted to Botball Dashboard).
+ * Colours are RGB channels so Tailwind's opacity modifiers work
+ * (tailwind.config.ts maps them to bg-papier, bg-flaeche, text-fg,
+ * text-leise, border-rand, text-success, …). `.dark` on <html> (themeStore)
+ * swaps the themed values; everything else follows automatically.
+ */
 @layer base {
   :root {
-    --radius: 0.5rem;
+    --rot-rgb: 227 24 35; /* #e31823 */
+    --rot: rgb(var(--rot-rgb));
+    --rot-hell: #ff4d57;
+    --rot-dunkel: #b0121c;
+    --rot-auf-dunkel: #ff5a60;
+
+    --papier: 242 242 242; /* page background */
+    --papier-2: 232 234 238;
+    --flaeche: 255 255 255; /* cards, tables, dialogs */
+    --flaeche-2: 245 246 248; /* inset rows, hover, table header */
+    --text: 13 15 19;
+    --text-leise: 92 101 112; /* #5c6570: 4.9:1 on papier-2, 5.9:1 on white */
+    --rand: 216 220 226; /* hairlines */
+    --rand-stark: 107 116 128; /* form-field borders: 3:1 (WCAG 1.4.11) */
+
+    /* Status colours as text/icon/border: all at least 4.5:1 on white, papier and papier-2. */
+    --success: 19 112 58; /* #13703a */
+    --warning: 154 75 6; /* #9a4b06 */
+    --danger: 200 20 31; /* #c8141f */
+    --info: 29 78 216; /* #1d4ed8 */
+
+    --radius: 10px;
+    --radius-eng: 8px;
+    --schatten: 0 1px 2px #0d0f130a;
+    --schatten-tief: 0 12px 32px #00000047;
+    --schatten-ember: 0 0 80px rgb(var(--rot-rgb) / 0.14);
+    --dauer: 0.2s;
+    --easing: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Text-colour tokens behind the legacy gray/status text classes
+       (tailwind.config.ts, textColor). Each reaches 4.5:1 on the surfaces. */
+    --text-gray-400: var(--text-leise);
+    --text-gray-500: var(--text-leise);
+    --text-red-500: var(--danger);
+    --text-red-600: var(--danger);
+    --text-amber-600: var(--warning);
+    --text-yellow-600: var(--warning);
+    --text-green-600: var(--success);
+    --text-blue-600: var(--info);
+    --text-primary-600: 200 20 31; /* #c8141f: #e31823 is only 4.2:1 on papier */
+
+    color-scheme: light;
+  }
+
+  .dark {
+    --papier: 13 15 19; /* tief */
+    --papier-2: 26 29 35;
+    --flaeche: 26 29 35; /* tief-2 */
+    --flaeche-2: 34 38 46;
+    --text: 242 242 242;
+    --text-leise: 154 163 173; /* #9aa3ad: 5.9:1 on flaeche-2 */
+    --rand: 42 48 56; /* rand-dunkel */
+    --rand-stark: 107 116 128; /* 3.5:1 on flaeche */
+
+    --success: 74 222 128;
+    --warning: 251 191 36;
+    --danger: 255 90 96; /* rot-auf-dunkel */
+    --info: 96 165 250;
+
+    --schatten: 0 1px 2px #00000059;
+    --schatten-tief: 0 12px 36px #00000080;
+    --schatten-ember: 0 0 72px rgb(var(--rot-rgb) / 0.18);
+
+    --text-primary-600: 255 90 96;
+
+    color-scheme: dark;
   }
 
   * {
-    @apply border-gray-200 dark:border-gray-700;
+    border-color: rgb(var(--rand));
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply antialiased;
+    @apply bg-papier font-sans text-fg antialiased;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    font-feature-settings: "cv11", "ss01";
+    background-image:
+      radial-gradient(64rem 36rem at 8% -12%, rgb(var(--rot-rgb) / 0.035), transparent 58%),
+      linear-gradient(180deg, #f7f8fa 0%, rgb(var(--papier)) 30%);
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image:
+      radial-gradient(64rem 36rem at 6% -12%, rgb(var(--rot-rgb) / 0.08), transparent 58%),
+      linear-gradient(180deg, #101318 0%, rgb(var(--papier)) 32%);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  h1 {
+    @apply font-display tracking-display;
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+  }
+
+  /* One focus ring everywhere: 3px signal red, 3px away from the element. */
+  :focus-visible {
+    outline: 3px solid var(--rot);
+    outline-offset: 3px;
+  }
+
+  th {
+    @apply font-ui tracking-ui;
+  }
+  thead {
+    @apply border-b border-rand;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: rgb(var(--rot-rgb));
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .tabular-nums,
+  td,
+  time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: rgb(var(--rot-rgb) / 0.2);
   }
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+    @apply rounded-full bg-gray-300 dark:bg-gray-700;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer components {
+  /* ── Buttons (.knopf) ─────────────────────────────────────────────── */
   .btn {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-           transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-           disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded border-[1.5px] border-transparent px-[1.1rem] py-2
+           font-ui text-[0.95rem] font-semibold tracking-ui transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-wehr
+           hover:-translate-y-px active:translate-y-0
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply min-h-9 px-3 py-1.5 text-sm;
+  }
+  .btn-lg {
+    @apply min-h-[3.1rem] px-7 py-3 text-[1.05rem];
   }
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600;
+    /* White on #e31823 is 4.75:1; the hover goes darker (not rot-hell, 3.3:1). */
+    @apply btn bg-primary text-white shadow-flach hover:bg-[#d4161f] hover:shadow-ember active:bg-primary-700;
   }
   .btn-secondary {
-    @apply btn bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700;
+    @apply btn border-rand-stark/60 bg-flaeche text-fg hover:border-fg/60 hover:bg-flaeche-2;
+  }
+  .btn-outline {
+    @apply btn border-current bg-transparent text-akzent hover:bg-primary/[0.06];
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-fg hover:bg-fg/[0.06];
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply btn bg-rot-dunkel text-white hover:bg-primary-800;
+  }
+  /* Square 44px icon button (theme, menu, bell). */
+  .btn-icon {
+    @apply inline-grid h-11 w-11 shrink-0 place-items-center rounded-[6px] border border-rand text-leise transition-colors duration-200 hover:border-leise hover:text-fg;
+  }
+  /* Compact red row action: "→ Öffnen". */
+  .row-action {
+    @apply inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-eng bg-primary px-3 py-1.5 font-ui text-sm font-semibold text-white transition-[transform,background-color] duration-200 hover:-translate-y-px hover:bg-[#d4161f];
   }
 
+  .link {
+    @apply font-medium text-akzent underline decoration-primary/45 underline-offset-[0.2em] hover:decoration-current;
+  }
+
+  /* ── Cards (.karte) ───────────────────────────────────────────────── */
   .card {
-    @apply bg-white dark:bg-gray-900 rounded-xl border shadow-sm;
+    @apply rounded-karte border border-rand bg-flaeche;
+  }
+  .card-interactive {
+    @apply card transition-colors duration-200 hover:border-primary/30;
   }
 
+  /* Page header: Exo 2 title, muted subtitle, primary action on the right. */
+  .page-header {
+    @apply mb-6 flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-rand pb-5;
+  }
+  .page-title {
+    @apply font-display text-[1.75rem] font-extrabold leading-[1.1] tracking-display text-fg sm:text-[2rem];
+  }
+  .page-subtitle {
+    @apply mt-1.5 text-[0.95rem] text-leise;
+  }
+  .section-title {
+    @apply font-ui text-lg font-semibold tracking-ui text-fg;
+  }
+
+  /* Eyebrow / overline (Geist Sans, uppercase, tracked). */
+  .eyebrow {
+    @apply font-ui text-[0.72rem] font-semibold uppercase tracking-overline text-akzent;
+  }
+
+  /* Filter bar: one bordered card holding the controls in a row. */
+  .filter-bar {
+    @apply card mb-5 flex flex-wrap items-end gap-3 p-3;
+  }
+
+  /* Shared wrapper for data tables: on narrow screens the table scrolls
+     horizontally inside its card instead of being cut off (or widening the
+     page), so every column and row action stays reachable. */
+  .table-scroll {
+    /* relative: absolutely positioned children (sr-only header texts) stay
+       inside the scroller instead of widening the page. */
+    @apply relative overflow-x-auto overscroll-x-contain;
+  }
+  .table-scroll > table {
+    @apply min-w-full;
+  }
+  /* Header labels and row actions keep to one line; the table scrolls instead. */
+  .table-scroll th,
+  .table-scroll td:has(> button, > a, > div > button) {
+    @apply whitespace-nowrap;
+  }
+  /* Data table look: bold header on the inset surface, generous rows, hairlines. */
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table thead th {
+    @apply border-b border-rand bg-flaeche-2 px-4 py-3 text-left font-ui font-semibold tracking-ui text-fg;
+  }
+  .data-table tbody td {
+    @apply border-b border-rand px-4 py-3 align-middle;
+  }
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .data-table tbody tr {
+    @apply transition-colors duration-200 hover:bg-flaeche-2/70;
+  }
+
+  /* ── Form fields ──────────────────────────────────────────────────── */
   .input {
-    @apply block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800
-           px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply block min-h-11 w-full rounded-eng border border-rand-stark/70 bg-flaeche px-3 py-2 text-[0.95rem] text-fg placeholder:text-leise
+           transition-colors duration-200 hover:border-rand-stark
+           focus:border-primary
+           disabled:cursor-not-allowed disabled:opacity-60;
   }
-
+  select.input {
+    @apply pr-9;
+  }
   .label {
-    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+    @apply mb-1.5 block font-ui text-sm font-semibold tracking-ui text-fg;
   }
 
+  /* ── Badges / status chips ────────────────────────────────────────── */
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 font-ui text-xs font-semibold;
   }
   .badge-green {
-    @apply badge bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300;
+    @apply badge border-success/35 bg-success/10 text-success;
   }
   .badge-yellow {
-    @apply badge bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300;
+    @apply badge border-warning/40 bg-warning/10 text-warning;
   }
   .badge-red {
-    @apply badge bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300;
+    @apply badge border-danger/35 bg-danger/10 text-danger;
   }
   .badge-blue {
-    @apply badge bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300;
+    @apply badge border-info/35 bg-info/10 text-info;
   }
   .badge-gray {
-    @apply badge bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300;
+    @apply badge border-rand bg-flaeche-2 text-leise;
+  }
+  /* Red count bubble on the bell / list headers. */
+  .count-badge {
+    @apply inline-grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 font-ui text-[0.7rem] font-bold leading-none text-white;
+  }
+
+  /* ── Stat / KPI cards ─────────────────────────────────────────────── */
+  .stat-card {
+    @apply flex items-center gap-3 rounded-karte border-[1.5px] bg-flaeche px-4 py-3;
+  }
+  .stat-icon {
+    @apply grid h-11 w-11 shrink-0 place-items-center rounded-eng;
+  }
+  .stat-value {
+    @apply font-display text-[1.6rem] font-extrabold leading-none tracking-display text-fg tabular-nums;
+  }
+  .stat-label {
+    @apply mt-1 text-sm text-leise;
+  }
+
+  /* ── Sidebar (always dark, both themes) ───────────────────────────── */
+  .sidebar-overline {
+    @apply px-3 pb-1.5 pt-4 font-ui text-[0.7rem] font-semibold uppercase tracking-overline text-sidebar-leise;
+  }
+  .sidebar-link {
+    @apply flex min-h-10 items-center gap-3 rounded-eng px-3 py-2 font-ui text-[0.95rem] font-medium tracking-ui text-sidebar-text transition-colors duration-200 hover:bg-white/[0.06] hover:text-white;
+  }
+  .sidebar-link-active {
+    @apply bg-primary text-white hover:bg-primary hover:text-white;
+  }
+  .sidebar-toggle {
+    @apply inline-grid h-11 min-w-11 place-items-center rounded-[6px] border border-sidebar-rand px-2 font-ui text-sm font-semibold text-sidebar-text transition-colors duration-200 hover:border-sidebar-leise hover:text-white;
+  }
+
+  .sidebar-select {
+    @apply block min-h-11 w-full rounded-eng border border-sidebar-rand bg-tief px-3 py-2 font-ui text-sm font-semibold text-white
+           transition-colors duration-200 hover:border-sidebar-leise focus:border-primary;
+    color-scheme: dark;
+  }
+
+  /* ── Big-screen surface (public scoreboard): tief + grid + ember ──── */
+  .buehne {
+    background-color: #0d0f13;
+    background-image:
+      radial-gradient(60rem 32rem at 12% -10%, rgb(var(--rot-rgb) / 0.22), transparent 60%),
+      radial-gradient(40rem 28rem at 100% 110%, rgb(var(--rot-rgb) / 0.1), transparent 60%),
+      linear-gradient(#ffffff05 1px, transparent 1px),
+      linear-gradient(90deg, #ffffff05 1px, transparent 1px);
+    background-size: auto, auto, 4rem 4rem, 4rem 4rem;
+  }
+
+  /* Gentle reveal for cards and tiles. */
+  .reveal {
+    animation: reveal var(--dauer) var(--easing) both;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }

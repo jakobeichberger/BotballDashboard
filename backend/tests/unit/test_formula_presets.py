@@ -12,9 +12,11 @@ from modules.scoring.formula_engine import (
     GCER_BOTBALL_FORMULA_SET,
     KNOWN_INPUTS,
     REGIONAL_2026_BOTBALL_FORMULA_SET,
+    competition_seed_ranks,
     run_formula_set,
 )
 from modules.scoring.formula_service import formula_input_names, validate_formula_set
+from modules.scoring.service import compute_seed_score
 
 
 def _row(team_id, *, seed_runs, de_rank=0, n_bracket=0, doc=(0, 0, 0), onsite=0, ds=()):
@@ -32,19 +34,39 @@ def _row(team_id, *, seed_runs, de_rank=0, n_bracket=0, doc=(0, 0, 0), onsite=0,
         "paper": 0.0,
         "double_seed_runs": double_runs,
         "double_seed_total": sum(double_runs) / len(double_runs) if double_runs else 0.0,
+        "doc_p1_max": 100.0,
+        "doc_p2_max": 100.0,
+        "doc_p3_max": 100.0,
+        "onsite_max": 100.0,
     }
+
+
+def _ranked(rows):
+    """Add the displayed seeding rank (ties shared) the input builder supplies."""
+    totals = {r["team_id"]: compute_seed_score(r["seed_runs"]) for r in rows}
+    ranks = competition_seed_ranks(totals)
+    return [{**r, "seed_rank": ranks[r["team_id"]]} for r in rows]
 
 
 class TestPresetCatalogue:
     def test_all_requested_presets_exist(self):
         assert set(FORMULA_PRESETS) == {
+            "ecer_2026_botball",
+            "ecer_2026_open",
             "ecer_2025_botball",
             "ecer_2025_open",
             "regional_2026_botball",
             "gcer_2026_botball",
-            "aerial",
+            "aerial_2025",
+            "aerial_2026",
             "jbc",
+            "jbc_2026",
         }
+
+    def test_preset_labels_use_the_current_names(self):
+        labels = {p.label for p in FORMULA_PRESETS.values()}
+        assert not any("PRIA" in label for label in labels)
+        assert FORMULA_PRESETS["ecer_2026_open"].label == "ECER 2026 – ECER Open"
 
     def test_ecer_sets_stay_the_defaults(self):
         assert FORMULA_PRESETS["ecer_2025_botball"].formulas == DEFAULT_FORMULA_SETS["botball"]
@@ -73,7 +95,7 @@ class TestRegional2026:
             ),
             _row("b", seed_runs=[40, 20, 0], de_rank=2, n_bracket=2, doc=(50, 0, 100), onsite=25),
         ]
-        run = run_formula_set(REGIONAL_2026_BOTBALL_FORMULA_SET, rows)
+        run = run_formula_set(REGIONAL_2026_BOTBALL_FORMULA_SET, _ranked(rows))
         assert run.ok, run.issues
         a, b = run.rows
         assert a["doc_score"] == pytest.approx(1.0)
@@ -94,7 +116,7 @@ class TestGcer2026:
             _row("a", seed_runs=[100], doc=(0, 0, 0), onsite=80, ds=[10]),
             _row("b", seed_runs=[50], doc=(100, 100, 100), onsite=0, ds=[5]),
         ]
-        run = run_formula_set(GCER_BOTBALL_FORMULA_SET, rows)
+        run = run_formula_set(GCER_BOTBALL_FORMULA_SET, _ranked(rows))
         assert run.ok, run.issues
         a, b = run.rows
         assert a["doc_score"] == pytest.approx(0.8)
@@ -106,7 +128,7 @@ class TestGcer2026:
             _row("a", seed_runs=[10], ds=[100, 0, 0]),
             _row("b", seed_runs=[10], ds=[40, 40, 40]),
         ]
-        run = run_formula_set(GCER_BOTBALL_FORMULA_SET, rows)
+        run = run_formula_set(GCER_BOTBALL_FORMULA_SET, _ranked(rows))
         assert run.ok, run.issues
         a, b = run.rows
         n = 2
@@ -121,6 +143,6 @@ class TestGcer2026:
             _row("a", seed_runs=[100, 100], de_rank=1, n_bracket=1, onsite=100, ds=[50, 50]),
             _row("b", seed_runs=[0], ds=[0]),
         ]
-        run = run_formula_set(GCER_BOTBALL_FORMULA_SET, rows)
+        run = run_formula_set(GCER_BOTBALL_FORMULA_SET, _ranked(rows))
         assert run.ok, run.issues
         assert run.rows[0]["overall"] == pytest.approx(4.0)

@@ -14,6 +14,7 @@ import {
   type SeasonRosterEntry,
   type TeamSeasonRegistration,
 } from "@/lib/teams";
+import CategoryOptions from "@/components/seasons/CategoryOptions";
 
 interface Member {
   id: string;
@@ -57,11 +58,11 @@ function RosterEditor({ teamId, seasonId, members, canEdit }: { teamId: string; 
   if (!draft) {
     return (
       <div className="text-sm">
-        <span className="text-gray-500">{t("roster.label")} </span>
+        <span className="text-leise">{t("roster.label")} </span>
         {roster?.length ? roster.map((r) => `${r.name}${r.role ? ` (${r.role})` : ""}`).join(", ") : "—"}
         {canEdit && (
           <button
-            className="ml-2 text-xs text-primary-600 dark:text-primary-400 hover:underline"
+            className="ml-2 text-xs text-akzent hover:underline"
             onClick={() => setDraft(Object.fromEntries((roster ?? []).map((r) => [r.member_id, r.role ?? ""])))}
           >
             {t("roster.edit")}
@@ -101,7 +102,7 @@ function RosterEditor({ teamId, seasonId, members, canEdit }: { teamId: string; 
         <button className="btn-primary text-xs" disabled={saveM.isPending} onClick={() => saveM.mutate(draft)}>{t("roster.save")}</button>
         <button className="btn-secondary text-xs" onClick={() => setDraft(null)}>{t("common:cancel")}</button>
       </div>
-      {saveM.isError && <p role="alert" className="text-red-600">{apiErrorMessage(saveM.error)}</p>}
+      {saveM.isError && <p role="alert" className="text-danger">{apiErrorMessage(saveM.error)}</p>}
     </div>
   );
 }
@@ -143,16 +144,16 @@ export function SeasonRegistrations({
 
   return (
     <section className="card overflow-hidden">
-      <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+      <h2 className="px-4 py-3 border-b font-semibold text-fg flex items-center gap-2">
         <Trophy className="w-4 h-4" /> {t("registrations.title", { count: registrations?.length ?? 0 })}
       </h2>
-      <ul className="divide-y dark:divide-gray-800">
+      <ul className="divide-y">
         {registrations?.map((reg) => (
           <li key={reg.id} className="px-4 py-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-medium text-gray-900 dark:text-white">{seasonName(reg.season_id)}</span>
+              <span className="font-medium text-fg">{seasonName(reg.season_id)}</span>
               <span className="badge-blue">{CATEGORY_LABEL[reg.category] ?? reg.category}</span>
-              <span className="text-gray-500">{levelName(reg.competition_level_id)}</span>
+              <span className="text-leise">{levelName(reg.competition_level_id)}</span>
               <span className={reg.confirmed ? "badge-green" : "badge-yellow"}>{reg.confirmed ? t("registrations.confirmed") : t("registrations.open")}</span>
               <span className={FEE_BADGE[reg.fee_status] ?? "badge-gray"}>{t("registrations.feeBadge", { status: FEE_LABEL[reg.fee_status] ?? reg.fee_status })}</span>
               {reg.category === "botball" && <span className="badge-gray">{t("registrations.kitBadge", { status: KIT_LABEL[reg.kit_status] ?? reg.kit_status })}</span>}
@@ -163,18 +164,18 @@ export function SeasonRegistrations({
               )}
             </div>
             {(reg.contact_name || reg.address) && editing !== reg.id && (
-              <p className="text-xs text-gray-500 whitespace-pre-line">
+              <p className="text-xs text-leise whitespace-pre-line">
                 {[reg.contact_name, reg.contact_email, reg.contact_phone].filter(Boolean).join(" · ")}
                 {reg.address ? `\n${reg.address}` : ""}
               </p>
             )}
             {editing === reg.id && form && (
-              <div className="space-y-3 rounded border p-3 dark:border-gray-700">
+              <div className="space-y-3 rounded border p-3">
                 {isOrganizer && (
                   <div className="grid gap-3 sm:grid-cols-4">
                     <label className="text-sm">{t("registrations.teamType")}
                       <select className="input mt-1" value={form.category} onChange={(e) => set("category", e.target.value)}>
-                        {Object.entries(CATEGORY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        <CategoryOptions seasonId={reg.season_id} current={form.category} />
                       </select>
                     </label>
                     <label className="text-sm">{t("registrations.fee")}
@@ -216,14 +217,14 @@ export function SeasonRegistrations({
                     <Save className="h-4 w-4" /> {t("common:save")}
                   </button>
                   <button className="btn-secondary text-sm" onClick={() => setEditing(null)}><X className="h-4 w-4" /> {t("common:cancel")}</button>
-                  {saveM.isError && <p role="alert" className="text-sm text-red-600">{apiErrorMessage(saveM.error)}</p>}
+                  {saveM.isError && <p role="alert" className="text-sm text-danger">{apiErrorMessage(saveM.error)}</p>}
                 </div>
               </div>
             )}
             <RosterEditor teamId={teamId} seasonId={reg.season_id} members={members} canEdit={canManage} />
           </li>
         ))}
-        {registrations?.length === 0 && <li className="px-4 py-8 text-center text-gray-400">{t("registrations.empty")}</li>}
+        {registrations?.length === 0 && <li className="px-4 py-8 text-center text-leise">{t("registrations.empty")}</li>}
       </ul>
     </section>
   );

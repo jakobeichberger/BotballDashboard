@@ -50,12 +50,12 @@ Was das Skript macht:
 |---|---|
 | 1 | Prüft root/Netz, installiert `git`, `curl`, `python3`, `age` |
 | 2 | Installiert Docker + Compose-Plugin (get.docker.com) |
-| 3 | Installiert Node.js 20 und pnpm 10.29.3 (Frontend-Build auf dem Host) |
+| 3 | Installiert Node.js 22 und pnpm 10.29.3 (Frontend-Build auf dem Host) |
 | 4 | Klont das Repository nach `/opt/botballdashboard` (bzw. `git pull`) |
 | 5 | Fragt Domain, Let's-Encrypt-Mail, DB-Name/-User, optional SMTP, Backup-Schlüssel, Monitoring und Admin-Konto ab und schreibt `.env` (Rechte 600). Erzeugt automatisch `APP_SECRET_KEY`, `JWT_SECRET_KEY`, ein 43-stelliges `POSTGRES_PASSWORD` (falls keines eingegeben), einen Fernet-Schlüssel für `PRINTER_CREDENTIAL_ENCRYPTION_KEY` und – ohne eigenen Schlüssel – ein age-Schlüsselpaar für Backups (`/root/botball-backup-identity.txt`). Setzt `COMPOSE_PROFILES` (`production`, optional `monitoring`). |
 | 6 | Legt `/data/db` (UID 70) und `/data/backups` an |
 | 7 | Baut das Frontend auf dem Host (`pnpm build`) |
-| 8 | Baut das Backend-Image für `backend`, `worker`, `beat`, `backup` und das nginx-Frontend-Image (`frontend/Dockerfile.prebuilt`) |
+| 8 | Baut das Backend-Image für `backend`, `worker`, `worker-ocr`, `beat`, `backup` und das nginx-Frontend-Image (`frontend/Dockerfile.prebuilt`) |
 | 9 | Startet `db` und `redis`, legt Rolle/Datenbank bei Bedarf über TCP an, gleicht das DB-Passwort mit `.env` ab und startet dann **alle** Dienste der aktiven Profile. Wartet auf den Healthcheck des Backends. |
 | 10 | Erzeugt VAPID-Schlüssel (bestehende bleiben erhalten), baut das Frontend damit neu |
 | 11 | Legt den ersten Admin an (`scripts/create_admin.py`) |
@@ -128,9 +128,13 @@ So prüfst du eine Installation auf deinem Proxmox-Host vollständig. Alle Befeh
    ```bash
    cd /opt/botballdashboard
    make backup-now
+   # Die Container laufen als UID 10001: Identität für sie lesbar bereitstellen.
+   install -d -m 700 -o 10001 -g 10001 /data/restore-work
+   install -m 400 -o 10001 -g 10001 /root/botball-backup-identity.txt /data/restore-work/age-identity
    docker compose run --rm --no-deps \
-     -v /root/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
+     -v /data/restore-work:/restore-work -e AGE_IDENTITY=/restore-work/age-identity \
      backup /app/scripts/restore-test.sh /backups/$(ls /data/backups | grep '\.age$' | tail -n1)
+   rm -rf /data/restore-work
    ```
    Erwartet: `Uploads verified: … files match the manifest` und `Restore test succeeded`.
 5. Im Browser `https://<domain>` öffnen und mit dem Admin-Konto anmelden. Dann unter Einstellungen → Saisons eine Saison und unter `/setup` ein Event anlegen.

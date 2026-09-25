@@ -1,18 +1,21 @@
 import asyncio
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.audit import log_action
 from core.domain_events import emit_event
 from core.exceptions import ConflictError, NotFoundError
+from core.logging import get_logger
 from modules.printing.adapters import cancel_printer_job
 from modules.printing.crypto import decrypt_credential, encrypt_credential
 from modules.printing.models import FilamentSpool, Printer, PrintJob, TeamSeasonPrintQuota
 from modules.scoring.service import get_default_event, resolve_event
 from modules.seasons.lifecycle import ensure_writable
+
+logger = get_logger(__name__)
 
 JOB_TRANSITIONS = {
     "pending": {"approved", "rejected", "cancelled"},
@@ -71,13 +74,6 @@ async def update_printer(db: AsyncSession, printer_id: str, **kwargs) -> Printer
     if api_key:
         printer.api_key_encrypted = encrypt_credential(api_key)
     return printer
-
-
-async def get_printer_api_key(db: AsyncSession, printer_id: str) -> str:
-    printer = await get_printer(db, printer_id)
-    if not printer.api_key_encrypted:
-        return ""
-    return decrypt_credential(printer.api_key_encrypted)
 
 
 # ── Print Jobs ────────────────────────────────────────────────────────────────
@@ -290,7 +286,8 @@ async def stop_on_printer(db: AsyncSession, job: PrintJob, user_id: str | None) 
             printer.device_id,
         )
         result = {"printer_cancel": "sent", "printer_message": message}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - adapters raise network and API errors alike
+        logger.warning("printer_cancel_failed", printer_id=str(printer.id), error=str(exc))
         result = {
             "printer_cancel": "failed",
             "printer_message": f"Could not stop the print on {printer.name}: {exc}"[:500],
@@ -333,12 +330,53 @@ def assert_file_replaceable(job: PrintJob, *, as_admin: bool) -> None:
         raise ConflictError("The file can only be changed while the job is pending")
 
 
-def attach_file(job: PrintJob, relative_path: str, file_name: str, size: int) -> PrintJob:
+def attach_file(
+    job: PrintJob,
+    relative_path: str,
+    file_name: str,
+    size: int,
+    bounding_box: tuple[float, float, float] | None = None,
+) -> PrintJob:
     job.file_path = relative_path
     job.file_name = file_name
     job.file_size_bytes = size
     job.file_url = f"/api/printing/jobs/{job.id}/file"
+    job.bbox_x_mm, job.bbox_y_mm, job.bbox_z_mm = bounding_box or (None, None, None)
     return job
+
+
+#: Jobs whose parts never reached a robot.
+_NOT_PRINTED = ("rejected", "cancelled", "failed")
+
+
+async def robot_parts_summary(db: AsyncSession, team_id: str, season_id: str) -> dict:
+    """Robot parts a team printed or queued in a season (game review: at most 6).
+
+    Spare copies for the judges and positioning jigs are not counted
+    (``purpose``); rejected, cancelled and failed jobs neither.
+    """
+    from modules.printing.rules import MAX_ROBOT_PARTS
+
+    result = await db.execute(
+        select(
+            func.coalesce(func.sum(PrintJob.part_count), 0),
+            func.coalesce(func.sum(case((PrintJob.stl_submitted.is_(False), 1), else_=0)), 0),
+        ).where(
+            PrintJob.team_id == team_id,
+            PrintJob.season_id == season_id,
+            PrintJob.purpose == "robot",
+            PrintJob.status.not_in(_NOT_PRINTED),
+        )
+    )
+    used, stl_missing = result.one()
+    return {
+        "team_id": team_id,
+        "season_id": season_id,
+        "used": int(used or 0),
+        "limit": MAX_ROBOT_PARTS,
+        "over_limit": int(used or 0) > MAX_ROBOT_PARTS,
+        "stl_missing": int(stl_missing or 0),
+    }
 
 
 # ── Quotas ────────────────────────────────────────────────────────────────────
@@ -356,7 +394,7 @@ async def _open_usage(db: AsyncSession, team_id: str, event_id: str | None) -> t
         )
     )
     count, grams = result.one()
-    return int(count), float(grams)
+    return int(count), float(grams or 0.0)
 
 
 async def _hard_limit_violation(

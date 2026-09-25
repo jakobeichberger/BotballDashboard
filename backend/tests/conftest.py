@@ -1,21 +1,33 @@
 """
 Pytest configuration and shared fixtures for BotballDashboard backend tests.
-Uses an in-memory SQLite database for fast, isolated unit tests.
-Integration tests use a dedicated PostgreSQL test database.
+
+The suite runs against one in-memory SQLite database. The schema is created
+once per test process; every test runs inside an outer transaction that is
+rolled back afterwards, and the session joins it through SAVEPOINTs, so code
+under test may commit (and roll back) freely without leaking rows into the
+next test. PostgreSQL-specific checks live in tests/postgres.
 """
 
 import logging
 import os
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 
 os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("UPLOAD_DIR", "/tmp/botball-dashboard-tests/uploads")
 # No Redis in the unit/integration suite: keep logged-out tokens in-process.
 os.environ.setdefault("TOKEN_DENYLIST_BACKEND", "memory")
+# Tests change data behind the API's back; cache tests switch it on explicitly.
+os.environ.setdefault("CACHE_BACKEND", "none")
+# Hashing dominated the suite's runtime at the production work factor (12).
+os.environ.setdefault("BCRYPT_ROUNDS", "4")
+# Debug logs of every request and query only slow the suite down.
+os.environ.setdefault("LOG_LEVEL", "WARNING")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from core.auth import create_access_token
@@ -34,26 +46,78 @@ test_engine = create_async_engine(
     echo=False,
 )
 
-TestSessionLocal = async_sessionmaker(
-    test_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False,
-)
+
+# The sqlite3 driver manages transactions itself and breaks SAVEPOINTs; let
+# SQLAlchemy emit BEGIN instead (SQLAlchemy docs, "Serializable isolation /
+# Savepoints / Transactional DDL" for aiosqlite).
+@event.listens_for(test_engine.sync_engine, "connect")
+def _sqlite_driver_autocommit(dbapi_connection, _record):
+    dbapi_connection.isolation_level = None
+
+
+@event.listens_for(test_engine.sync_engine, "begin")
+def _sqlite_explicit_begin(connection):
+    connection.exec_driver_sql("BEGIN")
+
+
+_schema_created = False
+
+
+async def _ensure_schema() -> None:
+    global _schema_created
+    if not _schema_created:
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        _schema_created = True
 
 
 @pytest_asyncio.fixture(scope="function")
 async def db() -> AsyncGenerator[AsyncSession, None]:
-    """Create all tables fresh for each test, yield session, drop all after."""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """A session whose work is rolled back after the test, commits included."""
+    await _ensure_schema()
+    async with test_engine.connect() as conn:
+        outer = await conn.begin()
+        session = AsyncSession(
+            bind=conn,
+            expire_on_commit=False,
+            autoflush=False,
+            # session.commit()/rollback() release/roll back a SAVEPOINT; the
+            # outer transaction stays open until the test is over.
+            join_transaction_mode="create_savepoint",
+        )
+        try:
+            yield session
+        finally:
+            await session.close()
+            if outer.is_active:
+                await outer.rollback()
 
-    async with TestSessionLocal() as session:
-        yield session
-        await session.commit()
 
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+class _EngineInTestTransaction:
+    """Stands in for ``core.database.engine`` inside one test's transaction.
+
+    Code that opens its own connection (``engine.begin()`` / ``engine.connect()``,
+    e.g. the audit fallback or the readiness probe) would otherwise ask the one
+    in-memory connection for a second transaction. Here it gets the test's
+    connection inside a SAVEPOINT instead, so its writes are visible to the test
+    and rolled back with everything else.
+    """
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    @asynccontextmanager
+    async def begin(self) -> AsyncIterator[AsyncConnection]:
+        connection = await self._session.connection()
+        async with connection.begin_nested():
+            yield connection
+
+    connect = begin
+
+
+@pytest_asyncio.fixture
+async def engine_in_test_transaction(db: AsyncSession) -> _EngineInTestTransaction:
+    return _EngineInTestTransaction(db)
 
 
 @pytest_asyncio.fixture(scope="function")

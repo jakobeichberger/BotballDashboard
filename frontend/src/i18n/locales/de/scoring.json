@@ -52,7 +52,9 @@
     "teamNotes": "Notizen zum Team",
     "editTeam": "{{name}} bearbeiten",
     "deleteTeam": "{{name}} löschen",
-    "confirmDeleteTeam": "{{name}} mit allen Scouting-Notizen und beobachteten Punkten löschen?"
+    "confirmDeleteTeam": "{{name}} mit allen Scouting-Notizen und beobachteten Punkten löschen?",
+    "confirmDeleteObservation": "Beobachtung ({{score}} Punkte) löschen?",
+    "confirmDeleteNote": "Notiz löschen?"
   },
   "scans": {
     "cropAlt": "Bildausschnitt für {{label}}",
@@ -82,16 +84,27 @@
       "not_integer": "keine Ganzzahl",
       "sum_out_of_range": "Summenregel verletzt",
       "anchors_not_found": "Anker nicht gefunden, Ausschnitt prüfen"
-    }
+    },
+    "template": "Vorlage"
   },
   "backToScoreboard": "Zurück zur Rangliste",
   "saving": "Speichern…",
   "aerial": {
     "title": "Aerial – Ergebnisse",
-    "hint": "Score = Durchschnitt aller Läufe. Nur Felder mit Wert ≥ 0 werden gespeichert.",
+    "hint": "Score = Durchschnitt aller Läufe (sofern die Kategorie nichts anderes festlegt). Leere Felder zählen nicht.",
     "run": "Run {{number}}",
-    "score": "Score (⌀ aller Läufe)",
-    "runFor": "Run {{number}} für {{team}}"
+    "score": "Score",
+    "runFor": "Run {{number}} für {{team}}",
+    "hintBest": "Score = Durchschnitt der besten {{count}} Läufe (Aerial Junior Rulebook 2026). Leere Felder zählen nicht.",
+    "category": "Kategorie",
+    "allTeams": "Alle Teams",
+    "addRun": "Lauf hinzufügen",
+    "kpi": {
+      "label": "Aerial im Überblick",
+      "teams": "Teams in der Ansicht",
+      "scored": "Mit Score",
+      "best": "Bester Score"
+    }
   },
   "de": {
     "title": "Double Elimination – Ergebnisse",
@@ -158,7 +171,20 @@
     "checkItemKey": "Prüfpunkt-Schlüssel",
     "removeCheckItem": "Prüfpunkt entfernen",
     "newCheckItem": "Neuer Prüfpunkt",
-    "save": "Regeln speichern"
+    "save": "Regeln speichern",
+    "seedingTiebreakers": "Tie-Breaker auch auf Seeding-Gleichstände anwenden",
+    "seedingTiebreakersHint": "Aus (Standard): gleiche Seed-Scores teilen sich den Rang, wie im Game Review und bei ECER 2026. Der Seeding-Rang der Gesamtwertung (seed_rank) ist immer der angezeigte Rang.",
+    "docMax": "Maximalpunkte der Dokumentation",
+    "docMaxHint": "Punkte laut Bewertungsbogen je Periode. Eingaben darüber werden abgelehnt; die Formeln rechnen damit in Prozent um (doc_p1_max …).",
+    "docMaxPart": {
+      "p1": "Periode 1",
+      "p2": "Periode 2",
+      "p3": "Periode 3",
+      "onsite": "Onsite"
+    },
+    "docMax2026": "Bewertungsbögen 2026 (100/95/100/100)",
+    "checklistPreset": "Vorlage für die Checkliste",
+    "applyChecklist": "Checkliste übernehmen"
   },
   "qualification": {
     "qualified": "{{count}} Team(s) für {{level}} qualifiziert.",
@@ -176,7 +202,9 @@
     "noTeams": "Keine Teams der Ausgangsstufe in dieser Saison registriert.",
     "notePlaceholder": "Notiz (z. B. ECER-Sieger)",
     "qualify": "Qualifizieren",
-    "register": "Qualifizierte Teams für dieses Event registrieren"
+    "register": "Qualifizierte Teams für dieses Event registrieren",
+    "confirmRevoke": "Qualifikation von {{team}} für {{level}} zurückziehen?",
+    "revokeShort": "Zurückziehen"
   },
   "schema": {
     "problem": {
@@ -186,7 +214,8 @@
       "sectionEmpty": "Bereich „{{name}}“ hat keine Felder.",
       "eitherTooFew": "„{{name}}“ braucht mindestens zwei Alternativen.",
       "keyInvalid": "Schlüssel „{{key}}“ ist ungültig (a–z, 0–9, _).",
-      "keyDuplicate": "Schlüssel „{{key}}“ ist doppelt."
+      "keyDuplicate": "Schlüssel „{{key}}“ ist doppelt.",
+      "sourceUnknown": "{{name}}: Feld „{{key}}“ gibt es in diesem Bereich nicht."
     },
     "sectionNumber": "Bereich {{number}}",
     "pieces": "Spielteile",
@@ -256,14 +285,17 @@
     "offset": "Offset",
     "offsetHint": "Offset (+n)",
     "multiplierMax": "Multiplikator-Maximum",
-    "removeMultiplier": "Multiplikator entfernen"
+    "removeMultiplier": "Multiplikator entfernen",
+    "triggeredBy": "Ausgelöst durch",
+    "triggeredByCheckbox": "Eigenes Kästchen"
   },
   "sheet": {
     "side": "Seite",
     "sideTotal": "Seite {{side}} · {{total}}",
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – es zählt die bessere Alternative",
-    "area": "Bereich"
+    "area": "Bereich",
+    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)"
   },
   "entry": {
     "offlineLabel": "{{team}} · Runde {{round}} · {{points}} P.",
@@ -295,7 +327,13 @@
     "open": "Offen",
     "confirm": "Bestätigen",
     "noPracticeRuns": "Noch keine Übungsläufe",
-    "noScores": "Noch keine Wertungen"
+    "noScores": "Noch keine Wertungen",
+    "confirmDelete": "Wertung von {{team}} (Runde {{round}}, {{points}} Punkte) endgültig löschen?",
+    "editFor": "Wertung von {{team}}, Runde {{round}} bearbeiten",
+    "confirmFor": "Wertung von {{team}}, Runde {{round}} bestätigen",
+    "deleteFor": "Wertung von {{team}}, Runde {{round}} löschen",
+    "schemaLoadFailed": "Das Wertungsschema konnte nicht geladen werden.",
+    "subtitle": "Wertungen erfassen, korrigieren und bestätigen."
   },
   "scoreboard": {
     "disqualified": "Disqualifiziert (rote Karte)",
@@ -327,7 +365,10 @@
       "aerial": "Aerial",
       "overall": "Gesamtranking"
     },
-    "noSeason": "Keine aktive Saison gefunden"
+    "noSeason": "Keine aktive Saison gefunden",
+    "unknownTeam": "Unbekanntes Team",
+    "subtitle": "Seeding und Gesamtwertung live – mit Exporten für Aushang und Archiv.",
+    "enterJbcShort": "JBC-Punkte"
   },
   "formulas": {
     "saveFailed": "Speichern fehlgeschlagen",
@@ -354,7 +395,9 @@
     "bracketWeightsHint": "Wird laut Game Review pro Turnier bekanntgegeben. Steht in den Formeln als <code>bracket_weight</code> zur Verfügung.",
     "saveWeights": "Gewichtung speichern",
     "bracketLabel": "Bracket {{index}}",
-    "bracketWeight": "Gewichtung {{index}}"
+    "bracketWeight": "Gewichtung {{index}}",
+    "keyLabel": "Schlüssel der Formel {{number}}",
+    "expressionLabel": "Ausdruck für {{key}}"
   },
   "scoreSheets": {
     "title": "Scoring-Sheets",
@@ -415,7 +458,8 @@
       "applyToSchema": "Felder direkt in das Scoring-Schema dieser Saison/Stufe übernehmen",
       "confirm": "{{count}} Felder bestätigen",
       "confirming": "Wird gespeichert …",
-      "confirmError": "Fehler beim Speichern. Bitte erneut versuchen."
+      "confirmError": "Fehler beim Speichern. Bitte erneut versuchen.",
+      "removeRow": "Zeile {{row}} ({{key}}) entfernen"
     },
     "layout": {
       "title": "OCR-Layout",
@@ -484,7 +528,10 @@
         "sumBounds": "Summenregel {{name}}: Minimum oder Maximum angeben.",
         "sumRange": "Summenregel {{name}}: Das Minimum liegt über dem Maximum."
       }
-    }
+    },
+    "downloadFailed": "Das PDF konnte nicht heruntergeladen werden.",
+    "downloadFor": "PDF von {{label}} herunterladen",
+    "deleteFor": "{{label}} löschen"
   },
   "penalty": {
     "legend": "Strafen",
@@ -527,5 +574,33 @@
     "description": "Beschreibung",
     "descriptionPlaceholder": "z. B. Servo, das nicht aus dem Kit stammt",
     "file": "Challenge erfassen"
+  },
+  "jbc": {
+    "title": "Junior Botball Challenge – Punkte",
+    "hint": "Punkte für gelöste Challenges je Team. Gleiche Punkte teilen sich den Rang. Die Gesamtwertung nutzt sie mit der Formel-Vorlage „Junior Botball Challenge 2026“ (jbc_points).",
+    "points": "Punkte für gelöste Challenges",
+    "pointsFor": "Punkte für {{team}}",
+    "rank": "Rang",
+    "fromChallenges": "Summe der erfassten Challenges",
+    "noTeams": "Keine Teams in einer JBC-Kategorie angemeldet.",
+    "kpi": {
+      "label": "JBC im Überblick",
+      "teams": "JBC-Teams",
+      "scored": "Mit Punkten",
+      "best": "Beste Punktzahl"
+    }
+  },
+  "timeouts": {
+    "title": "Timeout-Karten",
+    "hint": "Jedes Team hat eine Karte für einen einzigen 3-Minuten-Timeout im ganzen Turnier – vor Hands-Off am Tisch oder bei der On-Deck-Inspektion.",
+    "team": "Team mit Timeout",
+    "round": "Runde",
+    "roundN": "Runde {{round}}",
+    "reason": "Anlass",
+    "beforeHandsOff": "Vor Hands-Off",
+    "inspection": "Inspektion (illegales Teil)",
+    "record": "Timeout erfassen",
+    "revoke": "Timeout von {{team}} zurücknehmen",
+    "none": "Noch kein Team hat seine Timeout-Karte genutzt."
   }
 }

@@ -60,7 +60,7 @@ PriaOpenOverall = DEScore + SeedScore + ½ × PaperScore
 | Team-Typ | Paper-Pflicht (offiziell) | Paper-Pflicht (bei uns) | Score-Auswirkung |
 |---|---|---|---|
 | Botball | Empfohlen, freiwillig | **Pflicht** | AdaptedDocScore = ½·DocScore + ½·PaperScore |
-| Open (PRIA Open) | Pflicht | **Pflicht** | PRIA Overall = DE + Seeding + ½·PaperScore |
+| ECER Open (bis 2026 „PRIA Open“) | Pflicht | **Pflicht** | Open Overall = DE + Seeding + ½·PaperScore |
 
 > Beide Team-Typen müssen bei uns ein Paper einreichen. Das System erzwingt dies über eine Pflichtprüfung vor Ablauf der internen Paper-Deadline.
 
@@ -113,7 +113,7 @@ submitted → under_review → revision_requested → resubmitted → accepted |
 
 ### Deadline-Verwaltung
 
-Das System unterscheidet zwischen **offiziellen Deadlines** (vom Veranstalter KIPR/PRIA vorgegeben) und **internen Deadlines** (von uns selbst für den internen Review-Prozess gesetzt):
+Das System unterscheidet zwischen **offiziellen Deadlines** (von KIPR bzw. der ECER-Veranstalterin ERAA vorgegeben; 2026: Einreichung 15.3., Benachrichtigung über Annahme 29.3., finale Abgabe 5.4.) und **internen Deadlines** (von uns selbst für den internen Review-Prozess gesetzt):
 
 | Deadline-Typ | Beschreibung | Wer setzt sie |
 |---|---|---|

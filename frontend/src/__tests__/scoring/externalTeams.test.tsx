@@ -7,6 +7,8 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
+// Deleting asks first (lib/confirm); these tests confirm.
+vi.mock("@/lib/confirm", () => ({ confirmAction: vi.fn().mockResolvedValue(true) }));
 
 const external = [
   { id: "x1", season_id: "s1", name: "Robo Masters", number: "25-0538", country: "KW", school: null, source: "observed", notes: null, created_by: "mentor", created_at: "" },
@@ -35,7 +37,6 @@ describe("external scouting teams", () => {
     vi.clearAllMocks();
     (api.patch as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
     (api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   it("lets the creator edit the team but not delete it", async () => {

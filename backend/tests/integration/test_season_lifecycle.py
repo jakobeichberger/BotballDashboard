@@ -129,7 +129,7 @@ class TestArchivedIsReadOnly:
             ("post", f"/api/scoring/seasons/{season.id}/matches", {"team_id": team.id}),
             ("patch", f"/api/scoring/matches/{match_id}", {"notes": "x"}),
             ("delete", f"/api/scoring/matches/{match_id}", None),
-            ("put", f"/api/scoring/seasons/{season.id}/doc-scores/{team.id}", {"part1": 50}),
+            ("put", f"/api/scoring/events/{event.id}/doc-scores/{team.id}", {"part1": 50}),
             (
                 "put",
                 f"/api/scoring/formulas/seasons/{season.id}/botball/bracket-weights",

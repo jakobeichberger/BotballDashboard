@@ -14,6 +14,9 @@ alerting:
 scrape_configs:
   - job_name: botball-api
     metrics_path: /api/system/metrics
+    # The API answers text/plain without a format version; Prometheus 3
+    # needs to be told which text format that is.
+    fallback_scrape_protocol: PrometheusText0.0.4
     static_configs:
       - targets: ["backend:8000"]
   - job_name: botball-readiness
@@ -35,3 +38,11 @@ scrape_configs:
   - job_name: botball-backup
     static_configs:
       - targets: ["backup:9101"]
+  # Host disk space, memory and load (node-exporter service).
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+  # PostgreSQL connections, size and health (postgres-exporter service).
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]

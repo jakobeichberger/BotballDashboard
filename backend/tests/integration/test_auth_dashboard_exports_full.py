@@ -197,7 +197,7 @@ class TestPushSubscriptionRoutes:
         resp = await client.post(
             "/api/auth/me/push-subscriptions",
             headers=_headers(user),
-            json={"endpoint": "https://push/ep", "p256dh": "p", "auth": "a"},
+            json={"endpoint": "https://fcm.googleapis.com/fcm/send/ep", "p256dh": "p", "auth": "a"},
         )
         assert resp.status_code == 201
         assert resp.json() == {"status": "subscribed"}
@@ -208,13 +208,21 @@ class TestPushSubscriptionRoutes:
         await client.post(
             "/api/auth/me/push-subscriptions",
             headers=_headers(user),
-            json={"endpoint": "https://push/ep2", "p256dh": "p", "auth": "a"},
+            json={
+                "endpoint": "https://fcm.googleapis.com/fcm/send/ep2",
+                "p256dh": "p",
+                "auth": "a",
+            },
         )
         resp = await client.request(
             "DELETE",
             "/api/auth/me/push-subscriptions",
             headers=_headers(user),
-            json={"endpoint": "https://push/ep2", "p256dh": "p", "auth": "a"},
+            json={
+                "endpoint": "https://fcm.googleapis.com/fcm/send/ep2",
+                "p256dh": "p",
+                "auth": "a",
+            },
         )
         assert resp.status_code == 204
 

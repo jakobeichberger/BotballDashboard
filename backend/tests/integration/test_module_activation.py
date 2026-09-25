@@ -180,14 +180,14 @@ class TestPrintingAndBotsGating:
 
 class TestCompetitionGating:
     @pytest.mark.asyncio
-    async def test_aerial_routes_follow_the_default_event(
+    async def test_aerial_routes_follow_the_event_switch(
         self, client, db, auth_headers, season, event, team
     ):
-        url = f"/api/scoring/seasons/{season.id}/aerial-results/{team.id}"
+        url = f"/api/scoring/events/{event.id}/aerial-results/{team.id}"
         assert (await client.put(url, headers=auth_headers, json={"run1": 10})).status_code == 404
         # Public ranking of the module is gone as well.
         assert (
-            await client.get(f"/api/scoring/seasons/{season.id}/aerial-ranking")
+            await client.get(f"/api/scoring/events/{event.id}/aerial-ranking")
         ).status_code == 404
 
         season_row = await db.get(Season, season.id)
@@ -196,9 +196,7 @@ class TestCompetitionGating:
         assert (await client.put(url, headers=auth_headers, json={"run1": 10})).status_code == 200
 
     @pytest.mark.asyncio
-    async def test_event_query_parameter_selects_the_event(
-        self, client, db, auth_headers, season, event
-    ):
+    async def test_each_event_has_its_own_switch(self, client, db, auth_headers, season, event):
         season_row = await db.get(Season, season.id)
         season_row.use_documentation_scoring = True
         other = Event(
@@ -206,11 +204,9 @@ class TestCompetitionGating:
         )
         db.add(other)
         await db.commit()
-        base = f"/api/scoring/seasons/{season.id}/doc-scores"
-        assert (await client.get(base, headers=auth_headers)).status_code == 404
-        assert (
-            await client.get(f"{base}?event_id={other.id}", headers=auth_headers)
-        ).status_code == 200
+        path = "/api/scoring/events/{}/doc-scores"
+        assert (await client.get(path.format(event.id), headers=auth_headers)).status_code == 404
+        assert (await client.get(path.format(other.id), headers=auth_headers)).status_code == 200
 
     @pytest.mark.asyncio
     async def test_de_phase_needs_the_module(self, client, db, auth_headers, season, event):

@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { scoreSheetApi, type UploadScoreSheetParams } from '../api/scoreSheets'
 import { formatFileSize } from '@/lib/teams'
+import { apiErrorMessage } from '@/lib/errors'
 
 interface Props {
   seasonId: string
@@ -26,6 +27,7 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
   const [year, setYear] = useState(new Date().getFullYear())
   const [gameTheme, setGameTheme] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [fileError, setFileError] = useState('')
 
   const upload = useMutation({
     mutationFn: (params: UploadScoreSheetParams) => scoreSheetApi.upload(params),
@@ -37,9 +39,10 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
 
   const handleFile = (f: File) => {
     if (f.type !== 'application/pdf') {
-      alert(t('scoreSheets.upload.onlyPdf'))
+      setFileError(t('scoreSheets.upload.onlyPdf'))
       return
     }
+    setFileError('')
     setFile(f)
     // Pre-fill label from filename if empty
     if (!label) {
@@ -70,46 +73,51 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Drop zone */}
-      <div
+      {/* A label for the (visually hidden, still focusable) file input: click,
+          keyboard and drag & drop all work. */}
+      <label
+        htmlFor="score-sheet-file"
         className={[
-          'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors cursor-pointer',
+          'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors cursor-pointer focus-within:ring-2 focus-within:ring-primary-500',
           dragOver
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-            : 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
+            ? 'border-primary bg-info/[0.07]'
+            : 'border-rand-stark/70 hover:border-primary/60',
         ].join(' ')}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
       >
         <input
+          id="score-sheet-file"
           ref={fileInputRef}
           type="file"
           accept="application/pdf"
-          className="hidden"
+          className="sr-only"
+          aria-describedby={fileError ? 'score-sheet-file-error' : undefined}
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         />
         {file ? (
           <div className="text-center">
-            <p className="text-sm font-medium text-green-600 dark:text-green-400">✓ {file.name}</p>
-            <p className="text-xs text-gray-500 mt-1">{formatFileSize(file.size)}</p>
+            <p className="text-sm font-medium text-success"><span aria-hidden="true">✓ </span>{file.name}</p>
+            <p className="text-xs text-leise mt-1">{formatFileSize(file.size)}</p>
           </div>
         ) : (
           <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-leise">
               {t('scoreSheets.upload.dropzone')}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{t('scoreSheets.upload.limit')}</p>
+            <p className="text-xs text-leise mt-1">{t('scoreSheets.upload.limit')}</p>
           </div>
         )}
-      </div>
+      </label>
+      {fileError && <p id="score-sheet-file-error" role="alert" className="text-sm text-danger">{fileError}</p>}
 
       {/* Label */}
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label htmlFor="scoresheetuploadform-f1" className="block text-sm font-medium mb-1">
           {t('scoreSheets.upload.label')} *
         </label>
-        <input
+        <input id="scoresheetuploadform-f1"
           type="text"
           required
           value={label}
@@ -122,10 +130,10 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
       {/* Year + Theme */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="scoresheetuploadform-f2" className="block text-sm font-medium mb-1">
             {t('scoreSheets.upload.year')} *
           </label>
-          <input
+          <input id="scoresheetuploadform-f2"
             type="number"
             required
             value={year}
@@ -136,10 +144,10 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="scoresheetuploadform-f3" className="block text-sm font-medium mb-1">
             {t('scoreSheets.upload.gameTheme')}
           </label>
-          <input
+          <input id="scoresheetuploadform-f3"
             type="text"
             value={gameTheme}
             onChange={(e) => setGameTheme(e.target.value)}
@@ -166,8 +174,8 @@ export default function ScoreSheetUploadForm({ seasonId, competitionLevelId, onS
       </div>
 
       {upload.isError && (
-        <p className="text-sm text-red-600 dark:text-red-400">
-          {t('scoreSheets.upload.error')}
+        <p role="alert" className="text-sm text-danger">
+          {apiErrorMessage(upload.error, t('scoreSheets.upload.error'))}
         </p>
       )}
     </form>

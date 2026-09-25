@@ -2,7 +2,7 @@
 
 Webbasierte Plattform für die Organisation und Auswertung von Botball-Turnieren. Saisons, Events, Teams, Wertung am Spieltisch, Brackets, Paper-Review und 3D-Druck laufen in einem System. Das Backend ist FastAPI, das Frontend React (PWA). Betrieben wird es selbst gehostet mit Docker Compose.
 
-Stand: Migration `0029` · Änderungen: [CHANGELOG.md](CHANGELOG.md) · offene Aufgaben: [docs/todo.md](docs/todo.md)
+Stand: Migration `0034` · Änderungen: [CHANGELOG.md](CHANGELOG.md) · offene Aufgaben: [docs/todo.md](docs/todo.md)
 
 ---
 
@@ -109,10 +109,10 @@ Eine `.env` ist nicht nötig, `docker-compose.dev.yml` setzt `APP_ENV=developmen
 - API und Swagger UI: http://localhost:8000/api/docs (nur im Dev-Modus)
 - Login: `admin@dev.local` / `admin1234` (wird beim Start angelegt)
 
-Ohne Docker: im Backend `pip install -e ".[dev]"`, dann `alembic upgrade head` und `uvicorn main:app --reload`; im Frontend `pnpm install` und `pnpm dev`. Tests:
+Ohne Docker: im Backend `pip install -r requirements-dev.txt` (die gepinnten Versionen aus `make lock-backend`), dann `alembic upgrade head` und `uvicorn main:app --reload`; im Frontend (Node.js 22) `pnpm install` und `pnpm dev`. Tests:
 
 ```bash
-cd backend && pytest -q && ruff check . && ruff format --check . && mypy .
+cd backend && pytest -q -n auto && ruff check . && ruff format --check . && mypy .
 cd frontend && pnpm lint && pnpm exec tsc --noEmit && pnpm test && pnpm build
 ```
 
@@ -158,7 +158,7 @@ Traefik ─┬─ /api → backend (FastAPI) ─┬─ PostgreSQL
 - Benachrichtigungen über eine transaktionale Outbox, die der Worker zustellt.
 - Einheitliches Fehlerformat `{code, message, fieldErrors, requestId}`.
 
-Details: [Architektur](docs/documentation/technical/architecture.md) · [Modul-Registry](docs/documentation/technical/plugins.md) · [Datenbank](docs/documentation/technical/database.md) (60 Tabellen, ERD, Migrationen `0001`–`0029`) · [API-Referenz](docs/documentation/technical/api-reference.md).
+Details: [Architektur](docs/documentation/technical/architecture.md) · [Modul-Registry](docs/documentation/technical/plugins.md) · [Datenbank](docs/documentation/technical/database.md) (68 Tabellen, ERD, Migrationen `0001`–`0034`) · [API-Referenz](docs/documentation/technical/api-reference.md).
 
 ---
 
@@ -188,12 +188,20 @@ Admins können Rechte ändern und eigene Rollen anlegen. Vollständige Matrix un
 | [Architektur](docs/documentation/technical/architecture.md) · [API](docs/documentation/technical/api-reference.md) · [Datenbank](docs/documentation/technical/database.md) · [Modul-Registry](docs/documentation/technical/plugins.md) | Technik |
 | [SECURITY.md](docs/SECURITY.md) · [todo.md](docs/todo.md) · [done.md](docs/done.md) · [OPEN_ITEMS.md](docs/OPEN_ITEMS.md) · [audit-2026-09.md](docs/audit-2026-09.md) | Sicherheit und Projektstand |
 | [docs/modules/](docs/modules/) | Ursprüngliche Modul-Spezifikationen (01–11) |
+| [docs/schulung/](docs/schulung/README.md) | Schulung „Von der Frage zum Auftrag“: Arbeiten mit KI-Agenten, 60 Minuten mit Live-Demo (Gamedoc 2027 in die App übernehmen) |
 
 ### Referenzdokumente
 
 | Datei | Beschreibung |
 |---|---|
-| [`docs/assets/2026 Botball Game Review v1.3.pdf`](<docs/assets/2026 Botball Game Review v1.3.pdf>) | Game Review 2026 |
+| [`docs/assets/README.md`](docs/assets/README.md) | Quellen und Nutzungshinweis aller Referenzdokumente |
+| [`docs/assets/2026-Botball-Game-Review-v1.4.pdf`](docs/assets/2026-Botball-Game-Review-v1.4.pdf) | Game Review 2026 (v1.4) |
+| [`docs/assets/2026-Botball-Seeding-Score-Sheet.pdf`](docs/assets/2026-Botball-Seeding-Score-Sheet.pdf) · [`2026-Botball-Scoring-Examples.pdf`](docs/assets/2026-Botball-Scoring-Examples.pdf) | Score-Sheet und Scoring Examples 2026 |
+| [`docs/assets/2026 ECER Amendments v1.0.pdf`](<docs/assets/2026 ECER Amendments v1.0.pdf>) | ECER Amendments 2026 (ERAA) |
+| `docs/assets/2026-Botball-Period-{1,2,3}-Documentation.pdf` · [`2026-Botball-Onsite-Documentation.pdf`](docs/assets/2026-Botball-Onsite-Documentation.pdf) | Dokumentations-Bewertungsbögen 2026 (P1 /100, P2 /95, P3 /100, Onsite /100) |
+| [`docs/assets/aerial-junior-rulebook-2026-en-v1.pdf`](docs/assets/aerial-junior-rulebook-2026-en-v1.pdf) | Aerial Junior Rulebook 2026 |
+| [`docs/assets/Results 2026.xlsx`](<docs/assets/Results 2026.xlsx>) | Ergebnisse ECER 2026 (Referenz für die Vorlagen 2026 und den Ergebnis-Export) |
+| [`docs/assets/2026 Botball Game Review v1.3.pdf`](<docs/assets/2026 Botball Game Review v1.3.pdf>) | Game Review 2026, frühere Fassung v1.3 |
 | [`docs/assets/2026 Call for Papers v1.0.pdf`](<docs/assets/2026 Call for Papers v1.0.pdf>) | Call for Papers 2026 |
 | [`docs/assets/2025 Botball Game Review v1.2.pdf`](<docs/assets/2025 Botball Game Review v1.2.pdf>) | Game Review 2025 |
 | [`docs/assets/2025 Call for Papers v1.0.pdf`](<docs/assets/2025 Call for Papers v1.0.pdf>) | Call for Papers 2025 |

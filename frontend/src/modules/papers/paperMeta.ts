@@ -117,6 +117,8 @@ export interface PaperVersion {
   revision_number: number;
   file_name: string;
   file_size_bytes: number;
+  /** Pages of the PDF; null when it could not be read. */
+  page_count?: number | null;
   uploaded_by: string | null;
   uploaded_at: string;
   submitted_at: string | null;
@@ -149,13 +151,14 @@ export interface PaperDeadlineRow {
 
 export const DEADLINE_TYPE_LABEL = labelMap("papers:deadlineType", [
   "official_submission",
+  "official_notification",
   "official_final",
   "internal_draft",
   "internal_review",
   "internal_revision",
   "internal_final",
 ]);
-export const OFFICIAL_DEADLINE_TYPES = new Set(["official_submission", "official_final"]);
+export const OFFICIAL_DEADLINE_TYPES = new Set(["official_submission", "official_notification", "official_final"]);
 
 /** Internal deadlines that have passed: a warning, never a lock. */
 export function passedInternalDeadlines(deadline?: PaperDeadline | null) {
@@ -189,11 +192,11 @@ export interface AutoAssignResult {
 
 /** CSS class of one unified-diff line. */
 export function diffLineClass(line: string): string {
-  if (line.startsWith("+++") || line.startsWith("---")) return "text-gray-500";
-  if (line.startsWith("@@")) return "text-blue-600 dark:text-blue-400";
-  if (line.startsWith("+")) return "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200";
-  if (line.startsWith("-")) return "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200";
-  return "text-gray-600 dark:text-gray-400";
+  if (line.startsWith("+++") || line.startsWith("---")) return "text-leise";
+  if (line.startsWith("@@")) return "text-info";
+  if (line.startsWith("+")) return "bg-success/10 text-success";
+  if (line.startsWith("-")) return "bg-danger/10 text-danger";
+  return "text-leise";
 }
 
 export interface PaperDetail {
@@ -214,6 +217,8 @@ export interface PaperDetail {
   paper_rank: number | null;
   format_deduction: number;
   format_deduction_reason: string | null;
+  /** Chosen for the on-stage presentation (Best Paper Presentation). */
+  presented_on_stage?: boolean;
   finalized_at: string | null;
   reviews: PaperReview[];
   assignments: ReviewerAssignment[];
@@ -254,11 +259,5 @@ export function formatCountdown(cutoff: string | Date, now: Date = new Date()): 
   return i18n.t("papers:countdown.minutes", { mins: Math.max(mins, 1) });
 }
 
-/** Axios error → message for the user (the API returns `message`, FastAPI `detail`). */
-export function apiErrorMessage(error: unknown, fallback = i18n.t("common:actionFailed")): string {
-  const data = (error as { response?: { data?: { message?: string; detail?: unknown } } })
-    ?.response?.data;
-  if (typeof data?.message === "string") return data.message;
-  if (typeof data?.detail === "string") return data.detail;
-  return fallback;
-}
+/** Axios error → message for the user in the active language (see lib/errors). */
+export { apiErrorMessage } from "@/lib/errors";

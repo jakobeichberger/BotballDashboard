@@ -13,6 +13,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { translationNamespaces } from "@/core/plugins";
 import { labelMapKeys } from "@/i18n/labels";
+import { namespaces as configNamespaces } from "@/i18n/config";
 // Modules that build translated label maps at import time (labelMap()).
 import "@/lib/teams";
 import "@/lib/printing";
@@ -67,6 +68,10 @@ describe("translation files", () => {
     const en = [...(catalogs.en.get(ns) ?? [])].sort();
     expect(de.filter((key) => !en.includes(key)), "keys only in de").toEqual([]);
     expect(en.filter((key) => !de.includes(key)), "keys only in en").toEqual([]);
+  });
+
+  it("are all listed in i18n/config (the lazily loaded namespaces)", () => {
+    expect([...configNamespaces].sort()).toEqual([...catalogs.en.keys()].sort());
   });
 
   it("cover every namespace the module registry declares", () => {

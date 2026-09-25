@@ -2,14 +2,18 @@
 scouting and GCER qualification."""
 
 from fastapi import APIRouter, Depends, Query, Response
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission
+from core.auth import has_elevated_access, require_permission
 from core.database import get_db
+from core.files import safe_filename
 from core.live import publish_after_commit
+from modules.events.draft_access import DRAFT_READERS
 from modules.scoring import extras_service as svc
 from modules.scoring import sheet_templates
 from modules.scoring.extras_schemas import (
+    ChecklistPreset,
     DEPlacementEntry,
     ExternalTeamCreate,
     ExternalTeamResponse,
@@ -35,6 +39,8 @@ from modules.scoring.extras_schemas import (
     ScoutingNoteResponse,
     ScoutingNoteUpdate,
     TiebreakerPreset,
+    TimeoutCardCreate,
+    TimeoutCardResponse,
 )
 from modules.scoring.routes import _broadcast_ranking_update
 from modules.scoring.schemas import ScoringSchemaResponse
@@ -76,6 +82,14 @@ async def list_tiebreaker_presets(_=Depends(require_permission("scoring:read")))
     return svc.tiebreaker_presets()
 
 
+@router.get("/referee-checklist-presets", response_model=list[ChecklistPreset])
+async def list_checklist_presets(_=Depends(require_permission("scoring:read"))):
+    """Referee checklists transcribed from the game review (2026: v1.4)."""
+    from modules.scoring.rules_service import REFEREE_CHECKLIST_PRESETS
+
+    return [{"id": key, **value} for key, value in REFEREE_CHECKLIST_PRESETS.items()]
+
+
 # ── Schema templates and cloning ──────────────────────────────────────────────
 
 
@@ -88,11 +102,12 @@ async def list_schema_templates(_=Depends(require_permission("scoring:read"))):
 @router.get("/schemas", response_model=list[SchemaListEntry])
 async def list_schemas(
     season_id: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     """Active schema versions of every event/level — sources for "clone from"."""
-    return await svc.list_schemas(db, season_id)
+    include_drafts = await has_elevated_access(db, current_user, DRAFT_READERS)
+    return await svc.list_schemas(db, season_id, include_drafts=include_drafts)
 
 
 @router.post(
@@ -135,6 +150,41 @@ async def get_de_placement(
 
 
 # ── Parts challenges ──────────────────────────────────────────────────────────
+
+
+# ── Timeout cards ─────────────────────────────────────────────────────────────
+
+
+@router.get("/events/{event_id}/timeouts", response_model=list[TimeoutCardResponse])
+async def list_timeouts(
+    event_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Teams that turned in their timeout card at this event."""
+    return await svc.list_timeouts(db, event_id)
+
+
+@router.post("/events/{event_id}/timeouts", response_model=TimeoutCardResponse, status_code=201)
+async def record_timeout(
+    event_id: str,
+    body: TimeoutCardCreate,
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Record a team's timeout (one 3-minute timeout per tournament, 409 on a second)."""
+    return await svc.record_timeout(db, event_id, body.model_dump(), current_user.id)
+
+
+@router.delete("/events/{event_id}/timeouts/{team_id}", status_code=204)
+async def revoke_timeout(
+    event_id: str,
+    team_id: str,
+    _=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    await svc.revoke_timeout(db, event_id, team_id)
+    return Response(status_code=204)
 
 
 @router.get("/events/{event_id}/parts-challenges", response_model=list[PartsChallengeResponse])
@@ -313,11 +363,13 @@ async def export_scouting_report(
     db: AsyncSession = Depends(get_db),
 ):
     report = await svc.scouting_report(db, event_id, current_user)
-    pdf = build_scouting_pdf(report)
+    pdf = await run_in_threadpool(build_scouting_pdf, report)
+    # Never echo the raw path parameter into a header.
+    file_name = safe_filename(f"scouting-{report['event'].slug}.pdf", "scouting.pdf")
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="scouting-{event_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
     )
 
 

@@ -57,7 +57,7 @@ def decode_token(token: str, expected_type: str = "access") -> dict[str, Any]:
             options={"require": ["exp", "sub"]},
         )
     except jwt.PyJWTError:
-        raise UnauthorizedError("Invalid or expired token")
+        raise UnauthorizedError("Invalid or expired token") from None
     if payload.get("type") != expected_type:
         raise UnauthorizedError("Wrong token type")
     return payload
@@ -66,18 +66,18 @@ def decode_token(token: str, expected_type: str = "access") -> dict[str, Any]:
 # ── Dependencies ──────────────────────────────────────────────────────────────
 
 
-async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """Dependency that returns the current authenticated User ORM object."""
+async def authenticate_token(token: str, db: AsyncSession) -> tuple[Any, dict[str, Any]]:
+    """The active user an access token belongs to, and the token's claims.
+
+    Raises UnauthorizedError for an invalid, expired or revoked token (logout
+    deny-list, token_version) and for an inactive or deleted user. Roles and
+    permissions are loaded with the user. Used by get_current_user and by the
+    authenticated live stream, which receives its token in a message.
+    """
     # Import here to avoid circular imports at module load time
     from modules.auth.models import Role, User
 
-    if not credentials:
-        raise UnauthorizedError()
-
-    payload = decode_token(credentials.credentials)
+    payload = decode_token(token)
     user_id: str = payload.get("sub", "")
     # Tokens issued before the deny-list existed carry no jti; they expire
     # within JWT_ACCESS_TOKEN_EXPIRE_MINUTES anyway.
@@ -99,9 +99,20 @@ async def get_current_user(
     try:
         token_version = int(payload.get("tv", 0))
     except (TypeError, ValueError):
-        raise UnauthorizedError("Invalid or expired token")
+        raise UnauthorizedError("Invalid or expired token") from None
     if token_version != (user.token_version or 0):
         raise UnauthorizedError("Token has been revoked")
+    return user, payload
+
+
+async def get_current_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Dependency that returns the current authenticated User ORM object."""
+    if not credentials:
+        raise UnauthorizedError()
+    user, _ = await authenticate_token(credentials.credentials, db)
     return user
 
 

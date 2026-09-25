@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, FileText, Percent, Plus, Star, type LucideIcon } from "lucide-react";
+import clsx from "clsx";
+import { TONE_BORDER, TONE_ICON, type Tone } from "@/components/ui/tones";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -41,25 +43,30 @@ const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
 
 function PaperStatsPanel({ stats }: { stats: PaperStats }) {
   const { t } = useTranslation("papers");
-  const tiles = [
-    [t("stats.total"), String(stats.total)],
-    [t("stats.acceptanceRate"), pct(stats.acceptance_rate)],
-    [t("stats.avgFinal"), pct(stats.average_final_score)],
-    [t("stats.avgReview"), stats.average_review_score == null ? "—" : `${formatNumber(stats.average_review_score, oneDecimal)} / 10`],
-    [t("stats.openReviews"), String(stats.reviews_open)],
+  const tiles: Array<[string, string, LucideIcon, Tone]> = [
+    [t("stats.total"), String(stats.total), FileText, "primary"],
+    [t("stats.acceptanceRate"), pct(stats.acceptance_rate), CheckCircle2, "success"],
+    [t("stats.avgFinal"), pct(stats.average_final_score), Percent, "info"],
+    [t("stats.avgReview"), stats.average_review_score == null ? "—" : `${formatNumber(stats.average_review_score, oneDecimal)} / 10`, Star, "neutral"],
+    [t("stats.openReviews"), String(stats.reviews_open), Clock, "warning"],
   ];
   return (
     <section className="mb-6" aria-labelledby="paper-stats-heading">
-      <h2 id="paper-stats-heading" className="mb-2 text-lg font-semibold">{t("stats.title")}</h2>
-      <dl className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {tiles.map(([label, value]) => (
-          <div key={label} className="card p-3">
-            <dt className="text-xs text-gray-500">{label}</dt>
-            <dd className="text-xl font-semibold text-gray-900 dark:text-white">{value}</dd>
+      <h2 id="paper-stats-heading" className="section-title mb-3">{t("stats.title")}</h2>
+      <dl className="grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-5">
+        {tiles.map(([label, value, Icon, tone]) => (
+          <div key={label} className={clsx("stat-card", TONE_BORDER[tone])}>
+            <span className={clsx("stat-icon", TONE_ICON[tone])}>
+              <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+            </span>
+            <div className="flex min-w-0 flex-col-reverse">
+              <dt className="stat-label truncate">{label}</dt>
+              <dd className="stat-value truncate">{value}</dd>
+            </div>
           </div>
         ))}
       </dl>
-      <p className="mt-2 text-xs text-gray-500">
+      <p className="mt-2 text-xs text-leise">
         {t("stats.decisions", { accepted: stats.accepted, rejected: stats.rejected, disqualified: stats.disqualified })}{" "}
         {t("stats.perCriterion")}{" "}
         {REVIEW_CRITERIA.map((c) => `${c.label} ${formatNumber(stats.criterion_averages?.[c.key], oneDecimal)}`).join(" · ")}
@@ -132,11 +139,14 @@ export default function PapersPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <FileText className="w-6 h-6" />
-          {t("title")}
-        </h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <FileText className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("title")}
+          </h1>
+          <p className="page-subtitle">{t("subtitle")}</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {canAdmin && seasonId && (
             <>
@@ -146,6 +156,7 @@ export default function PapersPage() {
           )}
           {canWrite && (
             <button onClick={() => setOpen(true)} className="btn-primary" disabled={locked} title={locked ? t("deadlinePassed") : undefined}>
+              <Plus className="h-5 w-5" aria-hidden="true" />
               {t("submitNew")}
             </button>
           )}
@@ -154,7 +165,7 @@ export default function PapersPage() {
 
       {deadline && <div className="mb-6"><DeadlineBanner deadline={deadline} /></div>}
 
-      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise">{t("common:loading")}</p>}
 
       {seasonId && <PaperDeadlinesPanel seasonId={seasonId} canAdmin={canAdmin} />}
 
@@ -162,40 +173,47 @@ export default function PapersPage() {
 
       {canAdmin && seasonId && <AutoAssignPanel seasonId={seasonId} eventId={eventId} />}
 
-      {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">{t("workload.title")}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-gray-500">{t("workload.summary", { open: item.open, overdue: item.overdue, completed: item.completed })}</p></div>)}</div></section>}
+      {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">{t("workload.title")}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-leise">{t("workload.summary", { open: item.open, overdue: item.overdue, completed: item.completed })}</p></div>)}</div></section>}
 
-      <div className="card overflow-hidden">
+      <div className="card table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.title")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:status")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.round")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.version")}</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.submitted")}</th>
+              <th className="px-4 py-3 text-left font-semibold"><span className="sr-only">{t("col.open")}</span></th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.title")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.round")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.version")}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("col.submitted")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {papers?.map((paper) => (
-              <tr key={paper.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                  <EventLink to={`/papers/${paper.id}`} className="text-primary-700 hover:underline dark:text-primary-300">{paper.title}</EventLink>
+              <tr key={paper.id} className="hover:bg-flaeche-2">
+                <td className="px-4 py-3">
+                  <EventLink to={`/papers/${paper.id}`} className="row-action" aria-describedby={`paper-${paper.id}`} tabIndex={-1}>
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    {t("common:open")}
+                  </EventLink>
+                </td>
+                <td className="px-4 py-3 font-medium text-fg">
+                  <EventLink id={`paper-${paper.id}`} to={`/papers/${paper.id}`} className="text-akzent hover:underline">{paper.title}</EventLink>
                 </td>
                 <td className="px-4 py-3">
                   <span className={PAPER_STATUS_BADGE[paper.status] ?? "badge-gray"}>
                     {PAPER_STATUS_LABEL[paper.status] ?? paper.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500">#{paper.revision_number}</td>
-                <td className="px-4 py-3 text-gray-500">{paper.current_version ? `v${paper.current_version}` : "—"}</td>
-                <td className="px-4 py-3 text-gray-500">
+                <td className="px-4 py-3 text-leise">#{paper.revision_number}</td>
+                <td className="px-4 py-3 text-leise">{paper.current_version ? `v${paper.current_version}` : "—"}</td>
+                <td className="px-4 py-3 text-leise">
                   {formatDate(paper.submitted_at)}
                 </td>
               </tr>
             ))}
             {papers?.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-leise">
                   {t("empty")}
                 </td>
               </tr>
@@ -205,7 +223,7 @@ export default function PapersPage() {
       </div>
       <Modal open={open} title={t("create.title")} onClose={() => setOpen(false)}>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); createPaper.mutate(); }}>
-          <p className="text-xs text-gray-500">{t("create.hint")}</p>
+          <p className="text-xs text-leise">{t("create.hint")}</p>
           <label className="block text-sm font-medium">{t("create.team")}
             <select className="input mt-1 w-full" required value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
               <option value="">{t("common:pleaseChoose")}</option>
@@ -223,7 +241,7 @@ export default function PapersPage() {
           <label className="block text-sm font-medium">{t("create.pdf")}
             <input className="mt-1 block w-full text-sm" type="file" accept="application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
           </label>
-          {createPaper.isError && <p className="text-sm text-red-600">{apiErrorMessage(createPaper.error, t("create.failed"))}</p>}
+          {createPaper.isError && <p className="text-sm text-danger">{apiErrorMessage(createPaper.error, t("create.failed"))}</p>}
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>{t("common:cancel")}</button>
             <button type="submit" className="btn-primary" disabled={!event || !form.team_id || !form.title || createPaper.isPending}>{file ? t("create.submit") : t("create.draft")}</button>

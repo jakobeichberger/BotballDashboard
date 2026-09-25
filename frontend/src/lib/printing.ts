@@ -4,6 +4,8 @@ import { api } from "@/lib/api";
 import i18n from "@/i18n/config";
 import { labelMap } from "@/i18n/labels";
 import { formatFileSize } from "@/lib/teams";
+import { apiErrorMessage } from "@/lib/errors";
+import { downloadFile } from "@/lib/download";
 
 export type PrintJobStatus =
   | "pending"
@@ -27,6 +29,17 @@ export interface PrintJob {
   file_size_bytes: number | null;
   material: string;
   color: string | null;
+  /** robot parts count towards the game review's limit of 6; spares and jigs do not. */
+  purpose?: "robot" | "spare" | "jig" | string;
+  part_count?: number;
+  /** Bounding box of the uploaded STL in mm. */
+  bbox_x_mm?: number | null;
+  bbox_y_mm?: number | null;
+  bbox_z_mm?: number | null;
+  /** STL handed in with documentation Period 3. */
+  stl_submitted?: boolean;
+  /** material_not_allowed | color_not_greyscale | exceeds_build_volume */
+  rule_warnings?: string[];
   estimated_grams: number | null;
   actual_grams: number | null;
   estimated_minutes: number | null;
@@ -168,9 +181,9 @@ export function formatBytes(bytes: number | null | undefined): string {
   return bytes == null ? "—" : formatFileSize(bytes);
 }
 
+/** API error in the UI language (lib/errors). */
 export function apiError(error: unknown, fallback = i18n.t("common:actionFailed")): string {
-  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
-  return typeof detail === "string" ? detail : fallback;
+  return apiErrorMessage(error, fallback);
 }
 
 export async function uploadPrintFile(jobId: string, file: File): Promise<PrintJob> {
@@ -181,14 +194,5 @@ export async function uploadPrintFile(jobId: string, file: File): Promise<PrintJ
 
 /** The file endpoint needs the bearer token, so fetch it and save the blob. */
 export async function downloadPrintFile(job: Pick<PrintJob, "id" | "file_name">): Promise<void> {
-  const response = await api.get(`/printing/jobs/${job.id}/file`, { responseType: "blob" });
-  const href = URL.createObjectURL(new Blob([response.data]));
-  try {
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = job.file_name;
-    link.click();
-  } finally {
-    URL.revokeObjectURL(href);
-  }
+  await downloadFile(`/printing/jobs/${job.id}/file`, job.file_name);
 }

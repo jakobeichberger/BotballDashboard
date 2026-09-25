@@ -43,7 +43,8 @@
     "internal_draft": "Interner Entwurf",
     "internal_review": "Interne Review-Frist",
     "internal_revision": "Interne Überarbeitung",
-    "internal_final": "Interne finale Abgabe"
+    "internal_final": "Interne finale Abgabe",
+    "official_notification": "Benachrichtigung über Annahme"
   },
   "countdown": {
     "days": "{{days}} T {{hours}} Std",
@@ -96,12 +97,13 @@
     "type": "Art",
     "label": "Bezeichnung",
     "blockAfter": "Uploads danach sperren",
-    "create": "Frist anlegen"
+    "create": "Frist anlegen",
+    "confirmDelete": "Frist „{{name}}“ ({{date}}) löschen?"
   },
   "title": "Paper Review",
   "reviewsCsv": "Reviews CSV",
   "deadlinePassed": "Einreichungsfrist abgelaufen",
-  "submitNew": "+ Paper einreichen",
+  "submitNew": "Paper einreichen",
   "stats": {
     "title": "Statistik",
     "total": "Paper gesamt",
@@ -120,7 +122,8 @@
     "title": "Titel",
     "round": "Runde",
     "version": "Version",
-    "submitted": "Eingereicht"
+    "submitted": "Eingereicht",
+    "open": "Öffnen"
   },
   "empty": "Noch keine Paper eingereicht",
   "create": {
@@ -218,6 +221,11 @@
     "remind": "Erinnern",
     "remindReviewer": "{{name}} an das Review erinnern",
     "remindedAt": "erinnert am {{date}}",
-    "statusHistory": "Statusverlauf"
-  }
+    "statusHistory": "Statusverlauf",
+    "pages_one": "{{count}} Seite",
+    "pages_other": "{{count}} Seiten",
+    "presentedOnStage": "Präsentation auf der Bühne",
+    "presentedOnStageHint": "Vom Programmkomitee für die Präsentation ausgewählt (bis 10 min + 5 min Fragen). Nominiert das Paper für „Best Paper Presentation“."
+  },
+  "subtitle": "Eingereichte Paper prüfen, begutachten, bewerten und exportieren."
 }

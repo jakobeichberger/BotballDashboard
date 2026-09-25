@@ -103,16 +103,16 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # The same policy as the API (length, repetition, e-mail, common
-    # passwords). Outside production a weak password only warns, so the dev
+    # passwords). Only in development a weak password merely warns, so the dev
     # compose setup keeps working with its throwaway admin.
     from modules.auth.password_policy import password_problem
 
     problem = password_problem(password, args.email)
     if problem:
-        if os.environ.get("APP_ENV", "production") == "production":
+        if os.environ.get("APP_ENV", "production").strip().lower() != "development":
             print(f"[ERROR] {problem}", file=sys.stderr)
             sys.exit(1)
-        print(f"[WARN] {problem} (accepted because APP_ENV is not production)", file=sys.stderr)
+        print(f"[WARN] {problem} (accepted because APP_ENV is development)", file=sys.stderr)
 
     # Use uvloop if available (installed via uvicorn[standard]).
     # Python's default _UnixSelectorEventLoop calls socket.socketpair(AF_UNIX)

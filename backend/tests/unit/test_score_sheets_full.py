@@ -69,7 +69,7 @@ class TestFieldHelpers:
         # "Area 1" is a section header; the two ×-lines are scoring fields.
         # (Lines beginning with a section keyword like "solar"/"habitat" are
         # themselves treated as section headers, so we avoid those here.)
-        raw = "Area 1\n" "Sorted Poms ×5\n" "Botguy ×15\n" "page 1\n"
+        raw = "Area 1\nSorted Poms ×5\nBotguy ×15\npage 1\n"
         candidates = svc.detect_fields(raw)
         keys = {c.suggested_key for c in candidates}
         assert "sorted_poms" in keys

@@ -81,7 +81,7 @@ async def test_templates_endpoint_lists_2024_to_2026(client, auth_headers):
     assert resp.status_code == 200
     templates = {t["id"]: t for t in resp.json()}
     assert set(templates) == {"botball_2024", "botball_2025", "botball_2026"}
-    assert templates["botball_2026"]["complete"] is False
+    assert templates["botball_2026"]["complete"] is True
     assert templates["botball_2025"]["definition"]["sides"] == ["A", "B"]
 
 
@@ -362,6 +362,11 @@ async def test_seeding_ties_are_ordered_by_tiebreakers(
     await _score(
         client, auth_headers, event.id, rival.id, {"A.fry_potato": 1, "B.serving_full_trays": 1}
     )
+    # By default seeding ties share the rank (game review, ECER 2026).
+    ranking = (await client.get(f"/api/v1/events/{event.id}/ranking", headers=auth_headers)).json()
+    assert [(r["rank"], r["tiebreaker"]) for r in ranking] == [(1, None), (1, None)]
+
+    await _rules(client, auth_headers, season.id, seeding_tiebreakers=True)
     ranking = (await client.get(f"/api/v1/events/{event.id}/ranking", headers=auth_headers)).json()
     assert [(r["team_id"], r["rank"], r["tiebreaker"]) for r in ranking] == [
         (rival.id, 1, "Largest number of full Trays"),

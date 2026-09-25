@@ -2,6 +2,8 @@ import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  belongsTo,
+  claimQueuedScore,
   discardQueuedScore,
   enqueueScore,
   isQueueableScoreRequest,
@@ -65,7 +67,7 @@ describe("offline score queue", () => {
   });
 
   it("syncs pending entries and removes them on success", async () => {
-    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-aaaaaaaa" });
+    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-aaaaaaaa" }, "", "u1");
     const api = client();
     const result = await syncQueuedScores(api, "u1");
     expect(result).toEqual({ synced: 1, failed: 0, remaining: 0 });
@@ -74,8 +76,8 @@ describe("offline score queue", () => {
   });
 
   it("marks 409 as conflict and other 4xx as error, keeping them for the user", async () => {
-    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-conflict" });
-    await enqueueScore(URL_EVENT, { team_id: "t2", idempotency_key: "key-invalid1" });
+    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-conflict" }, "", "u1");
+    await enqueueScore(URL_EVENT, { team_id: "t2", idempotency_key: "key-invalid1" }, "", "u1");
     const api = client({
       post: async (_url, body) => {
         throw (body as { team_id: string }).team_id === "t1" ? httpError(409, "Idempotency key is already used") : httpError(422, "Unknown score field");
@@ -84,8 +86,9 @@ describe("offline score queue", () => {
     const result = await syncQueuedScores(api, "u1");
     expect(result).toEqual({ synced: 0, failed: 2, remaining: 2 });
     const byId = Object.fromEntries((await listQueuedScores()).map((entry) => [entry.id, entry]));
-    expect(byId["key-conflict"]).toMatchObject({ status: "conflict", error: "Idempotency key is already used" });
-    expect(byId["key-invalid1"]).toMatchObject({ status: "error", error: "Unknown score field" });
+    // The reason is shown in the UI language (lib/errors).
+    expect(byId["key-conflict"]).toMatchObject({ status: "conflict", error: expect.stringMatching(/^Konflikt/) });
+    expect(byId["key-invalid1"]).toMatchObject({ status: "error", error: "Die Eingaben sind ungültig." });
 
     // Failed entries are not retried automatically …
     await syncQueuedScores(api, "u1");
@@ -98,16 +101,16 @@ describe("offline score queue", () => {
   });
 
   it("keeps entries pending on network errors and server errors", async () => {
-    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-network" });
+    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-network" }, "", "u1");
     const api = client({ post: async () => { throw new Error("Network Error"); } });
     const result = await syncQueuedScores(api, "u1");
     expect(result.synced).toBe(0);
     const [entry] = await listQueuedScores();
-    expect(entry).toMatchObject({ status: "pending", attempts: 1, error: "Network Error" });
+    expect(entry).toMatchObject({ status: "pending", attempts: 1, error: expect.stringMatching(/nicht erreichbar/) });
   });
 
   it("does not sync while offline", async () => {
-    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-offline1" });
+    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-offline1" }, "", "u1");
     setOnline(false);
     const api = client();
     await syncQueuedScores(api, "u1");
@@ -115,7 +118,7 @@ describe("offline score queue", () => {
   });
 
   it("detects a score entered meanwhile for the same team and match", async () => {
-    await enqueueScore(URL_EVENT, { team_id: "t1", scheduled_match_id: "sm1", idempotency_key: "key-mine0001" });
+    await enqueueScore(URL_EVENT, { team_id: "t1", scheduled_match_id: "sm1", idempotency_key: "key-mine0001" }, "", "u1");
     const api = client({
       get: async () => ({ data: [{ id: "other", team_id: "t1", scheduled_match_id: "sm1", idempotency_key: "someone-else" }] }),
     });
@@ -134,11 +137,25 @@ describe("offline score queue", () => {
   });
 
   it("treats its own already-synced entry as no conflict", async () => {
-    await enqueueScore(URL_EVENT, { team_id: "t1", scheduled_match_id: "sm1", idempotency_key: "key-mine0002" });
+    await enqueueScore(URL_EVENT, { team_id: "t1", scheduled_match_id: "sm1", idempotency_key: "key-mine0002" }, "", "u1");
     const api = client({
       get: async () => ({ data: [{ id: "m1", team_id: "t1", scheduled_match_id: "sm1", idempotency_key: "key-mine0002" }] }),
     });
     expect((await syncQueuedScores(api, "u1")).synced).toBe(1);
+  });
+
+  it("never replays an entry without a known author until a user claims it", async () => {
+    await enqueueScore(URL_EVENT, { team_id: "t1", idempotency_key: "key-nobody01" });
+    const api = client();
+    expect(await syncQueuedScores(api, "u1")).toEqual({ synced: 0, failed: 0, remaining: 1 });
+    expect(api.post).not.toHaveBeenCalled();
+    // Visible to the signed-in user, who may claim (or discard) it …
+    const [entry] = await listQueuedScores();
+    expect(belongsTo(entry, "u1")).toBe(true);
+    expect(belongsTo(entry, null)).toBe(false);
+    await claimQueuedScore(entry.id, "u1");
+    // … and only then is it sent, as that user.
+    expect(await syncQueuedScores(api, "u1")).toEqual({ synced: 1, failed: 0, remaining: 0 });
   });
 
   it("only replays entries of the signed-in user", async () => {

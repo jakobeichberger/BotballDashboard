@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Search, Trash2, Users } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
@@ -9,7 +9,9 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
-import { CATEGORY_LABEL, EMPTY_TEAM_FILTERS as EMPTY_FILTERS, teamFilterParams, type TeamFilters } from "@/lib/teams";
+import { EMPTY_TEAM_FILTERS as EMPTY_FILTERS, teamFilterParams, type TeamFilters } from "@/lib/teams";
+import CategoryOptions from "@/components/seasons/CategoryOptions";
+import { confirmAction } from "@/lib/confirm";
 
 interface TeamForm {
   name: string;
@@ -189,24 +191,27 @@ export default function TeamsPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
-          <Users className="h-6 w-6" />
-          {t("title")}
-        </h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <Users className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("title")}
+          </h1>
+          <p className="page-subtitle">{t("subtitle")}</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {event?.season_id && <TeamExportButtons seasonId={event.season_id} seasonYear={event.slug} />}
           {canExportHistory && <MultiYearExportButton />}
           <EventLink to="/teams/matrix" className="btn-secondary">{t("matrix.title")}</EventLink>
-          {canWrite && <button onClick={openCreate} className="btn-primary">{t("add")}</button>}
+          {canWrite && <button onClick={openCreate} className="btn-primary"><Plus className="h-5 w-5" aria-hidden="true" />{t("add")}</button>}
         </div>
       </div>
 
-      <form role="search" className="card mb-6 flex flex-wrap items-end gap-3 p-4" onSubmit={(e) => e.preventDefault()}>
+      <form role="search" className="filter-bar mb-6" onSubmit={(e) => e.preventDefault()}>
         <label className="flex-1 min-w-[12rem] text-sm font-medium">
           {t("filter.search")}
           <span className="relative mt-1 block">
-            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-leise" aria-hidden="true" />
             <input
               type="search"
               className="input w-full pl-8"
@@ -242,7 +247,7 @@ export default function TeamsPage() {
           {t("registrations.teamType")}
           <select className="input mt-1 block" disabled={!filters.season_id} value={filters.category} onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}>
             <option value="">{t("filter.all")}</option>
-            {Object.entries(CATEGORY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            <CategoryOptions seasonId={filters.season_id || undefined} />
           </select>
         </label>
         {(filters.q || filters.country || filters.status || filters.season_id) && (
@@ -250,24 +255,24 @@ export default function TeamsPage() {
         )}
       </form>
 
-      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise">{t("common:loading")}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {teams?.map((team) => (
-          <article key={team.id} className="card p-4">
+          <article key={team.id} className="card min-w-0 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="truncate font-semibold text-gray-900 dark:text-white"><EventLink to={`/teams/${team.id}`} className="hover:underline">{team.name}</EventLink></h3>
-                {team.team_number && <span className="text-xs text-gray-500">#{team.team_number}</span>}
+                <h3 className="truncate font-semibold text-fg"><EventLink to={`/teams/${team.id}`} className="hover:underline">{team.name}</EventLink></h3>
+                {team.team_number && <span className="text-xs text-leise">#{team.team_number}</span>}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <span className={team.is_active ? "badge-green" : "badge-gray"}>
                   {team.is_active ? t("common:active") : t("common:inactive")}
                 </span>
                 {canWrite && (
                   <button
                     type="button"
-                    className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-700 dark:hover:bg-gray-800"
+                    className="grid h-11 w-11 place-items-center rounded-lg text-leise hover:bg-flaeche-2 hover:text-akzent"
                     aria-label={t("editLabel", { name: team.name })}
                     onClick={() => openEdit(team)}
                   >
@@ -276,17 +281,17 @@ export default function TeamsPage() {
                 )}
               </div>
             </div>
-            {team.school && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{team.school}</p>}
-            {team.city && <p className="mt-0.5 text-sm text-gray-500">{team.city}, {team.country}</p>}
+            {team.school && <p className="mt-1 text-sm text-leise">{team.school}</p>}
+            {team.city && <p className="mt-0.5 text-sm text-leise">{team.city}, {team.country}</p>}
             {team.competition_level_id && (
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-leise">
                 {t("levelLabel", { level: levelNames.get(team.competition_level_id) ?? team.competition_level_id })}
               </p>
             )}
           </article>
         ))}
         {teams?.length === 0 && (
-          <div className="col-span-3 py-12 text-center text-gray-400">
+          <div className="col-span-3 py-12 text-center text-leise">
             {filtered ? t("noneFound") : t("empty")}
           </div>
         )}
@@ -304,7 +309,7 @@ export default function TeamsPage() {
             editingTeamId ? updateTeam.mutate() : createTeam.mutate();
           }}
         >
-          {isLoadingDetails && <p className="text-sm text-gray-500">{t("form.loadingDetails")}</p>}
+          {isLoadingDetails && <p className="text-sm text-leise">{t("form.loadingDetails")}</p>}
           <div className="grid gap-4 sm:grid-cols-2">
             {(["name", "team_number", "school", "city", "country"] as const).map((field) => (
               <label key={field} className="block text-sm font-medium">
@@ -349,7 +354,7 @@ export default function TeamsPage() {
               {t("form.isActive")}
             </label>
           )}
-          {saveError && <p role="alert" className="text-sm text-red-600">{t("form.saveFailed")}</p>}
+          {saveError && <p role="alert" className="text-sm text-danger">{t("form.saveFailed")}</p>}
           <div className="flex justify-end gap-3 border-b pb-5">
             <button type="button" className="btn-secondary" onClick={closeModal}>{t("common:cancel")}</button>
             <button
@@ -366,21 +371,21 @@ export default function TeamsPage() {
           <section className="mt-5" aria-labelledby="team-members-heading">
             <h3 id="team-members-heading" className="mb-3 font-semibold">{t("members.title")}</h3>
             {teamDetails?.members?.length ? (
-              <ul className="mb-4 divide-y dark:divide-gray-800">
+              <ul className="mb-4 divide-y">
                 {teamDetails.members.map((member) => (
                   <li key={member.id} className="flex items-center justify-between gap-3 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{member.name}</p>
-                      <p className="truncate text-xs text-gray-500">
+                      <p className="truncate text-xs text-leise">
                         {MEMBER_ROLES.includes(member.role) ? t(`members.role.${member.role}`) : member.role}{member.email ? ` · ${member.email}` : ""}
                       </p>
                     </div>
                     <button
                       type="button"
-                      className="rounded p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10"
                       aria-label={t("members.remove", { name: member.name })}
                       disabled={removeMember.isPending}
-                      onClick={() => removeMember.mutate(member.id)}
+                      onClick={() => void confirmAction({ message: t("members.confirmRemove", { name: member.name }), tone: "danger", confirmLabel: t("detail.remove") }).then((ok) => ok && removeMember.mutate(member.id))}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -388,7 +393,7 @@ export default function TeamsPage() {
                 ))}
               </ul>
             ) : (
-              <p className="mb-4 text-sm text-gray-500">{t("members.empty")}</p>
+              <p className="mb-4 text-sm text-leise">{t("members.empty")}</p>
             )}
             <form
               className="grid gap-3 sm:grid-cols-3"
@@ -423,7 +428,7 @@ export default function TeamsPage() {
                 </select>
               </label>
               <div className="sm:col-span-3 flex items-center justify-between gap-3">
-                {addMember.isError && <p role="alert" className="text-sm text-red-600">{t("members.addFailed")}</p>}
+                {addMember.isError && <p role="alert" className="text-sm text-danger">{t("members.addFailed")}</p>}
                 <button
                   type="submit"
                   className="btn-secondary ml-auto"

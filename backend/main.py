@@ -8,6 +8,7 @@ Or via Docker (migrate-then-start.sh runs migrations first).
 
 import asyncio
 import re
+import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -16,24 +17,37 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
-from sqlalchemy.exc import IntegrityError
+from kombu.exceptions import KombuError
+from redis.exceptions import RedisError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from core.audit import AuditMiddleware
 from core.config import get_settings
-from core.logging import configure_logging
+from core.exceptions import RequestTooLargeError
+from core.logging import AccessLogMiddleware, configure_logging, get_logger
 from core.metrics import observe_request, render_metrics
 from core.modules import MODULES
+from core.redis_client import REDIS_ERRORS
+from core.request_limits import BodySizeLimitMiddleware, body_limit_bytes
+from core.transactions import CommitBeforeResponseMiddleware
+from modules.events.draft_access import hide_draft_events
 from modules.events.module_access import require_module
 
 settings = get_settings()
 configure_logging()
+logger = get_logger("api")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from core.logging import get_logger
+    from core.live import drain_pending_publishes
+    from core.task_queue import drain_pending_tasks
 
     get_logger("startup").info("BotballDashboard API starting", env=settings.app_env)
     yield
+    # Live events and Celery tasks queued by the last commits are still being sent.
+    await drain_pending_publishes()
+    await drain_pending_tasks()
     get_logger("shutdown").info("BotballDashboard API stopped")
 
 
@@ -46,13 +60,30 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Middleware, outermost first (Starlette runs the last one added outermost):
+#   CORSMiddleware                 CORS headers, also on errors and 413s
+#   AuditMiddleware                records successful mutations
+#   request_context_and_security   request id, Content-Length limit, security headers
+#   AccessLogMiddleware            binds the request id to every log line, logs the request
+#   BodySizeLimitMiddleware        counts streamed body bytes, 413 past the limit
+#   CommitBeforeResponseMiddleware holds write responses until get_db has committed
+
 
 def _request_id(request: Request) -> str:
     candidate = request.headers.get("x-request-id", "")
     return candidate if re.fullmatch(r"[A-Za-z0-9._-]{1,64}", candidate) else str(uuid.uuid4())
 
 
-_PRINT_UPLOAD_PATH = re.compile(r"/api/printing/jobs/[^/]+/file")
+# Innermost: a write response leaves only after the request's transaction is
+# committed (core.transactions), so the next request already reads the change.
+app.add_middleware(CommitBeforeResponseMiddleware)
+# Counts the body bytes as they arrive (chunked requests carry no
+# Content-Length). Inside everything but the commit guard: its 413 goes
+# through the regular error handler with request id and CORS headers.
+app.add_middleware(BodySizeLimitMiddleware)
+# Inside request_context_and_security, so it sees the request id that
+# middleware assigns; outside the body limit, so a 413 is logged as well.
+app.add_middleware(AccessLogMiddleware)
 
 
 @app.middleware("http")
@@ -62,22 +93,10 @@ async def request_context_and_security(request: Request, call_next):
         content_length = int(request.headers.get("content-length", "0") or 0)
     except ValueError:
         content_length = 0
-    # Print job files have their own, larger limit (PRINT_UPLOAD_MAX_MB); the
-    # upload route enforces it exactly while streaming the file to disk.
-    limit_mb = (
-        settings.print_upload_max_mb
-        if _PRINT_UPLOAD_PATH.fullmatch(request.url.path)
-        else settings.max_upload_size_mb
-    )
-    if request.method in {"POST", "PUT", "PATCH"} and content_length > (limit_mb + 1) * 1024 * 1024:
+    # An honest Content-Length is refused up front, before anything is read.
+    if content_length > body_limit_bytes(request.url.path):
         return JSONResponse(
-            status_code=413,
-            content={
-                "code": "request_too_large",
-                "message": "Request exceeds the configured size limit.",
-                "fieldErrors": {},
-                "requestId": request.state.request_id,
-            },
+            status_code=413, content=RequestTooLargeError.body(request.state.request_id)
         )
     response = await observe_request(request, call_next)
     response.headers["X-Request-ID"] = request.state.request_id
@@ -128,13 +147,20 @@ async def validation_error(request: Request, exc: RequestValidationError):
 
 
 @app.exception_handler(IntegrityError)
-async def integrity_error_handler(request: Request, _exc: IntegrityError):
+async def integrity_error_handler(request: Request, exc: IntegrityError):
     """Convert constraint violations without leaking database internals."""
     request_id = (
         getattr(getattr(request, "state", None), "request_id", None)
         if request is not None
         else None
     ) or (str(uuid.uuid4()) if request is None else _request_id(request))
+    # The client gets a generic message; the log keeps the constraint for debugging.
+    logger.warning(
+        "integrity_error",
+        path=request.url.path if request is not None else None,
+        request_id=request_id,
+        error=str(exc.orig)[:500],
+    )
     return JSONResponse(
         status_code=409,
         content={
@@ -146,42 +172,10 @@ async def integrity_error_handler(request: Request, _exc: IntegrityError):
     )
 
 
-@app.middleware("http")
-async def audit_successful_mutations(request: Request, call_next):
-    """Record successful API mutations without making audit failures user-facing."""
-    response = await call_next(request)
-    if (
-        not getattr(request.app.state, "testing", False)
-        and request.method in {"POST", "PUT", "PATCH", "DELETE"}
-        and request.url.path.startswith("/api/")
-        and response.status_code < 400
-    ):
-        try:
-            from core.audit import log_action
-            from core.auth import decode_token
-            from core.database import AsyncSessionLocal
-
-            user_id = None
-            authorization = request.headers.get("authorization", "")
-            if authorization.lower().startswith("bearer "):
-                try:
-                    user_id = decode_token(authorization.split(" ", 1)[1]).get("sub")
-                except Exception:
-                    user_id = None
-            async with AsyncSessionLocal() as session:
-                await log_action(
-                    session,
-                    f"{request.method} {request.url.path}",
-                    user_id=user_id,
-                    resource_type="api",
-                    resource_id=request.url.path,
-                    ip_address=request.client.host if request.client else None,
-                )
-                await session.commit()
-        except Exception:
-            # User-facing mutations must not fail when audit storage is unavailable.
-            pass
-    return response
+# Record successful API mutations. The audit row is written in the request's
+# own transaction (get_db) instead of a second session per write request; see
+# core.audit.AuditMiddleware. Registered here to keep its place in the stack.
+app.add_middleware(AuditMiddleware)
 
 
 # CORS
@@ -205,8 +199,12 @@ app.add_middleware(
 # Register all modules from one explicit, static registry.
 # Feature modules carry a per-event switch; their guard answers 404 for events
 # that have the module disabled.
+# Every router also hides draft events from users without events:write
+# (modules.events.draft_access).
 for module in MODULES:
-    guards = [Depends(require_module(module.event_module))] if module.event_module else []
+    guards = [Depends(hide_draft_events)]
+    if module.event_module:
+        guards.append(Depends(require_module(module.event_module)))
     app.include_router(module.router, prefix="/api", dependencies=guards)
 
 
@@ -216,12 +214,40 @@ async def health():
     return {"status": "ok", "version": app.version}
 
 
+# The worker check broadcasts over the broker; probes call readiness every few
+# seconds, so its result is reused for a short while.
+_WORKER_CHECK_TTL = 15.0
+_worker_check: tuple[float, bool] | None = None
+
+
+async def _worker_alive() -> bool:
+    global _worker_check
+    now = time.monotonic()
+    if _worker_check and now - _worker_check[0] < _WORKER_CHECK_TTL:
+        return _worker_check[1]
+
+    from core.celery_app import celery_app
+
+    try:
+        # limit=1: return as soon as one worker answers instead of waiting out
+        # the timeout for replies from every worker.
+        replies = await asyncio.wait_for(
+            asyncio.to_thread(lambda: celery_app.control.ping(timeout=1.0, limit=1)),
+            timeout=2,
+        )
+        alive = bool(replies)
+    except (KombuError, RedisError, OSError, TimeoutError) as exc:  # broker unreachable
+        logger.warning("readiness_worker_check_failed", error=str(exc))
+        alive = False
+    _worker_check = (time.monotonic(), alive)
+    return alive
+
+
 @app.get("/api/system/readiness", tags=["system"])
-async def readiness():
+async def readiness() -> JSONResponse:
     from redis.asyncio import Redis
     from sqlalchemy import text
 
-    from core.celery_app import celery_app
     from core.database import engine
 
     checks: dict[str, bool] = {"postgresql": False, "redis": False, "worker": False}
@@ -229,23 +255,16 @@ async def readiness():
         async with engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
         checks["postgresql"] = True
-    except Exception:
-        pass
+    except (SQLAlchemyError, OSError, TimeoutError) as exc:
+        logger.warning("readiness_postgresql_failed", error=str(exc))
     redis = Redis.from_url(settings.redis_url)
     try:
         checks["redis"] = bool(await redis.ping())
-    except Exception:
-        pass
+    except REDIS_ERRORS as exc:
+        logger.warning("readiness_redis_failed", error=str(exc))
     finally:
         await redis.aclose()
-    try:
-        replies = await asyncio.wait_for(
-            asyncio.to_thread(lambda: celery_app.control.inspect(timeout=1).ping()),
-            timeout=2,
-        )
-        checks["worker"] = bool(replies)
-    except Exception:
-        pass
+    checks["worker"] = await _worker_alive()
     ready = all(checks.values())
     return JSONResponse(
         status_code=200 if ready else 503,

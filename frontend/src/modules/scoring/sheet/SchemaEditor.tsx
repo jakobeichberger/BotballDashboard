@@ -8,6 +8,7 @@ import type { ScoringSchema } from "@/api/types";
 import type { CompetitionLevel, SchemaListEntry, SchemaTemplate } from "@/modules/scoring/extras/types";
 import { definitionProblems } from "./definitionProblems";
 import { fromFlatFields, inputFields, isEither, isStructured, type SectionMultiplier, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetSection } from "./calculator";
+import { apiErrorMessage } from "@/lib/errors";
 
 type Mode = "structured" | "json";
 
@@ -45,7 +46,7 @@ export default function SchemaEditor({ eventId, schema, onMessage }: Props) {
   const inputs = useMemo(() => (problems.length ? 0 : inputFields(draft).length), [draft, problems]);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["event-schema", eventId] }); queryClient.invalidateQueries({ queryKey: ["scoring-schemas"] }); };
-  const errorText = (error: any) => (error instanceof SyntaxError ? t("schema.invalidJson") : typeof error.response?.data?.detail === "string" ? error.response.data.detail : t("schema.saveFailed"));
+  const errorText = (error: any) => (error instanceof SyntaxError ? t("schema.invalidJson") : apiErrorMessage(error, t("schema.saveFailed")));
   const save = useMutation({
     mutationFn: async () => {
       let body: Record<string, unknown>;
@@ -100,11 +101,11 @@ export default function SchemaEditor({ eventId, schema, onMessage }: Props) {
     <section className="card p-5 lg:col-span-2" aria-labelledby="schema-editor-title">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 id="schema-editor-title" className="text-lg font-semibold">{t("schema.title")}</h2>
-        <div className="inline-flex overflow-hidden rounded-lg border dark:border-gray-700" role="tablist">
-          {(["structured", "json"] as Mode[]).map((item) => <button key={item} type="button" role="tab" aria-selected={mode === item} className={`px-3 py-1.5 text-sm ${mode === item ? "bg-primary-600 text-white" : ""}`} onClick={() => switchMode(item)}>{item === "structured" ? t("schema.editor") : "JSON"}</button>)}
+        <div className="inline-flex overflow-hidden rounded-lg border" role="tablist">
+          {(["structured", "json"] as Mode[]).map((item) => <button key={item} type="button" role="tab" aria-selected={mode === item} className={`px-3 py-1.5 text-sm ${mode === item ? "bg-primary text-white" : ""}`} onClick={() => switchMode(item)}>{item === "structured" ? t("schema.editor") : "JSON"}</button>)}
         </div>
       </div>
-      <p className="mb-4 text-sm text-gray-500">{t("schema.hint")} {t("schema.current", { current: schema ? t(schema.definition ? "schema.versionStructured" : "schema.versionFlat", { version: schema.version }) : t("schema.none") })}</p>
+      <p className="mb-4 text-sm text-leise">{t("schema.hint")} {t("schema.current", { current: schema ? t(schema.definition ? "schema.versionStructured" : "schema.versionFlat", { version: schema.version }) : t("schema.none") })}</p>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3">
         <label className="text-sm font-medium">{t("schema.level")}<select className="input mt-1 w-full" value={levelId} onChange={(e) => setLevelId(e.target.value)}><option value="">{t("schema.allLevels")}</option>{levels.data?.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>
@@ -121,8 +122,8 @@ export default function SchemaEditor({ eventId, schema, onMessage }: Props) {
             <SectionEditor key={index} section={section} index={index} count={draft.sections.length} onChange={(change) => updateSection(index, change)} onMove={(delta) => moveSection(index, delta)} onRemove={() => setDraft({ ...draft, sections: draft.sections.filter((_, i) => i !== index) })} />
           ))}
           <button type="button" className="btn-secondary" onClick={addSection}><Plus className="h-4 w-4" />{t("schema.section")}</button>
-          {problems.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
-          {!problems.length && <p className="text-xs text-gray-500">{t(draft.sides.length ? "schema.inputsBothSides" : "schema.inputs", { count: inputs })}</p>}
+          {problems.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-warning/[0.08] p-3 text-sm text-warning">{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
+          {!problems.length && <p className="text-xs text-leise">{t(draft.sides.length ? "schema.inputsBothSides" : "schema.inputs", { count: inputs })}</p>}
         </div>
       )}
       <button type="button" className="btn-primary mt-4" disabled={save.isPending || (mode === "structured" && problems.length > 0)} onClick={() => save.mutate()}>{t("schema.activate")}</button>
@@ -145,7 +146,7 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
   const updateMultiplier = (i: number, next: SectionMultiplier) => onChange({ multipliers: section.multipliers.map((m, j) => (j === i ? next : m)) });
   const newKey = (suffix: string) => `${section.key}_${suffix}`;
   return (
-    <fieldset className="rounded-lg border p-3 dark:border-gray-700">
+    <fieldset className="rounded-lg border p-3">
       <legend className="px-1 text-sm font-semibold">{t("schema.sectionNumber", { number: index + 1 })}</legend>
       <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
         <input aria-label={t("schema.sectionName")} className="input" value={section.label} onChange={(e) => onChange({ label: e.target.value })} placeholder={t("common:name")} />
@@ -156,7 +157,7 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
           <button type="button" className="btn-danger px-2" aria-label={t("schema.removeSection")} onClick={onRemove}><Trash2 className="h-4 w-4" /></button>
         </div>
       </div>
-      <p className="mb-1 text-xs font-medium uppercase text-gray-500">{t("schema.fields")}</p>
+      <p className="mb-1 text-xs font-medium uppercase text-leise">{t("schema.fields")}</p>
       <div className="space-y-2">
         {section.fields.map((field, i) => (
           <div key={i} className="grid gap-2 sm:grid-cols-[1.4fr_1fr_7rem_5rem_5rem_auto]">
@@ -170,10 +171,10 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
         ))}
         <button type="button" className="btn-secondary text-xs" onClick={() => onChange({ fields: [...section.fields, { key: newKey(`field_${section.fields.length + 1}`), label: t("schema.newField"), type: "count", multiplier: 1, min_value: 0, max_value: null, required: false }] })}><Plus className="h-3 w-3" />{t("schema.field")}</button>
       </div>
-      <p className="mb-1 mt-3 text-xs font-medium uppercase text-gray-500">{t("schema.multipliers")}</p>
+      <p className="mb-1 mt-3 text-xs font-medium uppercase text-leise">{t("schema.multipliers")}</p>
       <div className="space-y-2">
         {section.multipliers.map((multiplier, i) => (
-          <div key={i} className="rounded border border-dashed p-2 dark:border-gray-700">
+          <div key={i} className="rounded border border-dashed p-2">
             {isEither(multiplier) ? (
               <div className="space-y-2">
                 <div className="grid gap-2 sm:grid-cols-[1.4fr_1fr_auto]">
@@ -181,14 +182,14 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
                   <input aria-label={t("schema.groupKey")} className="input font-mono text-xs" value={multiplier.key} onChange={(e) => updateMultiplier(i, { ...multiplier, key: e.target.value })} />
                   <button type="button" className="btn-secondary px-2" aria-label={t("schema.removeGroup")} onClick={() => onChange({ multipliers: section.multipliers.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></button>
                 </div>
-                <p className="text-xs text-gray-500">{t("schema.eitherHint")}</p>
+                <p className="text-xs text-leise">{t("schema.eitherHint")}</p>
                 {multiplier.either.map((option, k) => (
                   <MultiplierRow key={k} value={option} onChange={(next) => updateMultiplier(i, { ...multiplier, either: multiplier.either.map((o, j) => (j === k ? next : o)) })} onRemove={() => updateMultiplier(i, { ...multiplier, either: multiplier.either.filter((_, j) => j !== k) })} />
                 ))}
                 <button type="button" className="btn-secondary text-xs" onClick={() => updateMultiplier(i, { ...multiplier, either: [...multiplier.either, { key: newKey(`option_${multiplier.either.length + 1}`), label: t("schema.alternative"), type: "count", factor: 1, offset: 0, max_value: null }] })}><Plus className="h-3 w-3" />{t("schema.alternative")}</button>
               </div>
             ) : (
-              <MultiplierRow value={multiplier} onChange={(next) => updateMultiplier(i, next)} onRemove={() => onChange({ multipliers: section.multipliers.filter((_, j) => j !== i) })} />
+              <MultiplierRow value={multiplier} fields={section.fields} onChange={(next) => updateMultiplier(i, next)} onRemove={() => onChange({ multipliers: section.multipliers.filter((_, j) => j !== i) })} />
             )}
           </div>
         ))}
@@ -201,10 +202,11 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
   );
 }
 
-function MultiplierRow({ value, onChange, onRemove }: { value: SheetMultiplier; onChange: (next: SheetMultiplier) => void; onRemove: () => void }) {
+function MultiplierRow({ value, fields, onChange, onRemove }: { value: SheetMultiplier; fields?: SheetField[]; onChange: (next: SheetMultiplier) => void; onRemove: () => void }) {
   const { t } = useTranslation("scoring");
   const counted = (value.type ?? "boolean") !== "boolean";
   return (
+    <div className="space-y-2">
     <div className="grid gap-2 sm:grid-cols-[1.4fr_1fr_8rem_4.5rem_4.5rem_4.5rem_auto]">
       <input aria-label={t("schema.multiplierName")} className="input" value={value.label} onChange={(e) => onChange({ ...value, label: e.target.value })} />
       <input aria-label={t("schema.multiplierKey")} className="input font-mono text-xs" value={value.key} onChange={(e) => onChange({ ...value, key: e.target.value })} />
@@ -213,6 +215,16 @@ function MultiplierRow({ value, onChange, onRemove }: { value: SheetMultiplier; 
       <input aria-label={t("schema.offset")} title={t("schema.offsetHint")} type="number" step="any" className="input" disabled={!counted} value={counted ? value.offset ?? 0 : ""} onChange={(e) => onChange({ ...value, offset: Number(e.target.value) })} />
       <input aria-label={t("schema.multiplierMax")} title={t("schema.maximum")} type="number" min={0} className="input" disabled={!counted} value={counted ? value.max_value ?? "" : ""} placeholder="max" onChange={(e) => onChange({ ...value, max_value: e.target.value === "" ? null : Number(e.target.value) })} />
       <button type="button" className="btn-secondary px-2" aria-label={t("schema.removeMultiplier")} onClick={onRemove}><Trash2 className="h-4 w-4" /></button>
+    </div>
+    {!counted && fields && (
+      <label className="flex flex-wrap items-center gap-2 text-xs text-leise">
+        {t("schema.triggeredBy")}
+        <select aria-label={t("schema.triggeredBy")} className="input w-auto text-xs" value={value.source ?? ""} onChange={(e) => { const next = { ...value }; if (e.target.value) next.source = e.target.value; else delete next.source; onChange(next); }}>
+          <option value="">{t("schema.triggeredByCheckbox")}</option>
+          {fields.map((field) => <option key={field.key} value={field.key}>{field.label}</option>)}
+        </select>
+      </label>
+    )}
     </div>
   );
 }

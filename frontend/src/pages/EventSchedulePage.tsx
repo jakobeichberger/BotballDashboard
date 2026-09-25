@@ -10,6 +10,7 @@ import AllianceStandings from "@/components/events/AllianceStandings";
 import type { BracketPhase, EventPhase, ScheduledMatch } from "@/api/types";
 import { phaseLabel } from "@/api/analytics";
 import { formatDateTime } from "@/i18n/format";
+import { apiErrorMessage } from "@/lib/errors";
 
 const MATCH_STATUSES = ["scheduled", "called", "running", "completed", "cancelled"];
 
@@ -66,7 +67,7 @@ export default function EventSchedulePage() {
       queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] });
     },
     onError: (reason: any) =>
-      setError(reason.response?.data?.detail ?? t("schedulePage.seedsFailed")),
+      setError(apiErrorMessage(reason, t("schedulePage.seedsFailed"))),
   });
   const recordResult = useMutation({
     mutationFn: async ({ match, teamId }: { match: ScheduledMatch; teamId: string }) =>
@@ -79,7 +80,7 @@ export default function EventSchedulePage() {
       refreshSchedule();
     },
     onError: (reason: any) =>
-      setError(reason.response?.data?.detail ?? t("schedulePage.resultFailed")),
+      setError(apiErrorMessage(reason, t("schedulePage.resultFailed"))),
   });
   const generate = useMutation({
     mutationFn: async () =>
@@ -93,7 +94,7 @@ export default function EventSchedulePage() {
       refreshSchedule();
     },
     onError: (reason: any) =>
-      setError(reason.response?.data?.detail ?? t("schedulePage.generateFailed")),
+      setError(apiErrorMessage(reason, t("schedulePage.generateFailed"))),
   });
   const updateMatch = useMutation({
     mutationFn: async (match: ScheduledMatch) =>
@@ -112,8 +113,7 @@ export default function EventSchedulePage() {
     },
     onError: (reason: any) =>
       setError(
-        reason.response?.data?.detail ??
-          t("schedulePage.updateFailed"),
+        apiErrorMessage(reason, t("schedulePage.updateFailed")),
       ),
   });
 
@@ -121,11 +121,14 @@ export default function EventSchedulePage() {
 
   return (
     <div className="mx-auto max-w-7xl p-4 md:p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <CalendarDays />
-          {t("schedulePage.title")}
-        </h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <CalendarDays className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("schedulePage.title")}
+          </h1>
+          <p className="page-subtitle">{t("schedulePage.subtitle")}</p>
+        </div>
         {canManage && (
           <button
             type="button"
@@ -140,7 +143,7 @@ export default function EventSchedulePage() {
         )}
       </div>
       {notice && (
-        <p role="status" className="mb-4 text-sm text-emerald-600">
+        <p role="status" className="mb-4 text-sm text-success">
           {notice}
         </p>
       )}
@@ -183,7 +186,7 @@ export default function EventSchedulePage() {
             {t("schedulePage.generate")}
           </button>
           {error && (
-            <p role="alert" className="text-sm text-red-600 md:col-span-3">
+            <p role="alert" className="text-sm text-danger md:col-span-3">
               {error}
             </p>
           )}
@@ -192,7 +195,7 @@ export default function EventSchedulePage() {
 
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[900px] text-sm">
-          <thead className="bg-gray-100 dark:bg-gray-800">
+          <thead className="bg-flaeche-2">
             <tr>
               {[
                 t("schedulePage.col.time"),
@@ -210,7 +213,7 @@ export default function EventSchedulePage() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {schedule.data?.map((match) => (
               <tr key={match.id}>
                 <td className="whitespace-nowrap px-4 py-3">
@@ -313,7 +316,7 @@ export default function EventSchedulePage() {
           </tbody>
         </table>
         {!schedule.isLoading && !schedule.data?.length && (
-          <p className="p-8 text-center text-gray-500">{t("schedulePage.empty")}</p>
+          <p className="p-8 text-center text-leise">{t("schedulePage.empty")}</p>
         )}
       </div>
 
@@ -327,12 +330,12 @@ export default function EventSchedulePage() {
             {t("schedulePage.brackets")}
           </h2>
           {canScore && (
-            <p className="mb-4 text-sm text-gray-500">
+            <p className="mb-4 text-sm text-leise">
               {t("schedulePage.bracketHint")}
             </p>
           )}
           {!canManage && error && (
-            <p role="alert" className="mb-3 text-sm text-red-600">
+            <p role="alert" className="mb-3 text-sm text-danger">
               {error}
             </p>
           )}

@@ -130,13 +130,10 @@ class TestLogoutDenylist:
         from core import rate_limit as rate_limit_module
 
         class Broken:
-            async def incr(self, *args):
+            async def eval(self, *args):
                 raise ConnectionError("down")
 
-            async def aclose(self):
-                pass
-
-        monkeypatch.setattr(rate_limit_module.Redis, "from_url", lambda *a, **k: Broken())
+        monkeypatch.setattr(rate_limit_module, "_client", lambda: Broken())
         request = SimpleNamespace(
             app=SimpleNamespace(state=SimpleNamespace(testing=False)),
             client=SimpleNamespace(host="1.2.3.4"),

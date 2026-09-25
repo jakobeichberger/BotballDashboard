@@ -92,3 +92,48 @@ describe("TeamDetailPage – mentor linking", () => {
     expect(api.get).not.toHaveBeenCalledWith("/auth/users");
   });
 });
+
+describe("TeamDetailPage – editing the team", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockApi();
+  });
+
+  it("lets a mentor edit the profile but not the organizer fields", async () => {
+    (api.get as any).mockImplementation((url: string) => {
+      if (url === "/teams/t1") return Promise.resolve({ data: team });
+      if (url === "/teams/mine") return Promise.resolve({ data: [{ id: "t1" }] });
+      return Promise.resolve({ data: [] });
+    });
+    useAuthStore.setState({
+      user: {
+        id: "mentor",
+        email: "m@x",
+        display_name: "Mentor",
+        is_superuser: false,
+        preferred_language: "de",
+        theme: "light",
+        roles: [{ id: "r", name: "mentor", description: null }],
+        permissions: ["teams:read", "teams:write"],
+      },
+    });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: /bearbeiten/i }));
+    expect(screen.queryByText("Team-Nr.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Notizen")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /speichern/i }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+    const [, body] = (api.patch as any).mock.calls[0];
+    expect(body).toEqual({ name: "Team Alpha", school: "HTL", city: "", country: "AT" });
+  });
+
+  it("lets organizers edit team number and notes", async () => {
+    useAuthStore.setState({
+      user: { id: "admin", display_name: "Admin", is_superuser: true, roles: [] } as any,
+    });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: /bearbeiten/i }));
+    expect(screen.getByText("Team-Nr.")).toBeInTheDocument();
+    expect(screen.getByText("Notizen")).toBeInTheDocument();
+  });
+});

@@ -1,7 +1,5 @@
 {
   "title": "Dashboard",
-  "quickStart": "Event workspace",
-  "quickStartHint": "The metrics and modules shown here are based on your concrete permissions.",
   "role": {
     "admin": "Administrator",
     "reviewer": "Reviewer",
@@ -102,5 +100,7 @@
     "printFailed": "{{count}} failed"
   },
   "upcomingDeadlines": "Upcoming deadlines",
-  "calendar": "Calendar"
+  "calendar": "Calendar",
+  "enterScores": "Enter scores",
+  "modules": "Modules"
 }

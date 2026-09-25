@@ -5,11 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import get_current_user, has_elevated_access, require_permission
 from core.database import get_db
+from core.files import safe_filename
+from modules.seasons import categories as category_svc
 from modules.seasons import portability, service
 from modules.seasons.schemas import (
     CompetitionLevelCreate,
     CompetitionLevelResponse,
     CompetitionLevelUpdate,
+    SeasonCategoryEntry,
     SeasonClone,
     SeasonCreate,
     SeasonEventCreate,
@@ -80,11 +83,10 @@ async def export_season(
 ):
     """Complete JSON snapshot of the season (events, registrations, results, …)."""
     data = await portability.export_season(db, season_id)
+    file_name = safe_filename(f"season-{season_id}.json", "season.json")
     return JSONResponse(
         jsonable_encoder(data),
-        headers={
-            "Content-Disposition": f'attachment; filename="season-{season_id}.json"',
-        },
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
     )
 
 
@@ -195,3 +197,30 @@ async def delete_season_event(
     db: AsyncSession = Depends(get_db),
 ):
     await service.delete_event(db, season_id, event_id)
+
+
+# ── Category registry ─────────────────────────────────────────────────────────
+
+
+@router.get("/{season_id}/categories", response_model=list[SeasonCategoryEntry])
+async def list_season_categories(
+    season_id: str,
+    current_user=Depends(require_permission("seasons:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """The season's categories (keys, labels, kind, scoring defaults)."""
+    await service.get_season(db, season_id, include_drafts=await _sees_drafts(db, current_user))
+    return await category_svc.list_categories(db, season_id)
+
+
+@router.put("/{season_id}/categories", response_model=list[SeasonCategoryEntry])
+async def replace_season_categories(
+    season_id: str,
+    body: list[SeasonCategoryEntry],
+    _=Depends(require_permission("seasons:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    await service.get_season(db, season_id, include_drafts=True)
+    return await category_svc.replace_categories(
+        db, season_id, [entry.model_dump() for entry in body]
+    )

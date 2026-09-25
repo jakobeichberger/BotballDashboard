@@ -1,7 +1,7 @@
 # Profiles:
-#   (none)      traefik, db, redis, backend, worker, beat, frontend
+#   (none)      traefik, db, redis, backend, worker, worker-ocr, beat, frontend
 #   production  + backup      (encrypted daily backups, needs AGE_RECIPIENT)
-#   monitoring  + prometheus, blackbox, alertmanager
+#   monitoring  + prometheus, blackbox, alertmanager, node-exporter, postgres-exporter
 # Enable them with COMPOSE_PROFILES in .env (e.g. COMPOSE_PROFILES=production,monitoring)
 # or --profile on the command line.
 
@@ -13,12 +13,40 @@ x-logging: &default-logging
     max-size: ${LOG_MAX_SIZE:-10m}
     max-file: "${LOG_MAX_FILE:-5}"
 
+# The application containers (backend image) run as the unprivileged user
+# "app" (uid 10001, see backend/Dockerfile) with every Linux capability
+# dropped and without privilege escalation. backend, worker, worker-ocr and
+# beat also get a read-only root filesystem; they write only to their volumes
+# and /tmp.
+x-hardening: &hardening
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+# One-shot init containers that hand volumes created by older (root) releases,
+# or host directories created by root, to uid 10001. They run as root with
+# only CHOWN and DAC_READ_SEARCH, no network, and exit.
+x-ownership-init: &ownership-init
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  user: "0:0"
+  entrypoint: ["sh", "/app/scripts/fix-volume-ownership.sh"]
+  cap_drop: [ALL]
+  cap_add: [CHOWN, DAC_READ_SEARCH]
+  security_opt: ["no-new-privileges:true"]
+  network_mode: none
+  mem_limit: 128m
+  restart: "no"
+  logging: *default-logging
+
 services:
   # ── Reverse Proxy ─────────────────────────────────────────────
   traefik:
-    image: traefik:v2.11
+    image: traefik:v3.7
     command:
       - "--api.insecure=false"
+      # /ping for the container healthcheck (entrypoint "traefik", not published).
+      - "--ping=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
@@ -37,6 +65,11 @@ services:
       - letsencrypt:/letsencrypt
     restart: unless-stopped
     logging: *default-logging
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # ── Database ──────────────────────────────────────────────────
   db:
@@ -80,9 +113,16 @@ services:
 
   # ── Backend API ───────────────────────────────────────────────
   backend:
+    <<: *hardening
     build:
       context: ./backend
       dockerfile: Dockerfile
+    read_only: true
+    # Multipart uploads are spooled to /tmp (print files up to
+    # PRINT_UPLOAD_MAX_MB); tmpfs pages count towards mem_limit.
+    tmpfs:
+      - /tmp:size=${BACKEND_TMP_SIZE:-512m}
+    mem_limit: ${BACKEND_MEM_LIMIT:-1536m}
     env_file:
       - path: .env
         required: false   # optional so dev works without a .env file
@@ -98,6 +138,8 @@ services:
       - uploads:/app/uploads
       - vapid:/app/vapid
     depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -106,9 +148,26 @@ services:
     logging: *default-logging
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`) && !Path(`/api/system/metrics`)"
+      # Metrics and readiness are internal: Prometheus, the Blackbox exporter
+      # and the Docker healthchecks reach backend:8000 directly.
+      - "traefik.http.routers.api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`) && !Path(`/api/system/metrics`) && !Path(`/api/system/readiness`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=le"
+      - "traefik.http.routers.api.service=api"
+      # Request bodies above max(MAX_UPLOAD_SIZE_MB, PRINT_UPLOAD_MAX_MB) + 2 MB
+      # are refused by Traefik already (413); the API enforces the exact
+      # per-route limits itself while the body streams in. Raise
+      # API_MAX_BODY_BYTES together with PRINT_UPLOAD_MAX_MB.
+      - "traefik.http.routers.api.middlewares=api-body-limit"
+      - "traefik.http.middlewares.api-body-limit.buffering.maxRequestBodyBytes=${API_MAX_BODY_BYTES:-106954752}"
+      - "traefik.http.middlewares.api-body-limit.buffering.memRequestBodyBytes=2097152"
+      # The live WebSockets (public per slug, authenticated per event id; no
+      # request body) bypass the buffering middleware.
+      - "traefik.http.routers.api-ws.rule=Host(`${DOMAIN}`) && PathRegexp(`^/api/v1/(public/events/[a-z0-9-]+|events/[A-Za-z0-9-]+)/ws$$`)"
+      - "traefik.http.routers.api-ws.priority=1000"
+      - "traefik.http.routers.api-ws.entrypoints=websecure"
+      - "traefik.http.routers.api-ws.tls.certresolver=le"
+      - "traefik.http.routers.api-ws.service=api"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
     healthcheck:
       # Liveness only; /api/system/readiness (DB, Redis, worker) is probed by
@@ -119,12 +178,21 @@ services:
       retries: 3
       start_period: 3m
 
-  # ── Background worker (local OCR + printer polling) ───────────
+  # ── Background workers (see core/celery_app.py for the queues) ─
+  # worker: notifications, printer polling and other periodic jobs.
+  # worker-ocr: score-sheet OCR only, so a pile of scans never delays them.
   worker:
+    <<: *hardening
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A core.celery_app:celery_app worker --loglevel=INFO --concurrency=2
+    command: celery -A core.celery_app:celery_app worker -Q default,periodic --loglevel=INFO --concurrency=2
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    # No OCR here any more (worker-ocr); notifications, printer polling and
+    # housekeeping need far less.
+    mem_limit: ${WORKER_MEM_LIMIT:-1g}
     env_file:
       - path: .env
         required: false
@@ -132,10 +200,53 @@ services:
       REDIS_URL: redis://redis:6379/0
       # The worker delivers Web Push, so it needs the same VAPID key as the API.
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-/app/vapid/private_key.pem}
+      # OpenCV refuses to decode larger images (decompression bombs); the OCR
+      # code checks the same 40 MP limit from the image header first.
+      OPENCV_IO_MAX_IMAGE_PIXELS: "40000000"
     volumes:
       - uploads:/app/uploads
       - vapid:/app/vapid:ro
     depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A core.celery_app:celery_app inspect ping -d celery@$$HOSTNAME | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker-ocr:
+    <<: *hardening
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A core.celery_app:celery_app worker -Q ocr --loglevel=INFO --concurrency=2
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    # OCR of two score sheets at a time; a runaway decode is killed here
+    # instead of taking the whole host down.
+    mem_limit: ${OCR_WORKER_MEM_LIMIT:-2g}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      # OpenCV refuses to decode larger images (decompression bombs); the OCR
+      # code checks the same 40 MP limit from the image header first.
+      OPENCV_IO_MAX_IMAGE_PIXELS: "40000000"
+    # Scans and templates only; no VAPID key (this worker sends no push).
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -149,22 +260,38 @@ services:
       retries: 3
 
   beat:
+    <<: *hardening
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A core.celery_app:celery_app beat --loglevel=INFO
+    # The schedule file lives in the writable /tmp (the root is read-only).
+    command: celery -A core.celery_app:celery_app beat --loglevel=INFO --schedule /tmp/celerybeat-schedule
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    mem_limit: ${BEAT_MEM_LIMIT:-256m}
     env_file:
       - path: .env
         required: false
     environment:
       REDIS_URL: redis://redis:6379/0
     depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
+    healthcheck:
+      # Beat touches /tmp/celerybeat-heartbeat for every task the broker accepts
+      # (the outbox task is due every 10 s); a stale file means beat hangs.
+      test: ["CMD", "python", "scripts/beat_healthcheck.py"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 2m
 
   # ── Encrypted backups (profile "production") ─────────────────
   # backup_scheduler.py runs scripts/backup.sh every BACKUP_INTERVAL_SECONDS,
@@ -173,11 +300,15 @@ services:
   # and exposes botball_backup_* metrics on :9101 for Prometheus. With
   # BACKUP_OFFSITE_TARGET it copies every new archive off-site as well.
   backup:
+    <<: *hardening
     profiles: ["production"]
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: ["python", "scripts/backup_scheduler.py", "run"]
+    # Not read-only: backup.sh builds the archive in a scratch directory that
+    # can be as large as the uploads.
+    mem_limit: ${BACKUP_MEM_LIMIT:-512m}
     env_file:
       - path: .env
         required: false
@@ -207,6 +338,10 @@ services:
       - ${BACKUP_HOST_DIR:-backups}:/backups
       - ${BACKUP_OFFSITE_CONFIG_DIR:-./backup-offsite}:/offsite-config:ro
     depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
+      backup-permissions:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     restart: unless-stopped
@@ -218,12 +353,31 @@ services:
       retries: 1
       start_period: 30m
 
+  # ── Volume ownership (one-shot, see x-ownership-init) ────────
+  volume-permissions:
+    <<: *ownership-init
+    command: ["10001:10001", "/app/uploads", "/app/vapid"]
+    volumes:
+      - uploads:/app/uploads
+      - vapid:/app/vapid
+
+  # Backup archives and the off-site credentials (SSH key, rclone.conf) must
+  # belong to the backup container's user as well; ssh refuses keys it cannot
+  # read or that others can read.
+  backup-permissions:
+    <<: *ownership-init
+    profiles: ["production"]
+    command: ["10001:10001", "/backups", "/offsite-config"]
+    volumes:
+      - ${BACKUP_HOST_DIR:-backups}:/backups
+      - ${BACKUP_OFFSITE_CONFIG_DIR:-./backup-offsite}:/offsite-config
+
   # ── Monitoring (profile "monitoring") ─────────────────────────
   # Prometheus and Alertmanager listen on 127.0.0.1 only; reach them through
   # an SSH tunnel (ssh -L 9090:localhost:9090 -L 9093:localhost:9093 host).
   prometheus:
     profiles: ["monitoring"]
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus:v3.5.5
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=30d"
@@ -236,12 +390,58 @@ services:
     depends_on: [backend, blackbox, alertmanager]
     restart: unless-stopped
     logging: *default-logging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   blackbox:
     profiles: ["monitoring"]
     image: prom/blackbox-exporter:v0.25.0
     restart: unless-stopped
     logging: *default-logging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9115/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Host metrics (disk space of the data and backup volumes, memory, load).
+  # The host's root is mounted read-only; on Proxmox LXC it is the
+  # container's root file system, which is the disk that fills up.
+  node-exporter:
+    profiles: ["monitoring"]
+    image: prom/node-exporter:v1.12.1
+    command: ["--path.rootfs=/host"]
+    volumes:
+      - /:/host:ro
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL metrics (up, connections, database size, deadlocks).
+  postgres-exporter:
+    profiles: ["monitoring"]
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    environment:
+      DATA_SOURCE_URI: db:5432/${POSTGRES_DB:-botball}?sslmode=disable
+      DATA_SOURCE_USER: ${POSTGRES_USER:-botball}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD:-botball}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # Delivers Prometheus alerts. monitoring/alertmanager/render-config.sh builds
   # the config from ALERT_WEBHOOK_URL and/or ALERT_EMAIL_TO (SMTP defaults to
@@ -267,6 +467,11 @@ services:
       - alertmanagerdata:/alertmanager
     restart: unless-stopped
     logging: *default-logging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # ── Frontend ──────────────────────────────────────────────────
   # `docker compose build frontend` builds dist/ inside Docker (Dockerfile).
@@ -288,6 +493,11 @@ services:
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=le"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   # pgdata uses a bind-mount in production (path set in .env) and a plain

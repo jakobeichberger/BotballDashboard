@@ -1,28 +1,36 @@
 name: CI
 
-# Manual only: start it under Actions → CI → "Run workflow" (any branch).
+# Manual only (deliberately): start it under Actions → CI → "Run workflow"
+# (any branch). Pushes and pull requests do not trigger it.
 on:
   workflow_dispatch:
+
+# A new run for the same branch cancels the one still running.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ── Backend ────────────────────────────────────────────────────────────────
   backend-lint:
     name: Backend – Lint & Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -r requirements-dev.txt
 
       - name: Ruff lint
         run: ruff check .
@@ -36,33 +44,35 @@ jobs:
   backend-test:
     name: Backend – Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -e ".[dev]" aiosqlite
+        run: pip install -r requirements-dev.txt
 
+      # tests/conftest.py uses an in-memory SQLite database; no service needed.
       - name: Run unit + integration tests
         env:
-          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
           JWT_SECRET_KEY: test-secret-key
           APP_SECRET_KEY: test-app-secret
           PRINTER_CREDENTIAL_ENCRYPTION_KEY: ""
         # Fails below [tool.coverage.report] fail_under (pyproject.toml).
-        run: pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=html --cov-report=term
+        run: pytest tests/ -n auto --tb=short --cov=. --cov-report=xml --cov-report=html --cov-report=term
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: |
@@ -71,7 +81,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: backend/coverage.xml
           flags: backend
@@ -79,6 +89,7 @@ jobs:
   backend-postgres-redis:
     name: Backend – PostgreSQL, Redis & Migrations
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -111,39 +122,46 @@ jobs:
       APP_SECRET_KEY: integration-test-app-secret
       RUN_PLATFORM_INTEGRATION: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -e ".[dev]"
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
       - name: Upgrade, downgrade and re-upgrade migrations
         run: |
           alembic upgrade head
           alembic downgrade 0011
           alembic upgrade head
+      # Models and migrations must describe the same schema; tests/postgres/
+      # test_schema_drift.py also covers partial indexes and check constraints.
+      - name: Models match the migrated schema
+        run: alembic check
       - name: PostgreSQL/Redis integration smoke tests
         run: pytest tests/postgres -v --tb=short
 
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       # pip-audit also audits the runner's preinstalled pip/setuptools, which
       # lag behind security releases; bring them current first.
       - run: python -m pip install --upgrade pip setuptools
-      - run: pip install pip-audit ./backend
+      # Audits the pinned set the images install (runtime and dev tools).
+      - run: pip install pip-audit -r backend/requirements-dev.txt
       - run: pip-audit
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10.29.3
-      - uses: actions/setup-node@v4
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "22"
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm --dir frontend install --frozen-lockfile
@@ -153,19 +171,23 @@ jobs:
   frontend-lint:
     name: Frontend – Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
         with:
-          node-version: "20"
+          package_json_file: frontend/package.json
 
-      - name: Enable pnpm
-        run: corepack enable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -179,19 +201,23 @@ jobs:
   frontend-test:
     name: Frontend – Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
         with:
-          node-version: "20"
+          package_json_file: frontend/package.json
 
-      - name: Enable pnpm
-        run: corepack enable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -202,7 +228,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -211,19 +237,23 @@ jobs:
   frontend-build:
     name: Frontend – Build Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
         with:
-          node-version: "20"
+          package_json_file: frontend/package.json
 
-      - name: Enable pnpm
-        run: corepack enable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -234,10 +264,16 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ""
         run: pnpm build
 
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
       - name: Verify generated API contract is current
         working-directory: backend
         run: |
-          pip install -e .
+          pip install -r requirements.txt
           python scripts/export_openapi.py --output ../frontend/openapi.json
           cd ../frontend
           pnpm exec openapi-typescript openapi.json -o src/api/generated.ts
@@ -246,6 +282,7 @@ jobs:
   e2e:
     name: End-to-end
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -278,14 +315,14 @@ jobs:
       # Paper PDFs and print files uploaded by the flows.
       UPLOAD_DIR: ${{ github.workspace }}/.e2e-uploads
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.11", cache: pip }
-      - uses: pnpm/action-setup@v4
-        with: { version: 10.29.3 }
-      - uses: actions/setup-node@v4
-        with: { node-version: "20", cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
-      - run: pip install -e "backend[dev]"
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with: { python-version: "3.11", cache: pip, cache-dependency-path: backend/requirements.txt }
+      - uses: pnpm/action-setup@v6
+        with: { package_json_file: frontend/package.json }
+      - uses: actions/setup-node@v7
+        with: { node-version: "22", cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+      - run: pip install -r backend/requirements.txt
       - run: cd backend && alembic upgrade head
       # Role logins, six teams, a live public event with scores, bots, a
       # paper, a printer and a print job (backend/scripts/seed_e2e.py).
@@ -306,7 +343,7 @@ jobs:
         run: pnpm --dir frontend e2e
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
@@ -327,11 +364,12 @@ jobs:
   deployment-smoke:
     name: Deployment – full stack
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       COMPOSE_PROJECT_NAME: bbci
       FRONTEND_BUILD: docker
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install age
         run: sudo apt-get update -q && sudo apt-get install -y -q age
       - name: Generate a production .env
@@ -366,6 +404,22 @@ jobs:
         run: make vapid-keys
       - name: Take a backup
         run: make backup-now
+      # Decrypts the new archive with the private age identity, restores it
+      # into ${POSTGRES_DB}_restore_test and checks every upload against the
+      # manifest (docs/operations.md, "Restore test").
+      - name: Restore-test the backup
+        run: |
+          archive="$(docker compose exec -T backup sh -c 'ls -1t /backups/*.tar.gz.age | head -n1' | tr -d '\r')"
+          test -n "$archive"
+          # The backup container runs as uid 10001 and cannot read the
+          # runner's 0600 identity; hand it a copy it owns (docs/operations.md).
+          work="$RUNNER_TEMP/restore-work"
+          sudo install -d -m 700 -o 10001 -g 10001 "$work"
+          sudo install -m 400 -o 10001 -g 10001 "$RUNNER_TEMP/backup-identity.txt" "$work/age-identity"
+          trap 'sudo rm -rf "$work"' EXIT
+          docker compose run --rm --no-deps \
+            -v "$work:/restore-work" -e AGE_IDENTITY=/restore-work/age-identity \
+            backup /app/scripts/restore-test.sh "$archive"
       - name: Verify the deployment
         run: scripts/verify-deployment.sh
       - name: Container logs

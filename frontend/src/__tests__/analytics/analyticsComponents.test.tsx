@@ -130,7 +130,7 @@ describe("BoxPlotList", () => {
 describe("heatColor", () => {
   it("is transparent without a value and darker for higher ratios", () => {
     expect(heatColor(null)).toBe("transparent");
-    const alpha = (c: string) => Number(c.match(/, ([\d.]+)\)$/)?.[1]);
+    const alpha = (c: string) => Number(c.match(/([\d.]+)\)$/)?.[1]);
     expect(alpha(heatColor(1))).toBeGreaterThan(alpha(heatColor(0.2)));
   });
 });

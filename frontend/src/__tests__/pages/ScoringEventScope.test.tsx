@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ReactElement } from "react";
@@ -68,11 +68,11 @@ describe("scoring pages under /events/:eventId", () => {
 
   it("AerialPage shows the mean of all runs", async () => {
     mockApi({
-      "/aerial-results": [{ team_id: "t1", run1: 20, run2: 100, run3: 80, run4: 0 }],
+      "/aerial-results": [{ team_id: "t1", runs: [20, 100, 80, 0] }],
     });
     renderAt("/scoring/aerial", <AerialPage />);
     // (20 + 100 + 80 + 0) / 4 = 50 — not the best-two average of 90.
-    expect(await screen.findByText("50,0")).toBeInTheDocument();
+    expect(await within(await screen.findByRole("table")).findByText("50,0")).toBeInTheDocument();
     expect(calledUrls()).toContain("/scoring/events/e2/aerial-results");
   });
 

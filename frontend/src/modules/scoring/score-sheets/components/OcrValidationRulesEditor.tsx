@@ -40,7 +40,7 @@ export default function OcrValidationRulesEditor({
     <section className="space-y-4" aria-labelledby="ocr-rules-title">
       <div>
         <h4 id="ocr-rules-title" className="font-semibold">{t('scoreSheets.rules.title')}</h4>
-        <p className="text-xs text-gray-500">{t('scoreSheets.rules.hint')}</p>
+        <p className="text-xs text-leise">{t('scoreSheets.rules.hint')}</p>
       </div>
 
       <label className="block text-sm font-medium">
@@ -60,12 +60,12 @@ export default function OcrValidationRulesEditor({
         <table className="w-full text-sm">
           <caption className="sr-only">{t('scoreSheets.rules.fieldRules')}</caption>
           <thead>
-            <tr className="text-left text-gray-500">
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.layout.field')}</th>
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.rules.min')}</th>
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.rules.max')}</th>
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.rules.integer')}</th>
-              <th scope="col" className="py-1 pr-2 font-medium">{t('scoreSheets.rules.fieldConfidence')}</th>
+            <tr className="text-left text-fg">
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.layout.field')}</th>
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.rules.min')}</th>
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.rules.max')}</th>
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.rules.integer')}</th>
+              <th scope="col" className="py-1 pr-2 font-semibold">{t('scoreSheets.rules.fieldConfidence')}</th>
             </tr>
           </thead>
           <tbody>
@@ -73,9 +73,9 @@ export default function OcrValidationRulesEditor({
               const rule = ruleOf(field.key)
               const numeric = field.type !== 'boolean'
               return (
-                <tr key={field.key} className="border-t border-gray-100 dark:border-gray-800">
+                <tr key={field.key} className="border-t border-rand">
                   <td className="py-1 pr-2">
-                    {field.label} <span className="font-mono text-xs text-gray-500">{field.key}</span>
+                    {field.label} <span className="font-mono text-xs text-leise">{field.key}</span>
                   </td>
                   <td className="py-1 pr-2">
                     {numeric && (
@@ -127,7 +127,7 @@ export default function OcrValidationRulesEditor({
             })}
           </tbody>
         </table>
-        <p className="mt-1 text-xs text-gray-500">{t('scoreSheets.rules.fieldHint')}</p>
+        <p className="mt-1 text-xs text-leise">{t('scoreSheets.rules.fieldHint')}</p>
       </div>
 
       <div className="space-y-3">
@@ -138,10 +138,10 @@ export default function OcrValidationRulesEditor({
             {t('scoreSheets.rules.addSum')}
           </button>
         </div>
-        {rules.sums.length === 0 && <p className="text-xs text-gray-500">{t('scoreSheets.rules.noSums')}</p>}
+        {rules.sums.length === 0 && <p className="text-xs text-leise">{t('scoreSheets.rules.noSums')}</p>}
         {rules.sums.map((sum, index) => (
-          <fieldset key={index} className="rounded border border-gray-200 p-3 dark:border-gray-700">
-            <legend className="px-1 text-xs text-gray-500">{t('scoreSheets.rules.sumNumber', { number: index + 1 })}</legend>
+          <fieldset key={index} className="rounded border border-rand p-3">
+            <legend className="px-1 text-xs text-leise">{t('scoreSheets.rules.sumNumber', { number: index + 1 })}</legend>
             <div className="flex flex-wrap items-end gap-3 text-sm">
               <label className="font-medium">
                 {t('scoreSheets.rules.sumLabel')}
@@ -157,7 +157,7 @@ export default function OcrValidationRulesEditor({
               </label>
               <button
                 type="button"
-                className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                className="rounded p-1 text-danger hover:bg-danger/10"
                 aria-label={t('scoreSheets.rules.removeSum', { number: index + 1 })}
                 onClick={() => removeSum(index)}
               >

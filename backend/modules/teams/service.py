@@ -291,6 +291,10 @@ async def update_season_registration(
             from modules.scoring.extras_service import assert_qualified
 
             await assert_qualified(db, season_id, team_id, changes["competition_level_id"])
+    if changes.get("category"):
+        from modules.seasons.categories import assert_category
+
+        await assert_category(db, season_id, changes["category"])
     for key, value in changes.items():
         setattr(reg, key, value)
     # Kit shipping only concerns botball teams; an open team has no kit.

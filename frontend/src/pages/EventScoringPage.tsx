@@ -10,10 +10,15 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useAuthStore } from "@/store/authStore";
 import PendingScores from "@/components/PendingScores";
 import ScoreConfirmDialog from "@/components/ScoreConfirmDialog";
+import Freshness from "@/components/Freshness";
+import { pollWhileOffline, useLiveUpdates } from "@/hooks/useLiveUpdates";
+import { apiErrorMessage, errorStatus } from "@/lib/errors";
+import { confirmAction } from "@/lib/confirm";
 import type { EventRegistration, RankingEntry, ScheduledMatch, ScoringSchema } from "@/api/types";
 import { computeSheet, normalize, type RawScores } from "@/modules/scoring/sheet/calculator";
 import SheetForm from "@/modules/scoring/sheet/SheetForm";
 import PartsChallengePanel from "@/modules/scoring/extras/PartsChallengePanel";
+import TimeoutCardsPanel from "@/modules/scoring/extras/TimeoutCardsPanel";
 import { LOSE_ROUND_REASONS, type HeadToHeadOutcome, type LoseRoundReason, type RuleSet } from "@/modules/scoring/extras/types";
 
 // Horizontal swipe distance (px) that switches to the neighbouring match.
@@ -39,7 +44,9 @@ export default function EventScoringPage() {
   const registrations = useQuery<EventRegistration[]>({ queryKey: ["event-registrations", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data });
   const schedule = useQuery<ScheduledMatch[]>({ queryKey: ["event-schedule", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/schedule`)).data });
   const schema = useQuery<ScoringSchema>({ queryKey: ["event-schema", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/scoring-schema`)).data, retry: false });
-  const ranking = useQuery<RankingEntry[]>({ queryKey: ["event-ranking", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/ranking`)).data, refetchInterval: 10_000 });
+  // Live updates invalidate the ranking; polling only while the stream is down.
+  const { live } = useLiveUpdates(eventId);
+  const ranking = useQuery<RankingEntry[]>({ queryKey: ["event-ranking", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/ranking`)).data, refetchInterval: pollWhileOffline(live) });
   const rules = useQuery<RuleSet>({ queryKey: ["scoring-rules", event?.season_id], queryFn: async () => (await api.get(`/scoring/seasons/${event?.season_id}/rules`)).data, enabled: !!event?.season_id });
   const outcome = useQuery<HeadToHeadOutcome>({ queryKey: ["h2h-outcome", scheduledMatchId], queryFn: async () => (await api.get(`/scoring/scheduled-matches/${scheduledMatchId}/outcome`)).data, enabled: !!scheduledMatchId });
 
@@ -63,18 +70,22 @@ export default function EventScoringPage() {
   };
 
   const reset = () => { setValues({}); setRoundLost(false); setEndContact(false); setTiebreak({}); };
-  const selectMatch = (id: string) => {
+  // Anything entered for the current match that switching would throw away.
+  const dirty = Object.keys(values).length > 0 || roundLost || endContact || Object.keys(tiebreak).length > 0;
+  const selectMatch = async (id: string) => {
+    if (id === scheduledMatchId) return;
+    if (dirty && !(await confirmAction({ message: t("discardEntries"), confirmLabel: t("discardEntriesConfirm"), tone: "danger" }))) return;
     setScheduledMatchId(id);
     setMessage("");
     const match = matches.find((item) => item.id === id);
     const participants = (match?.participants ?? []).map((item) => item.team_id).filter((item): item is string => !!item);
     if (participants.length && !participants.includes(teamId)) setTeamId(participants[0]);
-    if (id !== scheduledMatchId) reset();
+    reset();
   };
   const step = (delta: number) => {
     if (!matches.length) return;
     const next = matchIndex < 0 ? (delta > 0 ? 0 : matches.length - 1) : matchIndex + delta;
-    if (next >= 0 && next < matches.length) selectMatch(matches[next].id);
+    if (next >= 0 && next < matches.length) void selectMatch(matches[next].id);
   };
   const onTouchStart = (event: TouchEvent) => {
     const touch = event.touches[0];
@@ -107,32 +118,50 @@ export default function EventScoringPage() {
       queryClient.invalidateQueries({ queryKey: ["event-ranking", eventId] });
       queryClient.invalidateQueries({ queryKey: ["h2h-outcome", scheduledMatchId] });
     },
-    onError: (error: { response?: { data?: { detail?: string } } }) => { setConfirming(false); setMessage(typeof error.response?.data?.detail === "string" ? error.response.data.detail : t("saveFailed")); },
+    onError: (error: unknown) => { setConfirming(false); setMessage(apiErrorMessage(error, t("saveFailed"))); },
   });
 
-  if (schema.isError) return <div className="p-6"><div className="card p-8 text-center">{t("noSchema")}</div></div>;
+  if (schema.isLoading) return <div className="p-6 text-leise" role="status">{t("common:loadingEllipsis")}</div>;
+  // 404 = no schema for this event (an empty state); anything else is an error.
+  if (schema.isError && errorStatus(schema.error) === 404) return <div className="p-6"><div className="card p-8 text-center">{t("noSchema")}</div></div>;
+  if (schema.isError) {
+    return (
+      <div className="p-6">
+        <div role="alert" className="card space-y-4 p-8 text-center">
+          <p>{apiErrorMessage(schema.error, t("schemaLoadFailed"))}</p>
+          <button type="button" className="btn-secondary min-h-11" onClick={() => void schema.refetch()}>{t("common:retry")}</button>
+        </div>
+      </div>
+    );
+  }
   // Offline entries are queued on the device and synced later (lib/offlineQueue).
   const disabled = !canWrite;
   return (
-    <div className="mx-auto max-w-3xl p-4 md:p-6" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold"><Trophy className="text-yellow-500" />{t("mobileScoring")}</h1>
-      {!online && <p role="alert" className="mb-4 rounded-lg bg-amber-100 p-3 text-amber-900">{t("offlineScoring")}</p>}
-      {!canWrite && <p className="mb-4 rounded-lg bg-gray-100 p-3 dark:bg-gray-800">{t("readOnlyPermission")}</p>}
+    <div className="mx-auto max-w-3xl p-4 md:p-6">
+      <header className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2"><Trophy className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{t("mobileScoring")}</h1>
+          <p className="page-subtitle">{t("mobileScoringSubtitle")}</p>
+        </div>
+      </header>
+      {!online && <p role="alert" className="mb-4 rounded-lg bg-warning/10 p-3 text-warning">{t("offlineScoring")}</p>}
+      {!canWrite && <p className="mb-4 rounded-lg bg-flaeche-2 p-3">{t("readOnlyPermission")}</p>}
       <div className="mb-5"><PendingScores filter={(entry) => entry.eventId === eventId} /></div>
       <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setMessage(""); setConfirming(true); }}>
         {matches.length > 0 && (
-          <nav aria-label={t("scheduledMatch")} className="card flex items-center justify-between gap-2 p-2">
+          // Swiping switches matches only on this bar, never while typing in the form.
+          <nav aria-label={t("scheduledMatch")} className="card flex touch-pan-y items-center justify-between gap-2 p-2" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             <button type="button" className="btn-secondary min-h-12 min-w-12 justify-center" onClick={() => step(-1)} disabled={matchIndex === 0} aria-label={t("previousMatch")}><ChevronLeft aria-hidden="true" /></button>
             <div className="min-w-0 text-center">
               <p className="truncate font-semibold">{currentMatch ? `${currentMatch.code} · ${t("table", { number: currentMatch.table_number ?? "–" })}` : t("withoutMatch")}</p>
-              <p className="text-xs text-gray-500">{currentMatch ? t("matchPosition", { current: matchIndex + 1, total: matches.length }) : t("swipeHint")}</p>
+              <p className="text-xs text-leise">{currentMatch ? t("matchPosition", { current: matchIndex + 1, total: matches.length }) : t("swipeHint")}</p>
             </div>
             <button type="button" className="btn-secondary min-h-12 min-w-12 justify-center" onClick={() => step(1)} disabled={matchIndex === matches.length - 1} aria-label={t("nextMatch")}><ChevronRight aria-hidden="true" /></button>
           </nav>
         )}
         <div className="card grid gap-4 p-4 md:grid-cols-2">
           <label className="text-sm font-medium">{t("team")}<select required disabled={disabled} className="input mt-1 w-full" value={teamId} onChange={(e) => setTeamId(e.target.value)}><option value="">{t("chooseTeam")}</option>{registrations.data?.map((item) => <option key={item.id} value={item.team_id}>{item.seed_number ? `#${item.seed_number} · ` : ""}{item.team_name}{item.team_number ? ` (${item.team_number})` : ""}</option>)}</select></label>
-          <label className="text-sm font-medium">{t("scheduledMatch")}<select disabled={disabled} className="input mt-1 w-full" value={scheduledMatchId} onChange={(e) => selectMatch(e.target.value)}><option value="">{t("withoutMatch")}</option>{matches.map((item) => <option key={item.id} value={item.id}>{item.code} · {t("table", { number: item.table_number ?? "–" })}</option>)}</select></label>
+          <label className="text-sm font-medium">{t("scheduledMatch")}<select disabled={disabled} className="input mt-1 w-full" value={scheduledMatchId} onChange={(e) => void selectMatch(e.target.value)}><option value="">{t("withoutMatch")}</option>{matches.map((item) => <option key={item.id} value={item.id}>{item.code} · {t("table", { number: item.table_number ?? "–" })}</option>)}</select></label>
         </div>
         {definition && <SheetForm definition={definition} values={values} disabled={disabled} onChange={(key, value) => setValues((current) => ({ ...current, [key]: value }))} />}
 
@@ -147,7 +176,7 @@ export default function EventScoringPage() {
           {entryCriteria.length > 0 && (
             <div>
               <p className="text-sm font-medium">{t("tiebreakers")}</p>
-              <p className="mb-2 text-xs text-gray-500">{t("tiebreakersHint")}</p>
+              <p className="mb-2 text-xs text-leise">{t("tiebreakersHint")}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {entryCriteria.map((criterion) => <label key={criterion.key} className="text-sm">{criterion.label}{criterion.direction === "min" ? " ↓" : ""}<input className="input mt-1 w-full" type="number" step="any" value={typeof tiebreak[criterion.key] === "number" ? String(tiebreak[criterion.key]) : ""} onChange={(e) => setTiebreak((current) => ({ ...current, [criterion.key]: Number(e.target.value) }))} /></label>)}
               </div>
@@ -157,8 +186,8 @@ export default function EventScoringPage() {
 
         {scheduledMatchId && outcome.data?.sides && <OutcomeCard outcome={outcome.data} teamName={teamName} />}
 
-        <div className="sticky bottom-0 card flex items-center justify-between gap-4 border-primary-200 p-4"><div><p className="text-sm text-gray-500">{t("calculatedTotal")}</p><p className="text-3xl font-bold">{formatScore(total)}</p></div><button className="btn-primary flex min-h-12 items-center gap-2" disabled={disabled || save.isPending || !teamId || sheet.errors.length > 0}><Save />{t("reviewScore")}</button></div>
-        <p className="text-sm text-gray-500">{t("officialHint")}</p>{message && <p role="status" className="rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">{message}</p>}
+        <div className="sticky bottom-0 card flex items-center justify-between gap-4 border-primary/30 p-4"><div><p className="text-sm text-leise">{t("calculatedTotal")}</p><p className="text-3xl font-bold">{formatScore(total)}</p></div><button className="btn-primary flex min-h-12 items-center gap-2" disabled={disabled || save.isPending || !teamId || sheet.errors.length > 0}><Save />{t("reviewScore")}</button></div>
+        <p className="text-sm text-leise">{t("officialHint")}</p>{message && <p role="status" className="rounded-lg bg-flaeche-2 p-3 text-sm">{message}</p>}
       </form>
       <ScoreConfirmDialog
         open={confirming}
@@ -177,7 +206,8 @@ export default function EventScoringPage() {
         onCancel={() => setConfirming(false)}
       />
       <div className="mt-8"><PartsChallengePanel eventId={eventId} matches={matches} registrations={registrations.data ?? []} /></div>
-      <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><div className="card overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-100 dark:bg-gray-800"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">{t("seed")}</th><th className="p-3 text-right">{t("best")}</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t dark:border-gray-800"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{formatScore(item.seed_score)}</td><td className="p-3 text-right">{formatScore(item.best_score)}</td><td className="p-3 text-xs text-gray-500">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
+      <div className="mt-8"><TimeoutCardsPanel eventId={eventId} registrations={registrations.data ?? []} /></div>
+      <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><Freshness query={ranking} live={live} className="mb-3" /><div className="card table-scroll"><table className="w-full text-sm"><thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">{t("seed")}</th><th className="p-3 text-right">{t("best")}</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{formatScore(item.seed_score)}</td><td className="p-3 text-right">{formatScore(item.best_score)}</td><td className="p-3 text-xs text-leise">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
     </div>
   );
 }
@@ -189,9 +219,9 @@ function OutcomeCard({ outcome, teamName }: { outcome: HeadToHeadOutcome; teamNa
   return (
     <section className="card p-4" aria-live="polite">
       <h2 className="font-semibold">{t("outcome")}</h2>
-      <p className="text-lg">{headline}{reason && <span className="ml-2 text-sm text-gray-500">({reason})</span>}</p>
+      <p className="text-lg">{headline}{reason && <span className="ml-2 text-sm text-leise">({reason})</span>}</p>
       <ul className="mt-2 text-sm">
-        {outcome.sides.map((side) => <li key={side.match_id}>{side.team_name ?? side.team_id}: <strong>{side.total_score}</strong>{side.bonus_score > 0 && <span className="text-gray-500"> – {t("bonus", { bonus: side.bonus_score })}</span>}{side.round_lost && <span className="ml-1 badge-yellow">{t("reason_round_lost")}</span>}{side.is_disqualified && <span className="ml-1 badge-red">DQ</span>}</li>)}
+        {outcome.sides.map((side) => <li key={side.match_id}>{side.team_name ?? side.team_id}: <strong>{side.total_score}</strong>{side.bonus_score > 0 && <span className="text-leise"> – {t("bonus", { bonus: side.bonus_score })}</span>}{side.round_lost && <span className="ml-1 badge-yellow">{t("reason_round_lost")}</span>}{side.is_disqualified && <span className="ml-1 badge-red" title={t("disqualified")}>{t("dqShort")}</span>}</li>)}
       </ul>
     </section>
   );

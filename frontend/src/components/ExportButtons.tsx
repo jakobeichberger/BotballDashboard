@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Download, FileText, Loader2, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { api } from "@/lib/api";
+import { downloadFile } from "@/lib/download";
 
 interface ExportButtonProps {
   url: string;
@@ -10,19 +10,6 @@ interface ExportButtonProps {
   variant?: "pdf" | "csv";
 }
 
-async function downloadFile(url: string, filename: string): Promise<void> {
-  const response = await api.get(url, { responseType: "blob" });
-  const blob = new Blob([response.data]);
-  const href = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement("a");
-    a.href = href;
-    a.download = filename;
-    a.click();
-  } finally {
-    URL.revokeObjectURL(href);
-  }
-}
 
 export function ExportButton({ url, filename, label, variant = "pdf" }: ExportButtonProps) {
   const { t } = useTranslation();
@@ -46,7 +33,7 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
       <button
         onClick={handleClick}
         disabled={loading}
-        className={`btn-secondary gap-1.5 text-xs ${
+        className={`btn-secondary gap-1.5 text-sm ${
           variant === "csv" ? "opacity-80" : ""
         } disabled:opacity-50 disabled:cursor-not-allowed`}
         title={t("export.downloadTitle", { label })}
@@ -54,14 +41,14 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
         {loading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : variant === "pdf" ? (
-          <FileText className="w-3.5 h-3.5 text-red-500" />
+          <FileText className="w-3.5 h-3.5 text-danger" />
         ) : (
-          <Download className="w-3.5 h-3.5 text-green-600" />
+          <Download className="w-3.5 h-3.5 text-success" />
         )}
         {label}
       </button>
       {error && (
-        <div className="absolute top-full mt-1 left-0 flex items-center gap-1 text-xs text-red-500 whitespace-nowrap">
+        <div className="absolute top-full mt-1 left-0 flex items-center gap-1 text-xs text-danger whitespace-nowrap">
           <AlertCircle className="w-3 h-3" />
           {error}
         </div>
@@ -172,6 +159,9 @@ export function EventRankingExportButtons({
       <ExportButton url={`/exports/events/${eventId}/ranking.csv`} filename={`ranking-${slug}.csv`} label={t("export.seedingCsv")} variant="csv" />
       <ExportButton url={`/exports/events/${eventId}/overall-ranking.pdf`} filename={`gesamtwertung-${slug}.pdf`} label={t("export.overallPdf")} variant="pdf" />
       <ExportButton url={`/exports/events/${eventId}/overall-ranking.csv`} filename={`gesamtwertung-${slug}.csv`} label={t("export.overallCsv")} variant="csv" />
+      {/* All results in the layout of the official ECER results spreadsheet. */}
+      <ExportButton url={`/exports/events/${eventId}/results.xlsx`} filename={`results-${slug}.xlsx`} label={t("export.resultsXlsx")} variant="csv" />
+      <ExportButton url={`/exports/events/${eventId}/results.csv`} filename={`results-${slug}.csv`} label={t("export.resultsCsv")} variant="csv" />
       {includeMatches && (
         <ExportButton url={`/exports/events/${eventId}/matches.csv`} filename={`laeufe-${slug}.csv`} label={t("export.runsCsv")} variant="csv" />
       )}

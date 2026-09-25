@@ -102,7 +102,12 @@ Testinfrastruktur und Teststrategie für den gesamten Kern und alle Plugins. Umf
 ---
 
 ## CI/CD-Integration
-- Unit-Tests laufen bei jedem Push
-- Integrations- und E2E-Tests laufen bei Pull Requests
-- Coverage-Report wird als Artefakt gespeichert
-- Build schlägt fehl wenn Coverage unter Zielwert fällt
+- Die CI wird **manuell gestartet** (Actions → CI → „Run workflow“); Pushes und Pull Requests starten sie bewusst nicht. Vor einem Merge wird sie auf dem Branch ausgelöst.
+- Ein Lauf führt Unit-, Integrations- und PostgreSQL/Redis-Tests, die Frontend-Tests und die komplette Playwright-Suite (Desktop und `@mobile`) aus.
+- Coverage-Reports werden als Artefakt gespeichert.
+- Der Lauf schlägt fehl, wenn die Coverage unter die Schwelle fällt (Backend `fail_under` in `backend/pyproject.toml`, Frontend `thresholds` in `frontend/vitest.config.ts`).
+
+## Backend-Testumgebung
+- In-Memory-SQLite; das Schema wird einmal pro Testprozess angelegt. Jeder Test läuft in einer äußeren Transaktion, die danach zurückgerollt wird; die Session arbeitet mit SAVEPOINTs, daher bleiben auch `commit()`/`rollback()` im getesteten Code isoliert.
+- `tests/conftest.py` setzt `BCRYPT_ROUNDS=4` und `LOG_LEVEL=WARNING`.
+- `pytest -n auto` verteilt die Suite auf alle Kerne (pytest-xdist); die CI nutzt das.

@@ -25,6 +25,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
+    # The development image runs as root on the bind-mounted source (tests and
+    # tools write caches there); drop the production hardening for it.
+    read_only: false
+    cap_drop: !reset []
+    security_opt: !reset []
+    tmpfs: !reset []
     volumes:
       - ./backend:/app
       - uploads:/app/uploads
@@ -42,7 +48,7 @@ services:
     labels: []
 
   frontend:
-    image: node:20-alpine
+    image: node:22-alpine
     build:
       # Override the production nginx Dockerfile (which needs a pre-built dist/).
       context: ./frontend

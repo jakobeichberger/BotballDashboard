@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import ScoreEntryPage from "@/pages/ScoreEntryPage";
 import PartsChallengePanel from "@/modules/scoring/extras/PartsChallengePanel";
 import { api } from "@/lib/api";
+import { confirmAction } from "@/lib/confirm";
 import { useAuthStore } from "@/store/authStore";
 import type { EventRegistration, ScheduledMatch } from "@/api/types";
 
@@ -14,6 +15,9 @@ vi.mock("@/lib/api", () => ({
   api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() },
   isQueuedResponse: (data: { queued?: boolean } | null) => !!data?.queued,
 }));
+
+// Destructive actions ask first (lib/confirm); these tests confirm.
+vi.mock("@/lib/confirm", () => ({ confirmAction: vi.fn().mockResolvedValue(true) }));
 
 const get = api.get as ReturnType<typeof vi.fn>;
 
@@ -80,14 +84,14 @@ describe("cards and disqualification in the score entry", () => {
 
   it("shows the backend error, e.g. a version conflict", async () => {
     asUser(["scoring:read", "scoring:write", "scoring:admin"]);
-    (api.patch as ReturnType<typeof vi.fn>).mockRejectedValue({ response: { data: { detail: "Score was changed by another user" } } });
+    (api.patch as ReturnType<typeof vi.fn>).mockRejectedValue({ response: { status: 409, data: { code: "http_409", message: "Score was changed by another user" } } });
     wrap(<ScoreEntryPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Karten & Disqualifikation für Alpha, Runde 1" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("checkbox", { name: /Rote Karte/ }));
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Begründung" }), { target: { value: "Unsportlich" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Entscheidung speichern" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Score was changed by another user");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/Konflikt: Die Daten wurden inzwischen geändert/);
   });
 
   it("offers no penalty action to mentors", async () => {
@@ -120,7 +124,7 @@ describe("PartsChallengePanel", () => {
     );
     (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
     (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    (confirmAction as ReturnType<typeof vi.fn>).mockResolvedValue(true);
   });
 
   it("lists challenges with their outcome and lets the head judge rule", async () => {
@@ -135,7 +139,7 @@ describe("PartsChallengePanel", () => {
 
     fireEvent.change(within(items[0]).getByRole("textbox", { name: "Begründung der Entscheidung" }), { target: { value: "Fremdes Servo" } });
     fireEvent.click(within(items[0]).getByRole("button", { name: "Stattgeben" }));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Beta"));
+    expect(confirmAction).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("Beta") }));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/scoring/parts-challenges/c1/ruling", { upheld: true, ruling_note: "Fremdes Servo" }));
   });
 

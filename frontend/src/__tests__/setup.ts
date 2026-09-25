@@ -1,7 +1,13 @@
 import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach, vi } from "vitest";
-import i18n from "@/i18n/config";
+import { afterEach, beforeAll, beforeEach, vi } from "vitest";
+import i18n, { i18nReady } from "@/i18n/config";
+
+// The language bundles load lazily (i18n/config); have both ready up front.
+beforeAll(async () => {
+  await i18nReady;
+  await i18n.loadLanguages(["de", "en"]);
+});
 
 // Components render in German by default so assertions match the German UI
 // texts; tests covering English switch the language explicitly.
@@ -40,6 +46,25 @@ const localStorageMock = (() => {
   };
 })();
 Object.defineProperty(window, "localStorage", { value: localStorageMock });
+
+// Pages open live WebSockets (lib/liveSocket). Under test they never connect
+// to anything; the tests of the live streams install their own fake.
+class InertWebSocket {
+  readyState = 0;
+  onopen: (() => void) | null = null;
+  onmessage: ((frame: { data: unknown }) => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor(public url: string) {}
+  send() {}
+  close() {}
+}
+Object.defineProperty(globalThis, "WebSocket", { value: InertWebSocket, writable: true, configurable: true });
+
+// jsdom has no object URLs (blob downloads, image previews).
+if (typeof URL.createObjectURL !== "function") {
+  Object.assign(URL, { createObjectURL: () => "blob:test", revokeObjectURL: () => undefined });
+}
 
 // Mock service worker
 Object.defineProperty(navigator, "serviceWorker", {

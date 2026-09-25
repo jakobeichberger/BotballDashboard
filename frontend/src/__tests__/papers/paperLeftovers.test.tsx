@@ -33,10 +33,10 @@ const meta = (n: number) => ({ version_number: n, file_name: `paper-v${n}.pdf`, 
 
 describe("paper helpers", () => {
   it("colours diff lines", () => {
-    expect(diffLineClass("+new")).toContain("green");
-    expect(diffLineClass("-old")).toContain("red");
-    expect(diffLineClass("@@ -1 +1 @@")).toContain("blue");
-    expect(diffLineClass("--- v1")).toBe("text-gray-500");
+    expect(diffLineClass("+new")).toContain("success");
+    expect(diffLineClass("-old")).toContain("danger");
+    expect(diffLineClass("@@ -1 +1 @@")).toContain("info");
+    expect(diffLineClass("--- v1")).toBe("text-leise");
   });
 
   it("picks passed internal deadlines only", () => {

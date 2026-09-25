@@ -40,28 +40,30 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
       <div className="space-y-4 text-sm">
         <ul className="space-y-1" aria-label={t("review.reasons")}>
           {anomaly.reasons.map((r, i) => (
-            <li key={i} className={r.severity === "error" ? "text-red-700 dark:text-red-400" : "text-yellow-700 dark:text-yellow-400"}>
+            <li key={i} className={r.severity === "error" ? "text-danger" : "text-warning"}>
               • {r.message}
             </li>
           ))}
         </ul>
         {match && (
+          <div className="table-scroll">
           <table className="w-full">
-            <caption className="text-left font-medium text-gray-700 dark:text-gray-300">{t("review.values", { total: match.total_score })}</caption>
+            <caption className="text-left font-medium text-fg">{t("review.values", { total: match.total_score })}</caption>
             <tbody>
               {Object.entries(match.raw_scores ?? {}).map(([key, value]) => (
-                <tr key={key} className="border-t border-gray-100 dark:border-gray-800">
-                  <th scope="row" className="py-1 text-left font-normal text-gray-600 dark:text-gray-400">{key}</th>
+                <tr key={key} className="border-t border-rand">
+                  <th scope="row" className="py-1 text-left font-normal text-leise">{key}</th>
                   <td className="py-1 text-right tabular-nums">{String(value)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
         )}
         {revisions && revisions.length > 1 && (
           <div>
-            <p className="font-medium text-gray-700 dark:text-gray-300">{t("review.changes")}</p>
-            <ol className="mt-1 space-y-0.5 text-xs text-gray-500">
+            <p className="font-medium text-fg">{t("review.changes")}</p>
+            <ol className="mt-1 space-y-0.5 text-xs text-leise">
               {revisions.map((rev) => (
                 <li key={rev.id}>
                   {t("review.revision", { revision: rev.revision })} {rev.previous_value?.total_score ?? "—"} → {rev.new_value?.total_score ?? "—"}
@@ -71,9 +73,9 @@ export default function MatchReviewModal({ anomaly, onClose }: { anomaly: Anomal
             </ol>
           </div>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 dark:border-gray-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
           {anomaly.scheduled_match_id ? (
-            <EventLink to="/schedule" className="text-primary-600 hover:underline dark:text-primary-400">{t("review.viewInSchedule")}</EventLink>
+            <EventLink to="/schedule" className="text-akzent hover:underline">{t("review.viewInSchedule")}</EventLink>
           ) : <span />}
           {confirmed ? (
             <span className="badge-green">{t("review.confirmed")}</span>

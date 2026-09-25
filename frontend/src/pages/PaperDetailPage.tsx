@@ -14,6 +14,9 @@ import { labelMap } from "@/i18n/labels";
 import { formatFileSize } from "@/lib/teams";
 import { DeadlineBanner } from "@/modules/papers/DeadlineBanner";
 import { VersionDiff } from "@/modules/papers/VersionDiff";
+import { confirmAction } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
+import { downloadFile } from "@/lib/download";
 import {
   ADMIN_STATUS_OPTIONS,
   EDITABLE_STATUSES,
@@ -77,27 +80,27 @@ function ReviewBody({ review }: { review: ReviewFeedback }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm mb-3">
         {REVIEW_CRITERIA.map((c) => (
           <div key={c.key}>
-            <div className="text-gray-500">{c.label}</div>
-            <div className="font-semibold text-gray-900 dark:text-white">{review[`score_${c.key}`] ?? "—"}</div>
+            <div className="text-leise">{c.label}</div>
+            <div className="font-semibold text-fg">{review[`score_${c.key}`] ?? "—"}</div>
           </div>
         ))}
         <div>
-          <div className="text-gray-500">{t("detail.total")}</div>
-          <div className="font-semibold text-gray-900 dark:text-white">{review.total_score ?? "—"}</div>
+          <div className="text-leise">{t("detail.total")}</div>
+          <div className="font-semibold text-fg">{review.total_score ?? "—"}</div>
         </div>
       </div>
       <dl className="space-y-2 text-sm">
         {REVIEW_CRITERIA.filter((c) => review[`comment_${c.key}`]).map((c) => (
           <div key={c.key}>
-            <dt className="font-medium text-gray-700 dark:text-gray-300">{c.label}</dt>
-            <dd className="text-gray-600 dark:text-gray-400 whitespace-pre-line">{review[`comment_${c.key}`]}</dd>
+            <dt className="font-medium text-fg">{c.label}</dt>
+            <dd className="text-leise whitespace-pre-line">{review[`comment_${c.key}`]}</dd>
           </div>
         ))}
         {review.comments && (
-          <div><dt className="font-medium text-gray-700 dark:text-gray-300">{t("detail.overallComment")}</dt><dd className="text-gray-600 dark:text-gray-400 whitespace-pre-line">{review.comments}</dd></div>
+          <div><dt className="font-medium text-fg">{t("detail.overallComment")}</dt><dd className="text-leise whitespace-pre-line">{review.comments}</dd></div>
         )}
         {review.revision_notes && (
-          <div><dt className="font-medium text-gray-700 dark:text-gray-300">{t("detail.toRevise")}</dt><dd className="text-gray-600 dark:text-gray-400 whitespace-pre-line">{review.revision_notes}</dd></div>
+          <div><dt className="font-medium text-fg">{t("detail.toRevise")}</dt><dd className="text-leise whitespace-pre-line">{review.revision_notes}</dd></div>
         )}
       </dl>
     </>
@@ -179,7 +182,7 @@ export default function PaperDetailPage() {
     qc.invalidateQueries({ queryKey: ["paper-history", id] });
     qc.invalidateQueries({ queryKey: ["papers"] });
   };
-  const onError = (e: unknown) => alert(apiErrorMessage(e));
+  const onError = (e: unknown) => toast.error(apiErrorMessage(e));
 
   const saveReviewM = useMutation({
     mutationFn: (submit: boolean) => {
@@ -238,6 +241,12 @@ export default function PaperDetailPage() {
     onError,
   });
 
+  const stageM = useMutation({
+    mutationFn: (presented: boolean) => api.put(`/papers/${id}/score`, { presented_on_stage: presented }),
+    onSuccess: refresh,
+    onError,
+  });
+
   const reopenM = useMutation({
     mutationFn: (reviewId: string) => api.post(`/papers/${id}/reviews/${reviewId}/reopen`),
     onSuccess: refresh,
@@ -268,29 +277,20 @@ export default function PaperDetailPage() {
 
   const handleDownload = async (version?: number, name?: string) => {
     try {
-      const res = await api.get(`/papers/${id}/download`, {
-        params: version ? { version } : undefined,
-        responseType: "blob",
-      });
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name ?? paper?.file_name ?? "paper.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      alert(t("detail.fileUnavailable"));
+      await downloadFile(`/papers/${id}/download`, name ?? paper?.file_name ?? "paper.pdf", version ? { version } : undefined);
+    } catch (error) {
+      toast.apiError(error, t("detail.fileUnavailable"));
     }
   };
 
-  if (isLoading) return <div className="p-6 text-gray-500">{t("common:loading")}</div>;
+  if (isLoading) return <div className="p-6 text-leise">{t("common:loading")}</div>;
   if (isError || !paper) {
     return (
       <div className="p-6">
         <EventLink to="/papers" className="btn-secondary text-sm mb-6">
           <ArrowLeft className="w-4 h-4" /> {t("detail.back")}
         </EventLink>
-        <div className="card p-8 text-center text-gray-400">{t("detail.notFound")}</div>
+        <div className="card p-8 text-center text-leise">{t("detail.notFound")}</div>
       </div>
     );
   }
@@ -317,9 +317,9 @@ export default function PaperDetailPage() {
 
       {/* Header */}
       <div className="card p-6">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-start gap-2">
-            <FileText className="w-6 h-6 mt-1 shrink-0" />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <h1 className="page-title flex min-w-0 items-start gap-2 break-words">
+            <FileText className="h-7 w-7 mt-1 shrink-0 text-akzent" />
             {paper.title}
           </h1>
           <span className={PAPER_STATUS_BADGE[paper.status] ?? "badge-gray"}>
@@ -329,49 +329,49 @@ export default function PaperDetailPage() {
 
         <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-5 text-sm">
           <div>
-            <dt className="text-gray-500">{t("detail.team")}</dt>
+            <dt className="text-leise">{t("detail.team")}</dt>
             <dd>
               {team ? (
-                <EventLink to={`/teams/${team.id}`} className="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                <EventLink to={`/teams/${team.id}`} className="text-akzent hover:underline flex items-center gap-1">
                   <Users className="w-3.5 h-3.5" /> {team.name}
                 </EventLink>
-              ) : (<span className="text-gray-900 dark:text-white">{paper.team_id}</span>)}
+              ) : (<span className="text-fg">{paper.team_id}</span>)}
             </dd>
           </div>
-          <div><dt className="text-gray-500">{t("detail.level")}</dt><dd className="text-gray-900 dark:text-white">{levelName}</dd></div>
-          <div><dt className="text-gray-500">{t("detail.reviewRound")}</dt><dd className="text-gray-900 dark:text-white">#{paper.revision_number}</dd></div>
-          <div><dt className="text-gray-500">{t("detail.currentVersion")}</dt><dd className="text-gray-900 dark:text-white">{paper.current_version ? `v${paper.current_version}` : "—"}</dd></div>
-          <div><dt className="text-gray-500">{t("col.submitted")}</dt><dd className="text-gray-900 dark:text-white">{fmtDate(paper.submitted_at)}</dd></div>
+          <div><dt className="text-leise">{t("detail.level")}</dt><dd className="text-fg">{levelName}</dd></div>
+          <div><dt className="text-leise">{t("detail.reviewRound")}</dt><dd className="text-fg">#{paper.revision_number}</dd></div>
+          <div><dt className="text-leise">{t("detail.currentVersion")}</dt><dd className="text-fg">{paper.current_version ? `v${paper.current_version}` : "—"}</dd></div>
+          <div><dt className="text-leise">{t("col.submitted")}</dt><dd className="text-fg">{fmtDate(paper.submitted_at)}</dd></div>
         </dl>
 
         {(paper.final_score != null || avgScore || paper.format_deduction > 0) && (
           <div className="mt-4 border-t pt-4 flex flex-wrap gap-6 text-sm">
             {avgScore && (
               <div className="flex items-center gap-2">
-                <span className="text-gray-500">{t("detail.avgReviewerScore")}</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{avgScore} / 10</span>
-                <span className="text-gray-400">{t("detail.submittedCount", { count: submittedReviews.length })}</span>
+                <span className="text-leise">{t("detail.avgReviewerScore")}</span>
+                <span className="font-semibold text-fg">{avgScore} / 10</span>
+                <span className="text-leise">{t("detail.submittedCount", { count: submittedReviews.length })}</span>
               </div>
             )}
             {paper.format_deduction > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-gray-500">{t("detail.formatDeduction")}</span>
-                <span className="font-semibold text-red-600">{t("detail.deductionPoints", { points: paper.format_deduction })}</span>
-                {paper.format_deduction_reason && <span className="text-gray-400">({paper.format_deduction_reason})</span>}
+                <span className="text-leise">{t("detail.formatDeduction")}</span>
+                <span className="font-semibold text-danger">{t("detail.deductionPoints", { points: paper.format_deduction })}</span>
+                {paper.format_deduction_reason && <span className="text-leise">({paper.format_deduction_reason})</span>}
               </div>
             )}
             {paper.final_score != null && (
-              <div className="flex items-center gap-2">
-                <Award className="w-4 h-4 text-primary-500" />
-                <span className="text-gray-500">{t("detail.finalResult")}</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{Math.round(paper.final_score * 100)}%</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Award className="w-4 h-4 text-akzent" />
+                <span className="text-leise">{t("detail.finalResult")}</span>
+                <span className="font-semibold text-fg">{Math.round(paper.final_score * 100)}%</span>
                 {paper.paper_rank != null && <span className="badge-green">{t("detail.rank", { rank: paper.paper_rank })}</span>}
               </div>
             )}
           </div>
         )}
         {paper.status === "disqualified_ai" && (
-          <p className="mt-4 rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
+          <p className="mt-4 rounded bg-danger/[0.07] p-3 text-sm text-danger">
             {t("detail.disqualifiedAi")}
           </p>
         )}
@@ -381,25 +381,26 @@ export default function PaperDetailPage() {
 
       {/* Abstract */}
       <section className="card p-6">
-        <h2 className="font-semibold text-gray-900 dark:text-white mb-2">{t("detail.abstract")}</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">
+        <h2 className="font-semibold text-fg mb-2">{t("detail.abstract")}</h2>
+        <p className="text-sm text-leise whitespace-pre-line">
           {paper.abstract || t("detail.noAbstract")}
         </p>
       </section>
 
       {/* Versions */}
       <section className="card overflow-hidden" aria-labelledby="paper-versions-heading">
-        <h2 id="paper-versions-heading" className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h2 id="paper-versions-heading" className="px-4 py-3 border-b font-semibold text-fg flex items-center gap-2">
           <History className="w-4 h-4" /> {t("detail.versions", { count: paper.versions?.length ?? 0 })}
         </h2>
+        <div className="table-scroll">
         <table className="w-full text-sm">
-          <tbody className="divide-y dark:divide-gray-800">
+          <tbody className="divide-y">
             {versions.map((v) => (
               <tr key={v.id}>
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">v{v.version_number}</td>
-                <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{v.file_name} <span className="text-gray-400">({fmtBytes(v.file_size_bytes)})</span></td>
-                <td className="px-4 py-3 text-gray-500">{t("detail.round", { round: v.revision_number })}</td>
-                <td className="px-4 py-3 text-gray-500">{t("detail.uploadedAt", { date: fmtDate(v.uploaded_at) })}</td>
+                <td className="px-4 py-3 font-medium text-fg">v{v.version_number}</td>
+                <td className="px-4 py-3 text-leise">{v.file_name} <span className="text-leise">({fmtBytes(v.file_size_bytes)}{v.page_count != null ? ` · ${t("detail.pages", { count: v.page_count })}` : ""})</span></td>
+                <td className="px-4 py-3 text-leise">{t("detail.round", { round: v.revision_number })}</td>
+                <td className="px-4 py-3 text-leise">{t("detail.uploadedAt", { date: fmtDate(v.uploaded_at) })}</td>
                 <td className="px-4 py-3">{v.submitted_at ? <span className="badge-green">{t("detail.submittedAt", { date: fmtDate(v.submitted_at) })}</span> : <span className="badge-gray">{t("detail.notSubmitted")}</span>}</td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => handleDownload(v.version_number, v.file_name)} className="btn-secondary text-xs" aria-label={t("detail.downloadVersion", { version: v.version_number })}>
@@ -409,13 +410,14 @@ export default function PaperDetailPage() {
               </tr>
             ))}
             {versions.length === 0 && (
-              <tr><td className="px-4 py-6 text-center text-gray-400">{t("detail.noFile")}</td></tr>
+              <tr><td className="px-4 py-6 text-center text-leise">{t("detail.noFile")}</td></tr>
             )}
           </tbody>
         </table>
+      </div>
         <VersionDiff paperId={paper.id} versions={paper.versions ?? []} />
         {canWritePaper && (
-          <div className="border-t p-4 flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-800/40">
+          <div className="border-t p-4 flex flex-wrap items-center gap-2 bg-flaeche-2">
             {editable ? (
               <>
                 <input
@@ -423,7 +425,7 @@ export default function PaperDetailPage() {
                   accept="application/pdf"
                   aria-label={t("detail.newVersionPdf")}
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="text-xs text-gray-500 file:mr-2 file:btn file:btn-secondary file:text-xs"
+                  className="text-xs text-leise file:mr-2 file:btn file:btn-secondary file:text-xs"
                 />
                 <button
                   disabled={!file || uploadM.isPending || deadlineLocked}
@@ -442,7 +444,7 @@ export default function PaperDetailPage() {
                 </button>
               </>
             ) : (
-              <span className="text-xs text-gray-500 flex items-center gap-1">
+              <span className="text-xs text-leise flex items-center gap-1">
                 <Lock className="w-3.5 h-3.5" /> {t("detail.versionsLocked")}
               </span>
             )}
@@ -453,13 +455,13 @@ export default function PaperDetailPage() {
       {/* Team feedback */}
       {(isMyTeam || isAdmin) && (
         <section className="space-y-3" aria-labelledby="paper-feedback-heading">
-          <h2 id="paper-feedback-heading" className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 id="paper-feedback-heading" className="font-semibold text-fg flex items-center gap-2">
             <MessageSquare className="w-4 h-4" /> {t("detail.feedback")}
           </h2>
           {paper.feedback?.length ? (
             paper.feedback.map((f, index) => (
               <div key={f.id} className="card p-4">
-                <div className="flex items-center justify-between mb-3 text-sm text-gray-600 dark:text-gray-300">
+                <div className="flex items-center justify-between mb-3 text-sm text-leise">
                   <span>{t("detail.reviewNumber", { number: index + 1 })} · {t("detail.round", { round: f.revision_number })}{f.version_number ? ` · v${f.version_number}` : ""}</span>
                   {f.recommendation && <span className={RECOMMENDATION_BADGE[f.recommendation] ?? "badge-gray"}>{RECOMMENDATION_LABEL[f.recommendation] ?? f.recommendation}</span>}
                 </div>
@@ -467,7 +469,7 @@ export default function PaperDetailPage() {
               </div>
             ))
           ) : (
-            <div className="card p-6 text-center text-sm text-gray-400">
+            <div className="card p-6 text-center text-sm text-leise">
               {t("detail.feedbackPending")}
             </div>
           )}
@@ -476,9 +478,9 @@ export default function PaperDetailPage() {
 
       {/* ── Admin panel ──────────────────────────────────────────────── */}
       {isAdmin && (
-        <section className="card p-6 space-y-5 border-primary-200 dark:border-primary-900">
-          <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-primary-500" /> {t("detail.admin")}
+        <section className="card p-6 space-y-5 border-primary/30">
+          <h2 className="font-semibold text-fg flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-akzent" /> {t("detail.admin")}
           </h2>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -493,8 +495,8 @@ export default function PaperDetailPage() {
                 <input className="input flex-1" aria-label={t("detail.reason")} placeholder={t("detail.reasonOptional")} value={statusReason} onChange={(e) => setStatusReason(e.target.value)} />
                 <button
                   disabled={!newStatus || setStatusM.isPending}
-                  onClick={() => {
-                    if (newStatus === "disqualified_ai" && !confirm(t("detail.confirmDisqualify"))) return;
+                  onClick={async () => {
+                    if (newStatus === "disqualified_ai" && !(await confirmAction({ message: t("detail.confirmDisqualify"), tone: "danger", confirmLabel: t("detail.apply") }))) return;
                     setStatusM.mutate(newStatus);
                   }}
                   className="btn-secondary text-sm disabled:opacity-40"
@@ -516,7 +518,7 @@ export default function PaperDetailPage() {
                   className="btn-secondary text-sm disabled:opacity-40"
                 ><UserPlus className="w-4 h-4" /> {t("autoAssign.assign")}</button>
               </div>
-              <p className="text-xs text-gray-400 mt-1">{t("detail.conflictHint")}</p>
+              <p className="text-xs text-leise mt-1">{t("detail.conflictHint")}</p>
             </div>
 
             {/* Format deduction */}
@@ -527,7 +529,16 @@ export default function PaperDetailPage() {
                 <input className="input flex-1" aria-label={t("detail.deductionReason")} placeholder={t("detail.deductionReasonPlaceholder")} value={deductionReason} onChange={(e) => setDeductionReason(e.target.value)} />
                 <button disabled={deductionM.isPending} onClick={() => deductionM.mutate()} className="btn-secondary text-sm disabled:opacity-40">{t("common:save")}</button>
               </div>
-              <p className="text-xs text-gray-400 mt-1">{t("detail.deductionHint")}</p>
+              <p className="text-xs text-leise mt-1">{t("detail.deductionHint")}</p>
+            </div>
+
+            {/* On-stage presentation */}
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" className="h-4 w-4" checked={!!paper.presented_on_stage} disabled={stageM.isPending} onChange={(e) => stageM.mutate(e.target.checked)} />
+                {t("detail.presentedOnStage")}
+              </label>
+              <p className="text-xs text-leise mt-1">{t("detail.presentedOnStageHint")}</p>
             </div>
           </div>
 
@@ -535,7 +546,7 @@ export default function PaperDetailPage() {
             <button disabled={finalizeM.isPending} onClick={() => finalizeM.mutate()} className="btn-primary text-sm disabled:opacity-40">
               <Award className="w-4 h-4" /> {t("detail.finalize")}
             </button>
-            <span className="text-xs text-gray-400 self-center">
+            <span className="text-xs text-leise self-center">
               {t("detail.finalizeHint")}
               {paper.finalized_at && ` ${t("detail.lastFinalized", { date: fmtDate(paper.finalized_at) })}`}
             </span>
@@ -546,8 +557,8 @@ export default function PaperDetailPage() {
       {/* ── Reviewer form ────────────────────────────────────────────── */}
       {isAssigned && (
         <section className="card p-6 space-y-4" aria-labelledby="my-review-heading">
-          <div className="flex items-center justify-between">
-            <h2 id="my-review-heading" className="font-semibold text-gray-900 dark:text-white">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="my-review-heading" className="font-semibold text-fg">
               {t("detail.myReview")} {paper.current_version ? `(v${paper.current_version})` : ""}
             </h2>
             <span className={myReview?.is_submitted ? "badge-green" : "badge-yellow"}>
@@ -555,7 +566,7 @@ export default function PaperDetailPage() {
             </span>
           </div>
           {myReviewLocked && (
-            <p className="text-xs text-gray-500 flex items-center gap-1">
+            <p className="text-xs text-leise flex items-center gap-1">
               <Lock className="w-3.5 h-3.5" />
               {myReview?.is_submitted
                 ? t("detail.lockedSubmitted")
@@ -567,7 +578,7 @@ export default function PaperDetailPage() {
             {REVIEW_CRITERIA.map((c) => (
               <div key={c.key} className="grid gap-2 sm:grid-cols-[12rem_6rem_1fr] sm:items-start">
                 <label className="label" htmlFor={`score-${c.key}`}>
-                  {c.label} <span className="block text-xs font-normal text-gray-400">{c.hint}</span>
+                  {c.label} <span className="block text-xs font-normal text-leise">{c.hint}</span>
                 </label>
                 <input
                   id={`score-${c.key}`}
@@ -611,10 +622,10 @@ export default function PaperDetailPage() {
               <button disabled={saveReviewM.isPending} onClick={() => saveReviewM.mutate(false)} className="btn-secondary text-sm disabled:opacity-40">
                 {t("detail.saveDraft")}
               </button>
-              <button disabled={saveReviewM.isPending} onClick={() => { if (confirm(t("detail.confirmSubmitReview"))) saveReviewM.mutate(true); }} className="btn-primary text-sm disabled:opacity-40">
+              <button disabled={saveReviewM.isPending} onClick={() => void confirmAction({ message: t("detail.confirmSubmitReview") }).then((ok) => ok && saveReviewM.mutate(true))} className="btn-primary text-sm disabled:opacity-40">
                 <Send className="w-4 h-4" /> {t("detail.submitReview")}
               </button>
-              <span className="text-xs text-gray-400">{t("detail.submitReviewHint")}</span>
+              <span className="text-xs text-leise">{t("detail.submitReviewHint")}</span>
             </div>
           </fieldset>
         </section>
@@ -623,14 +634,14 @@ export default function PaperDetailPage() {
       {/* Reviews (organizers: all, reviewers: own) */}
       {(isAdmin || (paper.reviews?.length ?? 0) > 0) && (
         <section className="space-y-3">
-          <h2 className="font-semibold text-gray-900 dark:text-white">{t(isAdmin ? "detail.allReviews" : "detail.myReviews", { count: paper.reviews?.length ?? 0 })}</h2>
+          <h2 className="font-semibold text-fg">{t(isAdmin ? "detail.allReviews" : "detail.myReviews", { count: paper.reviews?.length ?? 0 })}</h2>
           {paper.reviews?.map((r) => (
             <div key={r.id} className="card p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <span className="text-sm text-gray-600 dark:text-gray-300">
+                <span className="text-sm text-leise">
                   {userName(r.reviewer_id)} · {t("detail.round", { round: r.revision_number })}{r.version_number ? ` · v${r.version_number}` : ""}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {r.recommendation && (<span className={RECOMMENDATION_BADGE[r.recommendation] ?? "badge-gray"}>{RECOMMENDATION_LABEL[r.recommendation] ?? r.recommendation}</span>)}
                   <span className={r.is_submitted ? "badge-green" : "badge-yellow"}>{r.is_submitted ? t("detail.reviewSubmitted") : t("detail.reviewDraft")}</span>
                   {isAdmin && r.is_submitted && reviewOpen && r.revision_number === paper.revision_number && (
@@ -643,25 +654,26 @@ export default function PaperDetailPage() {
               <ReviewBody review={r} />
             </div>
           ))}
-          {(!paper.reviews || paper.reviews.length === 0) && (<div className="card p-8 text-center text-gray-400">{t("detail.noReviews")}</div>)}
+          {(!paper.reviews || paper.reviews.length === 0) && (<div className="card p-8 text-center text-leise">{t("detail.noReviews")}</div>)}
         </section>
       )}
 
       {/* Assignments */}
       {(isAdmin || isAssigned) && (
         <section className="card overflow-hidden">
-          <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white">{t("detail.assignedReviewers", { count: paper.assignments?.length ?? 0 })}</h2>
+          <h2 className="px-4 py-3 border-b font-semibold text-fg">{t("detail.assignedReviewers", { count: paper.assignments?.length ?? 0 })}</h2>
+          <div className="table-scroll">
           <table className="w-full text-sm">
-            <tbody className="divide-y dark:divide-gray-800">
+            <tbody className="divide-y">
               {paper.assignments?.map((a) => (
                 <tr key={a.id}>
-                  <td className="px-4 py-3 text-gray-900 dark:text-white">{userName(a.reviewer_id)}</td>
+                  <td className="px-4 py-3 text-fg">{userName(a.reviewer_id)}</td>
                   <td className="px-4 py-3"><span className={a.status === "completed" ? "badge-green" : a.status === "overdue" ? "badge-red" : "badge-yellow"}>{ASSIGNMENT_LABEL[a.status] ?? a.status}</span></td>
-                  <td className="px-4 py-3 text-gray-500">{a.version_number ? `v${a.version_number}` : "—"}</td>
-                  <td className="px-4 py-3 text-right text-gray-500">{fmtDate(a.assigned_at)}</td>
+                  <td className="px-4 py-3 text-leise">{a.version_number ? `v${a.version_number}` : "—"}</td>
+                  <td className="px-4 py-3 text-right text-leise">{fmtDate(a.assigned_at)}</td>
                   {isAdmin && (
                     <td className="px-4 py-3 text-right">
-                      {a.reminder_sent_at && <span className="mr-2 text-xs text-gray-500">{t("detail.remindedAt", { date: fmtDate(a.reminder_sent_at) })}</span>}
+                      {a.reminder_sent_at && <span className="mr-2 text-xs text-leise">{t("detail.remindedAt", { date: fmtDate(a.reminder_sent_at) })}</span>}
                       {a.status !== "completed" && (
                         <button
                           type="button"
@@ -678,23 +690,24 @@ export default function PaperDetailPage() {
                 </tr>
               ))}
               {(!paper.assignments || paper.assignments.length === 0) && (
-                <tr><td className="px-4 py-8 text-center text-gray-400">{t("detail.noAssignments")}</td></tr>
+                <tr><td className="px-4 py-8 text-center text-leise">{t("detail.noAssignments")}</td></tr>
               )}
             </tbody>
           </table>
+        </div>
         </section>
       )}
 
       {/* Status history */}
       {(history?.length ?? 0) > 0 && (
         <section className="card overflow-hidden">
-          <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 className="px-4 py-3 border-b font-semibold text-fg flex items-center gap-2">
             <ListTree className="w-4 h-4" /> {t("detail.statusHistory")}
           </h2>
-          <ol className="divide-y text-sm dark:divide-gray-800">
+          <ol className="divide-y text-sm">
             {history!.map((entry) => (
               <li key={entry.id} className="flex flex-wrap items-center gap-2 px-4 py-2">
-                <span className="text-gray-500 tabular-nums">{fmtDate(entry.changed_at)}</span>
+                <span className="text-leise tabular-nums">{fmtDate(entry.changed_at)}</span>
                 {entry.from_status && (
                   <>
                     <span className={PAPER_STATUS_BADGE[entry.from_status] ?? "badge-gray"}>{PAPER_STATUS_LABEL[entry.from_status] ?? entry.from_status}</span>
@@ -702,8 +715,8 @@ export default function PaperDetailPage() {
                   </>
                 )}
                 <span className={PAPER_STATUS_BADGE[entry.to_status] ?? "badge-gray"}>{PAPER_STATUS_LABEL[entry.to_status] ?? entry.to_status}</span>
-                {entry.reason && <span className="text-gray-600 dark:text-gray-400">– {entry.reason}</span>}
-                {isAdmin && entry.changed_by && <span className="ml-auto text-xs text-gray-500">{userName(entry.changed_by)}</span>}
+                {entry.reason && <span className="text-leise">– {entry.reason}</span>}
+                {isAdmin && entry.changed_by && <span className="ml-auto text-xs text-leise">{userName(entry.changed_by)}</span>}
               </li>
             ))}
           </ol>

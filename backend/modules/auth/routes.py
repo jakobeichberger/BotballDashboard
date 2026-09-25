@@ -26,6 +26,7 @@ from modules.auth.schemas import (
     PasswordResetRequest,
     PermissionResponse,
     PushSubscriptionCreate,
+    PushSubscriptionDelete,
     RoleCreate,
     RoleDetailResponse,
     RolePermissionsUpdate,
@@ -133,7 +134,8 @@ async def refresh(
         try:
             body = await request.json()
             refresh_token = body.get("refresh_token")
-        except Exception:
+        except (ValueError, AttributeError):
+            # No body, invalid JSON or not an object: treated as "no token".
             refresh_token = None
     if not refresh_token:
         from core.exceptions import UnauthorizedError
@@ -337,7 +339,7 @@ async def subscribe_push(
 
 @router.delete("/me/push-subscriptions", status_code=204)
 async def unsubscribe_push(
-    body: PushSubscriptionCreate,
+    body: PushSubscriptionDelete,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

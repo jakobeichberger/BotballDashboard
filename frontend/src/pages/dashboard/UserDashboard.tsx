@@ -23,12 +23,13 @@ export default function UserDashboard({ season, ranking, teams, announcements, s
   const activePhase = season?.phases?.find((p: any) => p.is_active);
 
   const statItems = [
-    { label: t("stat.teams"), value: teams?.length ?? 0, icon: Users },
-    { label: t("stat.scores"), value: ranking?.length ?? 0, icon: Trophy },
+    { label: t("stat.teams"), value: teams?.length ?? 0, icon: Users, tone: "info" as const },
+    { label: t("stat.scores"), value: ranking?.length ?? 0, icon: Trophy, tone: "primary" as const },
     {
       label: t("stat.currentPhase"),
       value: activePhase?.name ?? "—",
       icon: Calendar,
+      tone: "success" as const,
     },
   ];
 

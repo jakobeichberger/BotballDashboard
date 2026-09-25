@@ -43,7 +43,8 @@
     "internal_draft": "Internal draft",
     "internal_review": "Internal review deadline",
     "internal_revision": "Internal revision",
-    "internal_final": "Internal final submission"
+    "internal_final": "Internal final submission",
+    "official_notification": "Notification of acceptance"
   },
   "countdown": {
     "days": "{{days}} d {{hours}} h",
@@ -96,12 +97,13 @@
     "type": "Type",
     "label": "Label",
     "blockAfter": "Block uploads afterwards",
-    "create": "Add deadline"
+    "create": "Add deadline",
+    "confirmDelete": "Delete the deadline “{{name}}” ({{date}})?"
   },
   "title": "Paper Review",
   "reviewsCsv": "Reviews CSV",
   "deadlinePassed": "Submission deadline passed",
-  "submitNew": "+ Submit paper",
+  "submitNew": "Submit paper",
   "stats": {
     "title": "Statistics",
     "total": "Total papers",
@@ -120,7 +122,8 @@
     "title": "Title",
     "round": "Round",
     "version": "Version",
-    "submitted": "Submitted"
+    "submitted": "Submitted",
+    "open": "Open"
   },
   "empty": "No papers submitted yet",
   "create": {
@@ -218,6 +221,11 @@
     "remind": "Remind",
     "remindReviewer": "Remind {{name}} of the review",
     "remindedAt": "reminded {{date}}",
-    "statusHistory": "Status history"
-  }
+    "statusHistory": "Status history",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "presentedOnStage": "Presented on stage",
+    "presentedOnStageHint": "Selected by the programme committee for the presentation (up to 10 min + 5 min Q&A). Nominates the paper for “Best Paper Presentation”."
+  },
+  "subtitle": "Check, review, score and export submitted papers."
 }

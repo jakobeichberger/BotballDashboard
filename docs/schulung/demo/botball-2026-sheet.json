@@ -1,0 +1,428 @@
+{
+  "sides": [
+    "A",
+    "B"
+  ],
+  "sections": [
+    {
+      "key": "lower_start_box",
+      "label": "Lower Start Box",
+      "fields": [
+        {
+          "key": "lower_start_box_poms",
+          "label": "Poms",
+          "type": "count",
+          "multiplier": 2,
+          "min_value": 0,
+          "max_value": 48,
+          "required": false
+        },
+        {
+          "key": "lower_start_box_cubes",
+          "label": "Cubes",
+          "type": "count",
+          "multiplier": 5,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        },
+        {
+          "key": "lower_start_box_cubes_on_pallets",
+          "label": "Cubes on Pallets",
+          "type": "count",
+          "multiplier": 10,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        },
+        {
+          "key": "lower_start_box_drums",
+          "label": "Drums",
+          "type": "count",
+          "multiplier": 25,
+          "min_value": 0,
+          "max_value": 16,
+          "required": false
+        },
+        {
+          "key": "lower_start_box_traffic_cones",
+          "label": "Traffic Cone",
+          "type": "count",
+          "multiplier": 50,
+          "min_value": 0,
+          "max_value": 4,
+          "required": false
+        },
+        {
+          "key": "lower_start_box_botguy",
+          "label": "Botguy",
+          "type": "count",
+          "multiplier": 100,
+          "min_value": 0,
+          "max_value": 1,
+          "required": false
+        }
+      ],
+      "multipliers": [
+        {
+          "key": "lower_start_box_drum_bonus",
+          "label": "Drum ×2",
+          "type": "boolean",
+          "factor": 2,
+          "source": "lower_start_box_drums"
+        },
+        {
+          "key": "lower_start_box_botguy_bonus",
+          "label": "Botguy ×2",
+          "type": "boolean",
+          "factor": 2,
+          "source": "lower_start_box_botguy"
+        }
+      ]
+    },
+    {
+      "key": "upper_start_box",
+      "label": "Upper Start Box",
+      "fields": [
+        {
+          "key": "upper_start_box_poms",
+          "label": "Poms",
+          "type": "count",
+          "multiplier": 2,
+          "min_value": 0,
+          "max_value": 48,
+          "required": false
+        },
+        {
+          "key": "upper_start_box_cubes",
+          "label": "Cubes",
+          "type": "count",
+          "multiplier": 5,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        },
+        {
+          "key": "upper_start_box_cubes_on_pallets",
+          "label": "Cubes on Pallets",
+          "type": "count",
+          "multiplier": 10,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        },
+        {
+          "key": "upper_start_box_drums",
+          "label": "Drums",
+          "type": "count",
+          "multiplier": 25,
+          "min_value": 0,
+          "max_value": 16,
+          "required": false
+        },
+        {
+          "key": "upper_start_box_traffic_cones",
+          "label": "Traffic Cone",
+          "type": "count",
+          "multiplier": 100,
+          "min_value": 0,
+          "max_value": 4,
+          "required": false
+        },
+        {
+          "key": "upper_start_box_botguy",
+          "label": "Botguy",
+          "type": "count",
+          "multiplier": 200,
+          "min_value": 0,
+          "max_value": 1,
+          "required": false
+        }
+      ],
+      "multipliers": [
+        {
+          "key": "upper_start_box_robots",
+          "label": "# of Robots (× n + 2)",
+          "type": "count",
+          "factor": 1,
+          "offset": 2,
+          "min_value": 0,
+          "max_value": 4
+        }
+      ]
+    },
+    {
+      "key": "warehouse_floor",
+      "label": "Warehouse Floor",
+      "fields": [
+        {
+          "key": "floor_unsorted_poms",
+          "label": "Unsorted Poms",
+          "type": "count",
+          "multiplier": 1,
+          "min_value": 0,
+          "max_value": 48,
+          "required": false
+        },
+        {
+          "key": "floor_sorted_poms",
+          "label": "Sorted Poms",
+          "type": "count",
+          "multiplier": 5,
+          "min_value": 0,
+          "max_value": 48,
+          "required": false
+        },
+        {
+          "key": "floor_cubes",
+          "label": "Cubes",
+          "type": "count",
+          "multiplier": 1,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        },
+        {
+          "key": "floor_cubes_on_pallets",
+          "label": "Cubes on Pallets",
+          "type": "count",
+          "multiplier": 10,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        },
+        {
+          "key": "floor_drums",
+          "label": "Drums",
+          "type": "count",
+          "multiplier": 25,
+          "min_value": 0,
+          "max_value": 16,
+          "required": false
+        },
+        {
+          "key": "floor_botguy",
+          "label": "Botguy",
+          "type": "count",
+          "multiplier": 50,
+          "min_value": 0,
+          "max_value": 1,
+          "required": false
+        }
+      ],
+      "multipliers": [
+        {
+          "key": "floor_sorted_pom_sections",
+          "label": "# of Sorted Pom Sections",
+          "type": "count",
+          "factor": 1,
+          "offset": 0,
+          "min_value": 0,
+          "max_value": 6
+        }
+      ]
+    },
+    {
+      "key": "internal_loading_dock",
+      "label": "Internal Loading Dock",
+      "fields": [
+        {
+          "key": "internal_dock_unsorted_cubes",
+          "label": "Unsorted Cubes",
+          "type": "count",
+          "multiplier": 10,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        },
+        {
+          "key": "internal_dock_sorted_cubes",
+          "label": "Sorted Cubes",
+          "type": "count",
+          "multiplier": 30,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        }
+      ],
+      "multipliers": [
+        {
+          "key": "internal_dock_pallets",
+          "label": "# of Pallets with Cubes",
+          "type": "count",
+          "factor": 1,
+          "offset": 0,
+          "min_value": 0,
+          "max_value": 8
+        }
+      ]
+    },
+    {
+      "key": "drum_storage",
+      "label": "Drum Storage",
+      "fields": [
+        {
+          "key": "drum_pipes_unsorted",
+          "label": "2\" PVC Pipes Unsorted",
+          "type": "count",
+          "multiplier": 100,
+          "min_value": 0,
+          "max_value": 16,
+          "required": false
+        },
+        {
+          "key": "drum_pipes_sorted",
+          "label": "2\" PVC Pipes Sorted",
+          "type": "count",
+          "multiplier": 200,
+          "min_value": 0,
+          "max_value": 16,
+          "required": false
+        }
+      ],
+      "multipliers": [
+        {
+          "key": "drum_posts",
+          "label": "# of Posts",
+          "type": "count",
+          "factor": 1,
+          "offset": 0,
+          "min_value": 0,
+          "max_value": 2
+        }
+      ]
+    },
+    {
+      "key": "packaging_bin",
+      "label": "Packaging Bin",
+      "fields": [
+        {
+          "key": "bin_non_matched_poms",
+          "label": "Non-matched Poms",
+          "type": "count",
+          "multiplier": 10,
+          "min_value": 0,
+          "max_value": 48,
+          "required": false
+        },
+        {
+          "key": "bin_matched_poms",
+          "label": "Matched Poms",
+          "type": "count",
+          "multiplier": 20,
+          "min_value": 0,
+          "max_value": 48,
+          "required": false
+        },
+        {
+          "key": "bin_botguy",
+          "label": "Botguy",
+          "type": "count",
+          "multiplier": 150,
+          "min_value": 0,
+          "max_value": 1,
+          "required": false
+        }
+      ],
+      "multipliers": [
+        {
+          "key": "bin_sorted_baskets",
+          "label": "Sorted Baskets (× n + 1)",
+          "type": "count",
+          "factor": 1,
+          "offset": 1,
+          "min_value": 0,
+          "max_value": 4
+        },
+        {
+          "key": "bin_returned_baskets",
+          "label": "Returned Baskets",
+          "type": "count",
+          "factor": 1,
+          "offset": 0,
+          "min_value": 0,
+          "max_value": 4
+        }
+      ]
+    },
+    {
+      "key": "upper_warehouse",
+      "label": "Upper Warehouse",
+      "fields": [
+        {
+          "key": "upper_poms",
+          "label": "Poms",
+          "type": "count",
+          "multiplier": 2,
+          "min_value": 0,
+          "max_value": 48,
+          "required": false
+        },
+        {
+          "key": "upper_botguy",
+          "label": "Botguy",
+          "type": "count",
+          "multiplier": 200,
+          "min_value": 0,
+          "max_value": 1,
+          "required": false
+        },
+        {
+          "key": "upper_clean_deck",
+          "label": "Clean Deck",
+          "type": "boolean",
+          "multiplier": 100,
+          "min_value": 0,
+          "max_value": 1,
+          "required": false
+        }
+      ],
+      "multipliers": [
+        {
+          "key": "upper_robots",
+          "label": "# of Robots",
+          "type": "count",
+          "factor": 1,
+          "offset": 0,
+          "min_value": 0,
+          "max_value": 4
+        }
+      ]
+    },
+    {
+      "key": "external_loading_dock",
+      "label": "External Loading Dock",
+      "fields": [
+        {
+          "key": "external_dock_unsorted_cubes",
+          "label": "Unsorted Cubes",
+          "type": "count",
+          "multiplier": 15,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        },
+        {
+          "key": "external_dock_sorted_cubes",
+          "label": "Sorted Cubes",
+          "type": "count",
+          "multiplier": 45,
+          "min_value": 0,
+          "max_value": 30,
+          "required": false
+        }
+      ],
+      "multipliers": [
+        {
+          "key": "external_dock_pallets",
+          "label": "# of Pallets with Cubes (× n + 1)",
+          "type": "count",
+          "factor": 1,
+          "offset": 1,
+          "min_value": 0,
+          "max_value": 8
+        }
+      ]
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import aiosmtplib
 
 from core.config import get_settings
 from core.logging import get_logger
+from core.push_endpoints import push_endpoint_problem
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -54,7 +55,7 @@ async def _send_smtp(
         )
         logger.info("email_sent", to=recipients, subject=subject, via="smtp")
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - a failed mail must not fail the caller
         logger.warning("smtp_failed", error=str(exc))
         return False
 
@@ -83,7 +84,7 @@ async def _send_sendgrid(
             resp.raise_for_status()
         logger.info("email_sent", to=recipients, subject=subject, via="sendgrid")
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - a failed mail must not fail the caller
         logger.error("sendgrid_failed", error=str(exc))
         return False
 
@@ -116,6 +117,12 @@ async def send_push_notification(
     """
     if not settings.vapid_private_key:
         return "disabled"
+    problem = push_endpoint_problem(endpoint)
+    if problem:
+        # Saved before the subscription route checked endpoints (SSRF): never
+        # contacted, and "gone" makes the caller delete the subscription.
+        logger.warning("push_endpoint_refused", reason=problem, endpoint=endpoint[:40])
+        return "gone"
     try:
         from pywebpush import WebPushException, webpush
     except ImportError:  # pragma: no cover - dependency is installed in production
@@ -143,6 +150,6 @@ async def send_push_notification(
             return "gone"
         logger.warning("push_failed", error=str(exc), endpoint=endpoint[:40])
         return "failed"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - reported to the outbox as "failed"
         logger.warning("push_failed", error=str(exc), endpoint=endpoint[:40])
         return "failed"

@@ -51,6 +51,8 @@ class PaperScoreUpdate(BaseModel):
     paper_rank: int | None = Field(default=None, ge=1)
     format_deduction: float | None = Field(default=None, ge=0, le=100)
     format_deduction_reason: str | None = None
+    # Chosen for the on-stage presentation (Best Paper Presentation award).
+    presented_on_stage: bool | None = None
 
 
 class ReviewerAssignmentCreate(BaseModel):
@@ -136,6 +138,8 @@ class PaperVersionResponse(BaseModel):
     revision_number: int
     file_name: str
     file_size_bytes: int
+    # Pages of the PDF (None when it could not be read).
+    page_count: int | None = None
     uploaded_by: str | None
     uploaded_at: datetime
     submitted_at: datetime | None
@@ -143,6 +147,7 @@ class PaperVersionResponse(BaseModel):
 
 DeadlineType = Literal[
     "official_submission",
+    "official_notification",
     "official_final",
     "internal_draft",
     "internal_review",
@@ -294,6 +299,7 @@ class PaperResponse(BaseModel):
     paper_rank: int | None
     format_deduction: float
     format_deduction_reason: str | None
+    presented_on_stage: bool = False
     finalized_at: datetime | None
     notes: str | None
     created_at: datetime

@@ -12,11 +12,11 @@ const registrations = [
   { id: "r1", team_id: "uuid-alpha", team_name: "Alpha", team_number: "AT-1", seed_number: 1 },
 ];
 
-function renderPage() {
+function renderPage(status = "processing") {
   (api.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
     if (url.endsWith("/registrations")) return Promise.resolve({ data: registrations });
     if (url.endsWith("/score-sheet-scans")) {
-      return Promise.resolve({ data: [{ id: "s1", template_id: "t", team_id: "uuid-beta", file_name: "sheet.jpg", status: "processing", extracted_values: null, error: null, created_at: "" }] });
+      return Promise.resolve({ data: [{ id: "s1", template_id: "t", team_id: "uuid-beta", file_name: "sheet.jpg", status, extracted_values: null, error: null, created_at: "" }] });
     }
     if (url === "/v1/events/ev") return Promise.resolve({ data: { id: "ev", season_id: "se" } });
     return Promise.resolve({ data: [] });
@@ -35,6 +35,23 @@ function renderPage() {
 
 describe("ScanReviewPage upload", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it.each([
+    ["processing", true],
+    ["failed", false],
+  ])("polls the scan list only while scans are processed (%s)", async (status, polls) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderPage(status);
+      await screen.findByText(/sheet\.jpg/);
+      const scanCalls = () => (api.get as ReturnType<typeof vi.fn>).mock.calls.filter(([url]) => String(url).endsWith("/score-sheet-scans")).length;
+      const before = scanCalls();
+      await vi.advanceTimersByTimeAsync(11_000);
+      expect(scanCalls() > before).toBe(polls);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it("selects the team by seed, name and number instead of its UUID", async () => {
     renderPage();

@@ -23,7 +23,6 @@ from core.auth import (
     get_current_user,
     has_elevated_access,
     own_team_ids,
-    permissions_of,
     require_permission,
 )
 from core.database import get_db
@@ -198,7 +197,7 @@ async def deadlines_ics(
         user = await get_current_user(credentials, db)
     if user is None:
         raise UnauthorizedError("Invalid or missing calendar token")
-    if not user.is_superuser and "seasons:read" not in permissions_of(user):
+    if not await has_elevated_access(db, user, "seasons:read"):
         raise UnauthorizedError("Invalid or missing calendar token")
     season_ids = await calendar.relevant_season_ids(db, user)
     entries = await calendar.collect_deadlines(db, user, season_ids)

@@ -120,7 +120,10 @@
     "add": "+ Add",
     "noExtra": "No additional dates.",
     "phases": "Phases",
-    "phaseInfo": "({{type}}, {{rounds}} rounds)"
+    "phaseInfo": "({{type}}, {{rounds}} rounds)",
+    "season": "Season",
+    "confirmDelete": "Delete the entry “{{title}}”?",
+    "deleteEntry": "Delete the entry “{{title}}”"
   },
   "levels": {
     "title": "Competition levels",
@@ -171,5 +174,29 @@
     "system": "System",
     "permissionCount": "{{count}} permissions",
     "edit": "Edit permissions"
+  },
+  "categories": {
+    "title": "Season categories",
+    "hint": "Key, labels and scoring of each category. A key still used by registrations cannot be removed.",
+    "key": "Key",
+    "labelDe": "Label (DE)",
+    "labelEn": "Label (EN)",
+    "kind": "Kind",
+    "preset": "Formula preset",
+    "presetDefault": "Default of the kind",
+    "runs": "Runs",
+    "countedRuns": "Counted runs",
+    "allRuns": "all",
+    "perCourse": "Rank per course (DE bracket)",
+    "remove": "Remove category",
+    "add": "Add category",
+    "saved": "Categories saved",
+    "kinds": {
+      "botball": "Botball",
+      "open": "Open",
+      "aerial": "Aerial",
+      "jbc": "Junior Botball Challenge",
+      "custom": "Custom"
+    }
   }
 }

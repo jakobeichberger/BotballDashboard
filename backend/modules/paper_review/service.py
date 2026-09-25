@@ -30,7 +30,7 @@ from modules.paper_review.models import (
     PaperVersion,
     ReviewerAssignment,
 )
-from modules.scoring.service import resolve_event
+from modules.scoring.service import invalidate_season_rankings, resolve_event
 from modules.seasons.lifecycle import ensure_writable
 
 settings = get_settings()
@@ -88,6 +88,34 @@ async def save_file(
         raise
 
     return str(file_path), safe_name, size
+
+
+def pdf_page_count(path: str | Path) -> int | None:
+    """Number of pages of a PDF, or None when pypdf cannot read it."""
+    try:
+        from pypdf import PdfReader
+
+        return len(PdfReader(str(path)).pages)
+    except Exception:  # noqa: BLE001 - pypdf raises many types for broken files
+        return None
+
+
+def check_page_limit(path: str | Path) -> int | None:
+    """Count the pages and refuse a paper above the page limit.
+
+    The call for papers allows at most ``paper_max_pages`` pages (2026: five,
+    figures and references included). A PDF pypdf cannot read passes: the
+    reviewers still see it, and a format deduction remains possible.
+    """
+    pages = pdf_page_count(path)
+    limit = settings.paper_max_pages
+    if limit and pages is not None and pages > limit:
+        Path(path).unlink(missing_ok=True)
+        raise ValidationError(
+            f"The paper has {pages} pages; at most {limit} are allowed "
+            "(including figures and references)"
+        )
+    return pages
 
 
 # ── Deadline ──────────────────────────────────────────────────────────────────
@@ -333,6 +361,7 @@ async def add_version(
 
     number = (paper.current_version or 0) + 1
     file_path, file_name, size = await save_file(file, paper_id, number)
+    page_count = check_page_limit(file_path)
     storage_path = Path(file_path).relative_to(Path(settings.upload_dir).resolve()).as_posix()
     db.add(
         PaperVersion(
@@ -342,6 +371,7 @@ async def add_version(
             file_name=file_name,
             storage_path=storage_path,
             file_size_bytes=size,
+            page_count=page_count,
             uploaded_by=uploaded_by,
         )
     )
@@ -484,16 +514,14 @@ async def set_paper_status(
 
 
 async def _assert_reviewer_eligible(db: AsyncSession, paper: Paper, reviewer_id: str) -> None:
+    from core.auth import has_elevated_access
     from modules.auth.models import User
-    from modules.auth.service import get_user_permissions
     from modules.teams.models import Team, TeamMember
 
     reviewer = await db.get(User, reviewer_id)
     if not reviewer or not reviewer.is_active:
         raise NotFoundError("Reviewer not found")
-    if not reviewer.is_superuser and "papers:review" not in await get_user_permissions(
-        db, reviewer_id
-    ):
+    if not await has_elevated_access(db, reviewer, "papers:review"):
         raise ValidationError(f"{reviewer.display_name} does not hold the papers:review permission")
 
     reviewer_team_ids = set(
@@ -709,7 +737,11 @@ def team_feedback(paper: Paper) -> list[PaperReview]:
 
 
 async def _recompute_paper_ranks(db: AsyncSession, season_id: str) -> None:
-    """Rank papers in a season by final_score DESC; papers without a score get no rank."""
+    """Rank papers in a season by final_score DESC; papers without a score get no rank.
+
+    Paper scores feed the overall ranking, so its cached copies are dropped.
+    """
+    await invalidate_season_rankings(db, season_id)
     scored = await db.execute(
         select(Paper)
         .where(Paper.season_id == season_id, Paper.final_score.isnot(None))

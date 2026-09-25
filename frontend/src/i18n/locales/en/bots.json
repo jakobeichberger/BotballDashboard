@@ -40,6 +40,7 @@
     "noFunctionality": "No description of how it works available.",
     "noImage": "No image uploaded",
     "imageTypes": "PNG, JPEG, GIF or WebP",
-    "uploadImage": "Upload image"
+    "uploadImage": "Upload image",
+    "chooseImage": "Choose image file"
   }
 }

@@ -9,6 +9,8 @@
 * PartsChallenge – a challenge of the opponent's robot at a head-to-head match
   (game review "Challenges": the loser of the challenge is disqualified for the
   round).
+* TimeoutCard – the one red timeout card of a team (game review "Timeout
+  Card": a single 3-minute timeout per team for the entire tournament).
 """
 
 import uuid
@@ -50,6 +52,15 @@ class ScoringRuleSet(Base):
     end_contact_bonus_percent: Mapped[float] = mapped_column(Float, nullable=False, default=25.0)
     # [{key, label, required}] – ticked by the juror before confirming a score
     referee_checklist: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Break equal seed scores with the tie-breakers. Off by default: the game
+    # review applies tie-breakers to head-to-head rounds, and seeding ties
+    # share a rank (ECER 2026 results: two teams on seeding rank 7).
+    seeding_tiebreakers: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    # Rubric maxima of the documentation periods, {"p1": 100, "p2": 95, ...};
+    # NULL means 100 each (see rules_service.DOC_MAX_DEFAULT).
+    doc_max_points: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -160,6 +171,39 @@ class TeamQualification(Base):
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TimeoutCard(Base):
+    """A team turned in its timeout card at this event (one per tournament).
+
+    The unique constraint is the rule: "Only a single timeout per team is
+    allowed for the entire tournament." The match it was taken at is kept for
+    the record (seeding round, DE match or on-deck inspection).
+    """
+
+    __tablename__ = "timeout_cards"
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_timeout_card_event_team"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    team_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    scheduled_match_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("scheduled_matches.id", ondelete="SET NULL"), nullable=True
+    )
+    round_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # before_hands_off | inspection (illegal part found at the on-deck check)
+    reason: Mapped[str] = mapped_column(String(20), nullable=False, default="before_hands_off")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recorded_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    used_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 

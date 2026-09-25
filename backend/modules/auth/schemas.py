@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
+from core.push_endpoints import MAX_ENDPOINT_LENGTH, push_endpoint_problem
 from modules.auth.password_policy import check_password
 
 Language = Literal["de", "en"]
@@ -20,10 +21,6 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int  # seconds
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -194,6 +191,22 @@ class PermissionResponse(BaseModel):
 
 class PushSubscriptionCreate(BaseModel):
     endpoint: str
-    p256dh: str
-    auth: str
-    user_agent: str | None = None
+    p256dh: str = Field(max_length=200)
+    auth: str = Field(max_length=100)
+    user_agent: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_is_a_push_service(cls, value: str) -> str:
+        # The server POSTs to this URL later: only real push services (SSRF).
+        problem = push_endpoint_problem(value)
+        if problem:
+            raise ValueError(problem)
+        return value
+
+
+class PushSubscriptionDelete(BaseModel):
+    """Unsubscribing is always allowed, also for an endpoint saved before the
+    push-service check existed (the other fields a client sends are ignored)."""
+
+    endpoint: str = Field(max_length=MAX_ENDPOINT_LENGTH)

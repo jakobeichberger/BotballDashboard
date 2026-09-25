@@ -211,6 +211,9 @@ async def test_emit_event_dedupe_key(db):
     assert len((await db.execute(select(NotificationEvent))).scalars().all()) == 1
 
 
+ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc"
+
+
 @pytest.mark.asyncio
 async def test_send_push_notification_reports_expired_subscriptions(monkeypatch):
     import pywebpush
@@ -225,17 +228,17 @@ async def test_send_push_notification_reports_expired_subscriptions(monkeypatch)
 
     monkeypatch.setattr(notifications.settings, "vapid_private_key", "key")
     monkeypatch.setattr(pywebpush, "webpush", gone)
-    assert await notifications.send_push_notification("e", "p", "a", "t", "b") == "gone"
+    assert await notifications.send_push_notification(ENDPOINT, "p", "a", "t", "b") == "gone"
 
     def broken(**_kwargs):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(pywebpush, "webpush", broken)
-    assert await notifications.send_push_notification("e", "p", "a", "t", "b") == "failed"
+    assert await notifications.send_push_notification(ENDPOINT, "p", "a", "t", "b") == "failed"
     monkeypatch.setattr(pywebpush, "webpush", lambda **_kwargs: None)
-    assert await notifications.send_push_notification("e", "p", "a", "t", "b") == "sent"
+    assert await notifications.send_push_notification(ENDPOINT, "p", "a", "t", "b") == "sent"
     monkeypatch.setattr(notifications.settings, "vapid_private_key", "")
-    assert await notifications.send_push_notification("e", "p", "a", "t", "b") == "disabled"
+    assert await notifications.send_push_notification(ENDPOINT, "p", "a", "t", "b") == "disabled"
 
 
 @pytest.mark.asyncio

@@ -8,6 +8,8 @@ import { EventLink } from "@/components/EventLink";
 import { useEventNavigate } from "@/hooks/useEventPath";
 import { useAuthStore } from "@/store/authStore";
 import BotImage from "@/components/BotImage";
+import { confirmAction } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
 
 export default function BotDetailPage() {
   const { t } = useTranslation("bots");
@@ -43,7 +45,7 @@ export default function BotDetailPage() {
   const canManage = isAdmin || (isMentor && isMyTeamBot);
 
   const refresh = () => { qc.invalidateQueries({ queryKey: ["bot", id] }); qc.invalidateQueries({ queryKey: ["bots"] }); };
-  const onError = (e: any) => alert(e?.response?.data?.detail ?? t("common:actionFailed"));
+  const onError = (e: unknown) => toast.apiError(e, t("common:actionFailed"));
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>({});
@@ -76,24 +78,24 @@ export default function BotDetailPage() {
     onError,
   });
 
-  if (isLoading) return <div className="p-6 text-gray-500">{t("common:loading")}</div>;
+  if (isLoading) return <div className="p-6 text-leise">{t("common:loading")}</div>;
   if (isError || !bot) {
     return (
       <div className="p-6">
         <EventLink to="/bots" className="btn-secondary text-sm mb-6"><ArrowLeft className="w-4 h-4" /> {t("detail.back")}</EventLink>
-        <div className="card p-8 text-center text-gray-400">{t("detail.notFound")}</div>
+        <div className="card p-8 text-center text-leise">{t("detail.notFound")}</div>
       </div>
     );
   }
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <EventLink to="/bots" className="btn-secondary text-sm"><ArrowLeft className="w-4 h-4" /> {t("detail.back")}</EventLink>
         {canManage && !editing && (
           <div className="flex items-center gap-2">
             <button onClick={startEdit} className="btn-secondary text-sm"><Pencil className="w-4 h-4" /> {t("common:edit")}</button>
-            <button onClick={() => { if (confirm(t("detail.confirmDelete", { name: bot.name }))) deleteM.mutate(); }}
+            <button onClick={() => void confirmAction({ message: t("detail.confirmDelete", { name: bot.name }), tone: "danger" }).then((ok) => ok && deleteM.mutate())}
                     className="btn-danger text-sm"><Trash2 className="w-4 h-4" /> {t("common:delete")}</button>
           </div>
         )}
@@ -105,19 +107,19 @@ export default function BotDetailPage() {
           {editing ? (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div><label className="label">{t("common:name")}</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                <div><label htmlFor="botdetailpage-f1" className="label">{t("common:name")}</label><input id="botdetailpage-f1" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div>
-                  <label className="label">{t("form.season")}</label>
-                  <select className="input" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value })}>
+                  <label htmlFor="botdetailpage-f2" className="label">{t("form.season")}</label>
+                  <select id="botdetailpage-f2" className="input" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value })}>
                     <option value="">{t("form.noSeason")}</option>
                     {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name}</option>))}
                   </select>
                 </div>
-                <div><label className="label">{t("form.drive")}</label><input className="input" value={form.drive_type} onChange={(e) => setForm({ ...form, drive_type: e.target.value })} /></div>
-                <div className="sm:col-span-2 lg:col-span-3"><label className="label">{t("form.sensors")}</label><input className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} /></div>
+                <div><label htmlFor="botdetailpage-f3" className="label">{t("form.drive")}</label><input id="botdetailpage-f3" className="input" value={form.drive_type} onChange={(e) => setForm({ ...form, drive_type: e.target.value })} /></div>
+                <div className="sm:col-span-2 lg:col-span-3"><label htmlFor="botdetailpage-f4" className="label">{t("form.sensors")}</label><input id="botdetailpage-f4" className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} /></div>
               </div>
-              <div><label className="label">{t("form.description")}</label><input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-              <div><label className="label">{t("form.functionality")}</label><textarea className="input min-h-[8rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })} /></div>
+              <div><label htmlFor="botdetailpage-f5" className="label">{t("form.description")}</label><input id="botdetailpage-f5" className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+              <div><label htmlFor="botdetailpage-f6" className="label">{t("form.functionality")}</label><textarea id="botdetailpage-f6" className="input min-h-[8rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })} /></div>
               <div className="flex items-center gap-2">
                 <button className="btn-primary text-sm disabled:opacity-40" disabled={!form.name || updateM.isPending} onClick={() => updateM.mutate()}><Save className="w-4 h-4" /> {t("common:save")}</button>
                 <button className="btn-secondary text-sm" onClick={() => setEditing(false)}><X className="w-4 h-4" /> {t("common:cancel")}</button>
@@ -126,27 +128,27 @@ export default function BotDetailPage() {
           ) : (
             <>
               <div className="flex items-start justify-between gap-4">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <BotIcon className="w-6 h-6" /> {bot.name}
+                <h1 className="page-title flex items-center gap-2">
+                  <BotIcon className="h-7 w-7 shrink-0 text-akzent" /> {bot.name}
                 </h1>
                 <span className={bot.team_id ? "badge-blue" : "badge-gray"}>{bot.team_id ? t("form.ownTeam") : t("form.externalTeam")}</span>
               </div>
               <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
                 <div>
-                  <dt className="text-gray-500">{t("form.team")}</dt>
+                  <dt className="text-leise">{t("form.team")}</dt>
                   <dd>
                     {team ? (
-                      <EventLink to={`/teams/${team.id}`} className="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                      <EventLink to={`/teams/${team.id}`} className="text-akzent hover:underline flex items-center gap-1">
                         <Users className="w-3.5 h-3.5" /> {team.name}
                       </EventLink>
-                    ) : (<span className="text-gray-900 dark:text-white">{bot.external_team_name ?? "—"}</span>)}
+                    ) : (<span className="text-fg">{bot.external_team_name ?? "—"}</span>)}
                   </dd>
                 </div>
-                <div><dt className="text-gray-500">{t("form.season")}</dt><dd className="text-gray-900 dark:text-white">{seasonName ?? "—"}</dd></div>
-                <div><dt className="text-gray-500">{t("form.drive")}</dt><dd className="text-gray-900 dark:text-white">{bot.drive_type ?? "—"}</dd></div>
-                <div><dt className="text-gray-500">{t("form.sensors")}</dt><dd className="text-gray-900 dark:text-white">{bot.sensors ?? "—"}</dd></div>
+                <div><dt className="text-leise">{t("form.season")}</dt><dd className="text-fg">{seasonName ?? "—"}</dd></div>
+                <div><dt className="text-leise">{t("form.drive")}</dt><dd className="text-fg">{bot.drive_type ?? "—"}</dd></div>
+                <div><dt className="text-leise">{t("form.sensors")}</dt><dd className="text-fg">{bot.sensors ?? "—"}</dd></div>
               </dl>
-              {bot.description && <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 border-t pt-3">{bot.description}</p>}
+              {bot.description && <p className="mt-4 text-sm text-leise border-t pt-3">{bot.description}</p>}
             </>
           )}
         </div>
@@ -155,8 +157,8 @@ export default function BotDetailPage() {
       {/* Functionality */}
       {!editing && (
         <section className="card p-6">
-          <h2 className="font-semibold text-gray-900 dark:text-white mb-2">{t("form.functionality")}</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">
+          <h2 className="font-semibold text-fg mb-2">{t("form.functionality")}</h2>
+          <p className="text-sm text-leise whitespace-pre-line">
             {bot.functionality || t("detail.noFunctionality")}
           </p>
         </section>
@@ -166,12 +168,12 @@ export default function BotDetailPage() {
       {canManage && (
         <section className="card p-4 flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm">
-            <div className="font-medium text-gray-900 dark:text-white">{bot.image_name ?? t("detail.noImage")}</div>
-            <div className="text-gray-500 text-xs">{t("detail.imageTypes")}</div>
+            <div className="font-medium text-fg">{bot.image_name ?? t("detail.noImage")}</div>
+            <div className="text-leise text-xs">{t("detail.imageTypes")}</div>
           </div>
-          <div className="flex items-center gap-2">
-            <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                   className="text-xs text-gray-500 file:mr-2 file:btn file:btn-secondary file:text-xs" />
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <input type="file" accept="image/*" aria-label={t("detail.chooseImage")} onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                   className="min-w-0 max-w-full text-xs text-leise file:mr-2 file:btn file:btn-secondary file:text-xs" />
             <button disabled={!file || uploadM.isPending} onClick={() => uploadM.mutate()} className="btn-primary text-sm disabled:opacity-40">
               <Upload className="w-4 h-4" /> {t("detail.uploadImage")}
             </button>

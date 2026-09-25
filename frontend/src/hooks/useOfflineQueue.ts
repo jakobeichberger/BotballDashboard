@@ -5,7 +5,9 @@ import { useAuthStore } from "@/store/authStore";
 import {
   QUEUE_CHANGED_EVENT,
   belongsTo,
+  claimQueuedScore,
   discardQueuedScore,
+  isUnclaimed,
   listQueuedScores,
   retryQueuedScore,
   syncQueuedScores,
@@ -46,10 +48,19 @@ export function useOfflineQueue(filter?: (entry: QueuedScore) => boolean) {
     if (navigator.onLine) await sync();
   }, [sync]);
 
+  // An entry recorded without a known user is sent as the signed-in user only
+  // on their explicit request.
+  const claim = useCallback(async (id: string) => {
+    if (!userId) return;
+    await claimQueuedScore(id, userId);
+    if (navigator.onLine) await sync();
+  }, [sync, userId]);
+
   const mine = entries.filter((entry) => belongsTo(entry, userId));
   return {
     entries: filter ? mine.filter(filter) : mine,
     retry,
+    claim,
     discard: discardQueuedScore,
     sync,
   };
@@ -75,7 +86,8 @@ export function useOfflineSync() {
   }, [sync]);
 
   return {
-    pending: entries.filter((entry) => entry.status === "pending" || entry.status === "syncing").length,
-    failed: entries.filter((entry) => entry.status === "conflict" || entry.status === "error").length,
+    pending: entries.filter((entry) => !isUnclaimed(entry) && (entry.status === "pending" || entry.status === "syncing")).length,
+    // Unclaimed entries need the user just like failed ones.
+    failed: entries.filter((entry) => isUnclaimed(entry) || entry.status === "conflict" || entry.status === "error").length,
   };
 }

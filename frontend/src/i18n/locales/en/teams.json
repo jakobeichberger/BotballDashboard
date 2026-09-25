@@ -2,9 +2,10 @@
   "season": "Season",
   "category": {
     "botball": "Botball",
-    "open": "Open",
-    "aerial": "Aerial",
-    "jbc": "JBC"
+    "open": "ECER Open",
+    "aerial": "Aerial Senior",
+    "jbc": "Junior Botball Challenge",
+    "aerial_junior": "Aerial Junior"
   },
   "fee": {
     "pending": "open",
@@ -89,7 +90,7 @@
     "confirm": "Confirm",
     "removeAssignment": "Remove assignment"
   },
-  "add": "+ Add team",
+  "add": "Add team",
   "filter": {
     "search": "Search",
     "searchPlaceholder": "Name, number, school or city",
@@ -132,7 +133,8 @@
     "empty": "No members yet.",
     "roleLabel": "Role",
     "addFailed": "The member could not be added.",
-    "add": "Add member"
+    "add": "Add member",
+    "confirmRemove": "Remove {{name}} from the team?"
   },
   "detail": {
     "accountLinked": "Account linked",
@@ -162,5 +164,6 @@
     "maxParts": "max. parts",
     "maxGrams": "max. g",
     "noPrintJobs": "No print jobs"
-  }
+  },
+  "subtitle": "Manage teams, members and registrations."
 }

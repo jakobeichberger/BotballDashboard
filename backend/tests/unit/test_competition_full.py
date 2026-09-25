@@ -14,6 +14,7 @@ Covers:
 import pytest
 from sqlalchemy import select
 
+from core.exceptions import ValidationError
 from modules.scoring import competition_service as svc
 from modules.teams.models import Team, TeamSeasonRegistration
 
@@ -165,14 +166,33 @@ class TestAerialUpsert:
         row = await svc.upsert_aerial_result(
             db,
             event,
-            {"team_id": team.id, "run1": 10.0, "run2": 4.0, "run3": 8.0, "run4": 2.0},
+            {"team_id": team.id, "runs": [10.0, 4.0, 8.0, 2.0]},
         )
         # (10 + 4 + 8 + 2) / 4 — ECER 2025 ranked aerial on all runs.
         assert row.score == 6.0
+        assert row.runs == [10.0, 4.0, 8.0, 2.0]
+
+    @pytest.mark.asyncio
+    async def test_aerial_junior_counts_the_best_three_runs(self, db, season, event):
+        junior = await _register_team(db, season.id, "Drone Masters", category="aerial_junior")
+        row = await svc.upsert_aerial_result(
+            db, event, {"team_id": junior.id, "runs": [70.0, 52.5, 115.0, 30.0, 60.0, 105.0]}
+        )
+        # ECER 2026 results: (115 + 105 + 70) / 3
+        assert row.score == pytest.approx(96.6666666667)
+
+    @pytest.mark.asyncio
+    async def test_aerial_2026_preset_sets_the_stored_score(self, db, season, event):
+        senior = await _register_team(db, season.id, "Senior", category="aerial")
+        await _use_preset(db, season, "aerial_2026", "aerial")
+        row = await svc.upsert_aerial_result(
+            db, event, {"team_id": senior.id, "runs": [10.0, 20.0, 30.0, 40.0]}
+        )
+        assert row.score == pytest.approx(30.0)
 
     @pytest.mark.asyncio
     async def test_partial_runs(self, db, season, event, team):
-        row = await svc.upsert_aerial_result(db, event, {"team_id": team.id, "run1": 6.0})
+        row = await svc.upsert_aerial_result(db, event, {"team_id": team.id, "runs": [6.0]})
         assert row.score == 6.0
 
     @pytest.mark.asyncio
@@ -184,12 +204,10 @@ class TestAerialUpsert:
     @pytest.mark.asyncio
     async def test_upsert_updates_existing_and_recomputes(self, db, season, event, team):
         first = await svc.upsert_aerial_result(
-            db, event, {"team_id": team.id, "run1": 10.0, "run2": 10.0}
+            db, event, {"team_id": team.id, "runs": [10.0, 10.0]}
         )
         assert first.score == 10.0
-        second = await svc.upsert_aerial_result(
-            db, event, {"team_id": team.id, "run1": 2.0, "run2": 2.0}
-        )
+        second = await svc.upsert_aerial_result(db, event, {"team_id": team.id, "runs": [2.0, 2.0]})
         assert second.id == first.id
         assert second.score == 2.0
         assert len(await svc.get_aerial_results(db, event)) == 1
@@ -201,8 +219,8 @@ class TestBulkAerialResults:
         t1 = await _register_team(db, season.id, "Low")
         t2 = await _register_team(db, season.id, "High")
         entries = [
-            {"team_id": t1.id, "run1": 2.0, "run2": 2.0},  # score 2.0
-            {"team_id": t2.id, "run1": 10.0, "run2": 8.0},  # score 9.0
+            {"team_id": t1.id, "runs": [2.0, 2.0]},  # score 2.0
+            {"team_id": t2.id, "runs": [10.0, 8.0]},  # score 9.0
         ]
         rows = await svc.bulk_upsert_aerial_results(db, event, entries)
         by_team = {r.team_id: r for r in rows}
@@ -213,9 +231,26 @@ class TestBulkAerialResults:
 # ── Documentation ─────────────────────────────────────────────────────────────
 
 
+async def _use_preset(db, season, preset_id, category="botball"):
+    from modules.scoring import formula_service
+
+    await formula_service.apply_preset(db, season.id, preset_id, category)
+
+
 class TestDocUpsert:
     @pytest.mark.asyncio
-    async def test_doc_score_is_weighted(self, db, season, event, team):
+    async def test_doc_score_follows_the_default_formula_set(self, db, season, event, team):
+        # No formulas stored: the Botball default (ECER 2025) is P1–P3 / 300.
+        row = await svc.upsert_doc_score(
+            db,
+            event,
+            {"team_id": team.id, "part1": 90.0, "part2": 60.0, "part3": 30.0, "onsite": 50.0},
+        )
+        assert row.doc_score == pytest.approx(0.6)
+
+    @pytest.mark.asyncio
+    async def test_regional_preset_weights_the_rubric_percentages(self, db, season, event, team):
+        await _use_preset(db, season, "regional_2026_botball")
         row = await svc.upsert_doc_score(
             db,
             event,
@@ -223,15 +258,48 @@ class TestDocUpsert:
         )
         # 0.2·0.9 + 0.2·0.6 + 0.2·0.3 + 0.4·0.5
         assert row.doc_score == pytest.approx(0.56)
+        other = await _register_team(db, season.id, "Only P1")
+        only_p1 = await svc.upsert_doc_score(db, event, {"team_id": other.id, "part1": 80.0})
+        assert only_p1.doc_score == pytest.approx(0.16)  # missing parts count 0
 
     @pytest.mark.asyncio
-    async def test_missing_parts_count_zero(self, db, season, event, team):
-        row = await svc.upsert_doc_score(db, event, {"team_id": team.id, "part1": 80.0})
-        assert row.doc_score == pytest.approx(0.16)
+    async def test_rubric_maxima_scale_the_periods(self, db, season, event, team):
+        from modules.scoring import extras_service
+
+        await _use_preset(db, season, "regional_2026_botball")
+        rules = await extras_service.get_rule_set(db, season.id)
+        rules["doc_max_points"] = {"p1": 100, "p2": 95, "p3": 100, "onsite": 100}
+        await extras_service.put_rule_set(db, season.id, rules)
+        row = await svc.upsert_doc_score(db, event, {"team_id": team.id, "part2": 95.0})
+        assert row.doc_score == pytest.approx(0.2)  # 95 of 95 points is 100 %
+        with pytest.raises(ValidationError, match="part2 must be at most 95"):
+            await svc.upsert_doc_score(db, event, {"team_id": team.id, "part2": 96.0})
 
     @pytest.mark.asyncio
-    async def test_onsite_only_score(self, db, season, event, team):
-        row = await svc.upsert_doc_score(db, event, {"team_id": team.id, "onsite": 50.0})
+    async def test_ecer_2026_normalises_each_period_to_the_best_team(self, db, season, event):
+        await _use_preset(db, season, "ecer_2026_botball")
+        best = await _register_team(db, season.id, "Best")
+        other = await _register_team(db, season.id, "Other")
+        await svc.bulk_upsert_doc_scores(
+            db,
+            event,
+            [
+                {"team_id": best.id, "part1": 54.0, "part2": 85.0, "part3": 94.0},
+                {"team_id": other.id, "part1": 4.0, "part2": 85.0, "part3": 60.0},
+            ],
+        )
+        rows = {r.team_id: r for r in await svc.get_doc_scores(db, event)}
+        assert rows[best.id].doc_score == pytest.approx(1.0)
+        # ECER 2026 results, ProbablyLast: (4/54 + 85/85 + 60/94) / 3
+        assert rows[other.id].doc_score == pytest.approx(0.5707906488)
+        assert (rows[best.id].doc_rank, rows[other.id].doc_rank) == (1, 2)
+
+    @pytest.mark.asyncio
+    async def test_open_team_without_doc_formula_uses_the_game_review_weighting(
+        self, db, season, event
+    ):
+        open_team = await _register_team(db, season.id, "Open", category="open")
+        row = await svc.upsert_doc_score(db, event, {"team_id": open_team.id, "onsite": 50.0})
         assert row.doc_score == pytest.approx(0.2)
 
     @pytest.mark.asyncio
@@ -239,7 +307,7 @@ class TestDocUpsert:
         first = await svc.upsert_doc_score(db, event, {"team_id": team.id, "part1": 100.0})
         second = await svc.upsert_doc_score(db, event, {"team_id": team.id, "part1": 50.0})
         assert second.id == first.id
-        assert second.doc_score == pytest.approx(0.1)
+        assert second.doc_score == pytest.approx(50 / 300)
         assert len(await svc.get_doc_scores(db, event)) == 1
 
 
@@ -263,8 +331,8 @@ class TestAerialRanking:
     async def test_orders_and_enriches_with_team_name(self, db, season, event):
         t1 = await _register_team(db, season.id, "Falcon")
         t2 = await _register_team(db, season.id, "Eagle")
-        await svc.upsert_aerial_result(db, event, {"team_id": t1.id, "run1": 4.0, "run2": 4.0})
-        await svc.upsert_aerial_result(db, event, {"team_id": t2.id, "run1": 10.0, "run2": 10.0})
+        await svc.upsert_aerial_result(db, event, {"team_id": t1.id, "runs": [4.0, 4.0]})
+        await svc.upsert_aerial_result(db, event, {"team_id": t2.id, "runs": [10.0, 10.0]})
 
         ranking = await svc.get_aerial_ranking(db, event)
         assert ranking[0]["team_id"] == t2.id
@@ -280,7 +348,7 @@ class TestAerialRanking:
         t2 = await _register_team(db, season.id, "B")
         t3 = await _register_team(db, season.id, "C")
         for t, run in ((t1, 5.0), (t2, 5.0), (t3, 1.0)):
-            await svc.upsert_aerial_result(db, event, {"team_id": t.id, "run1": run})
+            await svc.upsert_aerial_result(db, event, {"team_id": t.id, "runs": [run]})
         ranks = {r["team_id"]: r["rank"] for r in await svc.get_aerial_ranking(db, event)}
         assert ranks == {t1.id: 1, t2.id: 1, t3.id: 3}
 
@@ -297,17 +365,23 @@ class TestResultRevisions:
     async def test_every_change_is_recorded(self, db, season, event, team, admin_user):
         from modules.scoring.competition_models import ResultRevision
 
-        await svc.upsert_aerial_result(db, event, {"team_id": team.id, "run1": 4.0}, admin_user.id)
-        await svc.upsert_aerial_result(db, event, {"team_id": team.id, "run1": 6.0}, admin_user.id)
-        await svc.upsert_aerial_result(db, event, {"team_id": team.id, "run1": 6.0}, admin_user.id)
+        await svc.upsert_aerial_result(
+            db, event, {"team_id": team.id, "runs": [4.0]}, admin_user.id
+        )
+        await svc.upsert_aerial_result(
+            db, event, {"team_id": team.id, "runs": [6.0]}, admin_user.id
+        )
+        await svc.upsert_aerial_result(
+            db, event, {"team_id": team.id, "runs": [6.0]}, admin_user.id
+        )
 
         rows = (await db.execute(select(ResultRevision))).scalars().all()
         assert len(rows) == 2  # the unchanged third write is not an entry
         created = next(r for r in rows if r.previous_value is None)
         changed = next(r for r in rows if r.previous_value is not None)
-        assert created.new_value["run1"] == 4.0
-        assert changed.previous_value["run1"] == 4.0
-        assert changed.new_value["run1"] == 6.0
+        assert created.new_value["runs"] == [4.0]
+        assert changed.previous_value["runs"] == [4.0]
+        assert changed.new_value["runs"] == [6.0]
         assert changed.changed_by == admin_user.id
         assert changed.kind == "aerial"
 

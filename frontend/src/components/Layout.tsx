@@ -1,58 +1,33 @@
-import { useState } from "react";
-import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  Activity,
-  BarChart3,
-  Bell,
-  CalendarClock,
-  BellOff,
-  Bot,
-  CalendarDays,
+  CheckCircle2,
   CloudOff,
-  FileText,
-  Globe,
-  LayoutDashboard,
   LogOut,
   Menu,
   Monitor,
   Moon,
-  Printer,
-  ScanLine,
-  Settings,
   Sun,
-  Trophy,
-  Users,
+  UserRound,
   X,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useLogout } from "@/hooks/useAuth";
-import { usePushSubscription } from "@/hooks/usePushNotifications";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useEvent, useEvents } from "@/hooks/useEvents";
 import { isModuleEnabled, useEventModules } from "@/hooks/useEventModules";
 import { useOfflineSync } from "@/hooks/useOfflineQueue";
 import NotificationCenter from "@/components/NotificationCenter";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { LogoBadge, Wordmark } from "@/components/BrandMark";
 import i18n, { localized } from "@/i18n/config";
-import { navigationRoutes } from "@/core/plugins";
+import { NAV_GROUPS, navigationRoutes } from "@/core/plugins";
+import { NAV_ICONS } from "@/core/navIcons";
 import { api } from "@/lib/api";
-
-const ICONS = {
-  dashboard: LayoutDashboard,
-  teams: Users,
-  schedule: CalendarDays,
-  scoring: Trophy,
-  scans: ScanLine,
-  papers: FileText,
-  printing: Printer,
-  bots: Bot,
-  settings: Settings,
-  stats: BarChart3,
-  performance: Activity,
-  calendar: CalendarClock,
-};
+import { APP_VERSION } from "@/lib/appInfo";
 
 export default function Layout() {
   const { t } = useTranslation();
@@ -61,14 +36,49 @@ export default function Layout() {
   const { theme, setTheme } = useThemeStore();
   const logout = useLogout();
   const navigate = useNavigate();
-  const push = usePushSubscription();
   const online = useOnlineStatus();
   const { data: events } = useEvents();
   const { data: event } = useEvent(eventId);
   const { data: modules } = useEventModules(eventId);
   // Queued offline scores are replayed on app start and on reconnect.
   const sync = useOfflineSync();
+  const offlineSession = useAuthStore((state) => state.offlineSession);
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Mobile drawer: focus moves into it, Tab stays inside, Escape closes it and
+  // focus returns to the menu button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const drawer = drawerRef.current;
+    drawer?.querySelector<HTMLElement>("button, a[href], select")?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !drawer) return;
+      const items = Array.from(drawer.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], select:not([disabled])"));
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const menuButton = menuButtonRef.current;
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      menuButton?.focus();
+    };
+  }, [menuOpen]);
 
   const handleLogout = async () => {
     await logout();
@@ -78,43 +88,66 @@ export default function Layout() {
     const order = ["light", "dark", "system"] as const;
     setTheme(order[(order.indexOf(theme) + 1) % order.length]);
   };
+  const language = i18n.resolvedLanguage === "en" ? "en" : "de";
   const toggleLanguage = () => {
-    const language = i18n.resolvedLanguage === "de" ? "en" : "de";
-    i18n.changeLanguage(language);
+    const next = language === "de" ? "en" : "de";
+    i18n.changeLanguage(next);
     // Persist to the profile so the choice follows the user to other devices.
     if (user) {
-      setUser({ ...user, preferred_language: language });
-      api.patch("/auth/me", { preferred_language: language }).catch(() => undefined);
+      setUser({ ...user, preferred_language: next });
+      api.patch("/auth/me", { preferred_language: next }).catch(() => undefined);
     }
   };
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
   const visibleNav = navigationRoutes.filter(
     (item) => hasPermission(item.permission) && isModuleEnabled(modules, item.module),
   );
+  const navGroups = NAV_GROUPS.map((group) => ({
+    group,
+    items: visibleNav.filter((item) => (item.group ?? "event") === group),
+  })).filter((section) => section.items.length > 0);
+  const roleName = user?.is_superuser
+    ? t("layout.superuser")
+    : user?.roles?.map((role) => role.name).join(", ");
+  const profilePath = eventId ? `/events/${eventId}/profile` : "/profile";
 
-  const sidebar = (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-r bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <div className="flex h-16 items-center justify-between border-b px-5 dark:border-gray-800">
-        <span className="font-bold text-primary-700 dark:text-primary-400">{t("app_name")}</span>
-        <button
-          type="button"
-          className="md:hidden"
-          onClick={() => setMenuOpen(false)}
-          aria-label={t("closeMenu")}
-        >
-          <X aria-hidden="true" />
-        </button>
+  const syncChip = (sync.pending > 0 || sync.failed > 0) && (
+    <span
+      className={clsx(
+        "badge max-w-full",
+        sync.failed > 0 ? "border-danger/40 bg-danger/10 text-danger" : "border-warning/40 bg-warning/10 text-warning",
+      )}
+    >
+      <CloudOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span className="truncate">
+        {sync.failed > 0 ? t("syncFailed", { count: sync.failed }) : t("pendingSync", { count: sync.pending })}
+      </span>
+    </span>
+  );
+
+  const sidebar = (variant: "desktop" | "drawer") => (
+    <aside className={clsx("flex h-full shrink-0 flex-col border-r border-white/5 bg-sidebar text-sidebar-text", variant === "drawer" ? "w-full" : "w-72")}>
+      <div className="flex items-center gap-3 px-4 pb-3 pt-5">
+        <LogoBadge />
+        <Wordmark onDark className={clsx("min-w-0 flex-1 truncate", variant === "drawer" ? "text-[1.05rem]" : "text-[1.2rem]")} />
+        {variant === "drawer" && (
+          <button
+            type="button"
+            className="sidebar-toggle -mr-1 border-transparent"
+            onClick={() => setMenuOpen(false)}
+            aria-label={t("closeMenu")}
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
       </div>
-      <div className="border-b p-3 dark:border-gray-800">
-        <label
-          htmlFor="event-switcher"
-          className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500"
-        >
+      <div className="px-3 pb-1">
+        <label htmlFor={`event-switcher-${variant}`} className="sidebar-overline block pt-2">
           {t("event")}
         </label>
         <select
-          id="event-switcher"
-          className="input w-full"
+          id={`event-switcher-${variant}`}
+          className="sidebar-select"
           value={eventId}
           onChange={(changeEvent) => navigate(`/events/${changeEvent.target.value}/dashboard`)}
         >
@@ -125,141 +158,176 @@ export default function Layout() {
           ))}
         </select>
         {event && (
-          <p className="mt-1 truncate text-xs text-gray-500">
-            {event.venue || event.timezone}
-          </p>
+          <p className="mt-1.5 truncate px-1 text-xs text-sidebar-leise">{event.venue || event.timezone}</p>
         )}
       </div>
-      <nav
-        className="flex-1 space-y-1 overflow-y-auto px-3 py-4"
-        aria-label={t("mainNavigation")}
-      >
-        {visibleNav.map(({ path, icon, label }) => {
-          const Icon = ICONS[icon];
-          const navigationPath = path.replace(/\/\*$/, "");
+      <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label={t("mainNavigation")}>
+        {navGroups.map(({ group, items }) => {
+          const headingId = `nav-group-${variant}-${group}`;
           return (
-            <NavLink
-              key={path}
-              to={eventId ? `/events/${eventId}/${navigationPath}` : `/${navigationPath}`}
-              onClick={() => setMenuOpen(false)}
-              className={({ isActive }) =>
-                clsx(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                    : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800",
-                )
-              }
-            >
-              <Icon className="h-4 w-4" aria-hidden="true" />
-              {localized(label)}
-            </NavLink>
+            <div key={group} role="group" aria-labelledby={headingId}>
+              <p id={headingId} className="sidebar-overline">
+                {t(`navGroup.${group}`)}
+              </p>
+              <ul className="space-y-0.5">
+                {items.map(({ path, icon, label }) => {
+                  const Icon = NAV_ICONS[icon];
+                  const navigationPath = path.replace(/\/\*$/, "");
+                  return (
+                    <li key={path}>
+                      <NavLink
+                        to={eventId ? `/events/${eventId}/${navigationPath}` : `/${navigationPath}`}
+                        onClick={() => setMenuOpen(false)}
+                        className={({ isActive }) => clsx("sidebar-link", isActive && "sidebar-link-active")}
+                      >
+                        <Icon className="h-[1.15rem] w-[1.15rem] shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                        <span className="truncate">{localized(label)}</span>
+                      </NavLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           );
         })}
       </nav>
-      <div className="space-y-1 border-t p-3 dark:border-gray-800">
-        <button
-          type="button"
-          onClick={() =>
-            push.isSubscribed ? push.unsubscribe.mutate() : push.subscribe.mutate()
-          }
-          className="sidebar-action"
-        >
-          {push.isSubscribed ? (
-            <Bell className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <BellOff className="h-4 w-4" aria-hidden="true" />
-          )}
-          {push.isSubscribed ? t("push.enabled") : t("push.enable")}
-        </button>
-        <button
-          type="button"
-          onClick={toggleLanguage}
-          className="sidebar-action"
-          aria-label={t("changeLanguage")}
-        >
-          <Globe className="h-4 w-4" aria-hidden="true" />
-          {t("languageName")}
-        </button>
-        <button
-          type="button"
-          onClick={nextTheme}
-          className="sidebar-action"
-          aria-label={t("changeTheme")}
-        >
-          <ThemeIcon className="h-4 w-4" aria-hidden="true" />
-          {t(`theme.${theme}`)}
-        </button>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="sidebar-action text-red-600"
-        >
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          {t("logout")}
-        </button>
+      <div className="space-y-3 border-t border-white/[0.07] px-3 pb-4 pt-3">
         {user && (
           <NavLink
-            to={`/events/${eventId}/profile`}
-            className="block truncate rounded-lg px-3 pt-2 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            to={profilePath}
+            onClick={() => setMenuOpen(false)}
+            className="flex min-h-9 items-center gap-1 truncate rounded-eng px-1 text-xs text-sidebar-leise hover:text-white"
           >
-            {user.display_name} · {t("nav.profile")}
+            <span className="truncate font-ui font-semibold text-white">{user.display_name}</span>
+            {roleName && <span className="truncate">· {roleName}</span>}
           </NavLink>
         )}
+        <div className="flex items-center gap-1.5">
+          {variant === "desktop" && <NotificationCenter variant="sidebar" />}
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            className="sidebar-toggle gap-0 overflow-hidden p-0"
+            aria-label={t("changeLanguage")}
+            title={t("languageName")}
+          >
+            <span className="flex h-full">
+              {(["de", "en"] as const).map((code) => (
+                <span
+                  key={code}
+                  className={clsx(
+                    "grid min-w-10 place-items-center px-2",
+                    code === language ? "bg-primary text-white" : "text-sidebar-text",
+                  )}
+                >
+                  {code.toUpperCase()}
+                </span>
+              ))}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={nextTheme}
+            className="sidebar-toggle"
+            aria-label={t("changeTheme")}
+            title={t(`theme.${theme}`)}
+          >
+            <ThemeIcon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="px-1 text-xs text-sidebar-leise">{t("layout.version", { version: APP_VERSION })}</span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="inline-flex min-h-11 items-center gap-2 rounded-eng px-2 font-ui text-[0.95rem] font-semibold text-white hover:bg-white/[0.06]"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            {t("logout")}
+          </button>
+        </div>
       </div>
     </aside>
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
-      <div className="hidden md:block">{sidebar}</div>
+    <div className="flex h-screen overflow-hidden">
+      <div className="hidden md:block">{sidebar("desktop")}</div>
       {menuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <button
-            type="button"
-            aria-label={t("closeMenu")}
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div className="relative h-full">{sidebar}</div>
+          {/* The backdrop is a mouse/touch target only; keyboard users close with Escape or the X button. */}
+          <div aria-hidden="true" className="absolute inset-0 bg-tief/60 backdrop-blur-[2px]" onClick={() => setMenuOpen(false)} />
+          <div
+            ref={drawerRef}
+            id="mobile-navigation"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("mainNavigation")}
+            className="relative h-full w-80 max-w-[88vw] shadow-tief"
+          >
+            {sidebar("drawer")}
+          </div>
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
+        {/* Phone top bar (mobil-startseite): menu, logo badge, status, bell, profile.
+            On wide screens a slim context line: current event, venue, sync state. */}
+        <header className="flex h-16 shrink-0 items-center gap-1 border-b border-rand bg-flaeche px-2 md:h-12 md:gap-3 md:bg-transparent md:px-8">
           <button
+            ref={menuButtonRef}
             type="button"
-            className="md:hidden"
+            className="btn-icon border-transparent md:hidden"
             onClick={() => setMenuOpen(true)}
             aria-label={t("openMenu")}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-navigation"
           >
-            <Menu aria-hidden="true" />
+            <Menu className="h-6 w-6" strokeWidth={1.75} aria-hidden="true" />
           </button>
-          <span className="min-w-0 flex-1 truncate font-semibold">{event?.name}</span>
-          {(sync.pending > 0 || sync.failed > 0) && (
-            <span
-              className={clsx(
-                "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium",
-                sync.failed > 0 ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-900",
-              )}
-            >
-              <CloudOff className="h-3 w-3" aria-hidden="true" />
-              {sync.failed > 0
-                ? t("syncFailed", { count: sync.failed })
-                : t("pendingSync", { count: sync.pending })}
+          <NavLink
+            to={eventId ? `/events/${eventId}/dashboard` : "/"}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-eng"
+            aria-label={t("layout.home")}
+          >
+            <LogoBadge size="sm" className="md:hidden" />
+            <span className="truncate font-ui text-sm font-semibold tracking-ui text-fg">{event?.name}</span>
+            {event?.venue && <span className="hidden truncate text-sm text-leise md:inline">· {event.venue}</span>}
+          </NavLink>
+          <span className="hidden md:contents">{syncChip}</span>
+          {online && !offlineSession ? (
+            <span className="grid h-11 w-9 place-items-center text-success" title={t("layout.online")}>
+              <CheckCircle2 className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+              <span className="sr-only">{t("layout.online")}</span>
+            </span>
+          ) : (
+            <span className="grid h-11 w-9 place-items-center text-warning" title={t("layout.offline")}>
+              <CloudOff className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+              <span className="sr-only">{t("layout.offline")}</span>
             </span>
           )}
-          <NotificationCenter />
+          <div className="md:hidden">
+            <NotificationCenter variant="header" />
+          </div>
+          <NavLink to={profilePath} className="btn-icon border-transparent md:hidden" aria-label={t("nav.profile")}>
+            <UserRound className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+          </NavLink>
         </header>
-        {!online && (
+        {(!online || offlineSession) && (
           <div
             role="alert"
-            className="bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900"
+            className="border-b border-warning/40 bg-warning/10 px-4 py-2 text-center text-sm font-medium text-warning"
           >
             {t("offlineReadOnly")}
           </div>
         )}
+        {syncChip && <div className="border-b border-rand px-4 py-2 md:hidden">{syncChip}</div>}
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <Outlet />
+          {/* A broken page keeps the navigation usable; switching pages clears the error. */}
+          <ErrorBoundary resetKey={location.pathname}>
+            <Suspense fallback={<div className="p-6 text-leise" role="status">{t("loadingEllipsis")}</div>}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>

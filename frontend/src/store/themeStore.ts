@@ -23,7 +23,15 @@ function applyTheme(theme: Theme) {
   const isDark =
     theme === "dark" ||
     (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.classList.toggle("dark", isDark);
+  const root = document.documentElement;
+  root.classList.toggle("dark", isDark);
+  // data-theme mirrors the class for CSS that keys on the attribute.
+  root.dataset.theme = isDark ? "dark" : "light";
+  // Browser chrome follows the app theme, not only the system preference
+  // (index.html: papier #F2F2F2 / tief #0D0F13).
+  document
+    .querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
+    .forEach((meta) => meta.setAttribute("content", isDark ? "#0D0F13" : "#F2F2F2"));
 }
 
 export const useThemeStore = create<ThemeState>()(

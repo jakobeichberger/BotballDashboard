@@ -23,6 +23,22 @@ pg() {
     --port="${POSTGRES_PORT:-5432}" --username="${POSTGRES_USER}" "$@"
 }
 
+# pg_restore of a newer major version than the server writes settings the
+# server does not know (pg_restore 17 → "SET transaction_timeout", rejected by
+# PostgreSQL 16). Render the archive to SQL first, drop those lines, then load
+# it with psql, stopping at the first error. Rendering to a file (not a pipe)
+# keeps a pg_restore failure from turning into a silently partial restore.
+restore_dump() {
+  target_db="$1"
+  dump="$2"
+  sql="${work_dir}/restore.sql"
+  pg_restore --no-owner --file="$sql" "$dump" || return 1
+  sed -i '/^SET transaction_timeout = /d' "$sql" || return 1
+  pg psql --dbname="$target_db" --quiet --no-psqlrc --set=ON_ERROR_STOP=1 \
+    --file="$sql" >/dev/null || return 1
+  rm -f "$sql"
+}
+
 if [ -f "${archive}.sha256" ]; then
   (cd "$(dirname "$archive")" && sha256sum -c "$(basename "$archive").sha256")
 else
@@ -34,12 +50,15 @@ tar -xzf "${work_dir}/backup.tar.gz" -C "${work_dir}/data"
 
 pg dropdb --if-exists "$restore_db"
 pg createdb "$restore_db"
-pg pg_restore --dbname="$restore_db" --exit-on-error --no-owner "${work_dir}/data/database.dump"
+restore_dump "$restore_db" "${work_dir}/data/database.dump"
 pg psql --dbname="$restore_db" --command='SELECT COUNT(*) AS restored_events FROM events;'
 
 if [ -f "${work_dir}/data/uploads.sha256" ]; then
   upload_count="$(wc -l < "${work_dir}/data/uploads.sha256")"
-  (cd "${work_dir}/data" && sha256sum --quiet -c uploads.sha256)
+  # sha256sum -c rejects an empty manifest; a backup without uploads has one.
+  if [ -s "${work_dir}/data/uploads.sha256" ]; then
+    (cd "${work_dir}/data" && sha256sum --quiet -c uploads.sha256)
+  fi
   echo "Uploads verified: ${upload_count} files match the manifest"
 else
   # Archives from before the manifest was introduced only carry the files.

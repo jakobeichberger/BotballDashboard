@@ -8,12 +8,8 @@ Offered in the schema editor as a starting point for a new schema version
 * 2025 – "2025 Botball Seeding Score Sheet.pdf" (Restaurant). The Beverage
   Station holds Cups and Water Bottles; Ice and Drinks belong to the Cups
   area (the module spec had these swapped, see audit section E).
-* 2026 – "2026 Botball Game Review v1.3" (Warehouse). The review names the
-  scoring areas, multipliers and tie-breakers but not the point values; those
-  are only on the graphical score sheet, which is not in the repository. The
-  template therefore carries the structure with every point value and factor
-  set to 1 and is flagged ``complete: False`` — enter the values from the
-  official sheet before activating it.
+* 2026 – "2026 Botball Seeding Score Sheet.pdf" (Stack Attack / Warehouse),
+  with the scoring rules of "2026 Botball Game Review v1.4".
 """
 
 from __future__ import annotations
@@ -238,73 +234,131 @@ BOTBALL_2025: dict[str, Any] = {
 }
 
 
-# ── 2026 – Warehouse (structure only) ─────────────────────────────────────────
+# ── 2026 – Stack Attack (Warehouse) ───────────────────────────────────────────
+#
+# Transcribed from "2026 Botball Seeding Score Sheet.pdf"; the scoring rules
+# are those of "2026 Botball Game Review v1.4". Game-piece maxima follow the
+# piece list of the review (48 poms, 30 cubes, 16 drums, 8 pallets, 4 traffic
+# cones, 4 packaging bins, 1 Botguy, two Drum Storage posts, six Warehouse
+# Floor areas, at most four independent structures on the table).
+#
+# Multipliers as printed on the sheet:
+# * "Drum ×2", "Botguy ×2" (Lower Start Box): a Drum or Botguy scoring in the
+#   box doubles the area — derived from the itemised count, no extra input.
+# * "# of Robots × ___ + 2" (Upper Start Box): × (robots + 2).
+# * "Sorted Baskets × ___ + 1" and "Returned Baskets × ___" (Packaging Bin):
+#   both apply, × (sorted baskets + 1) × returned baskets.
+# * "# of Pallets with Cubes × ___ + 1" (External Loading Dock): × (pallets + 1).
+# * the plain "× ___" boxes multiply by the count.
+# An empty multiplier box (0) leaves the area's subtotal unchanged, as on
+# every Botball sheet.
+
+_POMS, _CUBES, _DRUMS, _PALLETS, _CONES, _BINS, _ROBOTS = 48, 30, 16, 8, 4, 4, 4
+
+
+def _derived(key: str, label: str, source: str, factor: float) -> dict:
+    """A checkbox multiplier that is on when ``source`` (same section) is ≥ 1."""
+    return {"key": key, "label": label, "type": "boolean", "factor": factor, "source": source}
+
+
+def _start_box_2026(prefix: str, label: str, cone: float, botguy: float, multipliers: list):
+    return _section(
+        prefix,
+        label,
+        [
+            _count(f"{prefix}_poms", "Poms", 2, _POMS),
+            _count(f"{prefix}_cubes", "Cubes", 5, _CUBES),
+            _count(f"{prefix}_cubes_on_pallets", "Cubes on Pallets", 10, _CUBES),
+            _count(f"{prefix}_drums", "Drums", 25, _DRUMS),
+            _count(f"{prefix}_traffic_cones", "Traffic Cone", cone, _CONES),
+            _count(f"{prefix}_botguy", "Botguy", botguy, 1),
+        ],
+        multipliers,
+    )
+
 
 BOTBALL_2026: dict[str, Any] = {
     "sides": ["A", "B"],
     "sections": [
+        _start_box_2026(
+            "lower_start_box",
+            "Lower Start Box",
+            50,
+            100,
+            [
+                _derived("lower_start_box_drum_bonus", "Drum ×2", "lower_start_box_drums", 2),
+                _derived("lower_start_box_botguy_bonus", "Botguy ×2", "lower_start_box_botguy", 2),
+            ],
+        ),
+        _start_box_2026(
+            "upper_start_box",
+            "Upper Start Box",
+            100,
+            200,
+            [_times("upper_start_box_robots", "# of Robots (× n + 2)", 1, 2, _ROBOTS)],
+        ),
         _section(
             "warehouse_floor",
             "Warehouse Floor",
             [
-                _count("floor_cubes", "Cubes", 1),
-                _count("floor_poms", "Unsorted Poms", 1),
-                _count("floor_sorted_poms", "Sorted Poms", 1),
-                _count("floor_stacked_cubes", "Cubes in Stacks", 1),
+                _count("floor_unsorted_poms", "Unsorted Poms", 1, _POMS),
+                _count("floor_sorted_poms", "Sorted Poms", 5, _POMS),
+                _count("floor_cubes", "Cubes", 1, _CUBES),
+                _count("floor_cubes_on_pallets", "Cubes on Pallets", 10, _CUBES),
+                _count("floor_drums", "Drums", 25, _DRUMS),
+                _count("floor_botguy", "Botguy", 50, 1),
             ],
-            [_times("floor_sorted_sections", "# of Sorted Sections (poms only)", 1, 0, 6)],
-        ),
-        _section(
-            "packaging_bins",
-            "Packaging Bins",
-            [
-                _count("bins_poms", "Poms in Bins", 1),
-                _count("bins_sorted_poms", "Sorted Poms in Bins", 1),
-            ],
-            [_times("bins_matching", "# of Bins with Matching Poms", 1, 0, 4)],
-        ),
-        _section(
-            "packaging_center",
-            "Packaging Center",
-            [_count("center_returned_bins", "Returned Packaging Bins", 1, 4)],
+            [_times("floor_sorted_pom_sections", "# of Sorted Pom Sections", 1, 0, 6)],
         ),
         _section(
             "internal_loading_dock",
             "Internal Loading Dock",
             [
-                _count("internal_dock_pallets", "Pallets", 1),
-                _count("internal_dock_cubes", "Cubes", 1),
-                _count("internal_dock_sorted_cubes", "Sorted Cubes on Pallets", 1),
+                _count("internal_dock_unsorted_cubes", "Unsorted Cubes", 10, _CUBES),
+                _count("internal_dock_sorted_cubes", "Sorted Cubes", 30, _CUBES),
             ],
+            [_times("internal_dock_pallets", "# of Pallets with Cubes", 1, 0, _PALLETS)],
+        ),
+        _section(
+            "drum_storage",
+            "Drum Storage",
+            [
+                _count("drum_pipes_unsorted", '2" PVC Pipes Unsorted', 100, _DRUMS),
+                _count("drum_pipes_sorted", '2" PVC Pipes Sorted', 200, _DRUMS),
+            ],
+            [_times("drum_posts", "# of Posts", 1, 0, 2)],
+        ),
+        _section(
+            "packaging_bin",
+            "Packaging Bin",
+            [
+                _count("bin_non_matched_poms", "Non-matched Poms", 10, _POMS),
+                _count("bin_matched_poms", "Matched Poms", 20, _POMS),
+                _count("bin_botguy", "Botguy", 150, 1),
+            ],
+            [
+                _times("bin_sorted_baskets", "Sorted Baskets (× n + 1)", 1, 1, _BINS),
+                _times("bin_returned_baskets", "Returned Baskets", 1, 0, _BINS),
+            ],
+        ),
+        _section(
+            "upper_warehouse",
+            "Upper Warehouse",
+            [
+                _count("upper_poms", "Poms", 2, _POMS),
+                _count("upper_botguy", "Botguy", 200, 1),
+                _bool("upper_clean_deck", "Clean Deck", 100),
+            ],
+            [_times("upper_robots", "# of Robots", 1, 0, _ROBOTS)],
         ),
         _section(
             "external_loading_dock",
             "External Loading Dock",
             [
-                _count("external_dock_pallets", "Pallets", 1),
-                _count("external_dock_cubes", "Cubes", 1),
-                _count("external_dock_sorted_cubes", "Sorted Cubes on Pallets", 1),
+                _count("external_dock_unsorted_cubes", "Unsorted Cubes", 15, _CUBES),
+                _count("external_dock_sorted_cubes", "Sorted Cubes", 45, _CUBES),
             ],
-        ),
-        _section(
-            "drum_storage",
-            "Drum Storage",
-            [_count("drum_pipes_on_posts", "Pipes on Drum Storage Posts", 1, 16)],
-        ),
-        _section(
-            "upper_warehouse",
-            "Upper Warehouse",
-            [_count("upper_cubes", "Cubes", 1)],
-            [_flag("upper_clean_deck", "Clean Deck (all poms removed)", 1)],
-        ),
-        _section(
-            "start_boxes",
-            "Start Boxes",
-            [
-                _count("start_traffic_cones", "Traffic Cones in Start Boxes", 1, 4),
-                _bool("start_botguy_upper", "Botguy in Upper Start Box", 1),
-                _bool("start_botguy_lower", "Botguy in Lower Start Box", 1),
-            ],
+            [_times("external_dock_pallets", "# of Pallets with Cubes (× n + 1)", 1, 1, _PALLETS)],
         ),
     ],
 }
@@ -331,13 +385,13 @@ TEMPLATES: dict[str, dict[str, Any]] = {
     },
     "botball_2026": {
         "id": "botball_2026",
-        "name": "Botball 2026 – Warehouse (structure only)",
+        "name": "Botball 2026 – Stack Attack",
         "year": 2026,
-        "complete": False,
-        "source": "2026 Botball Game Review v1.3",
+        "complete": True,
+        "source": "2026 Botball Seeding Score Sheet, 2026 Botball Game Review v1.4",
         "notes": (
-            "The game review defines the scoring areas and multipliers but not the point "
-            "values. Every value is 1 — enter the points from the official score sheet."
+            "Seeding score sheet; Total = Side A + Side B. Drum ×2 and Botguy ×2 in the "
+            "Lower Start Box follow the itemised count."
         ),
         "definition": BOTBALL_2026,
     },
