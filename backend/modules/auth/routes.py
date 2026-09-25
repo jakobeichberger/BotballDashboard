@@ -1,4 +1,3 @@
-from html import escape
 from typing import Annotated
 from urllib.parse import quote
 
@@ -11,6 +10,7 @@ from core.auth import get_current_user, require_permission
 from core.config import get_settings
 from core.database import get_db
 from core.logging import get_logger
+from core.mail_templates import render
 from core.rate_limit import rate_limit
 from modules.auth import service
 from modules.auth.schemas import (
@@ -50,8 +50,10 @@ def _mail_enabled() -> bool:
     return bool(settings.smtp_host) and not settings.is_dev
 
 
-async def send_password_reset_email(email: str, display_name: str, token: str) -> None:
-    """Mail the single-use reset link (background task)."""
+async def send_password_reset_email(
+    email: str, display_name: str, token: str, language: str | None = None
+) -> None:
+    """Mail the single-use reset link in the user's language (background task)."""
     link = f"{settings.app_base_url.rstrip('/')}/reset-password?token={quote(token)}"
     if not _mail_enabled():
         # Development: there is no mail server, so the link goes to the log.
@@ -59,20 +61,22 @@ async def send_password_reset_email(email: str, display_name: str, token: str) -
         return
     from core.notifications import send_email
 
-    name = escape(display_name)
-    await send_email(
-        email,
-        "BotballDashboard: Passwort zurücksetzen / reset your password",
-        f"<p>Hallo {name},</p>"
-        f'<p>über diesen Link kannst du ein neues Passwort setzen: <a href="{escape(link)}">'
-        f"{escape(link)}</a></p><p>Der Link ist eine Stunde gültig und nur einmal "
-        "verwendbar. Wenn du das nicht angefordert hast, ignoriere diese E-Mail.</p>"
-        f"<p>Hello {name}, use the link above to set a new password. It is valid for one "
-        "hour and can be used once.</p>",
-        f"Hallo {display_name},\n\nneues Passwort setzen (1 Stunde gültig, einmal "
-        f"verwendbar):\n{link}\n\nHello {display_name}, use this link to set a new "
-        "password (valid for one hour, single use).",
+    message = render("password_reset", language, display_name=display_name, link=link)
+    await send_email(email, message.subject, message.html, message.text)
+
+
+async def send_account_created_email(email: str, display_name: str, language: str | None) -> None:
+    """Tell a new user about their account, in their language (background task)."""
+    from core.notifications import send_email
+
+    message = render(
+        "account_created",
+        language,
+        display_name=display_name,
+        email=email,
+        login_url=f"{settings.app_base_url.rstrip('/')}/login",
     )
+    await send_email(email, message.subject, message.html, message.text)
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -274,7 +278,13 @@ async def request_password_reset(
     issued = await service.request_password_reset(db, body.email)
     if issued:
         user, token = issued
-        background_tasks.add_task(send_password_reset_email, user.email, user.display_name, token)
+        background_tasks.add_task(
+            send_password_reset_email,
+            user.email,
+            user.display_name,
+            token,
+            language=user.preferred_language,
+        )
 
 
 @router.post(
@@ -354,15 +364,9 @@ async def create_user(
     user = await service.create_user(
         db, body.email, body.display_name, body.password, body.role_ids
     )
-    if settings.smtp_host and not settings.is_dev:
-        from core.notifications import send_email
-
+    if _mail_enabled():
         background_tasks.add_task(
-            send_email,
-            body.email,
-            "BotballDashboard account created",
-            f"<p>Hello {body.display_name},</p><p>Your BotballDashboard account was created.</p>",
-            f"Hello {body.display_name}, your BotballDashboard account was created.",
+            send_account_created_email, user.email, user.display_name, user.preferred_language
         )
     return user
 

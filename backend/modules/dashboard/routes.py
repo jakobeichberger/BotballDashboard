@@ -243,7 +243,11 @@ async def list_notifications(
 ):
     """The caller's recent notifications (in-app fallback for push)."""
     items, unread = await notification_center.list_for_user(
-        db, current_user.id, limit=limit, unread_only=unread_only
+        db,
+        current_user.id,
+        limit=limit,
+        unread_only=unread_only,
+        language=current_user.preferred_language,
     )
     return {"items": items, "unread": unread}
 

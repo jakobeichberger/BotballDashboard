@@ -51,7 +51,7 @@ async def _headers(client, **kwargs):
 def sent_mails(monkeypatch):
     mails: list[tuple[str, str]] = []
 
-    async def capture(email, display_name, token):
+    async def capture(email, display_name, token, language=None):
         mails.append((email, token))
 
     monkeypatch.setattr(auth_routes, "send_password_reset_email", capture)

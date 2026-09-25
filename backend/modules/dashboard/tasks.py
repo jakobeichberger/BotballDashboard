@@ -4,17 +4,19 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from html import escape
 
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.celery_app import celery_app
 from core.database import AsyncSessionLocal
 from core.live import publish_live_event
 from core.logging import get_logger
+from core.mail_templates import DEFAULT_LANGUAGE, normalize_language, render_notification
 from core.notifications import email_enabled, send_email, send_push_notification
 from modules.auth.models import PushSubscription, User
 from modules.dashboard.models import NotificationEvent
 from modules.dashboard.notifications import category_of, recipients_of, wants_push
+from modules.teams.models import TeamMember
 
 logger = get_logger(__name__)
 
@@ -60,6 +62,56 @@ async def load_preferences(db: AsyncSession, subscriptions: list) -> dict[str, d
     return {user_id: prefs or {} for user_id, prefs in rows}
 
 
+async def load_languages(db: AsyncSession, subscriptions: list) -> dict[str, str]:
+    """Profile language of every user owning one of `subscriptions`."""
+    user_ids = {s.user_id for s in subscriptions}
+    if not user_ids:
+        return {}
+    rows = await db.execute(select(User.id, User.preferred_language).where(User.id.in_(user_ids)))
+    return {user_id: normalize_language(language) for user_id, language in rows}
+
+
+async def recipient_languages(db: AsyncSession, emails: list[str]) -> dict[str, str]:
+    """E-mail address → language of the account behind it.
+
+    An address belongs to an account either directly (User.email) or through
+    a team member linked to an account (TeamMember.email + user_id). Addresses
+    without an account get DEFAULT_LANGUAGE.
+    """
+    wanted = sorted({email.lower() for email in emails})
+    found: dict[str, str] = {}
+    if wanted:
+        direct = await db.execute(
+            select(User.email, User.preferred_language).where(func.lower(User.email).in_(wanted))
+        )
+        for email, language in direct:
+            found[email.lower()] = language
+        members = await db.execute(
+            select(TeamMember.email, User.preferred_language)
+            .join(User, User.id == TeamMember.user_id)
+            .where(func.lower(TeamMember.email).in_(wanted))
+        )
+        for email, language in members:
+            found.setdefault(email.lower(), language)
+    return {
+        email: normalize_language(found.get(email.lower()), DEFAULT_LANGUAGE) for email in emails
+    }
+
+
+async def _send_localized_emails(db: AsyncSession, payload: dict, emails: list[str]) -> list[bool]:
+    """Send a templated notification once per recipient language."""
+    by_language: dict[str, list[str]] = {}
+    for email, language in (await recipient_languages(db, emails)).items():
+        by_language.setdefault(language, []).append(email)
+    results = []
+    for language, recipients in sorted(by_language.items()):
+        message = render_notification(payload, language)
+        if message is None:  # pragma: no cover - callers check for a template
+            continue
+        results.append(await send_email(recipients, message.subject, message.html, message.text))
+    return results
+
+
 def _retry_delay(attempts: int) -> timedelta:
     """Exponential backoff: 30 s, 1 min, 2 min, 4 min, …"""
     return timedelta(seconds=30 * 2 ** max(0, attempts - 1))
@@ -70,11 +122,14 @@ async def _deliver(
     item: NotificationEvent,
     subscriptions: list,
     preferences: dict[str, dict] | None = None,
+    languages: dict[str, str] | None = None,
 ) -> list[str]:
     """Send one outbox item. Returns the ids of subscriptions that are gone.
 
     Push goes only to recipients who have not muted the item's category
-    (`preferences`, see modules.dashboard.notifications).
+    (`preferences`, see modules.dashboard.notifications). Items with an
+    ``i18n`` template are pushed and mailed in each recipient's language
+    (`languages`: user id → language; mail addresses are looked up).
 
     Raises when there were recipients but not a single send succeeded, so the
     item is retried.
@@ -91,8 +146,17 @@ async def _deliver(
         if body
         else []
     )
+
+    def localized(subscription) -> tuple[str, str]:
+        language = (languages or {}).get(subscription.user_id, DEFAULT_LANGUAGE)
+        message = render_notification(payload, language)
+        return (message.subject, message.summary) if message else (title, body)
+
     statuses = await asyncio.gather(
-        *(send_push_notification(s.endpoint, s.p256dh, s.auth, title, body, url) for s in targets),
+        *(
+            send_push_notification(s.endpoint, s.p256dh, s.auth, *localized(s), url)
+            for s in targets
+        ),
         return_exceptions=True,
     )
     gone = [s.id for s, status in zip(targets, statuses, strict=True) if status == "gone"]
@@ -102,7 +166,11 @@ async def _deliver(
     sent = sum(1 for status in attempted if status == "sent")
 
     emails = list(payload.get("emails") or [])
-    if body and emails and email_enabled():
+    if emails and email_enabled() and render_notification(payload, DEFAULT_LANGUAGE):
+        for ok in await _send_localized_emails(db, payload, emails):
+            attempted.append("sent" if ok else "failed")
+            sent += int(ok)
+    elif body and emails and email_enabled():
         ok = await send_email(emails, title, f"<p>{escape(body)}</p>".replace("\n", "<br>"), body)
         attempted.append("sent" if ok else "failed")
         sent += int(ok)
@@ -144,11 +212,12 @@ async def deliver_pending(db: AsyncSession, now: datetime | None = None) -> int:
         return 0
     subscriptions = list((await db.execute(select(PushSubscription))).scalars())
     preferences = await load_preferences(db, subscriptions)
+    languages = await load_languages(db, subscriptions)
     delivered = 0
     for item in items:
         item.attempts += 1
         try:
-            gone = await _deliver(db, item, subscriptions, preferences)
+            gone = await _deliver(db, item, subscriptions, preferences, languages)
         except Exception as exc:
             item.last_error = str(exc)[:2000]
             if item.attempts >= MAX_ATTEMPTS:
