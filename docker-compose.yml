@@ -170,7 +170,8 @@ services:
   # backup_scheduler.py runs scripts/backup.sh every BACKUP_INTERVAL_SECONDS,
   # retries a failed run after BACKUP_RETRY_SECONDS, turns the container
   # unhealthy when the last run failed or is older than BACKUP_MAX_AGE_HOURS
-  # and exposes botball_backup_* metrics on :9101 for Prometheus.
+  # and exposes botball_backup_* metrics on :9101 for Prometheus. With
+  # BACKUP_OFFSITE_TARGET it copies every new archive off-site as well.
   backup:
     profiles: ["production"]
     build:
@@ -189,6 +190,11 @@ services:
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
       BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-26}
       BACKUP_METRICS_PORT: 9101
+      # Optional off-site copy of every archive (rsync:…, rclone:… or a
+      # directory); SSH key / rclone.conf come from BACKUP_OFFSITE_CONFIG_DIR.
+      BACKUP_OFFSITE_TARGET: ${BACKUP_OFFSITE_TARGET:-}
+      BACKUP_OFFSITE_CONFIG_DIR: /offsite-config
+      BACKUP_OFFSITE_TIMEOUT_SECONDS: ${BACKUP_OFFSITE_TIMEOUT_SECONDS:-3600}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-botball}
@@ -199,6 +205,7 @@ services:
       # BACKUP_HOST_DIR=/data/backups stores the archives on the host (easy
       # off-site sync); by default they live in the named volume "backups".
       - ${BACKUP_HOST_DIR:-backups}:/backups
+      - ${BACKUP_OFFSITE_CONFIG_DIR:-./backup-offsite}:/offsite-config:ro
     depends_on:
       db:
         condition: service_healthy

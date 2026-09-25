@@ -16,7 +16,7 @@ from modules.auth.models import (
     RolePermission,
     User,
 )
-from modules.auth.password_policy import password_problem
+from modules.auth.password_policy import MIN_LENGTH, common_passwords, password_problem
 from modules.auth.service import hash_password
 from modules.teams.models import TeamMember
 
@@ -61,10 +61,57 @@ def sent_mails(monkeypatch):
 class TestPasswordPolicy:
     @pytest.mark.parametrize(
         ("password", "ok"),
-        [("short", False), ("aaaaaaaaaaaa", False), ("user@example.com", False), (PASSWORD, True)],
+        [
+            ("short", False),
+            ("aaaaaaaaaaaa", False),
+            ("user@example.com", False),
+            # Common/leaked passwords, compared case-insensitively.
+            (PASSWORD, False),
+            ("QwertyUiop", False),
+            (" 1234567890 ", False),
+            ("iloveyou123", False),
+            ("a-new-secret-1", True),
+            ("Kiwi-Tram-Lantern", True),
+        ],
     )
     def test_rules(self, password, ok):
         assert (password_problem(password, "user@example.com") is None) is ok
+
+    def test_common_password_list_is_bundled_and_meaningful(self):
+        entries = common_passwords()
+        assert len(entries) > 2000
+        # Shorter entries could never pass the length rule anyway.
+        assert all(len(entry) >= MIN_LENGTH and entry == entry.lower() for entry in entries)
+        assert "password123" in entries
+
+    @pytest.mark.parametrize("common", ["Password123", "QWERTYUIOP"])
+    async def test_every_password_path_rejects_common_passwords(
+        self, client, user, auth_headers, sent_mails, common
+    ):
+        headers = await _headers(client)
+        created = await client.post(
+            "/api/auth/users",
+            json={"email": "new@example.com", "display_name": "N", "password": common},
+            headers=auth_headers,
+        )
+        changed = await client.post(
+            "/api/auth/me/password",
+            json={"current_password": PASSWORD, "new_password": common},
+            headers=headers,
+        )
+        admin_set = await client.post(
+            f"/api/auth/users/{user.id}/password",
+            json={"new_password": common},
+            headers=auth_headers,
+        )
+        await client.post("/api/auth/password-reset/request", json={"email": "user@example.com"})
+        reset = await client.post(
+            "/api/auth/password-reset/confirm",
+            json={"token": sent_mails[0][1], "new_password": common},
+        )
+        for resp in (created, changed, admin_set, reset):
+            assert resp.status_code == 422, resp.text
+            assert "common or leaked" in resp.text
 
     async def test_create_user_rejects_email_as_password(self, client, auth_headers):
         resp = await client.post(

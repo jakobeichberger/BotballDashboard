@@ -73,7 +73,16 @@
     },
     "none": "No open scans.",
     "retry": "Process again",
-    "retryFor": "Process {{file}} again"
+    "retryFor": "Process {{file}} again",
+    "reason": {
+      "empty": "nothing read",
+      "low_confidence": "read with low confidence",
+      "below_minimum": "below the minimum",
+      "above_maximum": "above the maximum",
+      "not_integer": "not a whole number",
+      "sum_out_of_range": "sum rule violated",
+      "anchors_not_found": "anchors not found, check the crop"
+    }
   },
   "backToScoreboard": "Back to the rankings",
   "saving": "Saving…",
@@ -430,7 +439,51 @@
       "coverage": "{{count}} of {{total}} fields have a rectangle.",
       "save": "Save layout",
       "saved": "OCR layout saved. New scans use it; failed scans can be processed again in the OCR review.",
-      "saveFailed": "The layout could not be saved."
+      "saveFailed": "The layout could not be saved.",
+      "drawMode": "Draw",
+      "modeFields": "Field regions",
+      "modeAnchors": "Anchors"
+    },
+    "anchors": {
+      "title": "Anchors",
+      "hint": "Anchors are printed reference marks (filled squares) on the sheet. With two or more, the OCR aligns every scan by them; four in the corners also straighten sheets photographed at an angle. Without anchors, or when they are missing on a scan, the sheet edge is used. To draw, choose “Anchors” above and drag a rectangle around each mark.",
+      "add": "Add anchor",
+      "name": "Name",
+      "nameOf": "Name of anchor {{number}}",
+      "remove": "Remove anchor {{name}}",
+      "surface": "Page – drag a rectangle around a reference mark",
+      "tooFew": "At least {{min}} anchors are needed, otherwise the OCR aligns by the sheet edge.",
+      "nameMissing": "Every anchor needs a name.",
+      "nameDuplicate": "Anchor names must be unique."
+    },
+    "rules": {
+      "title": "Validation rules",
+      "hint": "The rules decide which read values are flagged in the OCR review. Every scan is still reviewed and accepted by hand.",
+      "minConfidence": "Minimum confidence (%)",
+      "fieldRules": "Rules per field",
+      "min": "Minimum",
+      "max": "Maximum",
+      "integer": "Whole number",
+      "fieldConfidence": "Confidence % (field)",
+      "minOf": "Minimum for {{field}}",
+      "maxOf": "Maximum for {{field}}",
+      "integerOf": "{{field}} must be a whole number",
+      "confidenceOf": "Minimum confidence % for {{field}}",
+      "fieldHint": "Empty cells add no check. The limits from the schema always apply; the stricter one wins.",
+      "sums": "Sum rules",
+      "addSum": "Add sum rule",
+      "noSums": "No sum rules. Example: all cubes together can be at most 12.",
+      "sumNumber": "Sum rule {{number}}",
+      "sumLabel": "Label",
+      "removeSum": "Remove sum rule {{number}}",
+      "sumFields": "Fields of the sum",
+      "problem": {
+        "fieldRange": "Rule for {{name}}: the minimum is above the maximum.",
+        "sumLabel": "Sum rule {{name}} needs a label.",
+        "sumFields": "Sum rule {{name}}: choose at least two fields.",
+        "sumBounds": "Sum rule {{name}}: set a minimum or a maximum.",
+        "sumRange": "Sum rule {{name}}: the minimum is above the maximum."
+      }
     }
   },
   "penalty": {

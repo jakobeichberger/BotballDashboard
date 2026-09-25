@@ -99,7 +99,7 @@ Das Rate-Limiting findet im Backend statt, nicht in Traefik (`core/rate_limit.py
 | Task | Auslöser | Zweck |
 |---|---|---|
 | `score_sheets.extract_template` | Upload einer Score-Sheet-Vorlage | Text mit `pdftotext` extrahieren, Feldkandidaten erkennen |
-| `score_sheets.process_scan` | Upload/Retry eines Scans | Seite rastern, ausrichten, Felder mit OpenCV/Tesseract lesen → Status `review` |
+| `score_sheets.process_scan` | Upload/Retry eines Scans | Seite rastern, ausrichten (Anker der Vorlage, sonst Blattrand), Felder mit OpenCV/Tesseract lesen, Prüfregeln anwenden → Status `review` |
 | `printing.poll_printers` | Beat, alle 15 s | OctoPrint/Bambu abfragen, Job-Status und Fortschritt; `generic` (manuell) wird nicht abgefragt |
 | `notifications.deliver_outbox` | Beat, alle 10 s | Outbox ausliefern (Push, E-Mail, optional Live-Kanal) |
 | `notifications.match_reminders` | Beat, jede Minute | „Match beginnt bald"-Hinweise einreihen |
@@ -205,7 +205,7 @@ Das Frontend speichert Score-POSTs ohne Verbindung in IndexedDB (`frontend/src/l
 |---|---|
 | Framework | React 18, TypeScript, Vite |
 | Routing | React Router 6: `/login`, `/forgot-password`, `/reset-password`, `/public/:eventSlug`, `/setup`, `/settings/*`, `/events/:eventId/<modul-route>` |
-| Registry | `src/core/plugins.ts` (Routen, Navigation, Rechte, Modul-Schalter, Dashboard-Widgets, i18n-Namensräume) |
+| Registry | `src/core/plugins.ts` (Routen, Navigation, Rechte, Modul-Schalter, i18n-Namensräume) |
 | Daten | TanStack Query, axios (`src/lib/api.ts`, Token-Refresh, Offline-Sperre) |
 | State | Zustand (`authStore`, `themeStore`) |
 | Styles | Tailwind CSS mit Dark Mode; Theme wird im Profil gespeichert |

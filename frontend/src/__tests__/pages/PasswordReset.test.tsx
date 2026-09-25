@@ -66,6 +66,20 @@ describe("ResetPasswordPage", () => {
     });
   });
 
+  it("shows the hint and translates the server's common-password rejection", async () => {
+    (api.post as any).mockRejectedValue({
+      response: { status: 422, data: { fieldErrors: { new_password: ["Value error, Password is on a list of common or leaked passwords"] } } },
+    });
+    renderAt("/reset-password?token=abc");
+    expect(screen.getByText(/kein bekanntes oder geleaktes Passwort/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/^neues passwort$/i), { target: { value: "Password123" } });
+    fireEvent.change(screen.getByLabelText(/wiederholen/i), { target: { value: "Password123" } });
+    fireEvent.click(screen.getByRole("button", { name: /passwort setzen/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Dieses Passwort steht auf einer Liste häufiger oder geleakter Passwörter."
+    );
+  });
+
   it("explains a missing token", () => {
     renderAt("/reset-password");
     expect(screen.getByRole("alert")).toHaveTextContent(/unvollständig/i);

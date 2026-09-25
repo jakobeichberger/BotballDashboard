@@ -1,6 +1,6 @@
 # Done – umgesetzter Stand
 
-Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist nach Modulen gegliedert. Jeder Punkt ist gegen den Code geprüft. Offenes steht in [todo.md](todo.md), die Änderungen chronologisch in [CHANGELOG.md](../CHANGELOG.md).
+Stand: 2026-09-25, Migrationen `0001`–`0030`. Die Liste ist nach Modulen gegliedert. Jeder Punkt ist gegen den Code geprüft. Offenes steht in [todo.md](todo.md), die Änderungen chronologisch in [CHANGELOG.md](../CHANGELOG.md).
 
 ---
 
@@ -11,15 +11,16 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
 - `scripts/update.sh` baut die Images neu, merkt sich Commit und Alembic-Stand für ein Rollback und prüft danach. `deploy.yml` läuft per `workflow_dispatch` über SSH auf dem Host.
 - `.env.example` enthält alle Variablen. In Produktion werden Standard-Secrets und ein ungültiger Fernet-Schlüssel abgelehnt. `SMTP_HOST` leer bedeutet: kein Mailversand.
 - Backups: `backup.sh` bricht bei Fehlern laut ab. `backup_scheduler.py` wiederholt fehlgeschlagene Läufe, führt eine Statusdatei und liefert Metriken. `restore.sh` und `restore-test.sh` prüfen die Uploads per Manifest.
-- Alertmanager-Regeln: API down, Readiness, 5xx-Rate, Redis-Ausfall bei Rate-Limits oder Token-Sperrliste (fail open, `botball_redis_fail_open_total`), Backup fehlgeschlagen, veraltet oder nie gelaufen.
+- Off-site-Backup: Mit `BACKUP_OFFSITE_TARGET` (`rsync:user@host:/pfad`, `rclone:remote:pfad` oder ein Verzeichnis) kopiert der Scheduler jedes erfolgreiche Archiv sofort dorthin. Ein Fehlschlag hat eigenen Status und eigene Metriken (`botball_backup_offsite_*`), macht den Container unhealthy und wird nach `BACKUP_RETRY_SECONDS` ohne neues Backup wiederholt. `proxmox-setup.sh` fragt das Ziel ab, erzeugt den SSH-Schlüssel und holt `known_hosts`.
+- Alertmanager-Regeln: API down, Readiness, 5xx-Rate, Redis-Ausfall bei Rate-Limits oder Token-Sperrliste (fail open, `botball_redis_fail_open_total`), Backup fehlgeschlagen, veraltet oder nie gelaufen, Off-site-Kopie fehlgeschlagen.
 - `/api/system/health`, `/api/system/readiness` (PostgreSQL, Redis, Worker) und `/api/system/metrics` (nur intern).
 - Uvicorn mit `--proxy-headers` und `FORWARDED_ALLOW_IPS`. nginx setzt die Security-Header auch auf `index.html` und Assets.
-- CI: ruff, mypy und pytest mit Coverage-Bericht; Alembic up/down/up auf PostgreSQL; pip-audit; ESLint, tsc, Vitest und Build; Playwright-Smoke (`platform.spec.ts`); Build und Prüfung des Produktions-Stacks.
+- CI: ruff, mypy und pytest mit Coverage-Schwelle (`fail_under`); Alembic up/down/up auf PostgreSQL; pip-audit; ESLint, tsc, Vitest mit Coverage-Schwellen und Build; die ganze Playwright-Suite gegen Seed-Daten (`seed_e2e.py`); Build und Prüfung des Produktions-Stacks.
 - Pre-commit: ruff (check und format), ESLint, shellcheck, YAML.
 
 ## Architektur
 
-- Modularer Monolith mit statischer Registry: `backend/core/modules.py` und `frontend/src/core/plugins.ts`. Die ungenutzte `manifest.json` ist entfernt.
+- Modularer Monolith mit statischer Registry: `backend/core/modules.py` und `frontend/src/core/plugins.ts` (Routen, Navigation, Rechte, Modul-Schalter, i18n-Namensräume). Die ungenutzte `manifest.json` und die ungenutzten Dashboard-Widget-Deklarationen sind entfernt.
 - Einheitliches Fehlerformat `{code, message, fieldErrors, requestId}`, `X-Request-ID`, Größenlimit für Requests, Security-Header, Audit jeder erfolgreichen Änderung in `audit_logs`.
 - Redis-Rate-Limits im Backend für Login, Refresh, Passwort, E-Mail, Kontolöschung, Reset und Uploads.
 - Celery-Worker und -Beat: OCR, Drucker-Polling, Outbox, Match- und Deadline-Erinnerungen, Paper-Fristen.
@@ -30,7 +31,7 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
 
 - Benutzer, Rollen, Rechte. Fünf Standardrollen mit den Rechten aus `0002`, `0010`, `0012`–`0014`, `0016`, `0017`. Eigene Rollen und editierbare Rechte (`PUT /auth/roles/{id}`, die Admin-Rolle behält ihre kritischen Rechte).
 - JWT mit PyJWT (HS256 fest, `exp`/`sub` Pflicht). Refresh-Token als HttpOnly-Cookie mit Rotation. `token_version` beendet alle Sitzungen bei Passwortänderung, Reset, Deaktivierung und Löschung. Logout setzt das Access-Token auf eine Redis-Sperrliste. python-jose und ecdsa sind entfernt.
-- Passwort-Reset per E-Mail: gehashter Einmal-Token, 1 h gültig. Admins können Passwörter setzen. Passwort-Policy: mindestens 10 Zeichen, kein Wiederholungszeichen, nicht die E-Mail.
+- Passwort-Reset per E-Mail: gehashter Einmal-Token, 1 h gültig. Admins können Passwörter setzen. Passwort-Policy: mindestens 10 Zeichen, kein Wiederholungszeichen, nicht die E-Mail, nicht auf der mitgelieferten Liste häufiger/geleakter Passwörter (`common_passwords.txt`, ohne Groß-/Kleinschreibung).
 - Profil: Anzeigename, Sprache, Theme (im Konto gespeichert), E-Mail-Änderung, Datenexport (`GET /auth/me/export`), Kontolöschung als Anonymisierung, auch durch Admins.
 - Benachrichtigungs-Einstellungen pro Kategorie (`users.notification_preferences`) und Benachrichtigungszentrale mit Lesestatus (`0027`).
 - `create_admin.py --reset` macht niemanden mehr zum Superuser. Dafür gibt es nur noch `--superuser`.
@@ -99,7 +100,7 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
 - Übungsläufe (`is_practice`) zählen nirgends für Ranglisten (`0015`). Mentoren erfassen Wertungen fürs eigene Team (`0014`).
 - **Offline-Erfassung:** IndexedDB-Warteschlange mit `idempotency_key`, Abspielen beim Start, beim Wiederverbinden und minütlich; Konfliktanzeige. Service Worker mit NetworkFirst für ausgewählte GETs.
 - Mobile Wertung: Navigation durch die Matches, Wischen, Bestätigungsdialog.
-- Score-Sheet-PDF-Vorlagen (pdftotext im Worker) und lokale OCR von Fotos (OpenCV/Tesseract im Worker) mit Pflicht-Prüfung vor der Übernahme (`0001`, `0011`). Scans sehen nur die Organisation (`scoring:admin`) und das eigene Team. Fehlgeschlagene Scans lassen sich erneut verarbeiten. OCR-Layout-Editor je Vorlage: Rechtecke über einem lokalen Referenzbild aufziehen oder in Prozent eintragen, gespeichert normalisiert.
+- Score-Sheet-PDF-Vorlagen (pdftotext im Worker) und lokale OCR von Fotos (OpenCV/Tesseract im Worker) mit Pflicht-Prüfung vor der Übernahme (`0001`, `0011`). Scans sehen nur die Organisation (`scoring:admin`) und das eigene Team. Fehlgeschlagene Scans lassen sich erneut verarbeiten. OCR-Layout-Editor je Vorlage: Rechtecke über einem lokalen Referenzbild aufziehen oder in Prozent eintragen, gespeichert normalisiert. Anker (Passmarken) werden genauso gezeichnet; ab zwei gefundenen Ankern richtet der Worker jeden Scan an ihnen aus, sonst am Blattrand. Prüfregeln (Mindest-Konfidenz, Minimum/Maximum/Ganzzahl je Feld, Summenregeln) entscheiden, welche Werte die Prüfung markiert.
 - Scouting: externe Teams, Notizen und Beobachtungen pro eigenem Team, Gegner-Rangliste, PDF-Bericht (`0028`). Externe Teams bearbeiten (Ersteller und Organisation) und löschen (Organisation).
 - Qualifikation: Stufen-Reihenfolge, manuelle Qualifikation, Registrierung der Qualifizierten. Für qualifizierte Stufen ist eine Qualifikation Pflicht (`0028`).
 
@@ -156,6 +157,7 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
 - Manifest mit PNG-Icons (192, 512, maskable), apple-touch-icon, Favicon.
 - Web Push mit VAPID. Push-Einstellungen pro Kategorie. Benachrichtigungszentrale im Header.
 - Theme (hell/dunkel/System) wird im Konto gespeichert.
+- Oberfläche vollständig auf Deutsch und Englisch (`useTranslation`, Schlüssel in beiden Sprachen per Test geprüft), Zahlen und Daten über `Intl`. Rückfallsprache Englisch.
 
 ## Tests
 
@@ -164,4 +166,5 @@ Stand: 2026-09-25, Commit `aa61752`, Migrationen `0001`–`0029`. Die Liste ist 
   - Akzeptanztests ECER 2025;
   - PostgreSQL-Abhängigkeitstests.
 - Frontend: Vitest mit Testing Library und jest-axe. Der Score-Sheet-Rechner läuft gegen die gemeinsamen Fixtures.
-- Playwright: `platform`, `auth`, `gallery`, `scoring`. In der CI läuft nur `platform`.
+- Playwright: `platform`, `auth`, `admin-setup`, `gallery`, `scoring`, `scoring-flow`, `paper-flow`, `print-flow`. Die CI führt alle aus, dazu die `@mobile`-Flows auf einem Pixel-7-Profil.
+- Coverage-Schwellen: Backend `fail_under` (`backend/pyproject.toml`), Frontend Vitest-`thresholds` (`frontend/vitest.config.ts`).

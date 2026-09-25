@@ -4,7 +4,7 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
-Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0029`.
+Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0030`.
 
 ### Added
 
@@ -74,7 +74,11 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
   - Alertmanager-Regeln, Backup-Scheduler mit Status-Metriken, `restore.sh`;
   - Log-Rotation, Compose-Profile `production` und `monitoring`;
   - Pre-commit-Hooks;
-  - CI baut und prüft den Produktions-Stack.
+  - CI baut und prüft den Produktions-Stack;
+  - Off-site-Kopie jedes Backups nach `BACKUP_OFFSITE_TARGET` (rsync, rclone oder Verzeichnis) mit eigenem Status, Metriken `botball_backup_offsite_*`, Alert `BackupOffsiteCopyFailed` und Wiederholung ohne neues Backup; `proxmox-setup.sh` fragt das Ziel ab und richtet SSH-Schlüssel und `known_hosts` ein.
+- **OCR:** Editor für Anker (Passmarken) und Prüfregeln im OCR-Layout der Score-Sheet-Vorlage. Der Worker richtet Scans an den Ankern aus (Rückfall: Blattrand) und markiert Werte nach Mindest-Konfidenz, Minimum/Maximum/Ganzzahl je Feld und Summenregeln; die OCR-Prüfung zeigt die Gründe übersetzt an.
+- **Sprachen:** Oberfläche vollständig auf Deutsch und Englisch, Zahlen und Daten über `Intl`, Rückfallsprache Englisch.
+- **Tests:** Die CI führt die ganze Playwright-Suite gegen Seed-Daten aus (`seed_e2e.py`). Coverage-Schwellen für Backend und Frontend.
 - `CHANGELOG.md`.
 
 ### Changed
@@ -85,7 +89,8 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
   - Feld und n kommen aus dem Event statt aus der Saison-Registrierung.
 - DE-, Aerial- und Doku-Ergebnisse sind pro Event gespeichert. Die Scoring-Seiten nutzen das Event der Route. Aerial = Ø aller Läufe, Doku 0,2/0,2/0,2/0,4.
 - Druck-Kontingente werden immer pro (Event, Team) aufgelöst. Das Hard-Limit zählt offene Jobs mit. Der Drucker-Typ `generic` heißt jetzt „Manuell (ohne Adapter)".
-- Passwort-Policy: mindestens 10 Zeichen, kein Wiederholungszeichen, nicht die E-Mail.
+- Passwort-Policy: mindestens 10 Zeichen, kein Wiederholungszeichen, nicht die E-Mail, nicht auf der Liste häufiger/geleakter Passwörter.
+- Modul-Registry (`frontend/src/core/plugins.ts`): Die ungenutzten Dashboard-Widget-Deklarationen, der Typ `PluginDefinition` und `modules/scoring/index.tsx` sind entfernt; die Dashboards wählen ihre Abschnitte nach Rolle.
 - `proxmox-setup.sh` startet alle Dienste inklusive Worker, Beat und Backup und erzeugt alle Secrets. `.env.example` enthält alle Variablen.
 - Dokumentation: API-Referenz, Datenbankschema, Architektur, Modul-Registry, Handbücher und Tracking-Dokumente entsprechen dem Code.
 
@@ -107,6 +112,7 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 - Outbox: Zeilen werden gesperrt (`FOR UPDATE SKIP LOCKED`), nur tatsächlich Versendetes gilt als zugestellt, abgelaufene Push-Abos werden gelöscht.
 - Entwurfs-Saisons und -Events sehen nur Organisatoren. Kontaktdaten anderer Teams sind ausgeblendet. Team-Dokumente sind nur für das eigene Team sichtbar.
 - Rate-Limits für Passwort-Reset, E-Mail-Änderung, Kontolöschung und alle Uploads.
+- Passwörter aus einer mitgelieferten Liste von rund 2.300 häufigen oder geleakten Passwörtern (SecLists, ab 10 Zeichen, plus deutsche Muster) werden beim Anlegen, Ändern, Zurücksetzen und Setzen durch Admins abgelehnt, ohne Groß-/Kleinschreibung.
 
 ## PR #23 – Frontend-Ausbau (#21) im eventzentrierten `main` (2026-09-24)
 

@@ -110,7 +110,7 @@ class TestUserManagement:
             json={
                 "email": "newuser@test.com",
                 "display_name": "New User",
-                "password": "newpassword",
+                "password": "new-user-pass-1",
                 "role_ids": [],
             },
         )

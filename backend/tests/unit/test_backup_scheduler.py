@@ -116,6 +116,151 @@ def test_once_cli_runs_backup_and_writes_status(tmp_path, monkeypatch):
     assert "exit code 3" in (loaded.last_error or "")
 
 
+def _backup_script(tmp_path: Path, name: str = "botball-1.tar.gz.age") -> list[str]:
+    archive = tmp_path / "backups" / name
+    archive.parent.mkdir(exist_ok=True)
+    return _script(
+        tmp_path,
+        f'printf "encrypted" > "{archive}"\necho "Encrypted backup created: {archive}"\n',
+    )
+
+
+@pytest.fixture
+def offsite_env(tmp_path, monkeypatch):
+    """A scheduler setup whose off-site target is a local directory."""
+    path = tmp_path / "last-run.json"
+    target = tmp_path / "offsite"
+    monkeypatch.setenv("BACKUP_STATUS_FILE", str(path))
+    monkeypatch.setenv("BACKUP_SCRIPT", _backup_script(tmp_path)[0])
+    monkeypatch.setenv("BACKUP_OFFSITE_TARGET", str(target))
+    monkeypatch.setenv("BACKUP_OFFSITE_CONFIG_DIR", str(tmp_path / "config"))
+    return path, target
+
+
+def test_successful_backup_is_copied_to_the_offsite_directory(offsite_env):
+    path, target = offsite_env
+    assert bs.main(["x", "once"]) == 0
+    copied = target / "botball-1.tar.gz.age"
+    assert copied.read_bytes() == b"encrypted"
+    assert not list(target.glob("*.partial"))
+    status = bs.load_status(path)
+    assert status is not None
+    assert status.offsite_last_ok is True
+    assert status.offsite_last_success_at == status.offsite_last_run_at
+    assert status.offsite_pending is None
+    assert bs.main(["x", "check"]) == 0
+    metrics = bs.render_metrics(status, offsite=True)
+    assert "botball_backup_offsite_enabled 1" in metrics
+    assert "botball_backup_offsite_last_success 1" in metrics
+
+
+def test_failed_copy_is_reported_and_retried_without_a_new_backup(
+    offsite_env, tmp_path, monkeypatch, capsys
+):
+    path, target = offsite_env
+    # A file where the target directory should be: the copy cannot succeed.
+    target.write_text("in the way")
+    assert bs.main(["x", "once"]) == 1
+    status = bs.load_status(path)
+    assert status is not None
+    # The local backup itself succeeded and stays recorded as such.
+    assert status.last_run_ok is True and status.consecutive_failures == 0
+    assert status.offsite_last_ok is False
+    assert status.offsite_consecutive_failures == 1
+    assert status.offsite_pending == status.last_archive
+    assert "cannot copy" in (status.offsite_last_error or "")
+
+    assert bs.main(["x", "check"]) == 1
+    assert "off-site copy failed" in capsys.readouterr().out
+    metrics = bs.render_metrics(status, offsite=True)
+    assert "botball_backup_offsite_last_success 0" in metrics
+    assert "botball_backup_offsite_consecutive_failures 1" in metrics
+    assert "botball_backup_last_run_success 1" in metrics
+
+    # The retry waits BACKUP_RETRY_SECONDS, well before the next backup is due.
+    now = status.offsite_last_run_at or 0
+    assert bs.next_offsite_delay(status, now, retry=HOUR) == HOUR
+    assert bs.next_delay(status, now, interval=24 * HOUR, retry=HOUR) > 23 * HOUR
+
+    # Once the target works again, the retry copies the pending archive.
+    target.unlink()
+    monkeypatch.setenv("BACKUP_SCRIPT", str(tmp_path / "must-not-run.sh"))
+    assert bs.main(["x", "offsite"]) == 0
+    status = bs.load_status(path)
+    assert status is not None
+    assert status.offsite_last_ok is True and status.offsite_pending is None
+    assert status.offsite_consecutive_failures == 0
+    assert (target / "botball-1.tar.gz.age").exists()
+    assert bs.next_offsite_delay(status, now, retry=HOUR) is None
+    assert bs.main(["x", "check"]) == 0
+
+
+def test_offsite_is_off_without_a_target(tmp_path, monkeypatch):
+    path = tmp_path / "last-run.json"
+    monkeypatch.setenv("BACKUP_STATUS_FILE", str(path))
+    monkeypatch.setenv("BACKUP_SCRIPT", _backup_script(tmp_path)[0])
+    monkeypatch.delenv("BACKUP_OFFSITE_TARGET", raising=False)
+    assert bs.main(["x", "once"]) == 0
+    status = bs.load_status(path)
+    assert status is not None and status.offsite_last_run_at is None
+    metrics = bs.render_metrics(status)
+    assert "botball_backup_offsite_enabled 0" in metrics
+    assert "\nbotball_backup_offsite_last_success " not in metrics
+    assert bs.main(["x", "offsite"]) == 2
+
+
+def test_relative_target_and_missing_archive_are_clear_errors(tmp_path):
+    status = bs.run_offsite(bs.BackupStatus(), None, "/tmp/x", tmp_path, 10)
+    assert status.offsite_last_ok is False and "archive not found" in (
+        status.offsite_last_error or ""
+    )
+    archive = tmp_path / "a.age"
+    archive.write_bytes(b"x")
+    status = bs.run_offsite(bs.BackupStatus(), str(archive), "backups/offsite", tmp_path, 10)
+    assert "neither an absolute directory" in (status.offsite_last_error or "")
+
+
+def test_remote_targets_build_rsync_and_rclone_commands(tmp_path):
+    assert bs.offsite_command("/b/a.age", "rsync:u@host:/srv/backups", tmp_path) == [
+        "rsync",
+        "--times",
+        "--timeout=300",
+        "-e",
+        "ssh -o BatchMode=yes",
+        "/b/a.age",
+        "u@host:/srv/backups/",
+    ]
+    (tmp_path / "id_ed25519").write_text("key")
+    (tmp_path / "known_hosts").write_text("host")
+    (tmp_path / "rclone.conf").write_text("[remote]")
+    ssh = bs.offsite_command("/b/a.age", "rsync:u@host:/srv/", tmp_path)[4]  # type: ignore[index]
+    assert f"-i {tmp_path / 'id_ed25519'}" in ssh
+    assert "StrictHostKeyChecking=yes" in ssh
+    assert bs.offsite_command("/b/a.age", "rclone:b2:botball", tmp_path) == [
+        "rclone",
+        "copy",
+        "/b/a.age",
+        "b2:botball",
+        "--config",
+        str(tmp_path / "rclone.conf"),
+    ]
+    assert bs.offsite_command("/b/a.age", "/mnt/offsite", tmp_path) is None
+
+
+def test_failing_remote_command_is_recorded(tmp_path, monkeypatch):
+    archive = tmp_path / "a.age"
+    archive.write_bytes(b"x")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    rclone = fake_bin / "rclone"
+    rclone.write_text('#!/bin/sh\necho "Failed to copy: 403 Forbidden" >&2\nexit 1\n')
+    rclone.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{fake_bin}:{os.environ.get('PATH', '')}")
+    status = bs.run_offsite(bs.BackupStatus(), str(archive), "rclone:b2:x", tmp_path, 10)
+    assert status.offsite_last_ok is False
+    assert status.offsite_last_error == "rclone exit code 1: Failed to copy: 403 Forbidden"
+
+
 @pytest.mark.skipif(os.name != "posix", reason="POSIX shell required")
 def test_backup_sh_fails_loudly_without_age_recipient(tmp_path):
     import subprocess

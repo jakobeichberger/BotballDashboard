@@ -63,7 +63,7 @@ Regression tests: `backend/tests/integration/test_security_scoping.py` and the m
   - Password change, password reset, deactivation and deletion bump `users.token_version`. That ends every session of the user at once.
 - **Refresh tokens:** stored as SHA-256 hashes, rotated on use, revocable. Cookie `HttpOnly`, `Secure` outside development, `SameSite=strict`, path `/api/auth`.
 - **Password reset:** single-use token, stored hashed, valid 1 h. The request endpoint always answers 204, so it does not reveal whether an account exists.
-- **Password policy:** at least 10 characters, not a single repeated character, not the e-mail address.
+- **Password policy:** at least 10 characters, not a single repeated character, not the e-mail address, and not on the bundled list of ~2,300 common/leaked passwords (`backend/modules/auth/common_passwords.txt`, from SecLists, case-insensitive). Applies to account creation, password change, reset and admin-set.
 - **Rate limits** (Redis, per client IP): login, refresh, password change, e-mail change, account deletion, password reset request and confirm, and all upload endpoints. Behind Traefik the real client IP is used (`--proxy-headers`, `FORWARDED_ALLOW_IPS`).
 - **Self-update:** `PATCH /auth/me` uses a dedicated schema (`display_name`, `preferred_language`, `theme`), so users cannot change their own roles, status or superuser flag. `is_superuser` is absent from all input schemas. `create_admin.py` makes a newly created account a superuser with the admin role. When resetting an existing account (`--reset`), it grants superuser status only with `--superuser`.
 

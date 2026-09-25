@@ -73,7 +73,16 @@
     },
     "none": "Keine offenen Scans.",
     "retry": "Erneut verarbeiten",
-    "retryFor": "{{file}} erneut verarbeiten"
+    "retryFor": "{{file}} erneut verarbeiten",
+    "reason": {
+      "empty": "nichts gelesen",
+      "low_confidence": "unsicher gelesen",
+      "below_minimum": "unter dem Minimum",
+      "above_maximum": "über dem Maximum",
+      "not_integer": "keine Ganzzahl",
+      "sum_out_of_range": "Summenregel verletzt",
+      "anchors_not_found": "Anker nicht gefunden, Ausschnitt prüfen"
+    }
   },
   "backToScoreboard": "Zurück zur Rangliste",
   "saving": "Speichern…",
@@ -430,7 +439,51 @@
       "coverage": "{{count}} von {{total}} Feldern haben ein Rechteck.",
       "save": "Layout speichern",
       "saved": "OCR-Layout gespeichert. Neue Scans verwenden es; fehlgeschlagene Scans lassen sich in der OCR-Prüfung erneut verarbeiten.",
-      "saveFailed": "Layout konnte nicht gespeichert werden."
+      "saveFailed": "Layout konnte nicht gespeichert werden.",
+      "drawMode": "Zeichnen",
+      "modeFields": "Feldbereiche",
+      "modeAnchors": "Anker"
+    },
+    "anchors": {
+      "title": "Anker",
+      "hint": "Anker sind gedruckte Passmarken (ausgefüllte Quadrate) auf dem Blatt. Ab zwei Ankern richtet die OCR jeden Scan an ihnen aus, mit vier in den Ecken auch schräg fotografierte Blätter. Ohne Anker, oder wenn sie auf dem Scan fehlen, dient der Blattrand als Bezug. Zum Zeichnen oben „Anker“ wählen und um jede Marke ein Rechteck aufziehen.",
+      "add": "Anker hinzufügen",
+      "name": "Name",
+      "nameOf": "Name von Anker {{number}}",
+      "remove": "Anker {{name}} entfernen",
+      "surface": "Seite – Rechteck um eine Passmarke aufziehen",
+      "tooFew": "Mindestens {{min}} Anker nötig, sonst richtet die OCR nach dem Blattrand aus.",
+      "nameMissing": "Jeder Anker braucht einen Namen.",
+      "nameDuplicate": "Anker-Namen müssen eindeutig sein."
+    },
+    "rules": {
+      "title": "Prüfregeln",
+      "hint": "Die Regeln legen fest, welche gelesenen Werte in der OCR-Prüfung markiert werden. Geprüft und übernommen wird jeder Scan trotzdem von Hand.",
+      "minConfidence": "Mindest-Konfidenz (%)",
+      "fieldRules": "Regeln je Feld",
+      "min": "Minimum",
+      "max": "Maximum",
+      "integer": "Ganzzahl",
+      "fieldConfidence": "Konfidenz % (Feld)",
+      "minOf": "Minimum für {{field}}",
+      "maxOf": "Maximum für {{field}}",
+      "integerOf": "{{field}} muss eine Ganzzahl sein",
+      "confidenceOf": "Mindest-Konfidenz % für {{field}}",
+      "fieldHint": "Leere Felder prüfen nichts zusätzlich. Die Grenzen aus dem Schema gelten immer; es zählt die strengere.",
+      "sums": "Summenregeln",
+      "addSum": "Summenregel hinzufügen",
+      "noSums": "Keine Summenregeln. Beispiel: Alle Würfel zusammen können höchstens 12 sein.",
+      "sumNumber": "Summenregel {{number}}",
+      "sumLabel": "Bezeichnung",
+      "removeSum": "Summenregel {{number}} entfernen",
+      "sumFields": "Felder der Summe",
+      "problem": {
+        "fieldRange": "Regel für {{name}}: Das Minimum liegt über dem Maximum.",
+        "sumLabel": "Summenregel {{name}} braucht eine Bezeichnung.",
+        "sumFields": "Summenregel {{name}}: mindestens zwei Felder wählen.",
+        "sumBounds": "Summenregel {{name}}: Minimum oder Maximum angeben.",
+        "sumRange": "Summenregel {{name}}: Das Minimum liegt über dem Maximum."
+      }
     }
   },
   "penalty": {

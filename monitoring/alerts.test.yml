@@ -81,6 +81,25 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'botball_backup_offsite_last_success{job="botball-backup", instance="backup:9101"}'
+        values: "1 1 0 0 1"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: BackupOffsiteCopyFailed
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: BackupOffsiteCopyFailed
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "The off-site copy of the last backup failed"
+              description: "The archive exists locally but was not copied to BACKUP_OFFSITE_TARGET; the copy is retried every BACKUP_RETRY_SECONDS. See `docker compose logs backup`."
+      - eval_time: 4m
+        alertname: BackupOffsiteCopyFailed
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
       - series: 'botball_backup_status_known{job="botball-backup", instance="backup:9101"}'
         values: "1x90"
       - series: 'up{job="botball-backup", instance="backup:9101"}'

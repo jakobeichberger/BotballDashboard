@@ -80,7 +80,7 @@ Konten legt die Organisation an. Eine Selbstregistrierung gibt es nicht. Bei ein
 
 Ohne eingerichteten Mailserver kommt keine E-Mail an. Dann setzt ein Admin das Passwort unter **Einstellungen → Benutzer**.
 
-**Passwort-Regeln:** mindestens 10 Zeichen, nicht nur ein wiederholtes Zeichen, nicht die eigene E-Mail-Adresse.
+**Passwort-Regeln:** mindestens 10 Zeichen, nicht nur ein wiederholtes Zeichen, nicht die eigene E-Mail-Adresse und kein bekanntes oder geleaktes Passwort wie `password123` oder `qwertzuiop` (Groß-/Kleinschreibung zählt dabei nicht).
 
 Das Zugangs-Token läuft nach 15 Minuten ab und wird automatisch erneuert, solange die Anmeldung gültig ist (bis zu 30 Tage). **Abmelden** beendet nur die Sitzung auf diesem Gerät.
 

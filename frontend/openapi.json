@@ -22318,12 +22318,6 @@
       },
       "OcrAnchor": {
         "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Name"
-          },
           "x": {
             "type": "number",
             "minimum": 0.0,
@@ -22343,19 +22337,65 @@
             "type": "number",
             "exclusiveMinimum": 0.0,
             "title": "Height"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
           }
         },
         "type": "object",
         "required": [
-          "name",
           "x",
           "y",
           "width",
-          "height"
+          "height",
+          "name"
         ],
-        "title": "OcrAnchor"
+        "title": "OcrAnchor",
+        "description": "A printed reference mark (a filled square) the worker aligns every scan by."
       },
       "OcrFieldRegion": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Y"
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "width",
+          "height",
+          "key"
+        ],
+        "title": "OcrFieldRegion"
+      },
+      "OcrFieldRule": {
         "properties": {
           "key": {
             "type": "string",
@@ -22363,36 +22403,129 @@
             "pattern": "^[a-z][a-z0-9_]*$",
             "title": "Key"
           },
-          "x": {
-            "type": "number",
-            "minimum": 0.0,
-            "title": "X"
+          "min_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Value"
           },
-          "y": {
-            "type": "number",
-            "minimum": 0.0,
-            "title": "Y"
+          "max_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Value"
           },
-          "width": {
-            "type": "number",
-            "exclusiveMinimum": 0.0,
-            "title": "Width"
+          "integer": {
+            "type": "boolean",
+            "title": "Integer",
+            "default": false
           },
-          "height": {
-            "type": "number",
-            "exclusiveMinimum": 0.0,
-            "title": "Height"
+          "min_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Confidence"
           }
         },
         "type": "object",
         "required": [
-          "key",
-          "x",
-          "y",
-          "width",
-          "height"
+          "key"
         ],
-        "title": "OcrFieldRegion"
+        "title": "OcrFieldRule",
+        "description": "Plausibility check for one field, on top of the field's own min/max."
+      },
+      "OcrSumRule": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 2,
+            "title": "Keys"
+          },
+          "min_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Value"
+          },
+          "max_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "keys"
+        ],
+        "title": "OcrSumRule",
+        "description": "The read values of several fields must add up to a plausible total."
+      },
+      "OcrValidationRules": {
+        "properties": {
+          "min_confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Confidence",
+            "default": 0.85
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/OcrFieldRule"
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "sums": {
+            "items": {
+              "$ref": "#/components/schemas/OcrSumRule"
+            },
+            "type": "array",
+            "title": "Sums"
+          }
+        },
+        "type": "object",
+        "title": "OcrValidationRules",
+        "description": "How the OCR worker decides which read values a human must double-check.\n\nEvery value is shown in the review anyway; these rules only decide which\nones are flagged. Unknown keys from older layouts are ignored."
       },
       "OpponentRankingEntry": {
         "properties": {
@@ -28844,6 +28977,7 @@
               "$ref": "#/components/schemas/OcrAnchor"
             },
             "type": "array",
+            "maxItems": 20,
             "title": "Anchors"
           },
           "field_regions": {
@@ -28855,9 +28989,7 @@
             "title": "Field Regions"
           },
           "validation_rules": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Validation Rules"
+            "$ref": "#/components/schemas/OcrValidationRules"
           }
         },
         "type": "object",
