@@ -245,7 +245,7 @@ async def get_aerial_ranking(db: AsyncSession, event: Event) -> list[dict]:
     names_result = await db.execute(
         select(Team.id, Team.name).where(Team.id.in_([r.team_id for r in rows]))
     )
-    names = dict(names_result.tuples().all())
+    names = dict(names_result.all())
     ranks = competition_ranks([(r.team_id, r.score or 0.0) for r in rows])
     rows.sort(key=lambda r: (ranks[r.team_id], names.get(r.team_id) or ""))
     return [

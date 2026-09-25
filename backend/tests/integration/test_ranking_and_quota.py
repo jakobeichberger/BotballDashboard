@@ -129,9 +129,9 @@ class TestRanksArePerCompetitionLevel:
             await client.get(f"/api/scoring/seasons/{season.id}/ranking", headers=auth_headers)
         ).json()
         by_team = {r["team_id"]: r["rank"] for r in rows}
-        assert (
-            by_team[a.id] == 1
-        ), "a higher-scoring team in another level must not push this one down"
+        assert by_team[a.id] == 1, (
+            "a higher-scoring team in another level must not push this one down"
+        )
         assert by_team[c.id] == 1
 
 

@@ -353,7 +353,7 @@ async def _open_usage(db: AsyncSession, team_id: str, event_id: str | None) -> t
         )
     )
     count, grams = result.one()
-    return int(count), float(grams)
+    return int(count), float(grams or 0.0)
 
 
 async def _hard_limit_violation(

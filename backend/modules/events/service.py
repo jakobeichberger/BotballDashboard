@@ -930,7 +930,7 @@ async def tiebroken_placements(
             Ranking.rank.is_not(None),
         )
     )
-    for team_id, rank in ranking_rows.tuples().all():
+    for team_id, rank in ranking_rows.all():
         if rank is not None:
             seed_ranks[team_id] = min(rank, seed_ranks.get(team_id, rank))
 

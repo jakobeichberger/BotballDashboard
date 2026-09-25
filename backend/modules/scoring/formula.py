@@ -214,8 +214,7 @@ def parse_formula(key: str, expression: str) -> ParsedFormula:
 
     if len(expression) > MAX_EXPRESSION_LENGTH:
         raise FormulaError(
-            f"Formula is too long ({len(expression)} characters, "
-            f"limit is {MAX_EXPRESSION_LENGTH})"
+            f"Formula is too long ({len(expression)} characters, limit is {MAX_EXPRESSION_LENGTH})"
         )
 
     try:

@@ -68,7 +68,7 @@ async def _register(db, season_id, name):
 
 
 def _minimal_pdf() -> bytes:
-    return b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n" b"trailer<</Root 1 0 R>>\n%%EOF\n"
+    return b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
 
 
 # ── Double Elimination routes ─────────────────────────────────────────────────

@@ -91,8 +91,9 @@ async def recipient_languages(db: AsyncSession, emails: list[str]) -> dict[str, 
             .join(User, User.id == TeamMember.user_id)
             .where(func.lower(TeamMember.email).in_(wanted))
         )
-        for email, language in members:
-            found.setdefault(email.lower(), language)
+        for member_email, language in members:
+            if member_email:
+                found.setdefault(member_email.lower(), language)
     return {
         email: normalize_language(found.get(email.lower()), DEFAULT_LANGUAGE) for email in emails
     }

@@ -264,7 +264,7 @@ async def build_inputs(db: AsyncSession, event_id: str, category: str) -> list[d
     if not team_ids:
         return []
     names_result = await db.execute(select(Team.id, Team.name).where(Team.id.in_(team_ids)))
-    names = dict(names_result.tuples().all())
+    names = dict(names_result.all())
     teams: list[dict[str, Any]] = sorted(
         (
             {"team_id": t, "team_name": names.get(t), "category": category}

@@ -214,7 +214,7 @@ def detect_anomalies(runs: Sequence[RunSample]) -> dict[str, list[Finding]]:
                         run.match_id,
                         Finding(
                             "field_outlier",
-                            f"Außerhalb der Verteilung aller Läufe " f"({low:g} … {high:g})",
+                            f"Außerhalb der Verteilung aller Läufe ({low:g} … {high:g})",
                             score=round(robust_z(run.total, totals) or 0.0, 2),
                         ),
                     )
