@@ -101,10 +101,13 @@ api.interceptors.response.use(
     if (!error.response && !axios.isCancel(error) && original && !original._fromOfflineQueue && isQueueableScoreRequest(original.method, original.url)) {
       return queueRequest(original);
     }
+    // A 401 from the login itself means wrong credentials, not an expired
+    // session: refreshing (and redirecting to /login) would swallow the
+    // error message the login form shows.
     if (
       error.response?.status === 401 &&
       !original._retry &&
-      !String(original.url).includes("/auth/refresh")
+      !/\/auth\/(refresh|login)$/.test(String(original.url))
     ) {
       original._retry = true;
       if (isRefreshing) {

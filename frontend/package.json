@@ -8,12 +8,14 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint src e2e playwright.config.ts --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "api:generate": "python3 ../backend/scripts/export_openapi.py --output openapi.json && openapi-typescript openapi.json -o src/api/generated.ts",
     "e2e": "playwright test",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "e2e:typecheck": "tsc -p e2e/tsconfig.json"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.4.0",
@@ -85,7 +87,8 @@
       "follow-redirects": ">=1.16.0",
       "postcss": ">=8.5.10",
       "js-yaml@>=4.0.0 <4.3.2": "^4.3.2",
-      "browserslist@<4.28.7": "^4.28.7"
+      "browserslist@<4.28.7": "^4.28.7",
+      "minimatch@9": "^10.2.5"
     }
   }
 }
