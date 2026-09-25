@@ -14,10 +14,11 @@ from sqlalchemy import (
     UniqueConstraint,
     false,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.database import Base
+from core.database import Base, PortableJSONB
 
 
 def _uuid() -> str:
@@ -28,6 +29,26 @@ class ScoringSchema(Base):
     """Defines which fields are scored and their multipliers for a season/level."""
 
     __tablename__ = "scoring_schemas"
+    __table_args__ = (
+        UniqueConstraint(
+            "season_id",
+            "event_id",
+            "competition_level_id",
+            "version",
+            name="uq_scoring_schema_scope_version",
+        ),
+        # At most one active schema per scope. The scope columns are nullable
+        # and NULLs never collide in a unique index, hence the COALESCE.
+        Index(
+            "uq_scoring_schema_one_active_scope",
+            "season_id",
+            func.coalesce(text("event_id"), ""),
+            func.coalesce(text("competition_level_id"), ""),
+            unique=True,
+            postgresql_where=text("is_active"),
+            sqlite_where=text("is_active"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     season_id: Mapped[str] = mapped_column(
@@ -39,7 +60,7 @@ class ScoringSchema(Base):
     competition_level_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("competition_levels.id"), nullable=True
     )
-    fields: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    fields: Mapped[list] = mapped_column(PortableJSONB, nullable=False, default=list)
     # Structured sheet (sections, area multipliers, either-or, sides A/B – see
     # modules.scoring.sheet). When set it is authoritative and `fields` holds
     # the flattened inputs; legacy flat schemas leave it NULL.
@@ -85,7 +106,7 @@ class Match(Base):
     )
     round_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     table_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    raw_scores: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    raw_scores: Mapped[dict] = mapped_column(PortableJSONB, nullable=False, default=dict)
     schema_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     total_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     # total_score = 0 if round_lost else sheet_score + bonus_score
@@ -133,9 +154,19 @@ class Ranking(Base):
         UniqueConstraint(
             "event_id",
             "team_id",
-            "phase_id",
+            "event_phase_id",
             "competition_level_id",
             name="uq_ranking_event_team_phase_level",
+        ),
+        # The constraint above lets rows with NULL phase/level repeat; this
+        # index makes the scope unique with NULL counting as a value.
+        Index(
+            "uq_ranking_scope_null_safe",
+            "event_id",
+            "team_id",
+            func.coalesce(text("event_phase_id"), ""),
+            func.coalesce(text("competition_level_id"), ""),
+            unique=True,
         ),
     )
 
@@ -146,8 +177,10 @@ class Ranking(Base):
     event_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Legacy season-phase link from before events; rankings are scoped by
+    # event_phase_id now.
     phase_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("season_phases.id"), nullable=True, index=True
+        String(36), ForeignKey("season_phases.id"), nullable=True
     )
     event_phase_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("event_phases.id", ondelete="SET NULL"), nullable=True, index=True

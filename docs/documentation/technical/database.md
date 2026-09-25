@@ -1,11 +1,11 @@
 # Datenbankschema
 
-Stand: Migration `0032`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 61 Tabellen.
+Stand: Migration `0033`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 61 Tabellen.
 
-- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0032`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
-- **Tests:** SQLite in-memory über `Base.metadata.create_all`, einmal pro Testprozess; jeder Test wird per SAVEPOINT-Rollback isoliert (`backend/tests/conftest.py`). Die Migrationen laufen in der CI zusätzlich gegen PostgreSQL.
+- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0033`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
+- **Tests:** SQLite in-memory über `Base.metadata.create_all`, einmal pro Testprozess; jeder Test wird per SAVEPOINT-Rollback isoliert (`backend/tests/conftest.py`). Die Migrationen laufen in der CI zusätzlich gegen PostgreSQL; dort prüft `tests/postgres/test_schema_drift.py` (wie `alembic check`), dass das migrierte Schema den Modellen entspricht, einschließlich partieller Indizes und `CHECK`-Constraints.
 - **IDs:** fast überall `VARCHAR(36)` mit UUID-Text; Ausnahme `audit_logs.id` (Integer, autoincrement).
-- **JSON-Spalten** (`JSON`, auf PostgreSQL als `json` angelegt) halten flexible Strukturen: Score-Sheet-Definitionen, Rohwerte einer Wertung, Modul-Listen, Benachrichtigungs-Payloads.
+- **JSON-Spalten** (`JSON`, auf PostgreSQL als `json` angelegt; `scoring_schemas.fields`, `matches.raw_scores` und `score_sheet_templates.extracted_fields`/`confirmed_fields` sind dort `jsonb`, im Modell `PortableJSONB`) halten flexible Strukturen: Score-Sheet-Definitionen, Rohwerte einer Wertung, Modul-Listen, Benachrichtigungs-Payloads.
 - **Zeitstempel** werden als UTC gespeichert. Datumsfelder ohne Uhrzeit (`DATE`) sind Kalendertage, z. B. Deadlines. Eine Paper-Deadline gilt bis Tagesende in der Zeitzone des Events.
 - `CHECK`-Constraints (z. B. erlaubte Status, Wertebereiche) stehen in den Modellen (`__table_args__`) und Migrationen. Sie sind hier nicht einzeln aufgeführt.
 
@@ -451,7 +451,7 @@ Unique: `(event_id, code)`
 |---|---|---|---|
 | `id` | VARCHAR(36) | PK |  |
 | `scheduled_match_id` | VARCHAR(36) | NOT NULL | → `scheduled_matches.id` (CASCADE) |
-| `team_id` | VARCHAR(36) |  | → `teams.id` (CASCADE) |
+| `team_id` | VARCHAR(36) | NOT NULL | → `teams.id` (CASCADE) |
 | `position` | INTEGER | NOT NULL |  |
 | `side` | VARCHAR(20) |  |  |
 | `result` | VARCHAR(20) |  |  |
@@ -487,6 +487,8 @@ Unique: `(event_id, category, bracket)`
 | `version` | INTEGER | NOT NULL |  |
 | `is_active` | BOOLEAN | NOT NULL |  |
 | `created_at` | DATETIME | NOT NULL |  |
+
+Unique: `(season_id, event_id, competition_level_id, version)`; höchstens ein aktives Schema je Bereich (partieller Unique-Index `uq_scoring_schema_one_active_scope` über `season_id`, `COALESCE(event_id, '')`, `COALESCE(competition_level_id, '')` `WHERE is_active`)
 
 ### `matches`
 
@@ -546,7 +548,7 @@ Unique: `(event_id, category, bracket)`
 | `tiebreaker` | VARCHAR(255) |  |  |
 | `updated_at` | DATETIME | NOT NULL |  |
 
-Unique: `(event_id, team_id, phase_id, competition_level_id)`
+Unique: `(event_id, team_id, event_phase_id, competition_level_id)`, zusätzlich NULL-sicher als Index `uq_ranking_scope_null_safe` (`COALESCE` auf Phase und Stufe). `phase_id` ist ein Überbleibsel aus der Zeit vor den Events.
 
 ### `score_revisions`
 
@@ -1180,6 +1182,8 @@ Empfänger einer Outbox-Zeile (Migration `0032`), geschrieben von `emit_event`. 
 | `0029` | Saison-Details der Teams, Kader, Team-Dokumente, Druck-Checkliste, Paper-Deadlines |
 | `0030` | Check-Constraint des Reviewer-Zuweisungsstatus für vor dem 0023-Fix migrierte Datenbanken |
 | `0031` | Übungslauf-Kennzeichen auf `score_revisions` (Sichtbarkeit des Audit-Trails) |
+| `0032` | Benachrichtigungs-Empfänger, Outbox-Status `sending`, fehlende Indizes |
+| `0033` | Schema-Drift: Index `print_jobs(printer_id)`, `event_registrations.team_id` und `score_sheet_templates.uploaded_at` `NOT NULL` |
 
 ```bash
 cd backend

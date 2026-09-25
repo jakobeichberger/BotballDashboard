@@ -45,21 +45,28 @@ class TestActiveSeason:
 
 class TestActiveScoringSchema:
     @pytest.mark.asyncio
-    async def test_two_active_schemas_return_highest_version(self, db, season):
+    async def test_one_active_schema_per_scope_and_lookup_finds_it(self, db, season):
+        """The migrated schema allows one active schema per scope (partial
+        unique index uq_scoring_schema_one_active_scope); the models declare it
+        too, so a second active schema cannot even reach the lookup."""
+        from sqlalchemy.exc import IntegrityError
+
         from modules.scoring.models import ScoringSchema
         from modules.scoring.service import get_active_schema
 
-        db.add_all(
-            [
-                ScoringSchema(season_id=season.id, version=1, is_active=True, fields=[]),
-                ScoringSchema(season_id=season.id, version=2, is_active=True, fields=[]),
-            ]
-        )
+        db.add(ScoringSchema(season_id=season.id, version=1, is_active=True, fields=[]))
+        await db.flush()
+        with pytest.raises(IntegrityError):
+            async with db.begin_nested():
+                db.add(ScoringSchema(season_id=season.id, version=2, is_active=True, fields=[]))
+                await db.flush()
+        # Inactive versions do not count against the active one.
+        db.add(ScoringSchema(season_id=season.id, version=3, is_active=False, fields=[]))
         await db.flush()
 
         schema = await get_active_schema(db, season.id)
         assert schema is not None
-        assert schema.version == 2
+        assert schema.version == 1
 
 
 class TestSeasonPhases:

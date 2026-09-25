@@ -194,8 +194,10 @@ class MatchParticipant(Base):
         nullable=False,
         index=True,
     )
-    team_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=True, index=True
+    # A slot row exists only once its team is known: brackets add (or refill)
+    # the participant when a team advances into the match.
+    team_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     side: Mapped[str | None] = mapped_column(String(20), nullable=True)

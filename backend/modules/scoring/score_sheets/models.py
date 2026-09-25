@@ -6,18 +6,25 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from core.database import Base
+from core.database import Base, PortableJSONB
 
 if TYPE_CHECKING:
     from modules.auth.models import User
     from modules.seasons.models import CompetitionLevel, Season
-
-JSON_TYPE = JSON().with_variant(JSONB, "postgresql")
 
 
 def _uuid() -> str:
@@ -31,6 +38,10 @@ class ScoreSheetTemplate(Base):
     """
 
     __tablename__ = "score_sheet_templates"
+    __table_args__ = (
+        Index("ix_score_sheet_templates_season_id", "season_id"),
+        Index("ix_score_sheet_templates_level_id", "competition_level_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
 
@@ -53,13 +64,14 @@ class ScoreSheetTemplate(Base):
 
     # OCR / extraction results
     raw_text: Mapped[str | None] = mapped_column(Text)
-    extracted_fields: Mapped[list[dict] | None] = mapped_column(JSON_TYPE)
-    confirmed_fields: Mapped[list[dict] | None] = mapped_column(JSON_TYPE)
+    # JSONB since 0001; the layout columns below came with 0011 as plain JSON.
+    extracted_fields: Mapped[list[dict] | None] = mapped_column(PortableJSONB)
+    confirmed_fields: Mapped[list[dict] | None] = mapped_column(PortableJSONB)
     page_width: Mapped[int | None] = mapped_column(Integer)
     page_height: Mapped[int | None] = mapped_column(Integer)
-    anchors: Mapped[list[dict] | None] = mapped_column(JSON_TYPE)
-    field_regions: Mapped[list[dict] | None] = mapped_column(JSON_TYPE)
-    validation_rules: Mapped[dict | None] = mapped_column(JSON_TYPE)
+    anchors: Mapped[list[dict] | None] = mapped_column(JSON)
+    field_regions: Mapped[list[dict] | None] = mapped_column(JSON)
+    validation_rules: Mapped[dict | None] = mapped_column(JSON)
 
     # Status of the OCR pipeline
     ocr_status: Mapped[str] = mapped_column(String(30), default="pending")
@@ -68,7 +80,7 @@ class ScoreSheetTemplate(Base):
     # Audit
     uploaded_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
     uploaded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     confirmed_by: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=True
@@ -86,6 +98,12 @@ class ScoreSheetScan(Base):
     """One locally processed photo/PDF with a mandatory human review step."""
 
     __tablename__ = "score_sheet_scans"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('queued', 'processing', 'review', 'accepted', 'failed')",
+            name="ck_score_sheet_scan_status",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     event_id: Mapped[str] = mapped_column(
@@ -107,8 +125,9 @@ class ScoreSheetScan(Base):
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="queued", index=True)
     provider: Mapped[str] = mapped_column(String(40), nullable=False, default="tesseract")
-    extracted_values: Mapped[list[dict] | None] = mapped_column(JSON_TYPE)
-    reviewed_values: Mapped[dict | None] = mapped_column(JSON_TYPE)
+    # Plain JSON, as 0011 created them.
+    extracted_values: Mapped[list[dict] | None] = mapped_column(JSON)
+    reviewed_values: Mapped[dict | None] = mapped_column(JSON)
     error: Mapped[str | None] = mapped_column(Text)
     accepted_match_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("matches.id", ondelete="SET NULL"), nullable=True

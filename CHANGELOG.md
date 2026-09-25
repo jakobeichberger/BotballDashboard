@@ -4,7 +4,7 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
-Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0032`.
+Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0033`.
 
 ### Added
 
@@ -105,6 +105,7 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 - Bambu „FINISH" schloss frisch eingereihte Jobs ab.
 - Saison löschen löschte per CASCADE die ganze Historie. Jetzt 409, Archivieren stattdessen.
 - Score-Revisionen gingen beim Löschen einer Wertung verloren (`0025`).
+- Modelle und Migrationen wichen voneinander ab (`alembic check` meldete 27 Unterschiede): JSONB-Spalten, partielle und NULL-sichere Unique-Indizes, `CHECK`-Constraints und Index-Namen stehen jetzt auch in den Modellen, damit die SQLite-Tests dasselbe Schema prüfen wie PostgreSQL. `0033` ergänzt den Index `print_jobs(printer_id)` und macht `event_registrations.team_id` und `score_sheet_templates.uploaded_at` `NOT NULL`. `tests/postgres/test_schema_drift.py` hält beide Seiten in der CI deckungsgleich.
 - Der OCR-Auftrag eines Scans wurde vor dem Commit eingereiht. Der Worker fand die Zeile manchmal noch nicht, und der Scan blieb auf „queued". Jetzt nach dem Commit, ohne die Event-Loop zu blockieren.
 
 ### Security
