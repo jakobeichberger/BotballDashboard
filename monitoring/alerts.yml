@@ -36,6 +36,14 @@ groups:
           summary: "More than 5 % of API requests fail with 5xx"
           description: "{{ $value | humanizePercentage }} of API requests returned a 5xx status over the last 5 minutes. Check `docker compose logs backend`."
 
+      - alert: RedisFailOpen
+        expr: sum by (component) (increase(botball_redis_fail_open_total[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Security checks run without Redis ({{ $labels.component }})"
+          description: "Redis was unreachable, so the {{ $labels.component }} check let requests through (fail open): rate limits or revoked access tokens are not enforced. Check `docker compose logs redis`."
+
   - name: botball-backups
     rules:
       - alert: BackupFailed

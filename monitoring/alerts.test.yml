@@ -100,3 +100,22 @@ tests:
             exp_annotations:
               summary: "Backup service is not running or not scraped"
               description: "backup:9101 is unreachable. Is the \"production\" compose profile enabled (COMPOSE_PROFILES=production,monitoring)?"
+
+  - interval: 1m
+    input_series:
+      # Redis failed for a moment at minute 3; the deny-list never failed.
+      - series: 'botball_redis_fail_open_total{job="botball-api", instance="backend:8000", component="rate_limit"}'
+        values: "0 0 0 3 3 3 3 3 3 3 3 3 3 3 3"
+      - series: 'botball_redis_fail_open_total{job="botball-api", instance="backend:8000", component="token_denylist"}'
+        values: "0x14"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: RedisFailOpen
+        exp_alerts:
+          - exp_labels: { severity: warning, component: rate_limit }
+            exp_annotations:
+              summary: "Security checks run without Redis (rate_limit)"
+              description: "Redis was unreachable, so the rate_limit check let requests through (fail open): rate limits or revoked access tokens are not enforced. Check `docker compose logs redis`."
+      - eval_time: 14m
+        alertname: RedisFailOpen
+        exp_alerts: []

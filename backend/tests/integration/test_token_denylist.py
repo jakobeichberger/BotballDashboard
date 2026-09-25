@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import jwt
 import pytest
 
-from core import token_denylist
+from core import metrics, token_denylist
 from core.auth import ALGORITHM, create_access_token, decode_token
 from core.config import get_settings
 from core.exceptions import UnauthorizedError
@@ -113,5 +113,34 @@ class TestLogoutDenylist:
 
         monkeypatch.setattr(get_settings(), "token_denylist_backend", "redis")
         monkeypatch.setattr(token_denylist, "_client", lambda: Broken())
+        before = metrics.REDIS_FAIL_OPEN["token_denylist"]
         await token_denylist.deny("x", None)
         assert await token_denylist.is_denied("x") is False
+        # The skipped check is counted for the monitoring.
+        assert metrics.REDIS_FAIL_OPEN["token_denylist"] == before + 1
+        assert (
+            f'botball_redis_fail_open_total{{component="token_denylist"}} {before + 1}'
+            in metrics.render_metrics()
+        )
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_outage_fails_open_and_is_counted(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from core import rate_limit as rate_limit_module
+
+        class Broken:
+            async def incr(self, *args):
+                raise ConnectionError("down")
+
+            async def aclose(self):
+                pass
+
+        monkeypatch.setattr(rate_limit_module.Redis, "from_url", lambda *a, **k: Broken())
+        request = SimpleNamespace(
+            app=SimpleNamespace(state=SimpleNamespace(testing=False)),
+            client=SimpleNamespace(host="1.2.3.4"),
+        )
+        before = metrics.REDIS_FAIL_OPEN["rate_limit"]
+        await rate_limit_module.rate_limit("login", 1, 60)(request)
+        assert metrics.REDIS_FAIL_OPEN["rate_limit"] == before + 1

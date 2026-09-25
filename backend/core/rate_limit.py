@@ -7,6 +7,7 @@ from redis.asyncio import Redis
 
 from core.config import get_settings
 from core.logging import get_logger
+from core.metrics import record_redis_fail_open
 
 logger = get_logger("rate_limit")
 
@@ -38,6 +39,7 @@ def rate_limit(bucket: str, limit: int, window_seconds: int) -> Callable:
         except Exception as exc:
             # The readiness check reports Redis failure. Auth remains available for recovery.
             logger.warning("rate_limit_unavailable", bucket=bucket, error=str(exc))
+            record_redis_fail_open("rate_limit")
         finally:
             await redis.aclose()
 
