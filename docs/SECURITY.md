@@ -101,7 +101,7 @@ Regression tests: `backend/tests/integration/test_security_scoping.py` and the m
 
 ## Dependencies
 
-CI runs `pip-audit` (no ignores) and `pnpm audit --audit-level high` on every push.
+The CI workflow (started manually) runs `pip-audit` (no ignores) and `pnpm audit --audit-level high`.
 
 ## Residual risks
 

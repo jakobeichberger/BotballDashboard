@@ -83,6 +83,7 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 
 ### Changed
 
+- CI startet nur noch manuell (Actions → CI → „Run workflow“), nicht mehr bei Push oder Pull Request.
 - Seeding nach Game Review:
   - nur Läufe aus Seeding-Phasen;
   - Ränge je Kategorie mit geteilten Plätzen;
