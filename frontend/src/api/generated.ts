@@ -5326,6 +5326,8 @@ export interface components {
             source: string;
             /** Notes */
             notes: string | null;
+            /** Created By */
+            created_by?: string | null;
             /**
              * Created At
              * Format: date-time

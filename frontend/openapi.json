@@ -19843,6 +19843,17 @@
             ],
             "title": "Notes"
           },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
