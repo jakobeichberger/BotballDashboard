@@ -1,57 +1,62 @@
-# Gast-Ansicht / Öffentliches Scoreboard
+# Gast-Handbuch und öffentliche Anzeige
 
-Dieses Handbuch beschreibt was ohne Login einsehbar ist und wie das öffentliche Scoreboard funktioniert.
+Es gibt zwei Arten, das Dashboard nur zu lesen:
 
----
-
-## Öffentliche vs. Interne Ansicht
-
-Das BotballDashboard hat zwei getrennte Bereiche:
-
-| Bereich | Zugang | Inhalt |
+| | Öffentliche Event-Seite | Gast-Konto (Rolle `guest`) |
 |---|---|---|
-| **Internes Dashboard** | Login erforderlich | Alle Daten – Scores, Papers, Druckjobs, Prep-Phase |
-| **Öffentliches Scoreboard** | Ohne Login erreichbar | Nur freigegebene Turnierdaten |
-
-Das öffentliche Scoreboard kann auf einer separaten Domain gehostet werden (z.B. `scoreboard.meineschule.at`).
-
----
-
-## Öffentliches Scoreboard
-
-### Was ist sichtbar?
-
-- **Live-Rangliste:** Aktuelle Seeding-Platzierungen aller Teams (nach Abschluss der Seeding-Runden)
-- **Team-Namen und Nummern:** Öffentliche Teamdaten
-- **Aktuelle Phase:** Welche Runde läuft gerade?
-
-> Was genau öffentlich sichtbar ist, wird vom Admin konfiguriert.
-
-### Was ist nicht sichtbar?
-
-- Prep-Phase-Scores (interne Testläufe)
-- Papers und Paper-Reviews
-- Druckjobs
-- Interne Notizen
-- Scores während eines laufenden Matches (erst nach Abschluss des Matches)
+| Login | nein | ja |
+| Adresse | `/public/<event-slug>` | `/events/<id>/…` |
+| Inhalt | nur, was die Organisation freigegeben hat | Dashboard, Teams, Bot-Galerie, Zeitplan, Wertung, Rangliste & Ergebnisse, Deadlines (alles nur lesend) |
+| Gedacht für | Zuschauer, Beamer, Großbildschirm | Eltern, Schulen, Partner mit Konto |
 
 ---
 
-## Live-Scoreboard (Großbildschirm)
+## Öffentliche Event-Seite
 
-Für die Anzeige auf einem Projektor oder TV beim Turnier:
+Adresse: `https://<domain>/public/<event-slug>`. Den Slug vergibt die Organisation in der Event-Verwaltung.
 
-- Automatische Aktualisierung via WebSocket (kein Neuladen nötig)
-- Vollbild-optimierte Ansicht (kein Header, keine Navigation)
-- Zeigt: aktuelle Rangliste mit Rang, Team, Seed-Score, Runden
+Die Seite ist nur erreichbar, wenn das Event den Status `published`, `live` oder `completed` hat. Welche Bereiche erscheinen, entscheiden die Freigaben des Events:
+
+| Bereich | Freigabe |
+|---|---|
+| Rangliste | Scoreboard |
+| Nächste Matches (Zeitplan) und Bracket | Zeitplan |
+| Detailergebnisse (Runden, Tische, Punkte; ohne Übungsläufe) | Ergebnisse |
+| Ankündigungen (nur Zielgruppe „alle") | Ankündigungen |
+
+Ist nichts freigegeben, zeigt die Seite „Dieses Event ist nicht öffentlich verfügbar". Nie öffentlich sind:
+
+- Kontaktdaten und E-Mail-Adressen;
+- Papers und Reviews;
+- Druckaufträge;
+- interne Notizen;
+- Übungsläufe;
+- Scouting.
+
+### Live und Großbildschirm
+
+- Die Seite hält eine Live-Verbindung. Neue Wertungen, Zeitplanänderungen und Ankündigungen erscheinen ohne Neuladen. Der Verbindungsstatus steht oben: „Verbunden" oder „Getrennt".
+- **Rotation:** Die Seite wechselt automatisch zwischen den freigegebenen Bereichen. Mit Pause/Play schaltest du die Rotation um, mit den Bereichs-Buttons springst du direkt.
+- **Vollbild**-Button für Beamer und Fernseher.
+- **QR-Code:** Die Seite zeigt einen QR-Code auf sich selbst. So können Zuschauer die Rangliste am Handy öffnen. Als Bild ist er auch unter `/api/v1/public/events/<slug>/qr.svg` abrufbar, z. B. für Plakate.
 
 ---
 
-## PWA installieren (für bessere Erfahrung)
+## Gast-Konto
 
-Das Scoreboard kann auch als App auf dem Handy installiert werden:
+Mit der Rolle `guest` (`scoring:read`, `teams:read`, `seasons:read`, `events:read`, `dashboard:read`):
 
-- **Android/Chrome:** Menü (⋮) → „Zum Startbildschirm hinzufügen"
-- **iOS/Safari:** Teilen (□↑) → „Zum Home-Bildschirm"
+- **Dashboard:** Überblick und Ankündigungen.
+- **Teams** und **Bot-Galerie** (nur veröffentlichte Bots), ohne Kontaktdaten und Mitglieder-E-Mails.
+- **Zeitplan** mit Bracket.
+- **Wertung**, schreibgeschützt: „Du kannst Wertungen ansehen, hast aber keine Berechtigung zum Speichern."
+- **Rangliste & Ergebnisse** mit Exporten.
+- **Deadlines** mit iCal-Abo.
 
-Danach ist das Scoreboard offline als App verfügbar und aktualisiert sich automatisch sobald eine Verbindung besteht.
+Weil Gäste `scoring:read` haben, stehen auch **OCR-Prüfung** und **Scouting** in der Navigation. Beide sind nur lesbar. Scouting-Notizen und -Beobachtungen sind für Gäste leer, weil sie an eigene Teams gebunden sind. Paper, 3D-Druck, Performance und Statistik bleiben verborgen.
+
+---
+
+## Als App installieren
+
+Die öffentliche Seite und das Dashboard lassen sich als App auf den Startbildschirm legen: im Browser „Zum Startbildschirm hinzufügen" bzw. „Installieren".

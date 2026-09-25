@@ -1,124 +1,102 @@
 # Reviewer-Handbuch
 
-Dieses Handbuch richtet sich an Reviewer (Paper-Gutachter), die eingereichte Papers bewerten und Rückmeldungen geben. Reviewer müssen keine Teammitglieder sein – externe Personen können als Reviewer eingeladen werden.
+Für die Begutachtung der Team-Papers. Die Rolle `reviewer` hat folgende Rechte:
+
+- `papers:read`, `papers:review`;
+- `teams:read`, `seasons:read`, `events:read`, `dashboard:read`.
+
+Den Paper-Bereich gibt es nur, wenn das Modul **Paper** im Event aktiv ist.
 
 ---
 
-## Übersicht Reviewer-Funktionen
+## Inhaltsverzeichnis
 
-| Funktion | Wo |
+1. [Überblick](#überblick)
+2. [Ablauf eines Reviews](#ablauf-eines-reviews)
+3. [Bewertungskriterien](#bewertungskriterien)
+4. [Abgeben, sperren, wieder öffnen](#abgeben-sperren-wieder-öffnen)
+5. [Revisionen und Versionen](#revisionen-und-versionen)
+6. [Fristen und Erinnerungen](#fristen-und-erinnerungen)
+7. [Was Teams sehen](#was-teams-sehen)
+
+---
+
+## Überblick
+
+- **Dashboard:** Die **Review-Warteschlange** zeigt die dir zugewiesenen Papers, die auf dich warten. Dazu gehören überarbeitete (`resubmitted`) Papers. Papers, die gerade beim Team zur Überarbeitung liegen, stehen nicht darin.
+- **Paper-Review** (`/events/…/papers`): alle Papers der Saison mit Status und Deadline-Hinweis.
+- **Paper-Detailseite:** Abstract, aktuelle Version zum Herunterladen, Versionen samt Text-Vergleich, Deadline, dein Review-Formular.
+
+Reviewen darfst du nur Papers, denen dich die Organisation zugewiesen hat. Die Organisation weist keine Reviewer aus dem eigenen Team oder von derselben Schule zu. Reviews sind nicht anonym gegenüber der Organisation. Teams sehen ihr Feedback aber ohne Namen der Reviewer.
+
+---
+
+## Ablauf eines Reviews
+
+1. Paper in der Warteschlange oder Liste öffnen.
+2. **Aktuelle Version** herunterladen (PDF). Frühere Versionen und ein **Text-Diff** zwischen zwei Versionen findest du unter „Versionen".
+3. Im Formular die fünf Kriterien bewerten und kommentieren (siehe unten).
+4. Einen **Gesamtkommentar** und, falls nötig, **Revisionshinweise** schreiben („Was konkret geändert werden soll…").
+5. Eine **Empfehlung** wählen: annehmen, ablehnen, kleine Überarbeitung oder große Überarbeitung.
+6. Optional **private Notizen**. Diese sieht nur die Organisation, nie das Team.
+7. **Speichern** hält den Entwurf. **Einreichen** gibt das Review verbindlich ab.
+
+Sobald die erste Person mit dem Review beginnt, wechselt das Paper auf `under_review`.
+
+---
+
+## Bewertungskriterien
+
+Jedes Kriterium wird mit 0–10 bewertet und hat ein eigenes Kommentarfeld:
+
+| Kriterium | Feld |
 |---|---|
-| Zugewiesene Papers einsehen | Paper-Review → Meine Papers |
-| Paper lesen | Paper-Review → Paper → PDF öffnen |
-| Review schreiben | Paper-Review → Paper → Review schreiben |
-| Revision anfordern | Paper-Review → Paper → Revision anfordern |
-| Paper akzeptieren / ablehnen | Paper-Review → Paper → Entscheidung |
+| Inhalt | `score_content` |
+| Umsetzung | `score_implementation` |
+| Ergebnisse | `score_results` |
+| Sprache | `score_language` |
+| Format | `score_format` |
+
+Die Review-Summe ist der Mittelwert der vergebenen Kriterien. Beim **Finalisieren** verdichtet die Organisation alle abgegebenen Reviews der Runde zum Endergebnis (0–1). Ein **Formalabzug**, z. B. für eine Seite zu viel, wird dabei abgezogen. Das Endergebnis fließt in die Doku- bzw. Gesamtwertung ein, wenn die Saison das vorsieht.
+
+Beim Verdacht auf KI-Missbrauch meldest du das in den privaten Notizen. Den Status `disqualified_ai` (Score 0, keine Revision) setzt nur die Organisation.
 
 ---
 
-## Zugewiesene Papers
+## Abgeben, sperren, wieder öffnen
 
-Nach dem Login erscheint unter **Paper-Review → Meine Papers** eine Liste aller zugewiesenen Papers.
-
-| Status | Bedeutung |
-|---|---|
-| `Eingereicht` | Paper wartet auf ersten Review |
-| `In Review` | Review wurde begonnen aber noch nicht abgeschlossen |
-| `Revision angefordert` | Feedback gegeben, Team muss überarbeiten |
-| `Überarbeitung eingereicht` | Team hat überarbeitete Version hochgeladen |
-| `Akzeptiert` | Review-Prozess erfolgreich abgeschlossen |
-| `Abgelehnt` | Paper entspricht nicht den Anforderungen |
+- Nach **Einreichen** ist dein Review gesperrt („Bewertung verbindlich abgeben? Danach ist sie gesperrt.").
+- Änderungen danach gehen nur, wenn die Organisation das Review **wieder öffnet**.
+- Nach dem Finalisieren eines Papers lassen sich keine Reviews mehr ändern.
+- Steht ein Paper nicht in einem begutachtbaren Status, zeigt das Formular „Das Paper ist derzeit nicht zur Begutachtung offen".
 
 ---
 
-## Paper lesen
+## Revisionen und Versionen
 
-1. **Paper-Review → Meine Papers → Paper auswählen**
-2. **PDF öffnen** – Paper wird direkt im Browser angezeigt
-3. Auf Mobil: PDF kann heruntergeladen und in einem externen Reader geöffnet werden
+Fordert die Organisation eine Überarbeitung an (`revision_requested`), lädt das Team eine **neue PDF-Version** hoch. Frühere Versionen bleiben erhalten. Nach dem erneuten Einreichen (`resubmitted`):
 
-**Sichtbare Informationen pro Paper:**
-- Einreichendes Team (Name, Schule)
-- Eingereichte Version (Datum, Versionsnummer)
-- Bisherige Review-Runden (falls Revisionen stattgefunden haben)
-- Kategorie (z.B. Multi Agent Systems, Engineering, ...)
+- Deine Zuweisung steht wieder auf „ausstehend", jetzt für die neue Version.
+- Das Paper erscheint wieder in deiner Warteschlange.
+- Mit dem **Text-Diff** siehst du, was sich gegenüber der vorigen Version geändert hat. Enthält das PDF keinen extrahierbaren Text, vergleicht der Diff nur die Metadaten und sagt das dazu.
+
+Jede Review-Runde hat ihre eigene `revision_number`. Zu jedem Review wird gespeichert, welche Version begutachtet wurde.
 
 ---
 
-## Review schreiben
+## Fristen und Erinnerungen
 
-1. **Paper → Review schreiben**
-2. Bewertungskategorien ausfüllen:
-
-| Kategorie | Beschreibung | Punkte |
-|---|---|---|
-| Relevanz & Thema | Passt das Paper zur Konferenz-Kategorie? | 0–10 |
-| Wissenschaftliche Qualität | Methodik, Nachvollziehbarkeit, Quellen | 0–10 |
-| Innovation & Beitrag | Neuer Ansatz, interessante Erkenntnisse | 0–10 |
-| Struktur & Sprache | Lesbarkeit, Aufbau, Grammatik | 0–10 |
-| Vollständigkeit | Alle Pflichtabschnitte vorhanden? | 0–10 |
-
-3. **Freitext-Kommentar** (Pflichtfeld): Ausführliches Feedback für das Team
-   - Was ist gut gelungen?
-   - Was muss verbessert werden?
-   - Konkrete Hinweise für die Revision
-4. **Interne Notiz** (optional, nur für andere Reviewer und Admin sichtbar – nicht für das Team)
-5. Entscheidung:
-   - **Akzeptieren** – Paper erfüllt die Anforderungen
-   - **Revision anfordern** – Team muss Änderungen vornehmen
-   - **Ablehnen** – Paper entspricht nicht den Mindestanforderungen
-
-### Gesamtscore
-
-Der Gesamtscore wird automatisch berechnet: `Ø der 5 Kategorien × 2 = 0–100 Punkte`
-
-Bei mehreren Reviewern wird der Durchschnitt aller eingereichten Reviews als finaler Score verwendet.
+- Zuweisungen können ein Fälligkeitsdatum haben. Überfällige Zuweisungen werden als **Überfällig** markiert.
+- Stündlich prüft der Server fällige Zuweisungen, täglich die internen Review-Deadlines. Erinnerungen kommen per Push, wenn aktiviert (Profil → Benachrichtigungen → Deadlines & Erinnerungen).
+- Alle Deadlines der Saison stehen unter **Deadlines** (Kalender, iCal-Abo).
 
 ---
 
-## Revision anfordern
+## Was Teams sehen
 
-1. Entscheidung **„Revision anfordern"** wählen
-2. Deadline für die Revision setzen (oder Standard-Deadline übernehmen)
-3. Review absenden
+Nach der Entscheidung einer Runde sieht das Team sein **Feedback**:
 
-Das Team erhält automatisch eine Benachrichtigung mit dem Feedback. Die Revisions-Anforderungen sind für das Team sichtbar, interne Notizen nicht.
+- Kriterien-Scores und Kommentare;
+- Gesamtkommentar, Revisionshinweise, Empfehlung.
 
-### Nach einer Revision
-
-Wenn das Team eine überarbeitete Version hochlädt:
-1. Push-Benachrichtigung oder E-Mail: „Revision eingegangen: [Team-Name]"
-2. **Paper-Review → Meine Papers → Paper → Neue Version ansehen**
-3. Vergleich: vorherige und aktuelle Version nebeneinander einsehbar
-4. Neuen Review schreiben (vorheriger Review bleibt als Referenz sichtbar)
-5. Versionsnummer des Papers wird bei jeder Revision hochgezählt
-
-Es können beliebig viele Revisions-Runden stattfinden – auch unterschiedlich viele je Team.
-
----
-
-## AI-Nutzungsrichtlinie (ab 2025)
-
-Laut ECER-Amendments 2025 gilt:
-
-- **Verantwortungsvolle KI-Nutzung** (Sprachverbesserung, Rechtschreibkorrektur, Recherchehilfe die dann manuell geprüft wird) ist erlaubt
-- **Unverantwortliche Nutzung** (unkontrolliert generierter Text, ungeprüfte Inhalte, verschleierte Bedeutung) → 0 Punkte, keine Revision möglich
-
-**Als Reviewer:** Falls KI-Nutzung auffällt:
-1. Im Freitext beschreiben was aufgefallen ist
-2. Entscheidung „Ablehnen" mit Begründung
-3. Team kann Gegenbeweis einreichen (Google-Docs-History, Foto-Dokumentation der Forschung, etc.)
-4. Falls Beweis als authentisch bewertet wird → regulärer Review-Prozess
-
-> Bei Unsicherheit: Interne Notiz hinzufügen und Admin informieren statt direkt ablehnen.
-
----
-
-## Benachrichtigungen
-
-Als Reviewer erhältst du Benachrichtigungen bei:
-- Neues Paper wurde dir zugewiesen
-- Revision wurde eingereicht
-- Admin hat eine Notiz zu deinem Review hinterlassen
-
-Benachrichtigungseinstellungen: **Profil → Benachrichtigungen**
+Das Team sieht dagegen **nicht**, wer das Review geschrieben hat, und auch nicht deine privaten Notizen. Schreibe Kommentare und Revisionshinweise deshalb so, dass das Team damit arbeiten kann.

@@ -31,12 +31,20 @@ Dieses Dokument protokolliert was ich im Laufe des Projekts lerne, welche Fehler
 
 ## Architekturverständnis
 
-**Gelernt:** Das Projekt ist eine Diplomarbeit mit Plugin-Architektur:
-- **Kern:** Team- & Saisonverwaltung
-- **Plugins:** Scoring, Paper-Review, 3D-Druck (und künftige Module)
-- Jedes Plugin registriert sich über ein Manifest und bringt eigene Routen, UI-Komponenten und Rollen mit
+**Gelernt:** Das Projekt ist eine Diplomarbeit. Ursprünglich war eine Plugin-Architektur mit Manifesten geplant. Umgesetzt ist ein **modularer Monolith mit statischer Registry**:
+- **Backend:** `backend/core/modules.py` listet alle Router. Fachmodule mit Event-Schalter (Paper, Druck, Bots) bekommen einen Modul-Guard. Es gibt keine `manifest.json` und keine Laufzeit-Plugins.
+- **Frontend:** `frontend/src/core/plugins.ts` legt Routen, Navigation, Rechte und Modul-Schalter fest.
+- **Eventzentriert:** Die Saison ist das Regelwerk (Module, Formeln, Tie-Breaker, Termine). Wertungen, Ranglisten, Kontingente und Ankündigungen hängen am **Event**. Die Oberfläche läuft unter `/events/:eventId/…`.
+- **Modul-Aktivierung pro Event:** `Event.active_modules` zusammen mit den Saison-Flags `use_*` (`modules/events/module_access.py`).
+- **Hintergrundarbeit:** Celery-Worker und -Beat übernehmen OCR, Drucker-Polling, Outbox-Zustellung und Erinnerungen. Einen separaten OCR-Dienst gibt es nicht.
+- **Live:** Redis Pub/Sub, veröffentlicht nach dem Commit. Einziger WebSocket ist `/api/v1/public/events/{slug}/ws`.
+- **Wertung:** strukturierte Score-Sheets (`scoring/sheet.py`, gespiegelt in `calculator.ts`) und die Formel-Engine (`formula.py`, `formula_engine.py`) für die Gesamtwertung.
+- **Lebenszyklus:** Archivierte Saisons und Events sind über `ensure_writable` schreibgeschützt.
 
-**Wichtig für Planung:** Neue Module dürfen den Kern nicht verändern müssen. Die Schnittstellen zwischen Kern und Plugins müssen von Anfang an sauber definiert sein.
+**Wichtig für Planung:**
+- Ein neues Modul braucht genau einen Registry-Eintrag pro Seite, eine Migration mit fortlaufender Nummer und Rechte-Tests.
+- Dokumentation muss gegen den Code geprüft werden. `done.md` und Commit-Nachrichten sind kein Beleg (siehe `audit-2026-09.md`).
+- Migrationen aus parallelen Branches können dieselbe Nummer tragen, ohne dass Git einen Konflikt meldet (PR #23). Vor dem Merge die Alembic-Kette prüfen.
 
 ---
 
@@ -48,9 +56,9 @@ Dieses Dokument protokolliert was ich im Laufe des Projekts lerne, welche Fehler
 - Teams haben 7–9 Wochen Bauzeit nach dem Educator Workshop (Jan–März)
 
 **Turnierformat:**
-- **Seeding-Runden:** Team läuft alleine, Score = Summe beider Spielfeldhälften; Durchschnitt der besten 2 von 3 Runs
+- **Seeding-Runden:** Team läuft alleine, Score = Summe beider Spielfeldhälften. Die Rangliste nimmt den Ø der besten 2 Läufe. DQ zählt 0, negative Scores zählen 0, Ränge gelten je Kategorie.
 - **Double-Elimination:** K.o.-System, 2 Niederlagen = ausgeschieden; nur Sieg/Niederlage zählt (nicht Punktehöhe)
-- **Alliance-Matches:** 2 Teams kooperieren (v.a. bei GCER)
+- **Alliance-Matches:** 2 Teams kooperieren (v.a. bei GCER). Der Score ist die Summe beider Seiten.
 - **Dokumentation:** Projektplan, Code-Doku, Präsentation → fließt in Gesamtscore ein
 
 **ECER Paper-Prozess (aus 2024 Call for Papers):**
@@ -72,9 +80,9 @@ Dieses Dokument protokolliert was ich im Laufe des Projekts lerne, welche Fehler
 
 ## Offene Fragen / Dinge die ich noch lernen muss
 
-- [ ] Genaue Paper-Bewertungskriterien (Punkte, Kategorien) aus den 2025/2026 CfP Dokumenten
-- [ ] Genaue Scoring-Sheet-Struktur 2024/2025/2026 (Aufgabenkategorien, Multiplikatoren)
-- [ ] Ob `moodle.pria.at` weiterhin die Einreichungsplattform ist oder abgelöst wird (→ unser System übernimmt das)
-- [ ] Anzahl der Reviewer pro Paper, ob blind review oder offen
-- [ ] Präzise Gesamtscore-Formel (Seeding + Double-Elimination + Dokumentation)
-- [ ] Welche 3D-Drucker konkret im Einsatz sind (Hersteller/Modelle)
+- [x] Paper-Bewertungskriterien: fünf Kriterien (Inhalt, Umsetzung, Ergebnisse, Sprache, Format), je 0–10, dazu ein Formalabzug.
+- [x] Scoring-Sheet-Struktur 2024/2025: als strukturierte Vorlagen umgesetzt. Für 2026 fehlen die exakten Punktwerte (siehe `open-questions.md`).
+- [x] Einreichungsplattform: Das System ersetzt Moodle.
+- [x] Reviewer pro Paper: beliebig viele, kein Blind Review gegenüber der Organisation.
+- [x] Gesamtscore-Formel: als konfigurierbare Formel-Sets umgesetzt (ECER 2025, Regional 2026, GCER 2026).
+- [x] 3D-Drucker: Bambu Lab, OctoPrint, manuelle Drucker.
