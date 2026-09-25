@@ -127,33 +127,47 @@ async def seeding_table(db: AsyncSession, event: Event) -> list[dict[str, Any]]:
     Runs without a phase and runs of a phase typed "seeding" both count as
     seeding; a team's phase-less row wins over a phase row.
     """
-    phases = await _phase_types(db, event.id)
-    result = await db.execute(select(Ranking).where(Ranking.event_id == event.id))
-    best: dict[str, Ranking] = {}
+    return (await seeding_tables(db, {event.id}))[event.id]
+
+
+async def seeding_tables(db: AsyncSession, event_ids: set[str]) -> dict[str, list[dict[str, Any]]]:
+    """seeding_table for several events with two queries in total."""
+    if not event_ids:
+        return {}
+    phase_rows = await db.execute(
+        select(EventPhase.id, EventPhase.phase_type).where(EventPhase.event_id.in_(event_ids))
+    )
+    phase_types = {r.id: r.phase_type for r in phase_rows}
+    result = await db.execute(select(Ranking).where(Ranking.event_id.in_(event_ids)))
+    best: dict[str, dict[str, Ranking]] = {event_id: {} for event_id in event_ids}
     for row in result.scalars():
         if row.event_phase_id is not None:
-            if phases.get(row.event_phase_id, ("", ""))[1] != "seeding":
+            if phase_types.get(row.event_phase_id) != "seeding":
                 continue
-        current = best.get(row.team_id)
+        per_event = best[row.event_id]
+        current = per_event.get(row.team_id)
         if current is None or (current.event_phase_id is not None and row.event_phase_id is None):
-            best[row.team_id] = row
-    ordered = sorted(best.values(), key=lambda r: (-r.seed_score, r.team_id))
-    table: list[dict[str, Any]] = []
-    previous: float | None = None
-    rank = 0
-    for position, row in enumerate(ordered, start=1):
-        if previous is None or row.seed_score < previous:
-            rank, previous = position, row.seed_score
-        table.append(
-            {
-                "team_id": row.team_id,
-                "rank": rank,
-                "seed_score": row.seed_score,
-                "best_score": row.best_score,
-                "rounds_played": row.rounds_played,
-            }
-        )
-    return table
+            per_event[row.team_id] = row
+    tables: dict[str, list[dict[str, Any]]] = {}
+    for event_id, rows in best.items():
+        ordered = sorted(rows.values(), key=lambda r: (-r.seed_score, r.team_id))
+        table: list[dict[str, Any]] = []
+        previous: float | None = None
+        rank = 0
+        for position, row in enumerate(ordered, start=1):
+            if previous is None or row.seed_score < previous:
+                rank, previous = position, row.seed_score
+            table.append(
+                {
+                    "team_id": row.team_id,
+                    "rank": rank,
+                    "seed_score": row.seed_score,
+                    "best_score": row.best_score,
+                    "rounds_played": row.rounds_played,
+                }
+            )
+        tables[event_id] = table
+    return tables
 
 
 async def overall_table(db: AsyncSession, event_id: str, category: str) -> list[dict[str, Any]]:
@@ -162,11 +176,33 @@ async def overall_table(db: AsyncSession, event_id: str, category: str) -> list[
     A broken formula set must not take the dashboards down with it; the
     formula editor reports the problem to whoever maintains the set.
     """
+    return (await overall_tables(db, event_id, {category}))[category]
+
+
+async def overall_tables(
+    db: AsyncSession, event_id: str, categories: set[str]
+) -> dict[str, list[dict[str, Any]]]:
+    """overall_table for several categories of one event, loading its inputs once.
+
+    A failing category (broken formula set) yields [] without affecting the
+    others.
+    """
     try:
-        return await formula_service.compute_overall_ranking(db, event_id, [category])
-    except Exception:  # noqa: BLE001 - see docstring
+        data = await formula_service.load_event_inputs(db, event_id)
+    except Exception:  # noqa: BLE001 - see overall_table
         logger.warning("overall ranking failed for event %s", event_id, exc_info=True)
-        return []
+        return {category: [] for category in categories}
+    tables: dict[str, list[dict[str, Any]]] = {}
+    for category in categories:
+        try:
+            ranked, _ = await formula_service.compute_category_ranking(
+                db, event_id, category, data=data
+            )
+            tables[category] = [formula_service.to_ranking_entry(r) for r in ranked]
+        except Exception:  # noqa: BLE001 - see overall_table
+            logger.warning("overall ranking failed for event %s", event_id, exc_info=True)
+            tables[category] = []
+    return tables
 
 
 # ── Performance dashboard ─────────────────────────────────────────────────────
@@ -690,22 +726,33 @@ async def _history_rows(
             stat.total_score
         )
 
-    seeding_cache: dict[str, dict[str, dict[str, Any]]] = {}
-    overall_cache: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    # Event registration first, then the season registration.
+    categories = {
+        (tid, event_id): reg_category
+        or season_categories.get((tid, events[event_id].season_id))
+        or "botball"
+        for (tid, event_id), reg_category in pairs.items()
+        if event_id in events
+    }
+    # Seeding tables of all events in one go; formula inputs once per event
+    # (not once per event and category, and not once per team).
+    seeding_by_event = {
+        event_id: {r["team_id"]: r for r in table}
+        for event_id, table in (await seeding_tables(db, set(events))).items()
+    }
+    wanted: dict[str, set[str]] = defaultdict(set)
+    for (_, event_id), category in categories.items():
+        wanted[event_id].add(category)
+    overall_by_event = {
+        event_id: await overall_tables(db, event_id, event_categories)
+        for event_id, event_categories in wanted.items()
+    }
     rows = []
-    for (tid, event_id), reg_category in pairs.items():
-        event = events.get(event_id)
-        if not event:
-            continue
+    for (tid, event_id), category in categories.items():
+        event = events[event_id]
         season = seasons[event.season_id]
-        # Event registration first, then the season registration.
-        category = reg_category or season_categories.get((tid, season.id)) or "botball"
-        if event_id not in seeding_cache:
-            seeding_cache[event_id] = {r["team_id"]: r for r in await seeding_table(db, event)}
-        if (event_id, category) not in overall_cache:
-            overall_cache[(event_id, category)] = await overall_table(db, event_id, category)
-        seed = seeding_cache[event_id].get(tid)
-        overall_rows = overall_cache[(event_id, category)]
+        seed = seeding_by_event[event_id].get(tid)
+        overall_rows = overall_by_event[event_id][category]
         overall = next((r for r in overall_rows if r["team_id"] == tid), None)
         values = runs.get((tid, event_id), {"official": [], "practice": []})
         entry: dict[str, Any] = {
@@ -722,7 +769,7 @@ async def _history_rows(
             "category": category,
             "seeding_rank": seed["rank"] if seed else None,
             "seeding_score": seed["seed_score"] if seed else None,
-            "seeding_teams": len(seeding_cache[event_id]),
+            "seeding_teams": len(seeding_by_event[event_id]),
             "best_score": max(values["official"]) if values["official"] else None,
             "official_runs": len(values["official"]),
             "official_avg": mean(values["official"]),

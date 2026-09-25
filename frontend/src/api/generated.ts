@@ -813,7 +813,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Event Scores */
+        /**
+         * List Event Scores
+         * @description Scores of an event (without schema snapshots); `limit`/`offset` page.
+         *
+         *     Foreign practice runs and notes are hidden unless the caller has
+         *     scoring:admin (modules.scoring.visibility).
+         */
         get: operations["list_event_scores_api_v1_events__event_id__matches_get"];
         put?: never;
         /** Create Event Score */
@@ -1477,7 +1483,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Matches */
+        /**
+         * List Matches
+         * @description Matches of a season in entry order; `limit`/`offset` page through them.
+         *
+         *     Without `limit` every match is returned. The schema snapshot of each run
+         *     is left out (see GET /scoring/matches/{id}); foreign practice runs and
+         *     notes are hidden unless the caller has scoring:admin.
+         */
         get: operations["list_matches_api_scoring_seasons__season_id__matches_get"];
         put?: never;
         /** Create Match */
@@ -1639,7 +1652,8 @@ export interface paths {
          * @description Seeding ranking enriched with team name and category.
          *
          *     Ranks are per category (Botball and Open are separate competitions); a
-         *     red-carded team is listed with `disqualified` and no rank.
+         *     red-carded team is listed with `disqualified` and no rank. Cached per
+         *     event and answered with an ETag (304 on If-None-Match).
          */
         get: operations["get_ranking_extended_api_scoring_seasons__season_id__ranking_extended_get"];
         put?: never;
@@ -1684,6 +1698,7 @@ export interface paths {
          *     Results are recorded per event, so this ranks one event: the one named by
          *     `event_id`, otherwise the season's default event — the same one the other
          *     season routes read and write, so a result entered through them shows here.
+         *     Cached per event and answered with an ETag (304 on If-None-Match).
          */
         get: operations["get_overall_ranking_api_scoring_seasons__season_id__ranking_overall_get"];
         put?: never;
@@ -5782,6 +5797,92 @@ export interface components {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
+        /**
+         * MatchListItem
+         * @description A match as listed. Leaves out the schema snapshot, which only the
+         *     single-match view needs and which made lists several times larger.
+         */
+        MatchListItem: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Event Id */
+            event_id: string;
+            /** Scheduled Match Id */
+            scheduled_match_id: string | null;
+            /** Phase Id */
+            phase_id: string | null;
+            /** Team Id */
+            team_id: string;
+            /** Competition Level Id */
+            competition_level_id: string | null;
+            /** Round Number */
+            round_number: number;
+            /** Table Number */
+            table_number: number | null;
+            /** Raw Scores */
+            raw_scores: {
+                [key: string]: unknown;
+            };
+            /** Total Score */
+            total_score: number;
+            /**
+             * Sheet Score
+             * @default 0
+             */
+            sheet_score: number;
+            /**
+             * Bonus Score
+             * @default 0
+             */
+            bonus_score: number;
+            /**
+             * Round Lost
+             * @default false
+             */
+            round_lost: boolean;
+            /** Round Lost Reason */
+            round_lost_reason?: string | null;
+            /**
+             * End Contact
+             * @default false
+             */
+            end_contact: boolean;
+            /** Tiebreak Values */
+            tiebreak_values?: {
+                [key: string]: unknown;
+            };
+            /** Checklist */
+            checklist?: {
+                [key: string]: unknown;
+            } | null;
+            /** Is Disqualified */
+            is_disqualified: boolean;
+            /** Is Practice */
+            is_practice: boolean;
+            /** Yellow Card */
+            yellow_card: boolean;
+            /** Red Card */
+            red_card: boolean;
+            /** Notes */
+            notes: string | null;
+            /** Version */
+            version: number;
+            /** Entered By */
+            entered_by: string | null;
+            /** Confirmed By */
+            confirmed_by: string | null;
+            /** Confirmed At */
+            confirmed_at: string | null;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** MatchParticipantResponse */
         MatchParticipantResponse: {
             /** Id */
@@ -5867,10 +5968,6 @@ export interface components {
             red_card: boolean;
             /** Notes */
             notes: string | null;
-            /** Schema Snapshot */
-            schema_snapshot: {
-                [key: string]: unknown;
-            } | null;
             /** Version */
             version: number;
             /** Entered By */
@@ -5886,6 +5983,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Schema Snapshot */
+            schema_snapshot: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * MatchResultRequest
@@ -11483,6 +11584,8 @@ export interface operations {
             query?: {
                 team_id?: string | null;
                 phase_id?: string | null;
+                limit?: number | null;
+                offset?: number;
             };
             header?: never;
             path: {
@@ -11498,7 +11601,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MatchResponse"][];
+                    "application/json": components["schemas"]["MatchListItem"][];
                 };
             };
             /** @description Validation Error */
@@ -11682,7 +11785,12 @@ export interface operations {
     };
     get_public_schedule_api_v1_public_events__slug__schedule_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only matches not completed or cancelled yet */
+                upcoming?: boolean;
+                limit?: number | null;
+                offset?: number;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -11775,7 +11883,12 @@ export interface operations {
     };
     get_public_results_api_v1_public_events__slug__results_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number | null;
+                offset?: number;
+                /** @description asc: by round, then entry time; desc: the newest first */
+                order?: "asc" | "desc";
+            };
             header?: never;
             path: {
                 slug: string;
@@ -13003,6 +13116,8 @@ export interface operations {
                 phase_id?: string | null;
                 is_practice?: boolean | null;
                 event_id?: string | null;
+                limit?: number | null;
+                offset?: number;
             };
             header?: never;
             path: {
@@ -13018,7 +13133,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MatchResponse"][];
+                    "application/json": components["schemas"]["MatchListItem"][];
                 };
             };
             /** @description Validation Error */

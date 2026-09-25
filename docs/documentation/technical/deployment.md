@@ -9,8 +9,9 @@
 | `traefik` | traefik:v2.11 | – | Reverse Proxy, HTTP→HTTPS, Let's Encrypt (TLS-Challenge) |
 | `frontend` | `botballdashboard-frontend:local` (lokal gebaut) | – | nginx mit dem React-Build; unbekannte `/api/*`-Pfade → 404 |
 | `backend` | lokal aus `backend/` | – | FastAPI; `migrate-then-start.sh` führt `alembic upgrade head` aus und startet Uvicorn |
-| `worker` | wie backend | – | Celery-Worker: OCR, Web-Push-Outbox, Drucker-Polling |
-| `beat` | wie backend | – | Celery-Beat: plant Outbox (10 s), Drucker (15 s), Paper-Fristen (1 h) |
+| `worker` | wie backend | – | Celery-Worker (Queues `default`, `periodic`): Web-Push-Outbox, Drucker-Polling, Erinnerungen |
+| `worker-ocr` | wie backend | – | Celery-Worker (Queue `ocr`): Score-Sheet-OCR |
+| `beat` | wie backend | – | Celery-Beat: plant Outbox (10 s), Drucker (15 s), Paper-Fristen (1 h), Outbox-Aufräumen (täglich); jeder Auftrag verfällt nach seinem Intervall |
 | `db` | postgres:16-alpine | – | Datenbank (Volume `pgdata`, optional Bind-Mount `/data/db`) |
 | `redis` | redis:7-alpine | – | Celery-Broker, Rate-Limits, Event-Streams |
 | `backup` | wie backend | `production` | `backup_scheduler.py`: tägliche verschlüsselte Backups, Healthcheck, Metriken auf :9101 |
@@ -22,7 +23,7 @@
 
 Profile werden über `COMPOSE_PROFILES` in `.env` aktiviert (z. B. `production,monitoring`). Alle Dienste schreiben Logs als `json-file` mit Rotation (`LOG_MAX_SIZE`, Standard 10 MB × `LOG_MAX_FILE` = 5 Dateien).
 
-`backend`, `worker`, `beat` und `backup` laufen als unprivilegierter Benutzer `app` (UID/GID 10001) ohne Linux-Capabilities (`cap_drop: ALL`), mit `no-new-privileges` und Speicherlimits (`BACKEND_MEM_LIMIT`, `WORKER_MEM_LIMIT`, `BEAT_MEM_LIMIT`, `BACKUP_MEM_LIMIT`). `backend`, `worker` und `beat` haben ein schreibgeschütztes Root-Dateisystem mit `/tmp` als tmpfs. Traefik lehnt API-Anfragen mit mehr als `API_MAX_BODY_BYTES` (Standard 102 MiB) ab; die genauen Grenzen pro Route setzt das Backend beim Einlesen durch. Umstellung bestehender Installationen: [Update-Anleitung](../installation/update.md#versionshinweis-container-ohne-root-rechte-security-update-2026-09).
+`backend`, `worker`, `worker-ocr`, `beat` und `backup` laufen als unprivilegierter Benutzer `app` (UID/GID 10001) ohne Linux-Capabilities (`cap_drop: ALL`), mit `no-new-privileges` und Speicherlimits (`BACKEND_MEM_LIMIT`, `WORKER_MEM_LIMIT`, `OCR_WORKER_MEM_LIMIT`, `BEAT_MEM_LIMIT`, `BACKUP_MEM_LIMIT`). `backend`, `worker`, `worker-ocr` und `beat` haben ein schreibgeschütztes Root-Dateisystem mit `/tmp` als tmpfs. Traefik lehnt API-Anfragen mit mehr als `API_MAX_BODY_BYTES` (Standard 102 MiB) ab; die genauen Grenzen pro Route setzt das Backend beim Einlesen durch. Umstellung bestehender Installationen: [Update-Anleitung](../installation/update.md#versionshinweis-container-ohne-root-rechte-security-update-2026-09).
 
 Volumes: `pgdata`, `redisdata`, `uploads`, `vapid`, `letsencrypt`, `backups` (oder `BACKUP_HOST_DIR`), `prometheusdata`, `alertmanagerdata`.
 
@@ -43,7 +44,7 @@ curl https://dashboard.meineschule.at/api/system/health
 curl https://dashboard.meineschule.at/api/system/readiness
 ```
 
-Worker und Backup haben eigene Healthchecks: Der Worker muss auf `celery inspect ping` antworten. Der Backup-Dienst ist `unhealthy`, wenn der letzte Lauf fehlschlug oder älter als 26 h ist.
+Worker und Backup haben eigene Healthchecks: Beide Worker (`worker`, `worker-ocr`) müssen auf `celery inspect ping` antworten. Der Backup-Dienst ist `unhealthy`, wenn der letzte Lauf fehlschlug oder älter als 26 h ist.
 
 ---
 
@@ -140,7 +141,7 @@ make backup-status   # OK / UNHEALTHY: <Grund>
 Wiederherstellung (Test und Produktion) sowie Kopie außer Haus: [Betrieb](../../operations.md#encrypted-backups). Kurzfassung für die Produktion:
 
 ```bash
-docker compose stop backend worker beat backup
+docker compose stop backend worker worker-ocr beat backup
 # Die Container laufen als UID 10001 (schreibgeschütztes Root-Dateisystem):
 # Arbeitsverzeichnis und eine für sie lesbare Kopie der Identität bereitstellen.
 install -d -m 700 -o 10001 -g 10001 /data/restore-work

@@ -26,7 +26,7 @@ set -euo pipefail
 
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_IMAGE="botballdashboard-frontend:local"
-BACKEND_SERVICES=(volume-permissions backup-permissions backend worker beat backup)
+BACKEND_SERVICES=(volume-permissions backup-permissions backend worker worker-ocr beat backup)
 PULL=true
 REF=""
 

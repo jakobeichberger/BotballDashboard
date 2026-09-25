@@ -116,7 +116,7 @@ Expected output ends with `Uploads verified: N files match the manifest` and `Re
 ```sh
 cd /opt/botballdashboard
 make backup-now || true                               # safety copy of the current state
-docker compose stop backend worker beat backup        # nothing may write during the restore
+docker compose stop backend worker worker-ocr beat backup   # nothing may write during the restore
 # The backend runs as uid 10001 on a read-only root filesystem: give it a
 # disk-backed work directory (TMPDIR) and a copy of the identity it can read.
 install -d -m 700 -o 10001 -g 10001 /data/restore-work

@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import get_current_user, require_permission
 from core.database import get_db
 from core.rate_limit import rate_limit
+from core.task_queue import enqueue_after_commit
 
 from . import schemas, service
 
@@ -85,14 +86,12 @@ async def upload_score_sheet(
         uploaded_by=str(current_user.id),
     )
 
-    # Queue OCR outside the request process. The worker has its own DB session.
-    try:
-        from .tasks import extract_template
+    # Queue OCR (queue "ocr", worker-ocr) only once the template row is
+    # committed; queued earlier, the worker could look for it before it exists.
+    # A failed send is logged and the record stays retryable.
+    from .tasks import extract_template
 
-        extract_template.delay(template.id)
-    except Exception:
-        # Readiness monitoring surfaces a missing broker; the record remains retryable.
-        pass
+    enqueue_after_commit(db, extract_template, template.id)
 
     return template
 

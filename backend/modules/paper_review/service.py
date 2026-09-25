@@ -30,7 +30,7 @@ from modules.paper_review.models import (
     PaperVersion,
     ReviewerAssignment,
 )
-from modules.scoring.service import resolve_event
+from modules.scoring.service import invalidate_season_rankings, resolve_event
 from modules.seasons.lifecycle import ensure_writable
 
 settings = get_settings()
@@ -709,7 +709,11 @@ def team_feedback(paper: Paper) -> list[PaperReview]:
 
 
 async def _recompute_paper_ranks(db: AsyncSession, season_id: str) -> None:
-    """Rank papers in a season by final_score DESC; papers without a score get no rank."""
+    """Rank papers in a season by final_score DESC; papers without a score get no rank.
+
+    Paper scores feed the overall ranking, so its cached copies are dropped.
+    """
+    await invalidate_season_rankings(db, season_id)
     scored = await db.execute(
         select(Paper)
         .where(Paper.season_id == season_id, Paper.final_score.isnot(None))

@@ -61,9 +61,12 @@ export default function ScoreEntryPage() {
     enabled: !!sid,
   });
   const schema = schemaQuery.data;
+  // Only the runs of the current mode (official or practice): the other half
+  // of a long event list is never shown on this page.
   const { data: matches } = useQuery({
-    queryKey: ["matches", sid, eventId],
-    queryFn: async () => (await api.get(`/scoring/seasons/${sid}/matches${eventQuery}`)).data,
+    queryKey: ["matches", sid, eventId, isPractice],
+    queryFn: async () =>
+      (await api.get(`/scoring/seasons/${sid}/matches${eventQuery}`, { params: { is_practice: isPractice } })).data,
     enabled: !!sid,
   });
 

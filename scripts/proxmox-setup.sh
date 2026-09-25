@@ -19,10 +19,11 @@
 #       password, Fernet key, age backup key pair, compose profiles, alerts)
 #   6.  Creates the data directories (/data/db, /data/backups)
 #   7.  Builds the frontend on the host (esbuild/workbox run natively, no Docker)
-#   8.  Builds the backend image (backend, worker, beat, backup) and wraps dist/
+#   8.  Builds the backend image (backend, worker, worker-ocr, beat, backup and
+#       the volume-ownership init services) and wraps dist/
 #       into the nginx frontend image
 #   9.  Starts db/redis, repairs the DB role if needed, then starts the whole
-#       stack: traefik, backend, worker, beat, frontend, backup (profile
+#       stack: traefik, backend, worker, worker-ocr, beat, frontend, backup (profile
 #       "production") and optionally prometheus/blackbox/alertmanager
 #       (profile "monitoring")
 #   10. Generates VAPID keys, rebuilds the frontend with them
@@ -746,12 +747,13 @@ build_images() {
   info "Pulling base images (postgres, redis, traefik, monitoring)..."
   docker compose pull --ignore-buildable --quiet 2>/dev/null || true
 
-  # backend, worker, beat and backup all run the backend image; build every
+  # backend, the workers, beat and backup all run the backend image; build every
   # one that is part of the active profiles (COMPOSE_PROFILES in .env).
   local services=() service
   for service in $(docker compose config --services); do
     case "${service}" in
-      backend|worker|beat|backup) services+=("${service}") ;;
+      backend|worker|worker-ocr|beat|backup|volume-permissions|backup-permissions)
+        services+=("${service}") ;;
     esac
   done
   info "Building backend image for: ${services[*]}..."
@@ -881,7 +883,7 @@ PYEOF
   done
 
   # db + redis are healthy: start everything in the active profiles –
-  # traefik, backend, worker, beat, frontend, backup ("production") and
+  # traefik, backend, worker, worker-ocr, beat, frontend, backup ("production") and
   # prometheus/blackbox/alertmanager ("monitoring").
   info "Starting all services (profiles: $(env_value COMPOSE_PROFILES))..."
   docker compose up -d --remove-orphans

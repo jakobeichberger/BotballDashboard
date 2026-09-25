@@ -1,12 +1,11 @@
-"""Celery entry points for all score-sheet OCR work."""
+"""Celery entry points for all score-sheet OCR work (queue ``ocr``)."""
 
-import asyncio
 from datetime import UTC, datetime
 
 from sqlalchemy import select
 
-from core.celery_app import celery_app
-from core.database import AsyncSessionLocal
+from core.celery_app import celery_app, run_task
+from core.database import WorkerSessionLocal
 from modules.scoring.score_sheets.models import ScoreSheetScan, ScoreSheetTemplate
 from modules.scoring.score_sheets.scan_service import run_local_ocr
 from modules.scoring.score_sheets.service import run_ocr_pipeline
@@ -15,24 +14,26 @@ from modules.scoring.score_sheets.service import run_ocr_pipeline
 @celery_app.task(name="score_sheets.extract_template")
 def extract_template(template_id: str) -> None:
     async def run() -> None:
-        async with AsyncSessionLocal() as db:
+        async with WorkerSessionLocal() as db:
             await run_ocr_pipeline(db, template_id)
 
-    asyncio.run(run())
+    run_task(run)
 
 
 @celery_app.task(name="score_sheets.process_scan")
 def process_scan(scan_id: str) -> None:
     async def run() -> None:
-        async with AsyncSessionLocal() as db:
+        async with WorkerSessionLocal() as db:
             result = await db.execute(select(ScoreSheetScan).where(ScoreSheetScan.id == scan_id))
             scan = result.scalar_one_or_none()
             if not scan:
                 return
+            template = await db.get(ScoreSheetTemplate, scan.template_id)
             scan.status = "processing"
+            # Committed before the OCR runs: no transaction (or connection)
+            # is held during the CPU-bound recognition.
             await db.commit()
             try:
-                template = await db.get(ScoreSheetTemplate, scan.template_id)
                 if not template:
                     raise RuntimeError("Score-sheet template not found")
                 scan.extracted_values = run_local_ocr(scan, template)
@@ -44,4 +45,4 @@ def process_scan(scan_id: str) -> None:
                 scan.error = str(exc)[:4000]
             await db.commit()
 
-    asyncio.run(run())
+    run_task(run)

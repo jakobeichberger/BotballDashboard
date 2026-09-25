@@ -12,6 +12,8 @@ os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("UPLOAD_DIR", "/tmp/botball-dashboard-tests/uploads")
 # No Redis in the unit/integration suite: keep logged-out tokens in-process.
 os.environ.setdefault("TOKEN_DENYLIST_BACKEND", "memory")
+# Tests change data behind the API's back; cache tests switch it on explicitly.
+os.environ.setdefault("CACHE_BACKEND", "none")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

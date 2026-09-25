@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
@@ -32,6 +32,27 @@ interface Announcement {
 }
 
 const FALLBACK_POLL_MS = 20_000;
+// The live stream tells the screen when something changed, so the lists do not
+// need to be re-fetched on a timer or on every panel switch.
+const LIVE_STALE_TIME = 60_000;
+// Bursts of live events (a whole round entered at once) cause one re-fetch.
+const LIVE_REFRESH_DELAY = 500;
+const RESULTS_SHOWN = 12;
+const NEXT_MATCHES_SHOWN = 10;
+
+// Which queries a live event makes stale, and which panel shows each query.
+const LIVE_EVENT_QUERIES: Record<string, string[]> = {
+  ranking_updated: ["public-ranking", "public-results"],
+  schedule_updated: ["public-schedule", "public-bracket"],
+  announcement_published: ["public-announcements"],
+  announcement_removed: ["public-announcements"],
+};
+const QUERY_PANEL: Record<string, string> = {
+  "public-ranking": "ranking",
+  "public-results": "results",
+  "public-schedule": "schedule",
+  "public-announcements": "announcements",
+};
 
 function socketUrl(slug: string) {
   const base = import.meta.env.VITE_API_URL ?? "/api";
@@ -61,29 +82,41 @@ export default function PublicEventPage() {
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/ranking`)).data,
     enabled: !!event.data?.public_scoreboard,
     refetchInterval: pollMs,
+    staleTime: LIVE_STALE_TIME,
   });
+  // Only what the screen shows: the next open matches and the latest results.
   const schedule = useQuery<ScheduledMatch[]>({
     queryKey: ["public-schedule", eventSlug],
-    queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/schedule`)).data,
+    queryFn: async () =>
+      (await api.get(`/v1/public/events/${eventSlug}/schedule`, {
+        params: { upcoming: true, limit: NEXT_MATCHES_SHOWN },
+      })).data,
     enabled: !!event.data?.public_schedule,
     refetchInterval: pollMs,
+    staleTime: LIVE_STALE_TIME,
   });
   const bracket = useQuery<BracketPhase[]>({
     queryKey: ["public-bracket", eventSlug],
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/bracket`)).data,
     enabled: !!event.data?.public_schedule,
+    staleTime: LIVE_STALE_TIME,
   });
   const announcements = useQuery<Announcement[]>({
     queryKey: ["public-announcements", eventSlug],
     queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/announcements`)).data,
     enabled: !!event.data?.public_announcements,
     refetchInterval: pollMs,
+    staleTime: LIVE_STALE_TIME,
   });
   const results = useQuery<PublicResult[]>({
     queryKey: ["public-results", eventSlug],
-    queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/results`)).data,
+    queryFn: async () =>
+      (await api.get(`/v1/public/events/${eventSlug}/results`, {
+        params: { limit: RESULTS_SHOWN, order: "desc" },
+      })).data,
     enabled: !!event.data?.public_results,
     refetchInterval: pollMs,
+    staleTime: LIVE_STALE_TIME,
   });
   const panels = useMemo(
     () =>
@@ -106,11 +139,38 @@ export default function PublicEventPage() {
     return () => clearInterval(timer);
   }, [rotation, panels.length]);
 
+  const current = panels[panel % Math.max(panels.length, 1)];
+  const currentPanel = useRef(current);
+  useEffect(() => {
+    currentPanel.current = current;
+    // A panel coming into view catches up on what changed while it was hidden.
+    for (const [key, name] of Object.entries(QUERY_PANEL)) {
+      if (name === current) {
+        queryClient.refetchQueries({ queryKey: [key, eventSlug], type: "active", stale: true });
+      }
+    }
+  }, [current, eventSlug, queryClient]);
+
   useEffect(() => {
     let socket: WebSocket | null = null;
     let timer: number | undefined;
+    let refreshTimer: number | undefined;
     let stopped = false;
     let attempt = 0;
+    const stale = new Set<string>();
+    const refresh = () => {
+      refreshTimer = undefined;
+      for (const key of stale) {
+        // Hidden panels are only marked stale; they re-fetch when shown. The
+        // bracket always updates, since it decides whether its panel exists.
+        const shown = !QUERY_PANEL[key] || QUERY_PANEL[key] === currentPanel.current;
+        queryClient.invalidateQueries({
+          queryKey: [key, eventSlug],
+          refetchType: shown ? "active" : "none",
+        });
+      }
+      stale.clear();
+    };
     const connect = () => {
       if (stopped) return;
       setConnection("connecting");
@@ -123,20 +183,10 @@ export default function PublicEventPage() {
         // A malformed frame must not break the display.
         const data = parseLiveMessage(message.data);
         if (!data) return;
-        if (data.event === "ranking_updated") {
-          queryClient.invalidateQueries({ queryKey: ["public-ranking", eventSlug] });
-          queryClient.invalidateQueries({ queryKey: ["public-results", eventSlug] });
-        }
-        if (data.event === "schedule_updated") {
-          queryClient.invalidateQueries({ queryKey: ["public-schedule", eventSlug] });
-          queryClient.invalidateQueries({ queryKey: ["public-bracket", eventSlug] });
-        }
-        if (
-          data.event === "announcement_published" ||
-          data.event === "announcement_removed"
-        ) {
-          queryClient.invalidateQueries({ queryKey: ["public-announcements", eventSlug] });
-        }
+        const keys = LIVE_EVENT_QUERIES[data.event ?? ""];
+        if (!keys) return;
+        keys.forEach((key) => stale.add(key));
+        if (refreshTimer === undefined) refreshTimer = window.setTimeout(refresh, LIVE_REFRESH_DELAY);
       };
       socket.onclose = () => {
         setConnection("disconnected");
@@ -150,6 +200,7 @@ export default function PublicEventPage() {
     return () => {
       stopped = true;
       if (timer) clearTimeout(timer);
+      if (refreshTimer) clearTimeout(refreshTimer);
       socket?.close();
     };
   }, [eventSlug, queryClient]);
@@ -157,8 +208,7 @@ export default function PublicEventPage() {
   const nextMatches =
     schedule.data
       ?.filter((item) => item.status !== "completed" && item.status !== "cancelled")
-      .slice(0, 10) ?? [];
-  const current = panels[panel % Math.max(panels.length, 1)];
+      .slice(0, NEXT_MATCHES_SHOWN) ?? [];
 
   if (event.isLoading) {
     return <div className="grid min-h-screen place-items-center bg-slate-950 text-white">{t("loading")}</div>;
@@ -262,7 +312,7 @@ export default function PublicEventPage() {
       {current === "results" && (
         <section>
           <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-cyan-400" />{t("results")}</h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.data?.slice(-12).reverse().map((result) => <article key={result.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between text-slate-400"><span>{t("round", { number: result.round_number })}</span><span>{t("table", { number: result.table_number ?? "–" })}</span></div><p className="mt-2 text-lg font-bold">{result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</p><p className="mt-3 text-3xl font-black text-cyan-300">{result.is_disqualified ? t("common:dqShort") : formatScore(result.total_score)}</p><dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-slate-400">{Object.entries(result.raw_scores).map(([key, value]) => <div key={key} className="contents"><dt>{key}</dt><dd className="text-right text-slate-200">{String(value)}</dd></div>)}</dl></article>)}</div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.data?.map((result) => <article key={result.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between text-slate-400"><span>{t("round", { number: result.round_number })}</span><span>{t("table", { number: result.table_number ?? "–" })}</span></div><p className="mt-2 text-lg font-bold">{result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</p><p className="mt-3 text-3xl font-black text-cyan-300">{result.is_disqualified ? t("common:dqShort") : formatScore(result.total_score)}</p><dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-slate-400">{Object.entries(result.raw_scores).map(([key, value]) => <div key={key} className="contents"><dt>{key}</dt><dd className="text-right text-slate-200">{String(value)}</dd></div>)}</dl></article>)}</div>
         </section>
       )}
 

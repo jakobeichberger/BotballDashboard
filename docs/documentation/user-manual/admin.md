@@ -301,6 +301,6 @@ Einen Log- oder Audit-Bereich gibt es in der Oberfläche nicht:
 
 - Jede erfolgreiche Änderung über die API steht in der Datenbanktabelle `audit_logs` (Aktion, Nutzer, IP, Zeit).
 - Score-Änderungen stehen zusätzlich als Revisionen je Wertung bzw. Event.
-- Anwendungslogs: `docker compose logs backend worker beat`.
+- Anwendungslogs: `docker compose logs backend worker worker-ocr beat`.
 
 Backups, Updates, Monitoring und Wiederherstellung beschreiben [Deployment](../technical/deployment.md), [Update](../installation/update.md) und [docs/operations.md](../../operations.md).

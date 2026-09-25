@@ -16,7 +16,7 @@ Die Fehlermeldung in `docker compose logs backend` nennt die betroffenen Variabl
 |---|---|---|
 | `COMPOSE_PROFILES` | `production` | `production` startet den Backup-Dienst, `monitoring` Prometheus, Blackbox-Exporter und Alertmanager. Beispiel: `production,monitoring` |
 
-Ohne Profil laufen `traefik`, `db`, `redis`, `backend`, `worker`, `beat` und `frontend`.
+Ohne Profil laufen `traefik`, `db`, `redis`, `backend`, `worker`, `worker-ocr`, `beat` und `frontend`.
 
 ## Anwendung und Domain
 
@@ -43,6 +43,10 @@ Ohne Profil laufen `traefik`, `db`, `redis`, `backend`, `worker`, `beat` und `fr
 | `PGDATA_DRIVER_OPT_TYPE` | leer | Für den Bind-Mount: `none` |
 | `PGDATA_DRIVER_OPT_O` | leer | Für den Bind-Mount: `bind` |
 | `PGDATA_DRIVER_OPT_DEVICE` | leer | Beispielsweise `/data/db`. Alle drei leer: benanntes Volume `pgdata` |
+| `DB_POOL_SIZE` | `5` | Verbindungen im Pool jedes API-Prozesses (die Worker öffnen Verbindungen pro Task) |
+| `DB_MAX_OVERFLOW` | `10` | Zusätzliche Verbindungen bei Last |
+| `DB_POOL_RECYCLE_SECONDS` | `1800` | Ältere Verbindungen werden vor der Nutzung ersetzt; tote Verbindungen fängt zusätzlich ein Ping ab |
+| `DB_ECHO` | `false` | Jedes SQL-Statement loggen (nur zur Fehlersuche, langsam) |
 
 Das Backend setzt die Verbindungs-URL aus den Einzelwerten zusammen. `DATABASE_URL` wird **nicht** gelesen.
 
@@ -50,7 +54,9 @@ Das Backend setzt die Verbindungs-URL aus den Einzelwerten zusammen. `DATABASE_U
 
 | Variable | Standard | Beschreibung |
 |---|---|---|
-| `REDIS_URL` | `redis://redis:6379/0` | Redis für Celery, Rate-Limits und Events |
+| `REDIS_URL` | `redis://redis:6379/0` | Redis für Celery, Rate-Limits, Events und den Ranglisten-Cache |
+| `CACHE_BACKEND` | `redis` | Cache für berechnete Ranglisten und Ergebnisse: `redis`, `memory` (ein Prozess) oder `none` |
+| `RANKING_CACHE_TTL_SECONDS` | `120` | Höchstalter eines Cache-Eintrags. Live-Wertungen verwerfen ihn sofort; die TTL begrenzt nur Änderungen ohne Live-Ereignis (z. B. ein umbenanntes Team) |
 | `JWT_SECRET_KEY` | – (Pflicht) | Eigenes zufälliges JWT-Secret, mindestens 24 Zeichen |
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | `15` | Lebensdauer des Access-Tokens |
 | `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | `30` | Lebensdauer des Refresh-Tokens |
