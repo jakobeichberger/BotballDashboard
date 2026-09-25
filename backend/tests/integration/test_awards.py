@@ -129,12 +129,21 @@ async def test_judged_award_nominations_decision_and_publishing(
         (await client.get(f"/api/awards/events/{event.id}", headers=auth_headers)).json()
     )["spirit_of_ecer"]
 
-    # A juror (scoring:write) may nominate but not decide.
-    juror = await make_user(db, "juror@test.com", ("scoring:read", "scoring:write"))
-    juror_headers = headers_for(juror)
+    # Mentors hold scoring:write for their own team: they may not nominate.
+    mentor = await make_user(db, "mentor@test.com", ("scoring:read", "scoring:write"))
+    mentor_headers = headers_for(mentor)
     resp = await client.post(
         f"/api/awards/{spirit['id']}/nominations",
-        headers=juror_headers,
+        headers=mentor_headers,
+        json={"team_id": a.id},
+    )
+    assert resp.status_code == 403
+    # The jury (awards:admin) nominates and decides.
+    jury = await make_user(db, "jury@test.com", ("scoring:read", "awards:admin"))
+    jury_headers = headers_for(jury)
+    resp = await client.post(
+        f"/api/awards/{spirit['id']}/nominations",
+        headers=jury_headers,
         json={"team_id": a.id, "note": "Helped every team"},
     )
     assert resp.status_code == 201, resp.text
@@ -143,7 +152,7 @@ async def test_judged_award_nominations_decision_and_publishing(
     )
     decision = {"placements": [{"team_id": a.id, "place": 1}]}
     forbidden = await client.put(
-        f"/api/awards/{spirit['id']}/results", headers=juror_headers, json=decision
+        f"/api/awards/{spirit['id']}/results", headers=mentor_headers, json=decision
     )
     assert forbidden.status_code == 403
     too_far = {"placements": [{"team_id": a.id, "place": 2}]}

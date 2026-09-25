@@ -169,7 +169,7 @@ async def list_timeouts(
 async def record_timeout(
     event_id: str,
     body: TimeoutCardCreate,
-    current_user=Depends(require_permission("scoring:write")),
+    current_user=Depends(require_permission("scoring:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     """Record a team's timeout (one 3-minute timeout per tournament, 409 on a second)."""

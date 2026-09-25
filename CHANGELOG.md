@@ -4,6 +4,19 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### Botball 2026 und ECER 2026 (Migration `0034`)
+
+Abgleich mit den offiziellen Dokumenten (Game Review v1.4, Score-Sheet und Scoring Examples 2026, ECER Amendments 2026, Bewertungsbögen, Aerial Junior Rulebook, Call for Papers, Ergebnisse ECER 2026; Quellen in `docs/assets/README.md`).
+
+- **Score-Sheet 2026** vollständig (`botball_2026`), abgeleitete Multiplikatoren („Drum ×2" folgt dem Feld), Scoring Examples als gemeinsame Fixture; Tie-Breaker nach v1.4 mit den echten Feldern.
+- **Kategorien pro Saison** (Botball, ECER Open, Aerial Junior, Aerial Senior, Junior Botball Challenge, eigene) statt fester Liste; Gesamtwertung optional je Kurs (GCER).
+- **Formelvorlagen** `ecer_2026_botball` (Dokumentation je Periode relativ zum Besten – so rechnen die offiziellen Ergebnisse), `ecer_2026_open`, `aerial_2025`/`aerial_2026`, `jbc_2026`; `seed_rank` = angezeigter Seeding-Rang. Die ECER-2026-Ergebnisse sind Test-Fixture (alle 18 Botball-Teams).
+- **Aerial-Läufe als Liste**, gewertete Läufe pro Kategorie; **JBC-Punkte** für gelöste Challenges.
+- **Seeding-Tie-Breaker** als Saisonregel, standardmäßig aus (Gleichstand teilt den Rang). Maximalpunkte der Dokumentation je Periode (2026: 100/95/100/100); der gespeicherte Doku-Score folgt dem Formel-Set.
+- **Awards** (ECER/GCER-Vorlagen, berechnet oder per Jury, Veröffentlichung, Export) und **Ergebnis-Export im ECER-Format** (XLSX/CSV).
+- Timeout-Karte (einmal pro Turnier), Schiedsrichter-Checkliste 2026, 3D-Druck-Regeln (Material, Graustufen, Bauraum aus der STL, sechs Roboterteile, STL mit Periode 3), Paper: Benachrichtigungstermin, „auf der Bühne", Seitenlimit 5.
+- Beispieldaten ECER 2027 (Linz, 5.–9.4.2027, Botball-Anmeldeschluss 15.12.2026): `scripts/example_season_2027.py`, legt nichts automatisch an.
+
 Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0032`.
 
 ### Added

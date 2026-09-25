@@ -4,7 +4,7 @@ State: `main` at `ccd7a8b` plus the fixes of the September 2026 security review 
 
 ## Roles and permissions
 
-The permissions and the five system roles are seeded by migrations: `0002` creates them, `0010` adds `events:*`, `0012` and `0014` add `papers:write`, `0013` adds `scoring:formulas`, `0016` adds `teams:admin` and gives mentors `teams:write`, and `0017` adds `dashboard:write`. Later migrations do not change grants. Admins can edit role permissions (`PUT /api/auth/roles/{id}`; the admin role keeps its critical permissions) and create custom roles. Superusers pass every permission check.
+The permissions and the five system roles are seeded by migrations: `0002` creates them, `0010` adds `events:*`, `0012` and `0014` add `papers:write`, `0013` adds `scoring:formulas`, `0016` adds `teams:admin` and gives mentors `teams:write`, `0017` adds `dashboard:write`, and `0034` adds `awards:admin` (admin role). Later migrations do not change grants. Admins can edit role permissions (`PUT /api/auth/roles/{id}`; the admin role keeps its critical permissions) and create custom roles. Superusers pass every permission check.
 
 | Permission | admin | juror | reviewer | mentor | guest |
 |---|:-:|:-:|:-:|:-:|:-:|
@@ -22,6 +22,7 @@ The permissions and the five system roles are seeded by migrations: `0002` creat
 | `scoring:write` | ✅ | ✅ | – | ✅ ¹ | – |
 | `scoring:admin` | ✅ | ✅ | – | – | – |
 | `scoring:formulas` | ✅ | – | – | – | – |
+| `awards:admin` ² | ✅ | – | – | – | – |
 | `papers:read` | ✅ | – | ✅ | ✅ ¹ | – |
 | `papers:write` | ✅ | – | – | ✅ ¹ | – |
 | `papers:review` | ✅ | – | ✅ | – | – |
@@ -32,6 +33,7 @@ The permissions and the five system roles are seeded by migrations: `0002` creat
 | `dashboard:write` | ✅ | – | – | – | – |
 
 ¹ Scoped to the mentor's own teams (see below).
+² Awards (templates, nominations, jury decision, publishing) also accept `scoring:admin`, so jurors run them without the extra permission. Timeout cards are recorded with `scoring:admin`.
 
 ### Object-level authorization
 

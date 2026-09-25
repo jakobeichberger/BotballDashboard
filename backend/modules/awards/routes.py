@@ -1,9 +1,10 @@
 """Awards API.
 
-Reading needs scoring:read. Nominations can be made by jurors (scoring:write)
-as well as by the award admins; everything else — templates, award
-categories, computing, the jury decision and publishing — needs awards:admin
-or scoring:admin. The public event page reads published awards without login.
+Reading needs scoring:read. Nominating, templates, award categories,
+computing, the jury decision and publishing need awards:admin or
+scoring:admin (the jury; mentors hold scoring:write for their own team and
+must not nominate). The public event page reads published awards without
+login.
 """
 
 import io
@@ -33,7 +34,7 @@ router = APIRouter(prefix="/awards", tags=["awards"])
 public_router = APIRouter(prefix="/v1/public/events", tags=["public-events"])
 
 _ADMIN = require_any_permission("awards:admin", "scoring:admin")
-_NOMINATE = require_any_permission("awards:admin", "scoring:admin", "scoring:write")
+_NOMINATE = _ADMIN
 
 
 def _changed(db: AsyncSession, event_id: str) -> None:

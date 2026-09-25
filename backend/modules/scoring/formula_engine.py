@@ -356,7 +356,7 @@ FORMULA_PRESETS: dict[str, FormulaPreset] = {
             "ecer_2025_open",
             "ECER 2025 – ECER Open",
             "open",
-            "Seeding + DE + ½ paper score (the category was called PRIA Open until 2026).",
+            "Seeding + DE + ½ paper score (named PRIA Open in the 2025/2026 amendments).",
             DEFAULT_FORMULA_SETS["open"],
         ),
         FormulaPreset(

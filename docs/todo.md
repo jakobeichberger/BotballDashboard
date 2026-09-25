@@ -6,7 +6,7 @@ Stand: 2026-09-25, Migration `0030`. Hier steht nur, was im Code **nachweislich 
 
 ## Funktionen
 
-- [ ] **Score-Sheet 2026: Punktwerte.** Die Vorlage enthält nur die Struktur aus dem Game Review. Das offizielle Score-Sheet 2026 mit Punktwerten liegt nicht in `docs/assets`; die Organisation trägt die Werte im Schema-Editor ein, sobald es vorliegt.
+- [x] **Score-Sheet 2026: Punktwerte.** Vorlage `botball_2026` mit allen Werten und Multiplikatoren des offiziellen Score-Sheets (`docs/assets/2026-Botball-Seeding-Score-Sheet.pdf`), Tie-Breaker nach Game Review v1.4.
 
 ## Abhängigkeiten: bewusst zurückgestellte Major-Updates
 

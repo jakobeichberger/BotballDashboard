@@ -38,7 +38,8 @@ export default function AwardsPage() {
   const { eventId = "" } = useParams();
   const queryClient = useQueryClient();
   const canManage = useAuthStore((s) => s.hasPermission("awards:admin") || s.hasPermission("scoring:admin"));
-  const canNominate = useAuthStore((s) => canManage || s.hasPermission("scoring:write"));
+  // Nominating is the jury's job as well: mentors hold scoring:write for their own team.
+  const canNominate = canManage;
   const awards = useQuery<EventAwards>({ queryKey: ["event-awards", eventId], queryFn: async () => (await api.get(`/awards/events/${eventId}`)).data, enabled: !!eventId });
   const registrations = useQuery<Registration[]>({ queryKey: ["event-registrations", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data, enabled: !!eventId });
   const teams = [...(registrations.data ?? [])].sort((a, b) => a.team_name.localeCompare(b.team_name));

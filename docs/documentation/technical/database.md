@@ -600,10 +600,7 @@ Unique: `(event_id, team_id)`
 | `season_id` | VARCHAR(36) | NOT NULL | → `seasons.id` (CASCADE) |
 | `event_id` | VARCHAR(36) | NOT NULL | → `events.id` (CASCADE) |
 | `team_id` | VARCHAR(36) | NOT NULL | → `teams.id` (CASCADE) |
-| `run1` | FLOAT |  |  |
-| `run2` | FLOAT |  |  |
-| `run3` | FLOAT |  |  |
-| `run4` | FLOAT |  |  |
+| `runs` | JSON | NOT NULL | Liste der Läufe (seit `0034`, vorher `run1`–`run4`) |
 | `score` | FLOAT |  |  |
 | `rank` | INTEGER |  |  |
 | `notes` | TEXT |  |  |
@@ -1180,6 +1177,7 @@ Empfänger einer Outbox-Zeile (Migration `0032`), geschrieben von `emit_event`. 
 | `0029` | Saison-Details der Teams, Kader, Team-Dokumente, Druck-Checkliste, Paper-Deadlines |
 | `0030` | Check-Constraint des Reviewer-Zuweisungsstatus für vor dem 0023-Fix migrierte Datenbanken |
 | `0031` | Übungslauf-Kennzeichen auf `score_revisions` (Sichtbarkeit des Audit-Trails) |
+| `0034` | Botball 2026: `season_categories`, Aerial-Läufe als Liste, `jbc_results`, `timeout_cards`, Awards (`event_awards`, `award_categories`, `award_nominations`, `award_results`, Recht `awards:admin`), Saisonregeln `seeding_tiebreakers`/`doc_max_points`, `papers.presented_on_stage`, `paper_versions.page_count`, 3D-Druck-Regelfelder auf `print_jobs` |
 
 ```bash
 cd backend

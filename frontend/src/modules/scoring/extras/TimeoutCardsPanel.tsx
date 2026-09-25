@@ -27,7 +27,7 @@ interface TimeoutCard {
 export default function TimeoutCardsPanel({ eventId, registrations }: { eventId: string; registrations: EventRegistration[] }) {
   const { t } = useTranslation("scoring");
   const queryClient = useQueryClient();
-  const canRecord = useAuthStore((state) => state.hasPermission("scoring:write"));
+  const canRecord = useAuthStore((state) => state.hasPermission("scoring:admin"));
   const canRevoke = useAuthStore((state) => state.hasPermission("scoring:admin"));
   const [teamId, setTeamId] = useState("");
   const [round, setRound] = useState("");
