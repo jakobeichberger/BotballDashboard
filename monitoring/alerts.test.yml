@@ -138,3 +138,76 @@ tests:
       - eval_time: 14m
         alertname: RedisFailOpen
         exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      # Root disk: 20 % free, then 10 % from minute 5 on, then 3 % from 20.
+      - series: 'node_filesystem_avail_bytes{job="node", instance="node-exporter:9100", mountpoint="/", fstype="ext4", device="/dev/sda1"}'
+        values: "20x4 10x14 3x20"
+      - series: 'node_filesystem_size_bytes{job="node", instance="node-exporter:9100", mountpoint="/", fstype="ext4", device="/dev/sda1"}'
+        values: "100x40"
+      - series: 'node_filesystem_readonly{job="node", instance="node-exporter:9100", mountpoint="/", fstype="ext4", device="/dev/sda1"}'
+        values: "0x40"
+      # A nearly full tmpfs never alerts.
+      - series: 'node_filesystem_avail_bytes{job="node", instance="node-exporter:9100", mountpoint="/run", fstype="tmpfs", device="tmpfs"}'
+        values: "1x40"
+      - series: 'node_filesystem_size_bytes{job="node", instance="node-exporter:9100", mountpoint="/run", fstype="tmpfs", device="tmpfs"}'
+        values: "100x40"
+      - series: 'node_filesystem_readonly{job="node", instance="node-exporter:9100", mountpoint="/run", fstype="tmpfs", device="tmpfs"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: DiskSpaceLow
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: DiskSpaceLow
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, instance: "node-exporter:9100", mountpoint: "/", fstype: ext4, device: /dev/sda1 }
+            exp_annotations:
+              summary: "Less than 15 % disk space left on /"
+              description: "/ has 10% free. Uploads, database, logs and backups share this disk; delete old backups or grow the volume."
+      - eval_time: 16m
+        alertname: DiskSpaceCritical
+        exp_alerts: []
+      - eval_time: 26m
+        alertname: DiskSpaceCritical
+        exp_alerts:
+          - exp_labels: { severity: critical, job: node, instance: "node-exporter:9100", mountpoint: "/", fstype: ext4, device: /dev/sda1 }
+            exp_annotations:
+              summary: "Less than 5 % disk space left on /"
+              description: "/ has 3% free. PostgreSQL stops accepting writes when the disk is full."
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="postgres", instance="postgres-exporter:9187"}'
+        values: "1 1 0x10"
+      - series: 'pg_up{job="postgres", instance="postgres-exporter:9187"}'
+        values: "1 0x10"
+      - series: 'pg_settings_max_connections{job="postgres", instance="postgres-exporter:9187", server="db:5432"}'
+        values: "100x10"
+      - series: 'pg_stat_activity_count{job="postgres", instance="postgres-exporter:9187", server="db:5432", datname="botball", state="active"}'
+        values: "50x10"
+      - series: 'pg_stat_activity_count{job="postgres", instance="postgres-exporter:9187", server="db:5432", datname="botball", state="idle"}'
+        values: "40x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PostgresDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: postgres, instance: "postgres-exporter:9187" }
+            exp_annotations:
+              summary: "PostgreSQL is not reachable"
+              description: "postgres-exporter cannot connect to the database. Check `docker compose ps db` and `docker compose logs db`."
+      - eval_time: 8m
+        alertname: ExporterDown
+        exp_alerts:
+          - exp_labels: { severity: warning, job: postgres, instance: "postgres-exporter:9187" }
+            exp_annotations:
+              summary: "The postgres exporter is not scraped"
+              description: "postgres-exporter:9187 is unreachable, so disk or database alerts cannot fire. Check `docker compose ps` for node-exporter / postgres-exporter."
+      - eval_time: 8m
+        alertname: PostgresConnectionsHigh
+        exp_alerts:
+          - exp_labels: { severity: warning, job: postgres, instance: "postgres-exporter:9187", server: "db:5432" }
+            exp_annotations:
+              summary: "PostgreSQL uses more than 80 % of its connections"
+              description: "90% of max_connections are in use; new API requests or workers may fail to connect."

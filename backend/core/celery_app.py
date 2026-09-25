@@ -1,8 +1,11 @@
 """Celery worker configuration for OCR and recurring device polling."""
 
+from contextlib import suppress
+from pathlib import Path
+
 from celery import Celery
 from celery.schedules import crontab
-from celery.signals import setup_logging
+from celery.signals import after_task_publish, beat_init, setup_logging
 
 from core.config import get_settings
 from core.logging import configure_logging
@@ -68,3 +71,24 @@ def _configure_worker_logging(**_kwargs) -> None:
     handler, so every record is formatted once.
     """
     configure_logging()
+
+
+# Celery beat has no ping. Beat touches this file whenever the broker accepted
+# one of its tasks (the notification outbox is due every 10 s), and the beat
+# container's healthcheck (scripts/beat_healthcheck.py) checks its age.
+BEAT_HEARTBEAT_FILE = Path("/tmp/celerybeat-heartbeat")
+_beat_running = False
+
+
+@beat_init.connect
+def _mark_beat_process(**_kwargs) -> None:
+    global _beat_running
+    _beat_running = True
+
+
+@after_task_publish.connect
+def _beat_heartbeat(**_kwargs) -> None:
+    # The API and the worker publish tasks too; only beat keeps the heartbeat.
+    if _beat_running:
+        with suppress(OSError):
+            BEAT_HEARTBEAT_FILE.touch()

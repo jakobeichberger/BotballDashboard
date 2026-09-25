@@ -110,8 +110,33 @@ def test_compose_has_all_runtime_services(compose):
         assert name in services
         assert "profiles" not in services[name], f"{name} must always start"
     assert services["backup"]["profiles"] == ["production"]
-    for name in ("prometheus", "blackbox", "alertmanager"):
+    for name in ("prometheus", "blackbox", "alertmanager", "node-exporter", "postgres-exporter"):
         assert services[name]["profiles"] == ["monitoring"]
+
+
+def test_every_service_has_a_healthcheck(compose):
+    services = compose["services"]
+    missing = [name for name, service in services.items() if "healthcheck" not in service]
+    assert missing == []
+
+
+def test_internal_system_endpoints_are_not_routed_by_traefik(compose):
+    labels = compose["services"]["backend"]["labels"]
+    [rule] = [label for label in labels if label.startswith("traefik.http.routers.api.rule=")]
+    assert "!Path(`/api/system/metrics`)" in rule
+    assert "!Path(`/api/system/readiness`)" in rule
+
+
+def test_monitoring_scrapes_every_exporter(compose):
+    yaml = pytest.importorskip("yaml")
+    config = yaml.safe_load((REPO / "monitoring" / "prometheus.yml").read_text())
+    targets = {
+        target
+        for job in config["scrape_configs"]
+        for static in job.get("static_configs", [])
+        for target in static["targets"]
+    }
+    assert {"node-exporter:9100", "postgres-exporter:9187", "backend:8000"} <= targets
 
 
 def test_compose_rotates_logs_for_every_service(compose):
