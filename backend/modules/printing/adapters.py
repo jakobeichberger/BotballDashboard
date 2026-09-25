@@ -185,7 +185,7 @@ class BambuLanAdapter:
             # Bambu error codes are 32-bit ints, documented as 8 hex digits.
             try:
                 error = f"Bambu error {int(error_code):08X}"
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 error = f"Bambu error {error_code}"
         elif state == "failed":
             error = "Print failed on the printer"

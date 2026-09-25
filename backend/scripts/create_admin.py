@@ -120,11 +120,17 @@ if __name__ == "__main__":
     # Python's default _UnixSelectorEventLoop calls socket.socketpair(AF_UNIX)
     # during __init__, which is blocked in Proxmox LXC containers by the
     # seccomp/AppArmor profile. uvloop uses libuv and does not have this issue.
+    # Event loop policies are deprecated since Python 3.14, so the loop factory
+    # goes straight to asyncio.run.
+    loop_factory = None
     try:
         import uvloop
 
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        loop_factory = uvloop.new_event_loop
     except ImportError:
         pass
 
-    asyncio.run(main(args.email, password, args.name, args.reset, args.superuser))
+    asyncio.run(
+        main(args.email, password, args.name, args.reset, args.superuser),
+        loop_factory=loop_factory,
+    )

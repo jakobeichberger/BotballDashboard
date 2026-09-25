@@ -21,7 +21,7 @@ class TiebreakerCriterion(BaseModel):
     replay_only: bool = False
 
     @model_validator(mode="after")
-    def validate_source(self) -> "TiebreakerCriterion":
+    def validate_source(self) -> TiebreakerCriterion:
         if self.source == "sheet" and not self.sheet_keys:
             raise ValueError(f"{self.key}: a sheet criterion needs at least one sheet key")
         if self.key == "replayed":
@@ -56,7 +56,7 @@ class RuleSetUpdate(BaseModel):
     doc_max_points: DocMaxPoints = Field(default_factory=DocMaxPoints)
 
     @model_validator(mode="after")
-    def unique_keys(self) -> "RuleSetUpdate":
+    def unique_keys(self) -> RuleSetUpdate:
         for name, keys in (
             ("tie-breaker", [item.key for item in self.tiebreakers]),
             ("checklist", [item.key for item in self.referee_checklist]),
@@ -182,7 +182,7 @@ class PartsChallengeCreate(BaseModel):
     description: str = Field(min_length=3, max_length=2000)
 
     @model_validator(mode="after")
-    def different_teams(self) -> "PartsChallengeCreate":
+    def different_teams(self) -> PartsChallengeCreate:
         if self.challenger_team_id == self.challenged_team_id:
             raise ValueError("A team cannot challenge itself")
         return self

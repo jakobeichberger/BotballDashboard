@@ -58,8 +58,8 @@ test-frontend:
 # Re-pin backend/requirements*.txt after changing pyproject.toml (needs uv:
 # https://docs.astral.sh/uv/). The Docker images and CI install these files.
 lock-backend:
-	cd backend && uv pip compile pyproject.toml --universal --python-version 3.11 --custom-compile-command "make lock-backend" -o requirements.txt
-	cd backend && uv pip compile pyproject.toml --extra dev --universal --python-version 3.11 --custom-compile-command "make lock-backend" -o requirements-dev.txt
+	cd backend && uv pip compile pyproject.toml --universal --python-version 3.14 --custom-compile-command "make lock-backend" -o requirements.txt
+	cd backend && uv pip compile pyproject.toml --extra dev --universal --python-version 3.14 --custom-compile-command "make lock-backend" -o requirements-dev.txt
 
 # ── Linting ───────────────────────────────────────────────────
 lint-backend:

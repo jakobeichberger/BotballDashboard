@@ -94,7 +94,7 @@ class Settings(BaseSettings):
         return value.strip().lower() if isinstance(value, str) else value
 
     @model_validator(mode="after")
-    def validate_production_secrets(self) -> "Settings":
+    def validate_production_secrets(self) -> Settings:
         if self.app_env == "development":
             return self
 
@@ -153,7 +153,7 @@ class Settings(BaseSettings):
 def _is_fernet_key(value: str) -> bool:
     try:
         Fernet(value.encode())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return False
     return True
 

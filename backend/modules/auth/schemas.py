@@ -33,7 +33,7 @@ class UserCreate(BaseModel):
     role_ids: list[str] = []
 
     @model_validator(mode="after")
-    def password_strength(self) -> "UserCreate":
+    def password_strength(self) -> UserCreate:
         check_password(self.password, str(self.email))
         return self
 

@@ -76,7 +76,7 @@ def scan_extension(content: bytes) -> str:
     try:
         with Image.open(io.BytesIO(content)) as image:
             kind = image.format
-    except (UnidentifiedImageError, Image.DecompressionBombError, OSError):
+    except UnidentifiedImageError, Image.DecompressionBombError, OSError:
         kind = None
     if kind not in SCAN_TYPES:
         raise HTTPException(status_code=415, detail="PDF, JPEG, PNG or WebP required")

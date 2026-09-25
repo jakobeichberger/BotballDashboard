@@ -12,7 +12,7 @@ everything that happened in a season, for archiving outside the application.
 
 import re
 from datetime import UTC, date, datetime
-from typing import Any, TypeVar
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +24,6 @@ from modules.seasons.models import Season, SeasonEvent, SeasonPhase
 
 EXPORT_FORMAT_VERSION = 1
 
-_D = TypeVar("_D", date, datetime)
 
 # Season columns carried over to a clone; everything else is either identity,
 # lifecycle state or bookkeeping.
@@ -60,7 +59,7 @@ _CLONED_EVENT_FIELDS = (
 )
 
 
-def shift_years(value: _D | None, years: int) -> _D | None:
+def shift_years[D: (date, datetime)](value: D | None, years: int) -> D | None:
     """Move a date by whole years; 29 February becomes 28 February if needed."""
     if value is None or years == 0:
         return value

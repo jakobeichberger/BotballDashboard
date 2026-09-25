@@ -18,7 +18,6 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from pathlib import Path
-from typing import TypeVar
 
 from celery import Celery
 from celery.schedules import crontab
@@ -92,10 +91,8 @@ celery_app.conf.update(
     },
 )
 
-T = TypeVar("T")
 
-
-def run_task(main: Callable[[], Awaitable[T]]) -> T:
+def run_task[T](main: Callable[[], Awaitable[T]]) -> T:
     """Run one task's coroutine in a fresh event loop.
 
     Tasks use core.database.WorkerSessionLocal (no connection pool, see

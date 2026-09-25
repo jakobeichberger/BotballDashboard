@@ -117,7 +117,7 @@ def _field_range_findings(run: RunSample) -> list[Finding]:
             continue
         try:
             value = float(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             findings.append(Finding("invalid_value", f"{label}: kein Zahlenwert", "error"))
             continue
         max_value = spec.get("max_value")
@@ -262,7 +262,7 @@ def field_points(
         raw = (raw_scores or {}).get(key, 0)
         try:
             value = float(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             value = 0.0
         points[key] = value * float(spec.get("multiplier", 1) or 0)
     return points

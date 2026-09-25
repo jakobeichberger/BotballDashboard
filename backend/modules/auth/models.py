@@ -18,7 +18,7 @@ class Permission(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    roles: Mapped[list["Role"]] = relationship(
+    roles: Mapped[list[Role]] = relationship(
         "Role", secondary="role_permissions", back_populates="permissions"
     )
 
@@ -34,9 +34,7 @@ class Role(Base):
     permissions: Mapped[list[Permission]] = relationship(
         Permission, secondary="role_permissions", back_populates="roles"
     )
-    users: Mapped[list["User"]] = relationship(
-        "User", secondary="user_roles", back_populates="roles"
-    )
+    users: Mapped[list[User]] = relationship("User", secondary="user_roles", back_populates="roles")
 
 
 class RolePermission(Base):
@@ -86,10 +84,10 @@ class User(Base):
     anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     roles: Mapped[list[Role]] = relationship(Role, secondary="user_roles", back_populates="users")
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
-    push_subscriptions: Mapped[list["PushSubscription"]] = relationship(
+    push_subscriptions: Mapped[list[PushSubscription]] = relationship(
         "PushSubscription", back_populates="user", cascade="all, delete-orphan"
     )
 

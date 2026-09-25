@@ -156,7 +156,14 @@ def test_create_admin_refuses_a_long_password_even_in_development():
     result = subprocess.run(
         [sys.executable, "scripts/create_admin.py", "--email", "admin@example.com"],
         cwd=backend,
-        env={**os.environ, "APP_ENV": "development", "ADMIN_PASSWORD": "Kiwi-Tram-" * 8},
+        # The script puts /app (the image's code directory) on sys.path; outside
+        # the image the backend directory has to be importable as well.
+        env={
+            **os.environ,
+            "PYTHONPATH": str(backend),
+            "APP_ENV": "development",
+            "ADMIN_PASSWORD": "Kiwi-Tram-" * 8,
+        },
         capture_output=True,
         text=True,
         timeout=60,

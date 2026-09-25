@@ -62,7 +62,7 @@ class Base(DeclarativeBase):
 PortableJSONB = JSON().with_variant(JSONB(), "postgresql")
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession]:
     from core.audit import add_pending_audit_entry
 
     async with AsyncSessionLocal() as session:

@@ -12,12 +12,9 @@ from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterable, Sequence
-from typing import TypeVar
-
-T = TypeVar("T")
 
 
-def rank_descending(items: Iterable[T], value: Callable[[T], float]) -> list[tuple[int, T]]:
+def rank_descending[T](items: Iterable[T], value: Callable[[T], float]) -> list[tuple[int, T]]:
     """Sort by ``value`` (highest first) and pair each item with its rank.
 
     The sort is stable, so tied items keep their input order. Single pass over

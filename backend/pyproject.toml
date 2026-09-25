@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "botball-dashboard-backend"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     # ── Web framework ─────────────────────────────────────────
     "fastapi==0.141.1",
@@ -82,7 +82,7 @@ where = ["."]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py314"
 
 [tool.ruff.lint]
 # B = bugbear, BLE = blind `except Exception`: a deliberate catch-all needs a
@@ -100,6 +100,7 @@ ignore = [
 "tests/conftest.py" = ["E402"]
 
 [tool.mypy]
+python_version = "3.14"
 explicit_package_bases = true
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]

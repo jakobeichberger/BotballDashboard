@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.14"
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
 
@@ -54,7 +54,7 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.14"
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
 
@@ -125,7 +125,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.14"
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
@@ -149,7 +149,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.14"
       # pip-audit also audits the runner's preinstalled pip/setuptools, which
       # lag behind security releases; bring them current first.
       - run: python -m pip install --upgrade pip setuptools
@@ -266,7 +266,7 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.14"
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
@@ -317,7 +317,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
-        with: { python-version: "3.11", cache: pip, cache-dependency-path: backend/requirements.txt }
+        with: { python-version: "3.14", cache: pip, cache-dependency-path: backend/requirements.txt }
       - uses: pnpm/action-setup@v6
         with: { package_json_file: frontend/package.json }
       - uses: actions/setup-node@v7
