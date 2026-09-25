@@ -20,9 +20,9 @@ const ADMIN_CHUNKS = [
 
 export default defineConfig({
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        // The shared chunk Rollup creates for recharts (statistics pages) gets
+        // The shared chunk Rolldown creates for recharts (statistics pages) gets
         // a stable name, so the service worker can leave it out of the
         // precache. (manualChunks would also pull React & co. into it.)
         chunkFileNames(chunk) {
@@ -76,7 +76,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
   server: {
