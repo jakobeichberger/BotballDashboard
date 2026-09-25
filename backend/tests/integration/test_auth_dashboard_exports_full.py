@@ -258,7 +258,7 @@ class TestUserManagementPermissions:
             json={
                 "email": "created@example.com",
                 "display_name": "Created",
-                "password": "password123",
+                "password": "created-user-pass-1",
             },
         )
         assert resp.status_code == 201
