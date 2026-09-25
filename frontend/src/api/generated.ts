@@ -816,6 +816,9 @@ export interface paths {
         /**
          * List Event Scores
          * @description Scores of an event (without schema snapshots); `limit`/`offset` page.
+         *
+         *     Foreign practice runs and notes are hidden unless the caller has
+         *     scoring:admin (modules.scoring.visibility).
          */
         get: operations["list_event_scores_api_v1_events__event_id__matches_get"];
         put?: never;
@@ -1485,7 +1488,8 @@ export interface paths {
          * @description Matches of a season in entry order; `limit`/`offset` page through them.
          *
          *     Without `limit` every match is returned. The schema snapshot of each run
-         *     is left out (see GET /scoring/matches/{id}).
+         *     is left out (see GET /scoring/matches/{id}); foreign practice runs and
+         *     notes are hidden unless the caller has scoring:admin.
          */
         get: operations["list_matches_api_scoring_seasons__season_id__matches_get"];
         put?: never;

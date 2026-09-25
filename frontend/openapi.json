@@ -3062,7 +3062,7 @@
           "events"
         ],
         "summary": "List Event Scores",
-        "description": "Scores of an event (without schema snapshots); `limit`/`offset` page.",
+        "description": "Scores of an event (without schema snapshots); `limit`/`offset` page.\n\nForeign practice runs and notes are hidden unless the caller has\nscoring:admin (modules.scoring.visibility).",
         "operationId": "list_event_scores_api_v1_events__event_id__matches_get",
         "security": [
           {
@@ -5862,7 +5862,7 @@
           "scoring"
         ],
         "summary": "List Matches",
-        "description": "Matches of a season in entry order; `limit`/`offset` page through them.\n\nWithout `limit` every match is returned. The schema snapshot of each run\nis left out (see GET /scoring/matches/{id}).",
+        "description": "Matches of a season in entry order; `limit`/`offset` page through them.\n\nWithout `limit` every match is returned. The schema snapshot of each run\nis left out (see GET /scoring/matches/{id}); foreign practice runs and\nnotes are hidden unless the caller has scoring:admin.",
         "operationId": "list_matches_api_scoring_seasons__season_id__matches_get",
         "security": [
           {
