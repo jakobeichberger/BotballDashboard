@@ -33,7 +33,7 @@ asyncpg==0.31.0
     # via botball-dashboard-backend (pyproject.toml)
 attrs==26.1.0
     # via aiohttp
-bcrypt==4.3.0
+bcrypt==5.0.0
     # via botball-dashboard-backend (pyproject.toml)
 billiard==4.3.0
     # via celery
@@ -142,7 +142,7 @@ numpy==2.4.6 ; python_full_version < '3.12'
     # via opencv-python-headless
 numpy==2.5.3 ; python_full_version >= '3.12'
     # via opencv-python-headless
-opencv-python-headless==4.14.0.94
+opencv-python-headless==5.0.0.93
     # via botball-dashboard-backend (pyproject.toml)
 packaging==26.3
     # via
@@ -223,7 +223,7 @@ qrcode==8.2
     # via botball-dashboard-backend (pyproject.toml)
 redis==8.1.0
     # via botball-dashboard-backend (pyproject.toml)
-reportlab==4.5.1
+reportlab==5.0.1
     # via botball-dashboard-backend (pyproject.toml)
 requests==2.34.2
     # via pywebpush
