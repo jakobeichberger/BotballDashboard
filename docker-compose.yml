@@ -13,6 +13,31 @@ x-logging: &default-logging
     max-size: ${LOG_MAX_SIZE:-10m}
     max-file: "${LOG_MAX_FILE:-5}"
 
+# The application containers (backend image) run as the unprivileged user
+# "app" (uid 10001, see backend/Dockerfile) with every Linux capability
+# dropped and without privilege escalation. backend, worker and beat also get
+# a read-only root filesystem; they write only to their volumes and /tmp.
+x-hardening: &hardening
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+# One-shot init containers that hand volumes created by older (root) releases,
+# or host directories created by root, to uid 10001. They run as root with
+# only CHOWN and DAC_READ_SEARCH, no network, and exit.
+x-ownership-init: &ownership-init
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  user: "0:0"
+  entrypoint: ["sh", "/app/scripts/fix-volume-ownership.sh"]
+  cap_drop: [ALL]
+  cap_add: [CHOWN, DAC_READ_SEARCH]
+  security_opt: ["no-new-privileges:true"]
+  network_mode: none
+  mem_limit: 128m
+  restart: "no"
+  logging: *default-logging
+
 services:
   # ── Reverse Proxy ─────────────────────────────────────────────
   traefik:
@@ -80,9 +105,16 @@ services:
 
   # ── Backend API ───────────────────────────────────────────────
   backend:
+    <<: *hardening
     build:
       context: ./backend
       dockerfile: Dockerfile
+    read_only: true
+    # Multipart uploads are spooled to /tmp (print files up to
+    # PRINT_UPLOAD_MAX_MB); tmpfs pages count towards mem_limit.
+    tmpfs:
+      - /tmp:size=${BACKEND_TMP_SIZE:-512m}
+    mem_limit: ${BACKEND_MEM_LIMIT:-1536m}
     env_file:
       - path: .env
         required: false   # optional so dev works without a .env file
@@ -98,6 +130,8 @@ services:
       - uploads:/app/uploads
       - vapid:/app/vapid
     depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -109,6 +143,20 @@ services:
       - "traefik.http.routers.api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`) && !Path(`/api/system/metrics`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=le"
+      - "traefik.http.routers.api.service=api"
+      # Request bodies above max(MAX_UPLOAD_SIZE_MB, PRINT_UPLOAD_MAX_MB) + 2 MB
+      # are refused by Traefik already (413); the API enforces the exact
+      # per-route limits itself while the body streams in. Raise
+      # API_MAX_BODY_BYTES together with PRINT_UPLOAD_MAX_MB.
+      - "traefik.http.routers.api.middlewares=api-body-limit"
+      - "traefik.http.middlewares.api-body-limit.buffering.maxRequestBodyBytes=${API_MAX_BODY_BYTES:-106954752}"
+      - "traefik.http.middlewares.api-body-limit.buffering.memRequestBodyBytes=2097152"
+      # The live WebSocket (no request body) bypasses the buffering middleware.
+      - "traefik.http.routers.api-ws.rule=Host(`${DOMAIN}`) && Path(`/api/v1/public/events/{slug:[a-z0-9-]+}/ws`)"
+      - "traefik.http.routers.api-ws.priority=1000"
+      - "traefik.http.routers.api-ws.entrypoints=websecure"
+      - "traefik.http.routers.api-ws.tls.certresolver=le"
+      - "traefik.http.routers.api-ws.service=api"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
     healthcheck:
       # Liveness only; /api/system/readiness (DB, Redis, worker) is probed by
@@ -121,10 +169,17 @@ services:
 
   # ── Background worker (local OCR + printer polling) ───────────
   worker:
+    <<: *hardening
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A core.celery_app:celery_app worker --loglevel=INFO --concurrency=2
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    # OCR of two score sheets at a time; a runaway decode is killed here
+    # instead of taking the whole host down.
+    mem_limit: ${WORKER_MEM_LIMIT:-2g}
     env_file:
       - path: .env
         required: false
@@ -132,10 +187,15 @@ services:
       REDIS_URL: redis://redis:6379/0
       # The worker delivers Web Push, so it needs the same VAPID key as the API.
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-/app/vapid/private_key.pem}
+      # OpenCV refuses to decode larger images (decompression bombs); the OCR
+      # code checks the same 40 MP limit from the image header first.
+      OPENCV_IO_MAX_IMAGE_PIXELS: "40000000"
     volumes:
       - uploads:/app/uploads
       - vapid:/app/vapid:ro
     depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -149,16 +209,24 @@ services:
       retries: 3
 
   beat:
+    <<: *hardening
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A core.celery_app:celery_app beat --loglevel=INFO
+    # The schedule file lives in the writable /tmp (the root is read-only).
+    command: celery -A core.celery_app:celery_app beat --loglevel=INFO --schedule /tmp/celerybeat-schedule
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    mem_limit: ${BEAT_MEM_LIMIT:-256m}
     env_file:
       - path: .env
         required: false
     environment:
       REDIS_URL: redis://redis:6379/0
     depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -173,11 +241,15 @@ services:
   # and exposes botball_backup_* metrics on :9101 for Prometheus. With
   # BACKUP_OFFSITE_TARGET it copies every new archive off-site as well.
   backup:
+    <<: *hardening
     profiles: ["production"]
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: ["python", "scripts/backup_scheduler.py", "run"]
+    # Not read-only: backup.sh builds the archive in a scratch directory that
+    # can be as large as the uploads.
+    mem_limit: ${BACKUP_MEM_LIMIT:-512m}
     env_file:
       - path: .env
         required: false
@@ -207,6 +279,10 @@ services:
       - ${BACKUP_HOST_DIR:-backups}:/backups
       - ${BACKUP_OFFSITE_CONFIG_DIR:-./backup-offsite}:/offsite-config:ro
     depends_on:
+      volume-permissions:
+        condition: service_completed_successfully
+      backup-permissions:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     restart: unless-stopped
@@ -217,6 +293,25 @@ services:
       timeout: 30s
       retries: 1
       start_period: 30m
+
+  # ── Volume ownership (one-shot, see x-ownership-init) ────────
+  volume-permissions:
+    <<: *ownership-init
+    command: ["10001:10001", "/app/uploads", "/app/vapid"]
+    volumes:
+      - uploads:/app/uploads
+      - vapid:/app/vapid
+
+  # Backup archives and the off-site credentials (SSH key, rclone.conf) must
+  # belong to the backup container's user as well; ssh refuses keys it cannot
+  # read or that others can read.
+  backup-permissions:
+    <<: *ownership-init
+    profiles: ["production"]
+    command: ["10001:10001", "/backups", "/offsite-config"]
+    volumes:
+      - ${BACKUP_HOST_DIR:-backups}:/backups
+      - ${BACKUP_OFFSITE_CONFIG_DIR:-./backup-offsite}:/offsite-config
 
   # ── Monitoring (profile "monitoring") ─────────────────────────
   # Prometheus and Alertmanager listen on 127.0.0.1 only; reach them through

@@ -3,12 +3,15 @@
 # contents of a backup archive created by backup.sh.
 #
 # Stop every service that writes to the database or the uploads first
-# (backend, worker, beat, backup), then run – see docs/operations.md:
+# (backend, worker, beat, backup), then run – see docs/operations.md. The
+# container runs as uid 10001 on a read-only root: the identity must be
+# readable by that uid, and TMPDIR must point to a disk-backed directory large
+# enough for the decrypted archive:
 #
 #   docker compose run --rm --no-deps \
-#     -v /root/botball-backup-identity.txt:/run/age-identity:ro \
+#     -v /data/restore-work:/restore-work -e TMPDIR=/restore-work \
+#     -e AGE_IDENTITY=/restore-work/age-identity \
 #     -v <backups volume or dir>:/backups:ro \
-#     -e AGE_IDENTITY=/run/age-identity \
 #     backend /app/scripts/restore.sh --yes /backups/botball-TIMESTAMP.tar.gz.age
 set -eu
 

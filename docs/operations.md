@@ -96,10 +96,15 @@ Without `BACKUP_OFFSITE_TARGET` you can still sync by hand or from a host cron j
 
 The restore test decrypts an archive, restores it into the isolated database `${POSTGRES_DB}_restore_test`, counts the events and verifies every upload file against the manifest. It never touches production data.
 
+The containers run as the unprivileged user `app` (uid 10001), so the identity must be readable by that uid. Copy it to a temporary directory owned by it and remove the copy afterwards:
+
 ```sh
+install -d -m 700 -o 10001 -g 10001 /data/restore-work
+install -m 400 -o 10001 -g 10001 /path/to/botball-backup-identity.txt /data/restore-work/age-identity
 docker compose run --rm --no-deps \
-  -v /path/to/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
+  -v /data/restore-work:/restore-work -e AGE_IDENTITY=/restore-work/age-identity \
   backup /app/scripts/restore-test.sh /backups/botball-YYYYMMDDTHHMMSSZ.tar.gz.age
+rm -rf /data/restore-work
 ```
 
 Expected output ends with `Uploads verified: N files match the manifest` and `Restore test succeeded`. Afterwards drop the test database: `docker compose exec db dropdb -U botball botball_restore_test`.
@@ -112,15 +117,21 @@ Expected output ends with `Uploads verified: N files match the manifest` and `Re
 cd /opt/botballdashboard
 make backup-now || true                               # safety copy of the current state
 docker compose stop backend worker beat backup        # nothing may write during the restore
+# The backend runs as uid 10001 on a read-only root filesystem: give it a
+# disk-backed work directory (TMPDIR) and a copy of the identity it can read.
+install -d -m 700 -o 10001 -g 10001 /data/restore-work
+install -m 400 -o 10001 -g 10001 /path/to/botball-backup-identity.txt /data/restore-work/age-identity
 docker compose run --rm --no-deps \
-  -v /path/to/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
+  -v /data/restore-work:/restore-work -e TMPDIR=/restore-work \
+  -e AGE_IDENTITY=/restore-work/age-identity \
   -v /data/backups:/backups:ro \
   backend /app/scripts/restore.sh --yes /backups/botball-YYYYMMDDTHHMMSSZ.tar.gz.age
+rm -rf /data/restore-work                             # also removes the identity copy
 docker compose up -d                                  # backend migrates the restored DB to the current code
 ./scripts/verify-deployment.sh
 ```
 
-Without `BACKUP_HOST_DIR`, use the named volume instead of `/data/backups`: `-v botballdashboard_backups:/backups:ro`. Archives copied back from off-site storage can be placed in any directory and mounted the same way.
+Without `BACKUP_HOST_DIR`, use the named volume instead of `/data/backups`: `-v botballdashboard_backups:/backups:ro`. Archives copied back from off-site storage can be placed in any directory and mounted the same way; they must be readable by uid 10001. The work directory needs room for the decrypted archive (about the size of the uploads plus the database dump).
 
 The restore:
 
