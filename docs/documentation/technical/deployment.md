@@ -12,8 +12,8 @@
 | `worker` | wie backend | – | Celery-Worker (Queues `default`, `periodic`): Web-Push-Outbox, Drucker-Polling, Erinnerungen |
 | `worker-ocr` | wie backend | – | Celery-Worker (Queue `ocr`): Score-Sheet-OCR |
 | `beat` | wie backend | – | Celery-Beat: plant Outbox (10 s), Drucker (15 s), Paper-Fristen (1 h), Outbox-Aufräumen (täglich); jeder Auftrag verfällt nach seinem Intervall |
-| `db` | postgres:16-alpine | – | Datenbank (Volume `pgdata`, optional Bind-Mount `/data/db`) |
-| `redis` | redis:7-alpine | – | Celery-Broker, Rate-Limits, Event-Streams |
+| `db` | postgres:18-alpine | – | Datenbank (Volume `pgdata` unter `/var/lib/postgresql`, Cluster in `18/docker`; optional Bind-Mount `/data/db`). Neue Hauptversion: `scripts/postgres-upgrade.sh` |
+| `redis` | redis:8-alpine | – | Celery-Broker, Rate-Limits, Event-Streams, Token-Sperrliste |
 | `backup` | wie backend | `production` | `backup_scheduler.py`: tägliche verschlüsselte Backups, Healthcheck, Metriken auf :9101 |
 | `volume-permissions` | wie backend | – | Einmaliger Init-Container: übergibt `uploads` und `vapid` an UID 10001, beendet sich |
 | `backup-permissions` | wie backend | `production` | Einmaliger Init-Container: dasselbe für Backup-Archive und Off-site-Zugangsdaten |

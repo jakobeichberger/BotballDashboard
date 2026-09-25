@@ -43,9 +43,9 @@ Das System ist so aufgebaut, dass bei jedem Upgrade **nur die Programmkomponente
 # docker-compose.yml Prinzip
 services:
   db:
-    image: postgres:16
+    image: postgres:18-alpine
     volumes:
-      - pgdata:/var/lib/postgresql/data   # persistentes Volume
+      - pgdata:/var/lib/postgresql   # persistentes Volume (Cluster in 18/docker)
   backend:
     build: ./backend
     command: ["./scripts/migrate-then-start.sh"]

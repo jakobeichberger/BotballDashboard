@@ -10,7 +10,7 @@ Proxmox-Host
     ├── backend        FastAPI (führt beim Start die Migrationen aus)
     ├── worker         Celery: OCR, Web Push, Drucker-Polling
     ├── beat           Celery-Zeitplan (Outbox, Drucker, Paper-Fristen)
-    ├── db, redis      PostgreSQL 16 (/data/db), Redis 7
+    ├── db, redis      PostgreSQL 18 (/data/db/18/docker), Redis 8
     ├── backup         verschlüsselte Backups nach /data/backups   (Profil production)
     └── prometheus, blackbox, alertmanager                      (Profil monitoring, optional)
 ```

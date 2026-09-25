@@ -38,7 +38,7 @@ Dienste in `docker-compose.yml`: `traefik`, `db`, `redis`, `backend`, `worker`, 
 
 | Bereich | Umsetzung |
 |---|---|
-| Framework | FastAPI (Pydantic v2), Python 3.11 |
+| Framework | FastAPI (Pydantic v2), Python 3.14 |
 | Datenbank | SQLAlchemy 2.0 async (asyncpg), Alembic-Migrationen `0001`–`0029` |
 | Auth | PyJWT (HS256 fest), bcrypt, Refresh-Token als HttpOnly-Cookie, `token_version` und Redis-Sperrliste (`core/token_denylist.py`) |
 | Rechte | `require_permission`, `require_any_permission`, `assert_team_access` (`core/auth.py`) |

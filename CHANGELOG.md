@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### PostgreSQL 18, Redis 8 und Python 3.14
+
+- **PostgreSQL 16 → 18** (`postgres:18-alpine`, 18.6) in Compose, CI und Doku. Das Volume `pgdata` (Proxmox: `/data/db`) hängt jetzt unter `/var/lib/postgresql`, der Cluster liegt wie im offiziellen Image ab 18 in `18/docker`.
+- **Neu: `scripts/postgres-upgrade.sh`**, von `scripts/update.sh` und `scripts/proxmox-setup.sh` aufgerufen. Es stoppt die Anwendung, erstellt mit PostgreSQL 16 in einem Container ohne Netzwerk einen Dump und prüft ihn. Danach spielt es den Dump in einen neuen 18er-Cluster im Zwischenverzeichnis ein, in einer Transaktion. Es vergleicht die Zeilenzahlen jeder Tabelle und die Alembic-Revision und schaltet erst dann um. Die Dateien von PostgreSQL 16 bleiben als Rollback-Kopie liegen (`--remove-old-data` löscht sie später). Schlägt ein Schritt fehl, bleibt alles beim Alten. Läuft nach einem Rollback wieder PostgreSQL 16 auf den alten Dateien, startet der `db`-Dienst nicht mehr auf der veralteten 18er-Kopie. Das Skript fragt dann nach `--redo` oder `--keep-new` ([Update-Anleitung](docs/documentation/installation/update.md#versionshinweis-postgresql-18-redis-8-und-python-314-2026-09), [Betrieb](docs/operations.md#postgresql-major-upgrade)).
+- **`update.sh`** macht nach dem `git pull` mit der neuen Fassung weiter, wenn sich das Skript selbst geändert hat. Läuft das Backend nicht (abgebrochenes Update), überschreibt es den Rollback-Punkt in `.deploy-state` nicht.
+- **Backend-Image:** `postgresql-client-18` aus apt.postgresql.org statt Debians `postgresql-client` (17). So passen `pg_dump`/`pg_restore` für Backup, Restore und Restore-Test zur Server-Version (`PG_MAJOR` im Dockerfile). Der Build bricht ab, wenn die Version nicht stimmt.
+- **Redis 7 → 8** (`redis:8-alpine`, 8.10) in Compose und CI. Redis 8 übernimmt die Daten von Redis 7 unverändert. Pub/Sub, Cache, Rate-Limit-Skript, Token-Sperrliste und Celery-Broker sind gegen Redis 8 getestet. Hinweise zur Lizenz (AGPLv3/RSALv2/SSPLv1) und zum Rollback (Redis 7 liest die Datei von Redis 8 nicht) stehen in der Update-Anleitung.
+- **Python 3.11 → 3.14** (`python:3.14-slim`, CI, `requires-python >=3.14`, Ruff `py314`, mypy `python_version = "3.14"`). Alle festgelegten Pakete haben Wheels für 3.14 auf x86-64 und ARM64. Lockfiles mit `make lock-backend` für 3.14 neu erzeugt (die Marker für ältere Pythons entfallen: numpy nur noch 2.5.3, kein `async-timeout`/`tomli`). Ruff-Umstellungen: PEP-695-Typparameter, `except A, B` ohne Klammern (PEP 758), keine Anführungszeichen mehr um Annotationen. `scripts/create_admin.py` übergibt uvloop per `loop_factory` statt der in 3.14 veralteten Event-Loop-Policy.
+- Alle Backend-Pakete sind auf dem neuesten stabilen Stand. pydantic bleibt auf 2.13.5, weil 2.14 (und damit pydantic-core 2.49) nur als Beta vorliegt.
+- Traefik (v3.7), Prometheus, Alertmanager, Blackbox-, Node- und Postgres-Exporter sind bereits auf dem neuesten Stand. Der postgres-exporter v0.20.1 liest alle Collector-Daten von PostgreSQL 18.
+- Test `test_create_admin_refuses_a_long_password_even_in_development` setzt `PYTHONPATH` und läuft damit auch außerhalb des Images.
+
 ### ECER 2026: beide Lesarten wählbar
 
 - Neue Formel-Vorlagen `ecer_2026_open_results` (Open ohne Paper, wie die veröffentlichten Ergebnisse) und `ecer_2026_botball_rubric` (Doku als Anteil am Bewertungsmaximum, wie die Amendments). Damit entscheidet der Veranstalter pro Saison, welche Lesart gilt; die bisherigen Vorlagen bleiben unverändert.
