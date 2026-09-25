@@ -47,6 +47,20 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
+// Pages open live WebSockets (lib/liveSocket). Under test they never connect
+// to anything; the tests of the live streams install their own fake.
+class InertWebSocket {
+  readyState = 0;
+  onopen: (() => void) | null = null;
+  onmessage: ((frame: { data: unknown }) => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor(public url: string) {}
+  send() {}
+  close() {}
+}
+Object.defineProperty(globalThis, "WebSocket", { value: InertWebSocket, writable: true, configurable: true });
+
 // jsdom has no object URLs (blob downloads, image previews).
 if (typeof URL.createObjectURL !== "function") {
   Object.assign(URL, { createObjectURL: () => "blob:test", revokeObjectURL: () => undefined });

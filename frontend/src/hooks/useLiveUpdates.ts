@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEvent } from "@/hooks/useEvents";
-import { subscribeLive } from "@/lib/liveSocket";
+import { subscribeEventLive, subscribeLive, type LiveMessage } from "@/lib/liveSocket";
+import { useAuthStore } from "@/store/authStore";
 import type { EventSummary } from "@/api/types";
 
 /**
@@ -23,32 +24,37 @@ function hasLiveStream(event: EventSummary | undefined): event is EventSummary {
 }
 
 /**
- * Keeps the queries of an event current through its live WebSocket when the
- * event has one (it is public). `live` is false while the stream is not
- * connected; pages then poll (`pollWhileOffline`).
+ * Keeps the queries of an event current through a live WebSocket: the
+ * authenticated stream of the event while signed in (any event the user may
+ * read), else the public stream when the event has one. `live` is false while
+ * the stream is not connected; pages then poll (`pollWhileOffline`).
  */
 export function useLiveUpdates(eventId: string | undefined): { live: boolean } {
   const queryClient = useQueryClient();
+  // Only whether there is a session: a refreshed token is handed to the open
+  // socket by lib/liveSocket, without reconnecting.
+  const signedIn = useAuthStore((state) => !!state.accessToken);
   const { data: event } = useEvent(eventId);
   const slug = hasLiveStream(event) ? event.slug : null;
+  const authenticatedId = signedIn && eventId ? eventId : null;
+  const publicSlug = authenticatedId ? null : slug;
   const [live, setLive] = useState(false);
 
   useEffect(() => {
-    if (!slug) {
+    if (!authenticatedId && !publicSlug) {
       setLive(false);
       return;
     }
-    return subscribeLive(
-      slug,
-      (message) => {
-        const keys = INVALIDATES[message.event];
-        if (keys) void queryClient.invalidateQueries({ predicate: (query) => keys.includes(String(query.queryKey[0])) });
-      },
-      setLive,
-    );
-  }, [slug, queryClient]);
+    const onMessage = (message: LiveMessage) => {
+      const keys = INVALIDATES[message.event];
+      if (keys) void queryClient.invalidateQueries({ predicate: (query) => keys.includes(String(query.queryKey[0])) });
+    };
+    return authenticatedId
+      ? subscribeEventLive(authenticatedId, onMessage, setLive)
+      : subscribeLive(publicSlug!, onMessage, setLive);
+  }, [authenticatedId, publicSlug, queryClient]);
 
-  return { live: !!slug && live };
+  return { live: (!!authenticatedId || !!publicSlug) && live };
 }
 
 /** refetchInterval: none while live updates arrive, `ms` otherwise. */

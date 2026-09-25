@@ -80,6 +80,8 @@ export default defineConfig({
       "/api": {
         target: process.env.VITE_API_URL ?? "http://localhost:8000",
         changeOrigin: true,
+        // The live streams (/api/v1/public/events/{slug}/ws, /api/v1/events/{id}/ws).
+        ws: true,
       },
     },
   },
