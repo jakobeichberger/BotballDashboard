@@ -9,6 +9,7 @@ Eine Unterrichtsstunde (60 Minuten) für das Robotik-Team über das Arbeiten mit
 | Foliensatz (Artifact „Von der Frage zum Auftrag“) | 35 Folien mit Sprechernotizen. Die letzten zwei sind ein Anhang. |
 | [`demo-gamedoc-2027.md`](demo-gamedoc-2027.md) | Drehbuch der Live-Vorführung mit Prompts zum Kopieren, Klickweg und Plan B |
 | [`kurz-demos.md`](kurz-demos.md) | Zwei kurze Vorführungen: vage oder präzise, KI als Code-Reviewer |
+| [`schueler-handbuch.md`](schueler-handbuch.md) · [`schueler-handbuch.html`](schueler-handbuch.html) | Handbuch für Schülerinnen und Schüler: LEDVV, sechs Hebel, Prüfen, Spielregeln, Übungen mit Lösungen, Glossar. Die HTML-Fassung hat einen Prompt-Baukasten zum Ausprobieren und läuft im Browser ohne Server. |
 | [`spickzettel.md`](spickzettel.md) | LEDVV-Spickzettel und Übung „Prompt-Werkstatt“ zum Ausdrucken |
 | [`fallbeispiele.md`](fallbeispiele.md) | Die echten Beispiele aus dem Projekt zum Nachlesen |
 | [`demo/botball-2026-sheet.json`](demo/botball-2026-sheet.json) | Fertiger Bewertungsbogen 2026 als JSON (Vorlage und Plan B) |
@@ -52,7 +53,7 @@ Die vier Stolpersteine aus dem Projekt lassen sich jeweils einem fehlenden Buchs
    - `docs/assets/2026-Botball-Seeding-Score-Sheet.pdf`
    - `docs/assets/2026-Botball-Scoring-Examples.pdf`
    - `docs/schulung/demo/botball-2026-sheet.json`
-4. Den Spickzettel für alle ausdrucken.
+4. Den Spickzettel für alle ausdrucken und den Schülern das Handbuch (`schueler-handbuch.html` oder den Link zur geteilten Seite) geben.
 5. Auf der Titelfolie Datum und Namen eintragen.
 
 ## Hinweise für die Lehrkraft

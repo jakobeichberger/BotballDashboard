@@ -6,6 +6,7 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ### Schulung „Von der Frage zum Auftrag“
 
+- `docs/schulung/schueler-handbuch.md` und `schueler-handbuch.html`: Handbuch für Schülerinnen und Schüler mit LEDVV, Hebeln für bessere Ergebnisse, Prüfregeln, Übungen mit Lösungen und Glossar. Die HTML-Fassung enthält einen Prompt-Baukasten, der Aufträge nach LEDVV zusammensetzt, fehlende Teile anzeigt und vor Passwörtern im Text warnt.
 - `docs/schulung/`: Unterlagen für eine 60-minütige Schulung zum Arbeiten mit KI-Agenten am Beispiel dieses Projekts. Enthalten sind ein Lehrerleitfaden mit Ablauf, LEDVV als Aufbau für Aufträge, ein Spickzettel mit Übung, Kurz-Demos und Fallbeispiele.
 - Drehbuch für die Live-Vorführung „Gamedoc 2027 analysieren und in der App hinterlegen“ (`demo-gamedoc-2027.md`) mit Prompts, Klickweg und Plan B. Dazu kommen der Bogen 2026 als JSON (`demo/botball-2026-sheet.json`) und die erwartete Analyse (`demo/analyse-2026-erwartet.md`). Beide sind aus der Vorlage `botball_2026` erzeugt, alle 13 offiziellen Scoring-Beispiele wurden dabei nachgerechnet.
 
