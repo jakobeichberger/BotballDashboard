@@ -67,3 +67,6 @@ secrets/
 # Playwright
 frontend/test-results/
 frontend/playwright-report/
+# Session chains the e2e helpers hand from test to test (refresh cookies).
+frontend/e2e/.auth/
+frontend/coverage/
