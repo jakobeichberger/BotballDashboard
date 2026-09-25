@@ -20,7 +20,7 @@ export default function ProtectedRoute({ requirePermission, children }: Props) {
   // profile with the permissions: wait for it instead of redirecting a deep
   // link or a reload to the start page.
   if (requirePermission && !user) {
-    return <div className="p-6 text-gray-500" role="status">{t("loadingEllipsis")}</div>;
+    return <div className="p-6 text-leise" role="status">{t("loadingEllipsis")}</div>;
   }
 
   if (requirePermission && !hasPermission(requirePermission)) {

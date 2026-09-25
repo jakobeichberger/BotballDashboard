@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/errors";
+import { LogoBadge, Wordmark } from "@/components/BrandMark";
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation("auth");
@@ -31,19 +32,21 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-papier p-4">
       <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900 dark:text-white">
-          {t("forgot.title")}
-        </h1>
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <LogoBadge size="lg" />
+          <Wordmark className="text-xl" />
+          <h1 className="page-title mt-2">{t("forgot.title")}</h1>
+        </div>
         <div className="card p-6 space-y-4">
           {sent ? (
-            <p role="status" className="text-sm text-gray-700 dark:text-gray-300">
+            <p role="status" className="text-sm text-fg">
               {t("forgot.sent")}
             </p>
           ) : (
             <form onSubmit={submit} className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-leise">
                 {t("forgot.intro")}
               </p>
               <div>
@@ -59,17 +62,17 @@ export default function ForgotPasswordPage() {
                 />
               </div>
               {error && (
-                <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
+                <div role="alert" className="rounded-eng border border-danger/40 bg-danger/[0.07] px-3 py-2 text-sm font-medium text-danger">
                   {error}
                 </div>
               )}
-              <button type="submit" className="btn-primary w-full justify-center" disabled={busy || !email}>
+              <button type="submit" className="btn-primary btn-lg w-full" disabled={busy || !email}>
                 {busy ? t("forgot.sending") : t("forgot.submit")}
               </button>
             </form>
           )}
           <p className="text-center text-sm">
-            <Link to="/login" className="text-primary-600 hover:underline dark:text-primary-400">
+            <Link to="/login" className="link">
               {t("forgot.backToLogin")}
             </Link>
           </p>

@@ -89,7 +89,7 @@
     "confirm": "Confirm",
     "removeAssignment": "Remove assignment"
   },
-  "add": "+ Add team",
+  "add": "Add team",
   "filter": {
     "search": "Search",
     "searchPlaceholder": "Name, number, school or city",
@@ -163,5 +163,6 @@
     "maxParts": "max. parts",
     "maxGrams": "max. g",
     "noPrintJobs": "No print jobs"
-  }
+  },
+  "subtitle": "Manage teams, members and registrations."
 }

@@ -98,7 +98,7 @@ export default function PrintJobDetailPage() {
   const downloadM = useMutation({ mutationFn: () => downloadPrintFile(job!), onError });
 
   if (isLoading) {
-    return <div className="p-6 text-gray-500">{t("common:loading")}</div>;
+    return <div className="p-6 text-leise">{t("common:loading")}</div>;
   }
 
   if (isError || !job) {
@@ -107,7 +107,7 @@ export default function PrintJobDetailPage() {
         <EventLink to="/printing" className="btn-secondary text-sm mb-6">
           <ArrowLeft className="w-4 h-4" /> {t("detail.back")}
         </EventLink>
-        <div className="card p-8 text-center text-gray-400">{t("detail.notFound")}</div>
+        <div className="card p-8 text-center text-leise">{t("detail.notFound")}</div>
       </div>
     );
   }
@@ -156,19 +156,19 @@ export default function PrintJobDetailPage() {
         <ArrowLeft className="w-4 h-4" /> {t("detail.back")}
       </EventLink>
 
-      {info && <p role="status" className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-100">{info}</p>}
-      {message && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">{message}</p>}
+      {info && <p role="status" className="rounded-lg border border-warning/45 bg-warning/[0.08] p-3 text-sm text-warning">{info}</p>}
+      {message && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/[0.07] p-3 text-sm text-danger">{message}</p>}
 
       {/* Header */}
       <div className="card p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Printer className="w-6 h-6" />
+            <h1 className="page-title flex items-center gap-2">
+              <Printer className="h-7 w-7 shrink-0 text-akzent" />
               {job.file_name}
             </h1>
             {team && (
-              <EventLink to={`/teams/${team.id}`} className="text-sm text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 mt-1">
+              <EventLink to={`/teams/${team.id}`} className="text-sm text-akzent hover:underline flex items-center gap-1 mt-1">
                 <Users className="w-3.5 h-3.5" /> {team.name}
               </EventLink>
             )}
@@ -180,7 +180,7 @@ export default function PrintJobDetailPage() {
 
         {status === "printing" && (
           <div className="mt-4">
-            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex justify-between text-sm text-leise">
               <span>{job.progress != null ? `${job.progress.toFixed(0)} %` : t("detail.running")}</span>
               <span>{t("detail.remaining", { time: formatDuration(job.remaining_seconds) })}</span>
             </div>
@@ -190,18 +190,18 @@ export default function PrintJobDetailPage() {
           </div>
         )}
         {job.error_message && (
-          <p className="mt-4 flex items-center gap-2 text-sm text-red-600"><AlertTriangle className="w-4 h-4" /> {job.error_message}</p>
+          <p className="mt-4 flex items-center gap-2 text-sm text-danger"><AlertTriangle className="w-4 h-4" /> {job.error_message}</p>
         )}
         {status === "rejected" && job.rejection_reason && (
-          <p className="mt-4 text-sm text-red-600"><strong>{t("detail.rejectionReasonLabel")}</strong> {job.rejection_reason}</p>
+          <p className="mt-4 text-sm text-danger"><strong>{t("detail.rejectionReasonLabel")}</strong> {job.rejection_reason}</p>
         )}
-        {job.quota_override && <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-300">{t("detail.quotaOverride")}</p>}
+        {job.quota_override && <p className="mt-2 text-xs text-warning">{t("detail.quotaOverride")}</p>}
 
         <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           {details.map(([label, val]) => (
             <div key={label}>
-              <dt className="text-gray-500">{label}</dt>
-              <dd className="text-gray-900 dark:text-white">{val}</dd>
+              <dt className="text-leise">{label}</dt>
+              <dd className="text-fg">{val}</dd>
             </div>
           ))}
         </dl>
@@ -226,15 +226,15 @@ export default function PrintJobDetailPage() {
         </div>
 
         {job.notes && (
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 border-t pt-3">{job.notes}</p>
+          <p className="mt-4 text-sm text-leise border-t pt-3">{job.notes}</p>
         )}
       </div>
 
       {/* Admin actions */}
       {canAdmin && (
-        <section className="card p-6 space-y-4 border-primary-200 dark:border-primary-900">
-          <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-primary-500" /> {t("detail.admin")}
+        <section className="card p-6 space-y-4 border-primary/30">
+          <h2 className="font-semibold text-fg flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-akzent" /> {t("detail.admin")}
           </h2>
           <div className="flex flex-wrap items-end gap-3">
             {status === "pending" && (
@@ -300,15 +300,15 @@ export default function PrintJobDetailPage() {
 
       {/* Timeline */}
       <section className="card p-6">
-        <h2 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <h2 className="font-semibold text-fg mb-4 flex items-center gap-2">
           <Clock className="w-4 h-4" /> {t("detail.history")}
         </h2>
         <ul className="space-y-3 text-sm">
           {timeline.map(([label, val]) => (
             <li key={label} className="flex items-center gap-3">
               <span className={`w-2 h-2 rounded-full ${val ? "bg-primary-500" : "bg-gray-300 dark:bg-gray-700"}`} />
-              <span className="text-gray-500 w-40">{label}</span>
-              <span className="text-gray-900 dark:text-white">{fmtDate(val)}</span>
+              <span className="text-leise w-40">{label}</span>
+              <span className="text-fg">{fmtDate(val)}</span>
             </li>
           ))}
         </ul>

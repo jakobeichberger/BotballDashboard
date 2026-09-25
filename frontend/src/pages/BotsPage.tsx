@@ -82,8 +82,8 @@ export default function BotsPage() {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <BotIcon className="w-6 h-6" /> {t("title")}
+        <h1 className="page-title flex items-center gap-2">
+          <BotIcon className="h-7 w-7 shrink-0 text-akzent" /> {t("title")}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           <select aria-label={t("filter.season")} className="input text-sm w-44" value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}>
@@ -161,34 +161,34 @@ export default function BotsPage() {
               {t("form.create")}
             </button>
           </div>
-          <p className="text-xs text-gray-400">{t("form.imageHint")}</p>
+          <p className="text-xs text-leise">{t("form.imageHint")}</p>
         </div>
       )}
 
-      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
+      {isLoading && <p className="text-leise">{t("common:loading")}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {bots?.map((bot: any) => (
           <EventLink key={bot.id} to={`/bots/${bot.id}`}
-                className="card block overflow-hidden hover:shadow-md hover:border-primary-300 dark:hover:border-primary-700 transition-all">
+                className="card block overflow-hidden hover:shadow-md hover:border-primary/40 transition-all">
             <BotImage botId={bot.id} imageName={bot.image_name} className="h-40 w-full" />
             <div className="p-4">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-gray-900 dark:text-white">{bot.name}</h3>
+                <h3 className="font-semibold text-fg">{bot.name}</h3>
                 <span className={bot.team_id ? "badge-blue" : "badge-gray"}>{bot.team_id ? t("own") : t("external")}</span>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-leise mt-1">
                 {bot.team_id ? teamName(bot.team_id) : bot.external_team_name}
               </p>
-              {bot.season_id && <p className="text-xs text-gray-400 mt-0.5">{seasonName(bot.season_id)}</p>}
+              {bot.season_id && <p className="text-xs text-leise mt-0.5">{seasonName(bot.season_id)}</p>}
               {bot.description && (
-                <p className="text-sm text-gray-500 mt-2 line-clamp-2">{bot.description}</p>
+                <p className="text-sm text-leise mt-2 line-clamp-2">{bot.description}</p>
               )}
             </div>
           </EventLink>
         ))}
         {bots?.length === 0 && (
-          <div className="col-span-3 text-center py-12 text-gray-400">{t("empty")}</div>
+          <div className="col-span-3 text-center py-12 text-leise">{t("empty")}</div>
         )}
       </div>
     </div>

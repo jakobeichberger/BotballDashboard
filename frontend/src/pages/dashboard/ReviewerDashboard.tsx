@@ -25,9 +25,9 @@ export default function ReviewerDashboard({ papers, season, announcements, summa
   const done = all.filter((p) => DONE_STATUSES.has(p.status));
 
   const statItems = [
-    { label: t("stat.toReview"), value: queue.length, icon: Clock },
-    { label: t("stat.completed"), value: done.length, icon: CheckCircle2 },
-    { label: t("stat.papersTotal"), value: all.length, icon: FileText },
+    { label: t("stat.toReview"), value: queue.length, icon: Clock, tone: "warning" as const },
+    { label: t("stat.completed"), value: done.length, icon: CheckCircle2, tone: "success" as const },
+    { label: t("stat.papersTotal"), value: all.length, icon: FileText, tone: "primary" as const },
   ];
 
   const deadline = season?.paper_submission_deadline;
@@ -37,7 +37,7 @@ export default function ReviewerDashboard({ papers, season, announcements, summa
       <StatGrid items={statItems} ariaLabel={t("stat.reviewLabel")} />
 
       {deadline && (
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        <p className="text-sm text-leise mb-6">
           {t("paperDeadline")}{" "}
           <time dateTime={deadline} className="font-medium">
             {formatDate(deadline)}

@@ -25,12 +25,12 @@ export default function ChecklistConfirmDialog({ open, items, pending, error, on
           <li key={item.key}>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={!!checked[item.key]} onChange={(e) => setChecked({ ...checked, [item.key]: e.target.checked })} />
-              {item.label}{item.required && <span className="text-red-600" aria-label={t("rules.required")}>*</span>}
+              {item.label}{item.required && <span className="text-danger" aria-label={t("rules.required")}>*</span>}
             </label>
           </li>
         ))}
       </ul>
-      {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onCancel}>{t("common:cancel")}</button>
         <button type="button" className="btn-primary" disabled={missing.length > 0 || pending} onClick={() => onConfirm(checked)}>{t("rules.confirmScore")}</button>

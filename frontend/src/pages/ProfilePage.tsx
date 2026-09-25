@@ -106,16 +106,16 @@ export default function ProfilePage() {
 
   return (
     <div className="p-6 max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-        <UserCircle className="w-6 h-6" /> {t("title")}
+      <h1 className="page-title flex items-center gap-2">
+        <UserCircle className="h-7 w-7 shrink-0 text-akzent" /> {t("title")}
       </h1>
 
       {/* Profile */}
       <section className="card p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-white">{t("data")}</h2>
+        <h2 className="font-semibold text-fg">{t("data")}</h2>
         <div>
           <label className="label" htmlFor="profile-email">{t("common:email")}</label>
-          <input id="profile-email" className="input bg-gray-50 dark:bg-gray-800" value={user?.email ?? ""} disabled />
+          <input id="profile-email" className="input bg-flaeche-2" value={user?.email ?? ""} disabled />
         </div>
         <div>
           <label className="label" htmlFor="profile-name">{t("displayName")}</label>
@@ -142,13 +142,13 @@ export default function ProfilePage() {
           <button className="btn-primary text-sm disabled:opacity-40" disabled={!name || saveM.isPending} onClick={() => saveM.mutate()}>
             <Save className="w-4 h-4" /> {t("common:save")}
           </button>
-          {saveM.isSuccess && <span className="text-sm text-green-600">{t("saved")}</span>}
+          {saveM.isSuccess && <span className="text-sm text-success">{t("saved")}</span>}
         </div>
       </section>
 
       {/* E-mail */}
       <section className="card p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h2 className="font-semibold text-fg flex items-center gap-2">
           <Mail className="w-4 h-4" /> {t("changeEmail")}
         </h2>
         <div>
@@ -166,10 +166,10 @@ export default function ProfilePage() {
 
       {/* Notifications */}
       <section className="card p-6 space-y-4" aria-labelledby="notification-settings">
-        <h2 id="notification-settings" className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h2 id="notification-settings" className="font-semibold text-fg flex items-center gap-2">
           <Bell className="w-4 h-4" /> {t("notifications")}
         </h2>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-flaeche-2 p-3 text-sm">
           <span>
             {t("pushOnDevice")} <strong>{push.isSubscribed ? t("pushOn") : t("pushOff")}</strong>
           </span>
@@ -182,7 +182,7 @@ export default function ProfilePage() {
             {push.isSubscribed ? t("pushDisable") : t("common:push.enable")}
           </button>
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-leise">
           {t("pushHint")}
         </p>
         <ul className="space-y-2">
@@ -197,8 +197,8 @@ export default function ProfilePage() {
                   onChange={(e) => prefsM.mutate({ [key]: e.target.checked })}
                 />
                 <span>
-                  <span className="font-medium text-gray-900 dark:text-white">{t(`preference.${key}.label`)}</span>
-                  <span className="block text-gray-500">{t(`preference.${key}.hint`)}</span>
+                  <span className="font-medium text-fg">{t(`preference.${key}.label`)}</span>
+                  <span className="block text-leise">{t(`preference.${key}.hint`)}</span>
                 </span>
               </label>
             </li>
@@ -208,7 +208,7 @@ export default function ProfilePage() {
 
       {/* Password */}
       <section className="card p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h2 className="font-semibold text-fg flex items-center gap-2">
           <KeyRound className="w-4 h-4" /> {t("changePassword")}
         </h2>
         <div>
@@ -218,7 +218,7 @@ export default function ProfilePage() {
         <div>
           <label className="label" htmlFor="new-password">{t("auth:reset.newPassword")}</label>
           <input id="new-password" className="input" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-          <p className={newPwProblem ? "mt-1 text-xs text-red-600" : "mt-1 text-xs text-gray-500"}>{newPwProblem ?? passwordHint()}</p>
+          <p className={newPwProblem ? "mt-1 text-xs text-danger" : "mt-1 text-xs text-leise"}>{newPwProblem ?? passwordHint()}</p>
         </div>
         <div>
           <button className="btn-primary text-sm disabled:opacity-40"
@@ -231,14 +231,14 @@ export default function ProfilePage() {
 
       {/* DSGVO */}
       <section className="card p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-white">{t("privacy")}</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <h2 className="font-semibold text-fg">{t("privacy")}</h2>
+        <p className="text-sm text-leise">
           {t("privacyHint")}
         </p>
         <button className="btn-secondary text-sm" disabled={exportM.isPending} onClick={() => exportM.mutate()}>
           <Download className="w-4 h-4" /> {t("export")}
         </button>
-        <div className="border-t pt-4 dark:border-gray-800 space-y-3">
+        <div className="border-t pt-4 space-y-3">
           <label className="label" htmlFor="delete-password">{t("confirmPassword")}</label>
           <input id="delete-password" className="input" type="password" value={deletePw} onChange={(e) => setDeletePw(e.target.value)} />
           <button className="btn-danger text-sm disabled:opacity-40" disabled={!deletePw || deleteM.isPending}

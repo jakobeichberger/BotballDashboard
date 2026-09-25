@@ -33,7 +33,7 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
       <button
         onClick={handleClick}
         disabled={loading}
-        className={`btn-secondary gap-1.5 text-xs ${
+        className={`btn-secondary gap-1.5 text-sm ${
           variant === "csv" ? "opacity-80" : ""
         } disabled:opacity-50 disabled:cursor-not-allowed`}
         title={t("export.downloadTitle", { label })}
@@ -41,14 +41,14 @@ export function ExportButton({ url, filename, label, variant = "pdf" }: ExportBu
         {loading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : variant === "pdf" ? (
-          <FileText className="w-3.5 h-3.5 text-red-500" />
+          <FileText className="w-3.5 h-3.5 text-danger" />
         ) : (
-          <Download className="w-3.5 h-3.5 text-green-600" />
+          <Download className="w-3.5 h-3.5 text-success" />
         )}
         {label}
       </button>
       {error && (
-        <div className="absolute top-full mt-1 left-0 flex items-center gap-1 text-xs text-red-500 whitespace-nowrap">
+        <div className="absolute top-full mt-1 left-0 flex items-center gap-1 text-xs text-danger whitespace-nowrap">
           <AlertCircle className="w-3 h-3" />
           {error}
         </div>

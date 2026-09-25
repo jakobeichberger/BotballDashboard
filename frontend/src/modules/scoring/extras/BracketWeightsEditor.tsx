@@ -51,7 +51,7 @@ export default function BracketWeightsEditor({
     <div className="card p-4 space-y-3">
       <div>
         <h2 className="font-medium">{title ?? t("formulas.bracketWeights")}</h2>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-leise">
           {hint ?? <Trans t={t} i18nKey="formulas.bracketWeightsHint" components={{ code: <code className="font-mono" /> }} />}
         </p>
       </div>
@@ -68,7 +68,7 @@ export default function BracketWeightsEditor({
                 setDraft((p) => p.map((row, idx) => (idx === i ? [e.target.value, row[1]] : row)))
               }
             />
-            <span className="text-gray-400">×</span>
+            <span className="text-leise">×</span>
             <input
               className="input font-mono max-w-[12rem]"
               placeholder="1.0"

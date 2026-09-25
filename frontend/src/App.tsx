@@ -26,11 +26,11 @@ function AppRoutes() {
   useRestoreSession();
   useCurrentUser();
   const sessionChecked = useAuthStore((state) => state.sessionChecked);
-  if (!sessionChecked) return <div className="grid h-screen place-items-center text-gray-500" role="status">{t("restoringSession")}</div>;
+  if (!sessionChecked) return <div className="grid h-screen place-items-center text-leise" role="status">{t("restoringSession")}</div>;
   // A failing page (render error, chunk that cannot be loaded) shows an error
   // with a reload button instead of a blank screen; navigating away clears it.
   return <ErrorBoundary resetKey={location.pathname}>
-    <Suspense fallback={<div className="grid h-screen place-items-center text-gray-500" role="status">{t("loadingEllipsis")}</div>}>
+    <Suspense fallback={<div className="grid h-screen place-items-center text-leise" role="status">{t("loadingEllipsis")}</div>}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

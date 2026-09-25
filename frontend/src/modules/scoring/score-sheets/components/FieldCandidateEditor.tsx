@@ -77,10 +77,10 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
   }
 
   const OCR_STATUS_COLOR: Record<string, string> = {
-    done: 'text-green-600 dark:text-green-400',
-    processing: 'text-yellow-600 dark:text-yellow-400',
-    pending: 'text-gray-500',
-    failed: 'text-red-600 dark:text-red-400',
+    done: 'text-success',
+    processing: 'text-warning',
+    pending: 'text-leise',
+    failed: 'text-danger',
   }
 
   return (
@@ -92,7 +92,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
           {t(`scoreSheets.ocr.${template.ocr_status}`)}
         </span>
         {template.ocr_status === 'done' && (
-          <span className="text-gray-500">
+          <span className="text-leise">
             — {rawCandidates.length} {t('scoreSheets.ocr.candidatesFound')}
           </span>
         )}
@@ -102,7 +102,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
       {rawCandidates.length > 0 && (
         <button
           type="button"
-          className="text-sm text-blue-600 dark:text-blue-400 underline"
+          className="text-sm text-info underline"
           onClick={() => setShowCandidates((v) => !v)}
         >
           {showCandidates
@@ -113,9 +113,9 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
 
       {/* Raw candidates table */}
       {showCandidates && rawCandidates.length > 0 && (
-        <div className="overflow-x-auto rounded border dark:border-gray-700">
+        <div className="overflow-x-auto rounded border">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-100 dark:bg-gray-800">
+            <thead className="bg-flaeche-2">
               <tr>
                 <th className="px-3 py-2 text-left">{t('scoreSheets.candidates.rawText')}</th>
                 <th className="px-3 py-2 text-left">{t('scoreSheets.candidates.suggestedLabel')}</th>
@@ -129,8 +129,8 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
               {rawCandidates.map((c, i) => {
                 const alreadyAdded = fields.some((f) => f.key === c.suggested_key)
                 return (
-                  <tr key={i} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                    <td className="px-3 py-1.5 font-mono text-xs text-gray-500 max-w-[200px] truncate">
+                  <tr key={i} className="border-t hover:bg-flaeche-2">
+                    <td className="px-3 py-1.5 font-mono text-xs text-leise max-w-[200px] truncate">
                       {c.raw_text}
                     </td>
                     <td className="px-3 py-1.5">{c.suggested_label}</td>
@@ -141,22 +141,22 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                       <span
                         className={
                           c.confidence >= 0.8
-                            ? 'text-green-600'
+                            ? 'text-success'
                             : c.confidence >= 0.5
-                            ? 'text-yellow-600'
-                            : 'text-red-500'
+                            ? 'text-warning'
+                            : 'text-danger'
                         }
                       >
                         {Math.round(c.confidence * 100)}%
                       </span>
                     </td>
-                    <td className="px-3 py-1.5 text-right text-gray-400">{c.page}</td>
+                    <td className="px-3 py-1.5 text-right text-leise">{c.page}</td>
                     <td className="px-3 py-1.5 text-right">
                       <button
                         type="button"
                         disabled={alreadyAdded}
                         onClick={() => addFromCandidate(c)}
-                        className="text-xs text-blue-600 dark:text-blue-400 disabled:opacity-30"
+                        className="text-xs text-info disabled:opacity-30"
                       >
                         {alreadyAdded ? '✓' : t('scoreSheets.candidates.add')}
                       </button>
@@ -180,9 +180,9 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
           </button>
         </div>
 
-        <div className="overflow-x-auto rounded border dark:border-gray-700">
+        <div className="overflow-x-auto rounded border">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-100 dark:bg-gray-800">
+            <thead className="bg-flaeche-2">
               <tr>
                 <th className="px-3 py-2 text-left">{t('scoreSheets.fields.key')}</th>
                 <th className="px-3 py-2 text-left">{t('scoreSheets.fields.label')}</th>
@@ -195,7 +195,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
             </thead>
             <tbody>
               {fields.map((f, idx) => (
-                <tr key={idx} className="border-t dark:border-gray-700">
+                <tr key={idx} className="border-t">
                   <td className="px-2 py-1">
                     <input
                       aria-label={`${t('scoreSheets.fields.key')} ${idx + 1}`}
@@ -259,7 +259,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                     <button
                       type="button"
                       onClick={() => removeField(idx)}
-                      className="grid h-11 w-11 place-items-center rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                      className="grid h-11 w-11 place-items-center rounded text-danger hover:bg-danger/10"
                       aria-label={t('scoreSheets.fields.removeRow', { row: idx + 1, key: f.key || '–' })}
                     >
                       <span aria-hidden="true">✕</span>
@@ -269,7 +269,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
               ))}
               {fields.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-gray-400 text-sm">
+                  <td colSpan={7} className="px-3 py-6 text-center text-leise text-sm">
                     {t('scoreSheets.fields.empty')}
                   </td>
                 </tr>
@@ -305,7 +305,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
       </div>
 
       {confirm.isError && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="text-sm text-danger">
           {t('scoreSheets.fields.confirmError')}
         </p>
       )}

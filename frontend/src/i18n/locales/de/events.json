@@ -186,7 +186,8 @@
     "statusOf": "Status {{code}}",
     "empty": "Noch kein Zeitplan vorhanden.",
     "brackets": "Brackets",
-    "bracketHint": "Sieger anklicken, um das Ergebnis zu speichern. Sieger und Verlierer werden automatisch weitergeleitet; eine Korrektur ist möglich, solange das Folgematch noch nicht gespielt ist."
+    "bracketHint": "Sieger anklicken, um das Ergebnis zu speichern. Sieger und Verlierer werden automatisch weitergeleitet; eine Korrektur ist möglich, solange das Folgematch noch nicht gespielt ist.",
+    "subtitle": "Matches, Tische und Zeiten des Events planen und verfolgen."
   },
   "seed": "Seed",
   "best": "Best",
@@ -203,5 +204,6 @@
   "discardEntriesConfirm": "Verwerfen",
   "schemaLoadFailed": "Das Wertungsschema konnte nicht geladen werden.",
   "publicLoadFailed": "Das Event konnte nicht geladen werden – bitte Verbindung prüfen.",
-  "liveTitle": "Botball Live"
+  "liveTitle": "Botball Live",
+  "mobileScoringSubtitle": "Punkte direkt am Spieltisch erfassen – auch ohne Verbindung."
 }

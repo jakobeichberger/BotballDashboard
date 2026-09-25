@@ -120,7 +120,7 @@ export default function EventScoringPage() {
     onError: (error: unknown) => { setConfirming(false); setMessage(apiErrorMessage(error, t("saveFailed"))); },
   });
 
-  if (schema.isLoading) return <div className="p-6 text-gray-500" role="status">{t("common:loadingEllipsis")}</div>;
+  if (schema.isLoading) return <div className="p-6 text-leise" role="status">{t("common:loadingEllipsis")}</div>;
   // 404 = no schema for this event (an empty state); anything else is an error.
   if (schema.isError && errorStatus(schema.error) === 404) return <div className="p-6"><div className="card p-8 text-center">{t("noSchema")}</div></div>;
   if (schema.isError) {
@@ -137,9 +137,14 @@ export default function EventScoringPage() {
   const disabled = !canWrite;
   return (
     <div className="mx-auto max-w-3xl p-4 md:p-6">
-      <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold"><Trophy className="text-yellow-500" />{t("mobileScoring")}</h1>
-      {!online && <p role="alert" className="mb-4 rounded-lg bg-amber-100 p-3 text-amber-900">{t("offlineScoring")}</p>}
-      {!canWrite && <p className="mb-4 rounded-lg bg-gray-100 p-3 dark:bg-gray-800">{t("readOnlyPermission")}</p>}
+      <header className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2"><Trophy className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{t("mobileScoring")}</h1>
+          <p className="page-subtitle">{t("mobileScoringSubtitle")}</p>
+        </div>
+      </header>
+      {!online && <p role="alert" className="mb-4 rounded-lg bg-warning/10 p-3 text-warning">{t("offlineScoring")}</p>}
+      {!canWrite && <p className="mb-4 rounded-lg bg-flaeche-2 p-3">{t("readOnlyPermission")}</p>}
       <div className="mb-5"><PendingScores filter={(entry) => entry.eventId === eventId} /></div>
       <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setMessage(""); setConfirming(true); }}>
         {matches.length > 0 && (
@@ -148,7 +153,7 @@ export default function EventScoringPage() {
             <button type="button" className="btn-secondary min-h-12 min-w-12 justify-center" onClick={() => step(-1)} disabled={matchIndex === 0} aria-label={t("previousMatch")}><ChevronLeft aria-hidden="true" /></button>
             <div className="min-w-0 text-center">
               <p className="truncate font-semibold">{currentMatch ? `${currentMatch.code} · ${t("table", { number: currentMatch.table_number ?? "–" })}` : t("withoutMatch")}</p>
-              <p className="text-xs text-gray-500">{currentMatch ? t("matchPosition", { current: matchIndex + 1, total: matches.length }) : t("swipeHint")}</p>
+              <p className="text-xs text-leise">{currentMatch ? t("matchPosition", { current: matchIndex + 1, total: matches.length }) : t("swipeHint")}</p>
             </div>
             <button type="button" className="btn-secondary min-h-12 min-w-12 justify-center" onClick={() => step(1)} disabled={matchIndex === matches.length - 1} aria-label={t("nextMatch")}><ChevronRight aria-hidden="true" /></button>
           </nav>
@@ -170,7 +175,7 @@ export default function EventScoringPage() {
           {entryCriteria.length > 0 && (
             <div>
               <p className="text-sm font-medium">{t("tiebreakers")}</p>
-              <p className="mb-2 text-xs text-gray-500">{t("tiebreakersHint")}</p>
+              <p className="mb-2 text-xs text-leise">{t("tiebreakersHint")}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {entryCriteria.map((criterion) => <label key={criterion.key} className="text-sm">{criterion.label}{criterion.direction === "min" ? " ↓" : ""}<input className="input mt-1 w-full" type="number" step="any" value={typeof tiebreak[criterion.key] === "number" ? String(tiebreak[criterion.key]) : ""} onChange={(e) => setTiebreak((current) => ({ ...current, [criterion.key]: Number(e.target.value) }))} /></label>)}
               </div>
@@ -180,8 +185,8 @@ export default function EventScoringPage() {
 
         {scheduledMatchId && outcome.data?.sides && <OutcomeCard outcome={outcome.data} teamName={teamName} />}
 
-        <div className="sticky bottom-0 card flex items-center justify-between gap-4 border-primary-200 p-4"><div><p className="text-sm text-gray-500">{t("calculatedTotal")}</p><p className="text-3xl font-bold">{formatScore(total)}</p></div><button className="btn-primary flex min-h-12 items-center gap-2" disabled={disabled || save.isPending || !teamId || sheet.errors.length > 0}><Save />{t("reviewScore")}</button></div>
-        <p className="text-sm text-gray-500">{t("officialHint")}</p>{message && <p role="status" className="rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">{message}</p>}
+        <div className="sticky bottom-0 card flex items-center justify-between gap-4 border-primary/30 p-4"><div><p className="text-sm text-leise">{t("calculatedTotal")}</p><p className="text-3xl font-bold">{formatScore(total)}</p></div><button className="btn-primary flex min-h-12 items-center gap-2" disabled={disabled || save.isPending || !teamId || sheet.errors.length > 0}><Save />{t("reviewScore")}</button></div>
+        <p className="text-sm text-leise">{t("officialHint")}</p>{message && <p role="status" className="rounded-lg bg-flaeche-2 p-3 text-sm">{message}</p>}
       </form>
       <ScoreConfirmDialog
         open={confirming}
@@ -200,7 +205,7 @@ export default function EventScoringPage() {
         onCancel={() => setConfirming(false)}
       />
       <div className="mt-8"><PartsChallengePanel eventId={eventId} matches={matches} registrations={registrations.data ?? []} /></div>
-      <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><Freshness query={ranking} live={live} className="mb-3" /><div className="card table-scroll"><table className="w-full text-sm"><thead className="bg-gray-100 dark:bg-gray-800"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">{t("seed")}</th><th className="p-3 text-right">{t("best")}</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t dark:border-gray-800"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{formatScore(item.seed_score)}</td><td className="p-3 text-right">{formatScore(item.best_score)}</td><td className="p-3 text-xs text-gray-500">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
+      <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><Freshness query={ranking} live={live} className="mb-3" /><div className="card table-scroll"><table className="w-full text-sm"><thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">{t("seed")}</th><th className="p-3 text-right">{t("best")}</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{formatScore(item.seed_score)}</td><td className="p-3 text-right">{formatScore(item.best_score)}</td><td className="p-3 text-xs text-leise">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
     </div>
   );
 }
@@ -212,9 +217,9 @@ function OutcomeCard({ outcome, teamName }: { outcome: HeadToHeadOutcome; teamNa
   return (
     <section className="card p-4" aria-live="polite">
       <h2 className="font-semibold">{t("outcome")}</h2>
-      <p className="text-lg">{headline}{reason && <span className="ml-2 text-sm text-gray-500">({reason})</span>}</p>
+      <p className="text-lg">{headline}{reason && <span className="ml-2 text-sm text-leise">({reason})</span>}</p>
       <ul className="mt-2 text-sm">
-        {outcome.sides.map((side) => <li key={side.match_id}>{side.team_name ?? side.team_id}: <strong>{side.total_score}</strong>{side.bonus_score > 0 && <span className="text-gray-500"> – {t("bonus", { bonus: side.bonus_score })}</span>}{side.round_lost && <span className="ml-1 badge-yellow">{t("reason_round_lost")}</span>}{side.is_disqualified && <span className="ml-1 badge-red" title={t("disqualified")}>{t("dqShort")}</span>}</li>)}
+        {outcome.sides.map((side) => <li key={side.match_id}>{side.team_name ?? side.team_id}: <strong>{side.total_score}</strong>{side.bonus_score > 0 && <span className="text-leise"> – {t("bonus", { bonus: side.bonus_score })}</span>}{side.round_lost && <span className="ml-1 badge-yellow">{t("reason_round_lost")}</span>}{side.is_disqualified && <span className="ml-1 badge-red" title={t("disqualified")}>{t("dqShort")}</span>}</li>)}
       </ul>
     </section>
   );

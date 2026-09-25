@@ -100,22 +100,22 @@ export default function ScoutingPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-2xl font-bold"><Telescope />{t("scouting.title")}</h1>
+        <h1 className="page-title flex items-center gap-2"><Telescope className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{t("scouting.title")}</h1>
         <button type="button" className="btn-secondary" onClick={exportPdf}><FileDown className="h-4 w-4" />{t("scouting.report")}</button>
       </div>
-      {message && <p role="status" className="rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">{message}</p>}
+      {message && <p role="status" className="rounded-lg bg-flaeche-2 p-3 text-sm">{message}</p>}
 
       <section className="card overflow-x-auto" aria-labelledby="opponent-ranking-title">
-        <h2 id="opponent-ranking-title" className="border-b px-4 py-3 font-semibold dark:border-gray-800">{t("scouting.ranking")}</h2>
-        <p className="px-4 pt-2 text-xs text-gray-500">{t("scouting.rankingHint")}</p>
+        <h2 id="opponent-ranking-title" className="border-b px-4 py-3 font-semibold">{t("scouting.ranking")}</h2>
+        <p className="px-4 pt-2 text-xs text-leise">{t("scouting.rankingHint")}</p>
         <div className="table-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("scouting.team")}</th><th className="p-3 text-left">{t("scouting.country")}</th><th className="p-3 text-left">{t("scouting.source")}</th><th className="p-3 text-right">{t("scouting.seed")}</th><th className="p-3 text-right">{t("scouting.best")}</th><th className="p-3 text-right">{t("scouting.runs")}</th></tr></thead>
+          <thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("scouting.team")}</th><th className="p-3 text-left">{t("scouting.country")}</th><th className="p-3 text-left">{t("scouting.source")}</th><th className="p-3 text-right">{t("scouting.seed")}</th><th className="p-3 text-right">{t("scouting.best")}</th><th className="p-3 text-right">{t("scouting.runs")}</th></tr></thead>
           <tbody>
             {ranking.data?.map((entry) => (
-              <tr key={`${entry.kind}-${entry.team_id}`} className={`border-t dark:border-gray-800 ${entry.kind === "internal" ? "bg-primary-50/50 dark:bg-primary-900/20" : ""}`}>
+              <tr key={`${entry.kind}-${entry.team_id}`} className={`border-t ${entry.kind === "internal" ? "bg-primary/[0.06]" : ""}`}>
                 <td className="p-3 font-bold">{entry.rank}</td>
-                <td className="p-3">{entry.kind === "external" ? <button type="button" className="text-left underline-offset-2 hover:underline" onClick={() => setSelected(entry.team_id)}>{entry.team_name}</button> : entry.team_name}{entry.team_number && <span className="ml-1 text-xs text-gray-500">({entry.team_number})</span>}</td>
+                <td className="p-3">{entry.kind === "external" ? <button type="button" className="text-left underline-offset-2 hover:underline" onClick={() => setSelected(entry.team_id)}>{entry.team_name}</button> : entry.team_name}{entry.team_number && <span className="ml-1 text-xs text-leise">({entry.team_number})</span>}</td>
                 <td className="p-3">{entry.country ?? "–"}</td>
                 <td className="p-3">{entry.kind === "internal" ? <span className="badge-green">{t("scouting.ownTeam")}</span> : <span className="badge-gray">{t("scouting.observed")}</span>}</td>
                 <td className="p-3 text-right font-semibold">{formatNumber(entry.seed_score, oneDecimal)}</td>
@@ -123,7 +123,7 @@ export default function ScoutingPage() {
                 <td className="p-3 text-right">{entry.runs}</td>
               </tr>
             ))}
-            {ranking.data?.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-gray-400">{t("scouting.noScores")}</td></tr>}
+            {ranking.data?.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-leise">{t("scouting.noScores")}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -133,8 +133,8 @@ export default function ScoutingPage() {
         <section className="card p-4" aria-labelledby="external-teams-title">
           <h2 id="external-teams-title" className="mb-3 font-semibold">{t("scouting.externalTeams")}</h2>
           <ul className="mb-4 max-h-80 space-y-1 overflow-auto text-sm">
-            {teams.data?.map((team) => <li key={team.id}><button type="button" className={`w-full rounded px-2 py-1 text-left ${team.id === selected ? "bg-primary-600 text-white" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`} onClick={() => setSelected(team.id)}>{team.name}{team.number ? ` · ${team.number}` : ""}</button></li>)}
-            {teams.data?.length === 0 && <li className="text-gray-400">{t("scouting.noExternalTeams")}</li>}
+            {teams.data?.map((team) => <li key={team.id}><button type="button" className={`w-full rounded px-2 py-1 text-left ${team.id === selected ? "bg-primary text-white" : "hover:bg-flaeche-2"}`} onClick={() => setSelected(team.id)}>{team.name}{team.number ? ` · ${team.number}` : ""}</button></li>)}
+            {teams.data?.length === 0 && <li className="text-leise">{t("scouting.noExternalTeams")}</li>}
           </ul>
           {canWrite && (
             <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); createTeam.mutate(); }}>
@@ -146,7 +146,7 @@ export default function ScoutingPage() {
         </section>
 
         <section className="card p-4" aria-live="polite">
-          {!selectedTeam ? <p className="text-gray-500">{t("scouting.selectTeam")}</p> : (
+          {!selectedTeam ? <p className="text-leise">{t("scouting.selectTeam")}</p> : (
             <div className="space-y-5">
               {teamEdit ? (
                 <form className="grid gap-2 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); updateTeam.mutate(); }}>
@@ -164,21 +164,21 @@ export default function ScoutingPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <h2 className="text-lg font-semibold">{selectedTeam.name}</h2>
-                    <p className="text-sm text-gray-500">{[selectedTeam.number, selectedTeam.country, selectedTeam.school].filter(Boolean).join(" · ")}</p>
-                    {selectedTeam.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">{selectedTeam.notes}</p>}
+                    <p className="text-sm text-leise">{[selectedTeam.number, selectedTeam.country, selectedTeam.school].filter(Boolean).join(" · ")}</p>
+                    {selectedTeam.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-leise">{selectedTeam.notes}</p>}
                   </div>
                   <div className="flex gap-1">
                     {canEditTeam && <button type="button" className="btn-secondary px-2" aria-label={t("scouting.editTeam", { name: selectedTeam.name })} onClick={() => startTeamEdit(selectedTeam)}><Pencil className="h-4 w-4" /></button>}
-                    {isOrganizer && <button type="button" className="btn-secondary px-2 text-red-600" aria-label={t("scouting.deleteTeam", { name: selectedTeam.name })} disabled={deleteTeam.isPending} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteTeam", { name: selectedTeam.name }), tone: "danger" }).then((ok) => ok && deleteTeam.mutate())}><Trash2 className="h-4 w-4" /></button>}
+                    {isOrganizer && <button type="button" className="btn-secondary px-2 text-danger" aria-label={t("scouting.deleteTeam", { name: selectedTeam.name })} disabled={deleteTeam.isPending} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteTeam", { name: selectedTeam.name }), tone: "danger" }).then((ok) => ok && deleteTeam.mutate())}><Trash2 className="h-4 w-4" /></button>}
                   </div>
                 </div>
               )}
               {canWrite && !isOrganizer && (myTeams.data?.length ?? 0) > 1 && <label className="block text-sm font-medium">{t("scouting.forTeam")}<select className="input mt-1" value={ownerTeamId} onChange={(e) => setOwnerTeamId(e.target.value)}><option value="">{t("scouting.chooseTeam")}</option>{myTeams.data?.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>}
               <div>
                 <h3 className="mb-2 font-medium">{t("scouting.observedScores")}</h3>
-                <ul className="mb-2 divide-y text-sm dark:divide-gray-800">
+                <ul className="mb-2 divide-y text-sm">
                   {observations.data?.map((obs) => <li key={obs.id} className="flex items-center justify-between py-1"><span>{phaseLabel(obs.phase)}{obs.round_number ? ` · ${t("scouting.round", { round: obs.round_number })}` : ""}: <strong>{obs.score}</strong>{obs.notes ? ` – ${obs.notes}` : ""}</span>{canWrite && <button type="button" className="btn-secondary min-h-11 min-w-11 justify-center px-2" aria-label={t("scouting.deleteObservation")} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteObservation", { score: obs.score }), tone: "danger" }).then((ok) => ok && removeObservation.mutate(obs.id))}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}</li>)}
-                  {observations.data?.length === 0 && <li className="py-1 text-gray-400">{t("scouting.noObservations")}</li>}
+                  {observations.data?.length === 0 && <li className="py-1 text-leise">{t("scouting.noObservations")}</li>}
                 </ul>
                 {canWrite && (
                   <form className="grid gap-2 sm:grid-cols-[8rem_6rem_6rem_1fr_auto]" onSubmit={(e) => { e.preventDefault(); addObservation.mutate(); }}>
@@ -193,8 +193,8 @@ export default function ScoutingPage() {
               <div>
                 <h3 className="mb-2 font-medium">{t("scouting.notes")}</h3>
                 <ul className="mb-2 space-y-2 text-sm">
-                  {notes.data?.map((item) => <li key={item.id} className="rounded bg-gray-50 p-2 dark:bg-gray-800"><div className="flex items-start justify-between gap-2"><p className="whitespace-pre-wrap">{item.body}</p>{canWrite && <button type="button" className="btn-secondary min-h-11 min-w-11 justify-center px-2" aria-label={t("scouting.deleteNote")} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteNote"), tone: "danger" }).then((ok) => ok && removeNote.mutate(item.id))}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}</div>{item.threat_level && <p className="text-xs text-gray-500">{t("scouting.threatValue", { level: item.threat_level })}</p>}</li>)}
-                  {notes.data?.length === 0 && <li className="text-gray-400">{t("scouting.noNotes")}</li>}
+                  {notes.data?.map((item) => <li key={item.id} className="rounded bg-flaeche-2 p-2"><div className="flex items-start justify-between gap-2"><p className="whitespace-pre-wrap">{item.body}</p>{canWrite && <button type="button" className="btn-secondary min-h-11 min-w-11 justify-center px-2" aria-label={t("scouting.deleteNote")} onClick={() => void confirmAction({ message: t("scouting.confirmDeleteNote"), tone: "danger" }).then((ok) => ok && removeNote.mutate(item.id))}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}</div>{item.threat_level && <p className="text-xs text-leise">{t("scouting.threatValue", { level: item.threat_level })}</p>}</li>)}
+                  {notes.data?.length === 0 && <li className="text-leise">{t("scouting.noNotes")}</li>}
                 </ul>
                 {canWrite && (
                   <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); addNote.mutate(); }}>

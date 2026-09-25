@@ -305,7 +305,8 @@
     "editFor": "Edit score of {{team}}, round {{round}}",
     "confirmFor": "Confirm score of {{team}}, round {{round}}",
     "deleteFor": "Delete score of {{team}}, round {{round}}",
-    "schemaLoadFailed": "The scoring schema could not be loaded."
+    "schemaLoadFailed": "The scoring schema could not be loaded.",
+    "subtitle": "Record, correct and confirm scores."
   },
   "scoreboard": {
     "disqualified": "Disqualified (red card)",
@@ -338,7 +339,8 @@
       "overall": "Overall ranking"
     },
     "noSeason": "No active season found",
-    "unknownTeam": "Unknown team"
+    "unknownTeam": "Unknown team",
+    "subtitle": "Seeding and overall ranking, live – with exports for posting and archive."
   },
   "formulas": {
     "saveFailed": "Saving failed",

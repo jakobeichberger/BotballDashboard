@@ -76,7 +76,7 @@ export default function MatchPenaltyDialog({
         <fieldset className="space-y-3">
           <legend className="sr-only">{t("penalty.legend")}</legend>
           {PENALTIES.map((key) => (
-            <label key={key} className="flex items-start gap-3 rounded-lg border p-3 text-sm dark:border-gray-700">
+            <label key={key} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -85,7 +85,7 @@ export default function MatchPenaltyDialog({
               />
               <span>
                 <span className="font-medium">{t(`penalty.${key}`)}</span>
-                <span className="block text-xs text-gray-500">{t(`penalty.${key}Hint`)}</span>
+                <span className="block text-xs text-leise">{t(`penalty.${key}Hint`)}</span>
               </span>
             </label>
           ))}
@@ -102,7 +102,7 @@ export default function MatchPenaltyDialog({
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>{t("common:cancel")}</button>
           <button className="btn-primary" disabled={!changed || save.isPending}>{t("penalty.save")}</button>

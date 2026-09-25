@@ -45,14 +45,14 @@ export default function RegistrationManager({ eventId }: { eventId: string }) {
   return (
     <section className="card p-5">
       <h2 className="mb-1 text-lg font-semibold">{t("setup.teams", { count: list.length })}</h2>
-      {list.length > 0 && <p className="mb-4 flex items-center gap-1 text-sm text-gray-500"><UserCheck className="h-4 w-4" aria-hidden="true" />{t("setup.checkedInCount", { checkedIn, total: list.length })}</p>}
+      {list.length > 0 && <p className="mb-4 flex items-center gap-1 text-sm text-leise"><UserCheck className="h-4 w-4" aria-hidden="true" />{t("setup.checkedInCount", { checkedIn, total: list.length })}</p>}
       <form className="grid gap-2 sm:grid-cols-[1fr_8rem_auto]" onSubmit={(e) => { e.preventDefault(); addTeam.mutate(); }}>
         <select required aria-label={t("setup.registerTeam")} className="input min-w-0" value={teamId} onChange={(e) => setTeamId(e.target.value)}><option value="">{t("setup.registerTeam")}</option>{teams.data?.filter((team) => !list.some((item) => item.team_id === team.id)).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
         <select aria-label={t("setup.category")} className="input" value={teamCategory} onChange={(e) => setTeamCategory(e.target.value)}>{["botball", "open", "aerial", "jbc"].map((category) => <option key={category} value={category}>{CATEGORY_LABEL[category]}</option>)}</select>
         <button className="btn-secondary" aria-label={t("setup.registerTeam")} disabled={addTeam.isPending}><Plus /></button>
       </form>
-      {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
-      <ul className="mt-4 max-h-80 divide-y overflow-auto text-sm dark:divide-gray-800">
+      {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
+      <ul className="mt-4 max-h-80 divide-y overflow-auto text-sm">
         {list.map((item) => (
           <li key={item.id} className="flex items-center justify-between gap-2 py-1.5">
             <label className="flex min-w-0 items-center gap-2">
@@ -69,7 +69,7 @@ export default function RegistrationManager({ eventId }: { eventId: string }) {
               {item.checked_in_at && <span className="badge-green">{t("setup.checkedInAt", { time: formatTime(item.checked_in_at) })}</span>}
               <button
                 type="button"
-                className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                className="rounded p-1 text-danger hover:bg-danger/10"
                 aria-label={t("setup.removeRegistration", { team: item.team_name })}
                 title={t("common:delete")}
                 disabled={remove.isPending}

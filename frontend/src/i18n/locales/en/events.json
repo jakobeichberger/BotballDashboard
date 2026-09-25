@@ -186,7 +186,8 @@
     "statusOf": "Status {{code}}",
     "empty": "No schedule yet.",
     "brackets": "Brackets",
-    "bracketHint": "Click the winner to save the result. Winner and loser advance automatically; a correction is possible as long as the next match has not been played."
+    "bracketHint": "Click the winner to save the result. Winner and loser advance automatically; a correction is possible as long as the next match has not been played.",
+    "subtitle": "Plan and follow the event's matches, tables and times."
   },
   "seed": "Seed",
   "best": "Best",
@@ -203,5 +204,6 @@
   "discardEntriesConfirm": "Discard",
   "schemaLoadFailed": "The scoring schema could not be loaded.",
   "publicLoadFailed": "The event could not be loaded – please check the connection.",
-  "liveTitle": "Botball Live"
+  "liveTitle": "Botball Live",
+  "mobileScoringSubtitle": "Enter points right at the competition table – even without a connection."
 }

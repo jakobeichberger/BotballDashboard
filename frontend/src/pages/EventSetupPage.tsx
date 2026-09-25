@@ -53,7 +53,7 @@ export default function EventSetupPage() {
   const createSeason = useMutation({ mutationFn: async () => api.post("/seasons", { ...newSeason, is_active: true, create_default_event: false }), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["seasons"] }); setForm((current) => ({ ...current, season_id: data.id })); setMessage(t("setup.seasonCreated")); } });
   const publishAnnouncement = useMutation({ mutationFn: async () => { const created = await api.post("/dashboard/announcements", { ...announcement, season_id: event?.season_id, event_id: eventId, audience: "all" }); return api.put(`/dashboard/announcements/${created.data.id}/publish`); }, onSuccess: () => { setAnnouncement({ title: "", body: "" }); queryClient.invalidateQueries({ queryKey: ["announcements", eventId] }); } });
   return (
-    <div className="mx-auto max-w-6xl p-4 md:p-6"><h1 className="mb-6 flex items-center gap-2 text-2xl font-bold"><Settings />{eventId ? t("setup.title") : t("setup.firstEvent")}</h1>
+    <div className="mx-auto max-w-6xl p-4 md:p-6"><h1 className="page-title mb-6 flex items-center gap-2"><Settings className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{eventId ? t("setup.title") : t("setup.firstEvent")}</h1>
       <form className="card grid gap-4 p-5 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); saveEvent.mutate(); }}>
         {!eventId && seasons.data?.length === 0 && <fieldset className="grid gap-3 rounded-lg border p-4 md:col-span-2 md:grid-cols-[1fr_8rem_auto]"><legend className="px-2 font-semibold">{t("setup.firstSeason")}</legend><input required className="input" placeholder={t("setup.seasonName")} value={newSeason.name} onChange={(e) => setNewSeason({ ...newSeason, name: e.target.value })} /><input required className="input" type="number" min={2020} max={2100} value={newSeason.year} onChange={(e) => setNewSeason({ ...newSeason, year: Number(e.target.value) })} /><button type="button" className="btn-secondary" disabled={!newSeason.name || createSeason.isPending} onClick={() => createSeason.mutate()}>{t("setup.createSeason")}</button></fieldset>}
         {!eventId && <label className="text-sm font-medium">{t("setup.season")}<select required className="input mt-1 w-full" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value, active_modules: defaultModules(seasons.data?.find((item) => item.id === e.target.value)) })}><option value="">{t("setup.chooseSeason")}</option>{seasons.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
@@ -71,7 +71,7 @@ export default function EventSetupPage() {
         <fieldset className="md:col-span-2"><legend className="mb-2 font-medium">{t("setup.public")}</legend><div className="flex flex-wrap gap-4">{PUBLIC_FLAGS.map((key) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} />{t(`setup.publicFlag.${key}`)}</label>)}</div></fieldset>
         <div className="md:col-span-2"><button className="btn-primary" disabled={saveEvent.isPending}>{t("setup.save")}</button></div>
       </form>
-      {message && <p role="status" className="my-4 rounded-lg bg-gray-100 p-3 dark:bg-gray-800">{message}</p>}
+      {message && <p role="status" className="my-4 rounded-lg bg-flaeche-2 p-3">{message}</p>}
       {eventId && <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <PhaseManager eventId={eventId} />
         <RegistrationManager eventId={eventId} />
@@ -79,7 +79,7 @@ export default function EventSetupPage() {
         {event?.season_id && <SeasonRulesEditor seasonId={event.season_id} onMessage={setMessage} />}
         {canAdminEvent && <EventBracketWeights eventId={eventId} />}
         {event?.season_id && <QualificationPanel eventId={eventId} seasonId={event.season_id} onMessage={setMessage} />}
-        {canPublishAnnouncements && <section className="card p-5 lg:col-span-2"><h2 className="mb-3 text-lg font-semibold">{t("setup.announcements")}</h2><div className="mb-4 space-y-2">{announcements.data?.map((item) => <article key={item.id} className="rounded border p-3"><h3 className="font-semibold">{item.title}</h3><p className="text-sm text-gray-600 dark:text-gray-300">{item.body}</p></article>)}</div><form className="grid gap-2 md:grid-cols-[1fr_2fr_auto]" onSubmit={(e) => { e.preventDefault(); publishAnnouncement.mutate(); }}><input required className="input" placeholder={t("setup.announcementTitle")} value={announcement.title} onChange={(e) => setAnnouncement({ ...announcement, title: e.target.value })} /><textarea required className="input" placeholder={t("setup.announcementBody")} value={announcement.body} onChange={(e) => setAnnouncement({ ...announcement, body: e.target.value })} /><button className="btn-primary" disabled={publishAnnouncement.isPending}>{t("setup.publish")}</button></form></section>}
+        {canPublishAnnouncements && <section className="card p-5 lg:col-span-2"><h2 className="mb-3 text-lg font-semibold">{t("setup.announcements")}</h2><div className="mb-4 space-y-2">{announcements.data?.map((item) => <article key={item.id} className="rounded border p-3"><h3 className="font-semibold">{item.title}</h3><p className="text-sm text-leise">{item.body}</p></article>)}</div><form className="grid gap-2 md:grid-cols-[1fr_2fr_auto]" onSubmit={(e) => { e.preventDefault(); publishAnnouncement.mutate(); }}><input required className="input" placeholder={t("setup.announcementTitle")} value={announcement.title} onChange={(e) => setAnnouncement({ ...announcement, title: e.target.value })} /><textarea required className="input" placeholder={t("setup.announcementBody")} value={announcement.body} onChange={(e) => setAnnouncement({ ...announcement, body: e.target.value })} /><button className="btn-primary" disabled={publishAnnouncement.isPending}>{t("setup.publish")}</button></form></section>}
       </div>}
     </div>
   );
@@ -100,7 +100,7 @@ function ModuleToggles({ value, seasonFlags, onChange }: { value: string[]; seas
           const blocked = !!seasonFlag && !!seasonFlags && !seasonFlags[seasonFlag];
           const checked = value.includes(key);
           return (
-            <label key={key} className="flex items-start gap-2 rounded-lg border p-2 text-sm dark:border-gray-700">
+            <label key={key} className="flex items-start gap-2 rounded-lg border p-2 text-sm">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -109,7 +109,7 @@ function ModuleToggles({ value, seasonFlags, onChange }: { value: string[]; seas
               />
               <span>
                 <span className="font-medium">{localized(MODULE_LABELS[key])}</span>
-                {blocked && <span className="block text-xs text-amber-700 dark:text-amber-400">{t("setup.moduleBlocked")}{checked ? t("setup.moduleStaysInactive") : ""}</span>}
+                {blocked && <span className="block text-xs text-warning">{t("setup.moduleBlocked")}{checked ? t("setup.moduleStaysInactive") : ""}</span>}
               </span>
             </label>
           );

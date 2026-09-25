@@ -31,7 +31,7 @@ export default function Freshness({ query, live, className }: { query: Freshness
   );
   if (query.isError) {
     return (
-      <div role="alert" className={clsx("flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200", className)}>
+      <div role="alert" className={clsx("flex flex-wrap items-center gap-2 rounded-lg bg-warning/[0.08] px-3 py-2 text-sm text-warning", className)}>
         <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="flex-1">
           {query.data && updated ? t("live.stale", { time: updated }) : t("live.loadFailed")} {apiErrorMessage(query.error)}
@@ -42,10 +42,10 @@ export default function Freshness({ query, live, className }: { query: Freshness
   }
   if (!updated) return null;
   return (
-    <p className={clsx("flex items-center gap-2 text-xs text-gray-500", className)}>
+    <p className={clsx("flex items-center gap-2 text-xs text-leise", className)}>
       {live && (
-        <span className="inline-flex items-center gap-1 font-medium text-green-600">
-          <span className="h-2 w-2 rounded-full bg-green-500" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1 font-medium text-success">
+          <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
           {t("live.connected")}
         </span>
       )}

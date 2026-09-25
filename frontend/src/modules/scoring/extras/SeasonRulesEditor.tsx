@@ -41,14 +41,14 @@ export default function SeasonRulesEditor({ seasonId, onMessage }: { seasonId: s
   return (
     <section className="card p-5 lg:col-span-2" aria-labelledby="season-rules-title">
       <h2 id="season-rules-title" className="mb-1 text-lg font-semibold">{t("rules.title")}</h2>
-      <p className="mb-4 text-sm text-gray-500">{t("rules.hint")}</p>
+      <p className="mb-4 text-sm text-leise">{t("rules.hint")}</p>
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <label className="text-sm font-medium">{t("rules.preset")}<select className="input mt-1 block" value={presetId} onChange={(e) => setPresetId(e.target.value)}><option value="">{t("rules.choosePreset")}</option>{presets.data?.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label>
         <button type="button" className="btn-secondary" disabled={!presetId} onClick={loadPreset}>{t("rules.apply")}</button>
       </div>
       <ol className="space-y-2">
         {draft.tiebreakers.map((criterion, index) => (
-          <li key={index} className="grid items-center gap-2 rounded border p-2 text-sm dark:border-gray-700 md:grid-cols-[2rem_2fr_1fr_7rem_7rem_1.5fr_auto]">
+          <li key={index} className="grid items-center gap-2 rounded border p-2 text-sm md:grid-cols-[2rem_2fr_1fr_7rem_7rem_1.5fr_auto]">
             <span className="font-semibold">{index + 1}.</span>
             <input aria-label={t("rules.tiebreaker")} className="input" value={criterion.label} onChange={(e) => setCriterion(index, { label: e.target.value })} />
             <input aria-label={t("rules.tiebreakerKey")} className="input font-mono text-xs" value={criterion.key} onChange={(e) => setCriterion(index, { key: e.target.value })} />
@@ -67,12 +67,12 @@ export default function SeasonRulesEditor({ seasonId, onMessage }: { seasonId: s
       <button type="button" className="btn-secondary mt-2 text-sm" onClick={() => setDraft({ ...draft, tiebreakers: [...draft.tiebreakers, { key: `tiebreaker_${draft.tiebreakers.length + 1}`, label: t("rules.newTiebreaker"), direction: "max", source: "entry", sheet_keys: [], replay_only: false }] })}><Plus className="h-4 w-4" />{t("rules.tiebreaker")}</button>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={draft.finals_replay} onChange={(e) => setDraft({ ...draft, finals_replay: e.target.checked })} /><span><strong>{t("rules.finalsReplay")}</strong><br /><span className="text-gray-500">{t("rules.finalsReplayHint")}</span></span></label>
+        <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={draft.finals_replay} onChange={(e) => setDraft({ ...draft, finals_replay: e.target.checked })} /><span><strong>{t("rules.finalsReplay")}</strong><br /><span className="text-leise">{t("rules.finalsReplayHint")}</span></span></label>
         <label className="text-sm font-medium">{t("rules.contactBonus")}<input type="number" min={0} max={100} className="input mt-1 w-32" value={draft.end_contact_bonus_percent} onChange={(e) => setDraft({ ...draft, end_contact_bonus_percent: Number(e.target.value) })} /></label>
       </div>
 
       <h3 className="mb-2 mt-5 font-semibold">{t("rules.checklist")}</h3>
-      <p className="mb-2 text-sm text-gray-500">{t("rules.checklistHint")}</p>
+      <p className="mb-2 text-sm text-leise">{t("rules.checklistHint")}</p>
       <ul className="space-y-2">
         {draft.referee_checklist.map((item, index) => (
           <li key={index} className="grid items-center gap-2 sm:grid-cols-[2fr_1fr_auto_auto]">

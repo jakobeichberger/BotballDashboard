@@ -1,5 +1,5 @@
 {
-  "app_name": "BotballDashboard",
+  "app_name": "Botball Dashboard",
   "save": "Speichern",
   "cancel": "Abbrechen",
   "delete": "Löschen",
@@ -260,5 +260,18 @@
   "copied": "Kopiert",
   "copyFailed": "Kopieren nicht möglich – bitte manuell kopieren.",
   "dqShort": "DQ",
-  "disqualified": "Disqualifiziert"
+  "disqualified": "Disqualifiziert",
+  "navGroup": {
+    "event": "Wettbewerb",
+    "scoring": "Wertung",
+    "admin": "Verwaltung"
+  },
+  "layout": {
+    "superuser": "Superuser",
+    "version": "v{{version}}",
+    "home": "Zur Startseite",
+    "online": "Verbunden",
+    "offline": "Offline"
+  },
+  "open": "Öffnen"
 }

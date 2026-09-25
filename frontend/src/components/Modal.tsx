@@ -125,7 +125,7 @@ export default function Modal({ open, title, onClose, children, initialFocus, si
   if (!open || !layerRef.current) return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-tief/60 p-4 backdrop-blur-[2px]"
       role="presentation"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
@@ -135,15 +135,15 @@ export default function Modal({ open, title, onClose, children, initialFocus, si
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`card max-h-[90vh] w-full overflow-y-auto p-4 shadow-xl outline-none sm:p-6 ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
+        className={`card reveal max-h-[90vh] w-full overflow-y-auto p-5 shadow-tief outline-none sm:p-6 ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
       >
-        <div className="mb-5 flex items-center justify-between gap-2">
-          <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
+        <div className="mb-5 flex items-center justify-between gap-2 border-b border-rand pb-3">
+          <h2 id={titleId} className="font-display text-xl font-bold tracking-display">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label={t("close")}
-            className="-mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            className="btn-icon -mr-1 border-transparent"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>

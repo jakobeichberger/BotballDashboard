@@ -102,7 +102,7 @@
   "title": "Paper Review",
   "reviewsCsv": "Reviews CSV",
   "deadlinePassed": "Einreichungsfrist abgelaufen",
-  "submitNew": "+ Paper einreichen",
+  "submitNew": "Paper einreichen",
   "stats": {
     "title": "Statistik",
     "total": "Paper gesamt",
@@ -121,7 +121,8 @@
     "title": "Titel",
     "round": "Runde",
     "version": "Version",
-    "submitted": "Eingereicht"
+    "submitted": "Eingereicht",
+    "open": "Öffnen"
   },
   "empty": "Noch keine Paper eingereicht",
   "create": {
@@ -220,5 +221,6 @@
     "remindReviewer": "{{name}} an das Review erinnern",
     "remindedAt": "erinnert am {{date}}",
     "statusHistory": "Statusverlauf"
-  }
+  },
+  "subtitle": "Eingereichte Paper prüfen, begutachten, bewerten und exportieren."
 }

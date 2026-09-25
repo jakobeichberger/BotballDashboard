@@ -159,11 +159,11 @@ export default function DocScoringPage() {
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-gray-400 hover:text-gray-600">
+          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-leise hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
           </EventLink>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="w-6 h-6 text-purple-500" />
+          <h1 className="page-title flex items-center gap-2">
+            <FileText className="h-7 w-7 shrink-0 text-akzent" />
             {t("doc.title")}
           </h1>
         </div>
@@ -182,14 +182,14 @@ export default function DocScoringPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex gap-1 mb-6 border-b border-rand">
         {showDoc && (
           <button
             onClick={() => setActiveTab("doc")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "doc"
-                ? "border-primary-500 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-primary text-akzent"
+                : "border-transparent text-leise hover:text-gray-700"
             }`}
           >
             {t("doc.tabDoc")}
@@ -200,8 +200,8 @@ export default function DocScoringPage() {
             onClick={() => setActiveTab("paper")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "paper"
-                ? "border-primary-500 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-primary text-akzent"
+                : "border-transparent text-leise hover:text-gray-700"
             }`}
           >
             {t("doc.tabPaper")}
@@ -210,7 +210,7 @@ export default function DocScoringPage() {
       </div>
 
       {activeTab === "doc" && showDoc && (
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-leise mb-4">
           {t("doc.hint")}
         </p>
       )}
@@ -219,17 +219,17 @@ export default function DocScoringPage() {
       {activeTab === "doc" && showDoc && (
         <div className="card table-scroll">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-800">
+            <thead className="bg-flaeche-2">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
                 {[t("doc.part", { number: 1 }), t("doc.part", { number: 2 }), t("doc.part", { number: 3 }), t("doc.onsite")].map((h) => (
-                  <th key={h} className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{h} (0–100)</th>
+                  <th key={h} className="px-4 py-3 text-center font-semibold">{h} (0–100)</th>
                 ))}
-                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("doc.docScore")}</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("doc.formulaValue")}</th>
+                <th className="px-4 py-3 text-center font-semibold">{t("doc.docScore")}</th>
+                <th className="px-4 py-3 text-center font-semibold">{t("doc.formulaValue")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y dark:divide-gray-800">
+            <tbody className="divide-y">
               {teams?.map((team) => {
                 const e = effectiveDoc(team.id);
                 const dirty = !!docDraft[team.id];
@@ -237,10 +237,10 @@ export default function DocScoringPage() {
                 const docScore = regional == null ? "–" : formatNumber(regional, fourDecimals);
                 const formulaValue = formulaDocScore(team.id);
                 return (
-                  <tr key={team.id} className={dirty ? "bg-yellow-50 dark:bg-yellow-900/10" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}>
+                  <tr key={team.id} className={dirty ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
                     <td className="px-4 py-2">
                       <div className="font-medium">{team.name}</div>
-                      <div className="text-xs text-gray-400 font-mono">{team.team_number ?? team.id}</div>
+                      <div className="text-xs text-leise font-mono">{team.team_number ?? team.id}</div>
                     </td>
                     {(["part1", "part2", "part3", "onsite"] as const).map((f) => (
                       <td key={f} className="px-4 py-2 text-center">
@@ -254,10 +254,10 @@ export default function DocScoringPage() {
                         />
                       </td>
                     ))}
-                    <td className="px-4 py-2 text-center font-bold text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-2 text-center font-bold text-fg">
                       {docScore}
                     </td>
-                    <td className="px-4 py-2 text-center text-gray-500" title={t("doc.formulaValueHint")}>
+                    <td className="px-4 py-2 text-center text-leise" title={t("doc.formulaValueHint")}>
                       {formulaValue == null ? "–" : formatNumber(formulaValue, fourDecimals)}
                     </td>
                   </tr>
@@ -272,22 +272,22 @@ export default function DocScoringPage() {
       {activeTab === "paper" && showPaper && (
         <div className="card table-scroll">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-800">
+            <thead className="bg-flaeche-2">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("doc.paperTitle")}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:status")}</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-600 dark:text-gray-400">{t("doc.finalScore")}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t("doc.paperTitle")}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t("common:status")}</th>
+                <th className="px-4 py-3 text-center font-semibold">{t("doc.finalScore")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y dark:divide-gray-800">
+            <tbody className="divide-y">
               {papers?.map((paper) => {
                 const e = effectivePaper(paper.team_id);
                 const dirty = !!paperDraft[paper.team_id];
                 return (
-                  <tr key={paper.id} className={dirty ? "bg-yellow-50 dark:bg-yellow-900/10" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}>
-                    <td className="px-4 py-2 font-mono text-xs text-gray-500">{paper.team_id}</td>
-                    <td className="px-4 py-2 text-gray-900 dark:text-white">{paper.title}</td>
+                  <tr key={paper.id} className={dirty ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
+                    <td className="px-4 py-2 font-mono text-xs text-leise">{paper.team_id}</td>
+                    <td className="px-4 py-2 text-fg">{paper.title}</td>
                     <td className="px-4 py-2">
                       <span className="badge-blue">{PAPER_STATUS_LABEL[paper.status] ?? paper.status}</span>
                     </td>
@@ -311,7 +311,7 @@ export default function DocScoringPage() {
               })}
               {(!papers || papers.length === 0) && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-400">{t("doc.noPapers")}</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-leise">{t("doc.noPapers")}</td>
                 </tr>
               )}
             </tbody>

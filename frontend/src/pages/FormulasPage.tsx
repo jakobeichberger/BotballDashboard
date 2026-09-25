@@ -258,22 +258,20 @@ export default function FormulasPage() {
   if (!seasonId) {
     return (
       <div className="card p-6">
-        <p className="text-gray-600 dark:text-gray-300">{t("events:loading")}</p>
+        <p className="text-leise">{t("events:loading")}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Calculator className="w-6 h-6 text-primary-600" />
-          <div>
-            <h1 className="text-xl font-semibold">{t("formulas.title")}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("formulas.subtitle")}
-            </p>
-          </div>
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="page-header !mb-0">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
+            <Calculator className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
+            {t("formulas.title")}
+          </h1>
+          <p className="page-subtitle">{t("formulas.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {presets.length > 0 && (
@@ -327,8 +325,8 @@ export default function FormulasPage() {
       </div>
 
       {saveError && (
-        <div className="card p-4 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-          <div className="flex items-start gap-2 text-red-700 dark:text-red-300">
+        <div className="card p-4 border-danger/40 bg-danger/[0.07]">
+          <div className="flex items-start gap-2 text-danger">
             <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
             <span className="text-sm">{saveError}</span>
           </div>
@@ -347,14 +345,14 @@ export default function FormulasPage() {
               </button>
             </div>
 
-            {isLoading && <p className="text-sm text-gray-500">{t("common:loading")}</p>}
+            {isLoading && <p className="text-sm text-leise">{t("common:loading")}</p>}
 
             {formulas.map((f, i) => {
               const issues = issuesByKey[f.key] ?? [];
               return (
                 <div
                   key={i}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2"
+                  className="rounded-lg border border-rand p-3 space-y-2"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <input
@@ -364,7 +362,7 @@ export default function FormulasPage() {
                       value={f.key}
                       onChange={(e) => update(i, { key: e.target.value })}
                     />
-                    <span className="text-gray-400">=</span>
+                    <span className="text-leise">=</span>
                     <div className="hidden flex-1 sm:block" />
                     <button
                       type="button"
@@ -404,7 +402,7 @@ export default function FormulasPage() {
                     onChange={(e) => update(i, { expression: e.target.value })}
                   />
                   {issues.length > 0 && (
-                    <div className="text-sm text-red-600 dark:text-red-400 space-y-0.5">
+                    <div className="text-sm text-danger space-y-0.5">
                       {issues.slice(0, 3).map((issue, k) => (
                         <div key={k} className="flex items-start gap-1.5">
                           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -436,9 +434,9 @@ export default function FormulasPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium">{t("formulas.preview")}</h2>
               {previewing ? (
-                <span className="text-sm text-gray-500">{t("formulas.calculating")}</span>
+                <span className="text-sm text-leise">{t("formulas.calculating")}</span>
               ) : preview?.ok ? (
-                <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+                <span className="flex items-center gap-1.5 text-sm text-success">
                   <CheckCircle2 className="w-4 h-4" />
                   {t("formulas.calculated", { count: preview.rows.length })}
                 </span>
@@ -450,7 +448,7 @@ export default function FormulasPage() {
             {preview?.issues
               .filter((i) => !i.key)
               .map((issue, k) => (
-                <div key={k} className="text-sm text-red-600 dark:text-red-400">
+                <div key={k} className="text-sm text-danger">
                   {issue.message}
                 </div>
               ))}
@@ -459,7 +457,7 @@ export default function FormulasPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left border-b dark:border-gray-700">
+                    <tr className="text-left border-b">
                       <th className="py-2 pr-3">#</th>
                       <th className="py-2 pr-3">{t("scouting.team")}</th>
                       {columns.map((c) => (
@@ -471,8 +469,8 @@ export default function FormulasPage() {
                   </thead>
                   <tbody>
                     {preview.rows.map((r) => (
-                      <tr key={r.team_id} className="border-b dark:border-gray-800">
-                        <td className="py-1.5 pr-3 text-gray-500">{r.rank ?? t("common:dqShort")}</td>
+                      <tr key={r.team_id} className="border-b">
+                        <td className="py-1.5 pr-3 text-leise">{r.rank ?? t("common:dqShort")}</td>
                         <td className="py-1.5 pr-3">{r.team_name ?? r.team_id}</td>
                         {columns.map((c) => (
                           <td key={c} className="py-1.5 pr-3 font-mono text-xs">
@@ -487,7 +485,7 @@ export default function FormulasPage() {
             )}
 
             {preview && preview.rows.length === 0 && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-leise">
                 {t("formulas.noTeams")}
               </p>
             )}
@@ -501,10 +499,10 @@ export default function FormulasPage() {
             <dl className="space-y-1.5 text-sm">
               {Object.entries(reference?.inputs ?? {}).map(([name, desc]) => (
                 <div key={name}>
-                  <dt className="font-mono text-xs text-primary-700 dark:text-primary-400">
+                  <dt className="font-mono text-xs text-akzent">
                     {name}
                   </dt>
-                  <dd className="text-gray-600 dark:text-gray-400 text-xs">{desc}</dd>
+                  <dd className="text-leise text-xs">{desc}</dd>
                 </div>
               ))}
             </dl>
@@ -512,25 +510,25 @@ export default function FormulasPage() {
 
           <div className="card p-4">
             <h2 className="font-medium mb-2">{t("formulas.functions")}</h2>
-            <p className="text-xs text-gray-500 mb-2">{t("formulas.perTeam")}</p>
+            <p className="text-xs text-leise mb-2">{t("formulas.perTeam")}</p>
             <dl className="space-y-1.5 text-sm mb-4">
               {(reference?.row_functions ?? []).map((f) => (
                 <div key={f.name}>
-                  <dt className="font-mono text-xs text-primary-700 dark:text-primary-400">
+                  <dt className="font-mono text-xs text-akzent">
                     {f.signature}
                   </dt>
-                  <dd className="text-gray-600 dark:text-gray-400 text-xs">{f.description}</dd>
+                  <dd className="text-leise text-xs">{f.description}</dd>
                 </div>
               ))}
             </dl>
-            <p className="text-xs text-gray-500 mb-2">{t("formulas.acrossTeams")}</p>
+            <p className="text-xs text-leise mb-2">{t("formulas.acrossTeams")}</p>
             <dl className="space-y-1.5 text-sm">
               {(reference?.scope_functions ?? []).map((f) => (
                 <div key={f.name}>
-                  <dt className="font-mono text-xs text-primary-700 dark:text-primary-400">
+                  <dt className="font-mono text-xs text-akzent">
                     {f.signature}
                   </dt>
-                  <dd className="text-gray-600 dark:text-gray-400 text-xs">{f.description}</dd>
+                  <dd className="text-leise text-xs">{f.description}</dd>
                 </div>
               ))}
             </dl>
@@ -538,10 +536,10 @@ export default function FormulasPage() {
 
           <div className="card p-4">
             <h2 className="font-medium mb-1">{t("formulas.order")}</h2>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-xs text-leise mb-2">
               {t("formulas.orderHint")}
             </p>
-            <div className="font-mono text-xs text-gray-600 dark:text-gray-400 break-words">
+            <div className="font-mono text-xs text-leise break-words">
               {columns.length > 0 ? columns.join(" → ") : "—"}
             </div>
           </div>

@@ -92,20 +92,20 @@ export function TeamDocuments({
 
   return (
     <section className="card overflow-hidden">
-      <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+      <h2 className="px-4 py-3 border-b font-semibold text-fg flex items-center gap-2">
         <FolderOpen className="w-4 h-4" /> {t("documents.title", { count: documents?.length ?? 0 })}
       </h2>
-      <ul className="divide-y dark:divide-gray-800">
+      <ul className="divide-y">
         {documents?.map((doc) => (
           <li key={doc.id} className="px-4 py-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <button className="font-medium text-primary-600 dark:text-primary-400 hover:underline" onClick={() => download(doc)}>
+              <button className="font-medium text-akzent hover:underline" onClick={() => download(doc)}>
                 {doc.title}
               </button>
               <span className="badge-gray">{DOCUMENT_CATEGORY_LABEL[doc.category] ?? doc.category}</span>
-              <span className="text-xs text-gray-500">{t("documents.season", { season: seasonName(doc.season_id) })} · v{doc.current_version} · {fmt(doc.updated_at)}</span>
+              <span className="text-xs text-leise">{t("documents.season", { season: seasonName(doc.season_id) })} · v{doc.current_version} · {fmt(doc.updated_at)}</span>
               <div className="ml-auto flex items-center gap-2">
-                <button className="text-xs text-gray-500 hover:underline" onClick={() => setExpanded(expanded === doc.id ? null : doc.id)}>
+                <button className="text-xs text-leise hover:underline" onClick={() => setExpanded(expanded === doc.id ? null : doc.id)}>
                   {expanded === doc.id ? t("documents.hideArchive") : t("documents.versions", { count: doc.versions.length })}
                 </button>
                 {canUpload && (
@@ -126,7 +126,7 @@ export function TeamDocuments({
                 )}
                 {canUpload && (
                   <button
-                    className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                    className="p-1 rounded text-danger hover:bg-danger/10"
                     title={t("common:delete")}
                     aria-label={t("documents.deleteLabel", { title: doc.title })}
                     onClick={() => void confirmAction({ message: t("documents.confirmDelete", { title: doc.title }), tone: "danger" }).then((ok) => ok && deleteM.mutate(doc.id))}
@@ -137,9 +137,9 @@ export function TeamDocuments({
               </div>
             </div>
             {expanded === doc.id && (
-              <ol className="mt-2 space-y-1 border-l pl-3 dark:border-gray-700">
+              <ol className="mt-2 space-y-1 border-l pl-3">
                 {[...doc.versions].reverse().map((version) => (
-                  <li key={version.id} className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                  <li key={version.id} className="flex flex-wrap items-center gap-2 text-xs text-leise">
                     <span className="font-mono">v{version.version_number}</span>
                     <span>{version.file_name}</span>
                     <span>{formatFileSize(version.file_size_bytes)}</span>
@@ -154,11 +154,11 @@ export function TeamDocuments({
             )}
           </li>
         ))}
-        {documents?.length === 0 && <li className="px-4 py-8 text-center text-gray-400">{t("documents.empty")}</li>}
+        {documents?.length === 0 && <li className="px-4 py-8 text-center text-leise">{t("documents.empty")}</li>}
       </ul>
       {canUpload && (
         <form
-          className="border-t p-4 flex flex-wrap items-end gap-3 bg-gray-50 dark:bg-gray-800/40"
+          className="border-t p-4 flex flex-wrap items-end gap-3 bg-flaeche-2"
           onSubmit={(e) => { e.preventDefault(); createM.mutate(); }}
         >
           <div className="flex-1 min-w-[10rem]">
@@ -187,7 +187,7 @@ export function TeamDocuments({
           </button>
         </form>
       )}
-      {error && <p role="alert" className="px-4 pb-3 text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="px-4 pb-3 text-sm text-danger">{error}</p>}
     </section>
   );
 }

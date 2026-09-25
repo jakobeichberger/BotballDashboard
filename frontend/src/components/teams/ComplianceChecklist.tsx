@@ -68,13 +68,13 @@ export function ComplianceChecklist({
     onError,
   });
 
-  if (isLoading) return <p className="px-4 py-3 text-sm text-gray-500">{t("compliance.loading")}</p>;
+  if (isLoading) return <p className="px-4 py-3 text-sm text-leise">{t("compliance.loading")}</p>;
   if (!status || !Array.isArray(status.items)) return null;
 
   return (
     <div className="p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <ClipboardCheck className="h-4 w-4 text-gray-500" aria-hidden />
+        <ClipboardCheck className="h-4 w-4 text-leise" aria-hidden />
         <span>{t("compliance.progress", { checked: status.checked, total: status.total })}</span>
         {status.is_verified ? (
           <span className="badge-green">{t("compliance.verified")}</span>
@@ -95,7 +95,7 @@ export function ComplianceChecklist({
       </div>
 
       {status.total === 0 && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-leise">
           {t("compliance.none")}
           {canVerify && (
             <button className="btn-secondary ml-2 text-xs" disabled={seedM.isPending} onClick={() => seedM.mutate()}>
@@ -105,7 +105,7 @@ export function ComplianceChecklist({
         </p>
       )}
 
-      <ul className="divide-y dark:divide-gray-800">
+      <ul className="divide-y">
         {status.items.map((entry) => (
           <li key={entry.item.id} className="flex items-start gap-3 py-2">
             <input
@@ -117,10 +117,10 @@ export function ComplianceChecklist({
               onChange={(e) => tickM.mutate({ itemId: entry.item.id, checked: e.target.checked })}
             />
             <div className="min-w-0 flex-1 text-sm">
-              <p className="font-medium text-gray-900 dark:text-white">{entry.item.label}</p>
-              {entry.item.description && <p className="text-xs text-gray-500">{entry.item.description}</p>}
+              <p className="font-medium text-fg">{entry.item.label}</p>
+              {entry.item.description && <p className="text-xs text-leise">{entry.item.description}</p>}
             </div>
-            {entry.verified_at && <CheckCircle2 className="h-4 w-4 text-green-600" aria-label={t("compliance.itemVerified")} />}
+            {entry.verified_at && <CheckCircle2 className="h-4 w-4 text-success" aria-label={t("compliance.itemVerified")} />}
           </li>
         ))}
       </ul>
@@ -140,7 +140,7 @@ export function ComplianceChecklist({
           <button className="btn-secondary text-sm" disabled={!newItem.trim() || addM.isPending}>{t("common:add")}</button>
         </form>
       )}
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     </div>
   );
 }

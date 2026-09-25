@@ -32,20 +32,20 @@ export function RelativeBadge({ entry, now }: { entry: DeadlineEntry; now?: Date
 /** Chronological deadline list; past entries are greyed out. */
 export function DeadlineList({ entries, showSeason = false, now }: { entries: DeadlineEntry[]; showSeason?: boolean; now?: Date }) {
   const { t } = useTranslation("analytics");
-  if (!entries.length) return <p className="text-sm text-gray-500">{t("deadlines.none")}</p>;
+  if (!entries.length) return <p className="text-sm text-leise">{t("deadlines.none")}</p>;
   return (
     <ul className="space-y-2" aria-label={t("deadlines.label")}>
       {entries.map((e) => {
         const past = daysUntil(e.end ?? e.start, now) < 0;
         return (
-          <li key={e.id} className={clsx("flex items-center gap-3 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-800", past && "opacity-60")}>
+          <li key={e.id} className={clsx("flex items-center gap-3 rounded-lg p-2.5 bg-flaeche-2", past && "opacity-60")}>
             <span className={clsx("h-2.5 w-2.5 shrink-0 rounded-full", DEADLINE_DOT[e.color] ?? "bg-gray-400")} aria-hidden="true" />
             <div className="min-w-0 flex-1">
-              <p className={clsx("truncate text-sm font-medium text-gray-900 dark:text-white", past && "line-through")}>
+              <p className={clsx("truncate text-sm font-medium text-fg", past && "line-through")}>
                 {e.title}
-                {e.done && <CheckCircle2 className="ml-1 inline h-3.5 w-3.5 text-green-600" aria-label={t("deadlines.done")} />}
+                {e.done && <CheckCircle2 className="ml-1 inline h-3.5 w-3.5 text-success" aria-label={t("deadlines.done")} />}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-leise">
                 <time dateTime={e.start}>{fmtDay(e.start)}</time>
                 {e.end && e.end.slice(0, 10) !== e.start.slice(0, 10) && <> – <time dateTime={e.end}>{fmtDay(e.end)}</time></>}
                 {" · "}{KINDS.includes(e.kind) ? t(`deadlines.kind.${e.kind}`) : e.kind}
@@ -106,31 +106,31 @@ export function MonthCalendar({ entries, initial }: { entries: DeadlineEntry[]; 
         <button type="button" className="btn-secondary p-1.5" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label={t("calendar.previousMonth")}>
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <h3 className="font-semibold text-gray-900 dark:text-white" aria-live="polite">{title}</h3>
+        <h3 className="font-semibold text-fg" aria-live="polite">{title}</h3>
         <button type="button" className="btn-secondary p-1.5" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label={t("calendar.nextMonth")}>
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border bg-gray-200 text-xs dark:border-gray-700 dark:bg-gray-700" role="grid" aria-label={title}>
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border bg-gray-200 text-xs dark:bg-gray-700" role="grid" aria-label={title}>
         {WEEKDAYS.map((d) => (
-          <div key={d} role="columnheader" className="bg-gray-50 py-1 text-center font-medium text-gray-500 dark:bg-gray-800">{t(`calendar.weekday.${d}`)}</div>
+          <div key={d} role="columnheader" className="bg-flaeche-2 py-1 text-center font-medium text-leise">{t(`calendar.weekday.${d}`)}</div>
         ))}
         {cells.map((cell, i) => {
           const key = cell ? dayKey(cell) : `empty-${i}`;
           const items = cell ? byDay[key] ?? [] : [];
           return (
-            <div key={key} role="gridcell" className={clsx("min-h-[4.5rem] bg-white p-1 dark:bg-gray-900", !cell && "bg-gray-50 dark:bg-gray-900/40")}>
+            <div key={key} role="gridcell" className={clsx("min-h-[4.5rem] bg-flaeche p-1", !cell && "bg-flaeche-2")}>
               {cell && (
                 <>
-                  <span className={clsx("inline-block rounded px-1 tabular-nums", key === today ? "bg-primary-600 text-white" : "text-gray-500")}>{cell.getDate()}</span>
+                  <span className={clsx("inline-block rounded px-1 tabular-nums", key === today ? "bg-primary text-white" : "text-leise")}>{cell.getDate()}</span>
                   <ul className="mt-0.5 space-y-0.5">
                     {items.slice(0, 3).map((e) => (
                       <li key={e.id} className="flex items-center gap-1 truncate" title={e.title}>
                         <span className={clsx("h-1.5 w-1.5 shrink-0 rounded-full", DEADLINE_DOT[e.color] ?? "bg-gray-400")} aria-hidden="true" />
-                        <span className={clsx("truncate", daysUntil(e.end ?? e.start) < 0 ? "text-gray-400" : "text-gray-800 dark:text-gray-200")}>{e.title}</span>
+                        <span className={clsx("truncate", daysUntil(e.end ?? e.start) < 0 ? "text-leise" : "text-fg")}>{e.title}</span>
                       </li>
                     ))}
-                    {items.length > 3 && <li className="text-gray-400">+{items.length - 3}</li>}
+                    {items.length > 3 && <li className="text-leise">+{items.length - 3}</li>}
                   </ul>
                 </>
               )}
@@ -143,9 +143,9 @@ export function MonthCalendar({ entries, initial }: { entries: DeadlineEntry[]; 
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  planned: "border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300",
-  active: "border-green-500 bg-green-50 text-green-800 ring-2 ring-green-500/30 dark:bg-green-900/30 dark:text-green-200",
-  finished: "border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800",
+  planned: "border-rand-stark/70 bg-flaeche text-fg",
+  active: "border-success bg-success/[0.07] text-success ring-2 ring-success/30",
+  finished: "border-rand bg-flaeche-2 text-leise",
 };
 const TIMELINE_STATUSES = ["planned", "active", "finished"];
 
@@ -161,7 +161,7 @@ export function SeasonTimelineView({ timeline }: { timeline?: SeasonTimeline }) 
   const { t } = useTranslation("analytics");
   const statusLabel = (status: string) => (TIMELINE_STATUSES.includes(status) ? t(`timeline.status.${status}`) : status);
   if (!timeline) return null;
-  if (!timeline.events.length) return <p className="text-sm text-gray-500">{t("timeline.noEvents")}</p>;
+  if (!timeline.events.length) return <p className="text-sm text-leise">{t("timeline.noEvents")}</p>;
   return (
     <ol className="flex gap-3 overflow-x-auto pb-2" aria-label={t("timeline.label", { season: timeline.season_name })}>
       {timeline.events.map((e, index) => (
@@ -169,7 +169,7 @@ export function SeasonTimelineView({ timeline }: { timeline?: SeasonTimeline }) 
           <div className={clsx("flex-1 rounded-lg border p-3", STATUS_STYLE[e.status] ?? STATUS_STYLE.planned)}>
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5 font-medium">
-                <span className={clsx("h-2 w-2 rounded-full", DEADLINE_DOT[e.color] ?? "bg-blue-600")} aria-hidden="true" />
+                <span className={clsx("h-2 w-2 rounded-full", DEADLINE_DOT[e.color] ?? "bg-primary")} aria-hidden="true" />
                 {e.name}
               </span>
               <span className="text-xs">{statusLabel(e.status)}</span>
@@ -233,7 +233,7 @@ export function CalendarFeedPanel() {
 
   return (
     <div className="space-y-3 text-sm">
-      <p className="text-gray-600 dark:text-gray-400">
+      <p className="text-leise">
         {t("feed.intro")}
       </p>
       <div className="flex flex-wrap gap-2">
@@ -251,7 +251,7 @@ export function CalendarFeedPanel() {
         )}
       </div>
       {status?.active && !url && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-leise">
           {t("feed.activeSince", { date: formatDate(status.created_at) })}
           {status.last_used_at && t("feed.lastUsed", { date: formatDateTime(status.last_used_at) })}
           {t("feed.shownOnce")}

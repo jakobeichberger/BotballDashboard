@@ -49,11 +49,11 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (!error) return this.props.children;
     const chunk = isChunkLoadError(error);
     return (
-      <div className={this.props.fullScreen ? "grid min-h-screen place-items-center bg-gray-50 p-6 dark:bg-gray-950" : "p-6"}>
+      <div className={this.props.fullScreen ? "grid min-h-screen place-items-center bg-papier p-6" : "p-6"}>
         <div role="alert" className="card mx-auto max-w-lg p-6 text-center">
-          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-amber-500" aria-hidden="true" />
-          <h1 className="text-lg font-semibold">{i18n.t(chunk ? "common:errorBoundary.chunkTitle" : "common:errorBoundary.title")}</h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-warning" aria-hidden="true" />
+          <h1 className="font-display text-2xl font-extrabold tracking-display">{i18n.t(chunk ? "common:errorBoundary.chunkTitle" : "common:errorBoundary.title")}</h1>
+          <p className="mt-2 text-sm text-leise">
             {i18n.t(chunk ? "common:errorBoundary.chunkText" : "common:errorBoundary.text")}
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">

@@ -27,10 +27,10 @@ export default function AdminDashboard({ stats, season, announcements, summary }
     { to: eventId ? `${eventBase}/admin/users` : "/settings/users", label: t("shortcut.settings"), icon: Settings },
   ];
   const statItems = [
-    { label: t("stat.teams"), value: stats?.teams ?? 0, icon: Users },
-    { label: t("stat.scores"), value: stats?.matches ?? 0, icon: Trophy },
-    { label: t("stat.papers"), value: stats?.papers ?? 0, icon: FileText },
-    { label: t("stat.printJobs"), value: stats?.print_jobs ?? 0, icon: Printer },
+    { label: t("stat.teams"), value: stats?.teams ?? 0, icon: Users, tone: "info" as const },
+    { label: t("stat.scores"), value: stats?.matches ?? 0, icon: Trophy, tone: "primary" as const },
+    { label: t("stat.papers"), value: stats?.papers ?? 0, icon: FileText, tone: "warning" as const },
+    { label: t("stat.printJobs"), value: stats?.print_jobs ?? 0, icon: Printer, tone: "success" as const },
   ];
 
   return (
@@ -39,9 +39,12 @@ export default function AdminDashboard({ stats, season, announcements, summary }
 
       {summary?.admin && <AdminStatusPanel status={summary.admin} modules={summary.modules} />}
 
-      <SectionCard title={t("shortcuts")} id="admin-shortcuts">
-        <ShortcutGrid items={shortcuts} />
-      </SectionCard>
+      {/* Phones get the module tiles at the top of the page (DashboardPage). */}
+      <div className="hidden md:block">
+        <SectionCard title={t("shortcuts")} id="admin-shortcuts">
+          <ShortcutGrid items={shortcuts} />
+        </SectionCard>
+      </div>
 
       {season?.phases?.length > 0 && (
         <SectionCard title={t("phases")} id="admin-phases">

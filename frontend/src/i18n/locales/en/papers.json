@@ -102,7 +102,7 @@
   "title": "Paper Review",
   "reviewsCsv": "Reviews CSV",
   "deadlinePassed": "Submission deadline passed",
-  "submitNew": "+ Submit paper",
+  "submitNew": "Submit paper",
   "stats": {
     "title": "Statistics",
     "total": "Total papers",
@@ -121,7 +121,8 @@
     "title": "Title",
     "round": "Round",
     "version": "Version",
-    "submitted": "Submitted"
+    "submitted": "Submitted",
+    "open": "Open"
   },
   "empty": "No papers submitted yet",
   "create": {
@@ -220,5 +221,6 @@
     "remindReviewer": "Remind {{name}} of the review",
     "remindedAt": "reminded {{date}}",
     "statusHistory": "Status history"
-  }
+  },
+  "subtitle": "Check, review, score and export submitted papers."
 }

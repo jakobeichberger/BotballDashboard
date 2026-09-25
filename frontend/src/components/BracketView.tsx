@@ -100,8 +100,8 @@ function MatchCard({
     <article
       data-testid={`bracket-match-${match.code}`}
       className={clsx(
-        "rounded-lg border text-sm",
-        dark ? "border-slate-700 bg-slate-900" : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
+        "rounded-eng border text-sm",
+        dark ? "border-white/10 bg-tief-2/80 text-white" : "border-rand bg-flaeche",
         match.status === "cancelled" && "opacity-50",
       )}
     >
@@ -124,8 +124,8 @@ function MatchCard({
                   aria-label={t("bracket.pickWinner", { team: label, match: match.code })}
                   onClick={() => onPickWinner?.(match, teamId)}
                   className={clsx(
-                    "flex w-full justify-between rounded px-2 py-1 text-left hover:bg-cyan-100 dark:hover:bg-cyan-900",
-                    isWinner && "font-bold text-emerald-600",
+                    "flex min-h-9 w-full justify-between rounded-eng px-2 py-1 text-left hover:bg-primary/10",
+                    isWinner && "font-bold text-success",
                   )}
                 >
                   <span>{label}</span>
@@ -135,7 +135,7 @@ function MatchCard({
                 <div
                   className={clsx(
                     "flex justify-between px-2 py-1",
-                    isWinner && "font-bold text-emerald-500",
+                    isWinner && (dark ? "font-bold text-green-400" : "font-bold text-success"),
                     participant?.result === "loss" && "opacity-60",
                   )}
                 >
