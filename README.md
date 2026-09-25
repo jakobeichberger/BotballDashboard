@@ -193,7 +193,14 @@ Admins können Rechte ändern und eigene Rollen anlegen. Vollständige Matrix un
 
 | Datei | Beschreibung |
 |---|---|
-| [`docs/assets/2026 Botball Game Review v1.3.pdf`](<docs/assets/2026 Botball Game Review v1.3.pdf>) | Game Review 2026 |
+| [`docs/assets/README.md`](docs/assets/README.md) | Quellen und Nutzungshinweis aller Referenzdokumente |
+| [`docs/assets/2026-Botball-Game-Review-v1.4.pdf`](docs/assets/2026-Botball-Game-Review-v1.4.pdf) | Game Review 2026 (v1.4) |
+| [`docs/assets/2026-Botball-Seeding-Score-Sheet.pdf`](docs/assets/2026-Botball-Seeding-Score-Sheet.pdf) · [`2026-Botball-Scoring-Examples.pdf`](docs/assets/2026-Botball-Scoring-Examples.pdf) | Score-Sheet und Scoring Examples 2026 |
+| [`docs/assets/2026 ECER Amendments v1.0.pdf`](<docs/assets/2026 ECER Amendments v1.0.pdf>) | ECER Amendments 2026 (ERAA) |
+| `docs/assets/2026-Botball-Period-{1,2,3}-Documentation.pdf` · [`2026-Botball-Onsite-Documentation.pdf`](docs/assets/2026-Botball-Onsite-Documentation.pdf) | Dokumentations-Bewertungsbögen 2026 (P1 /100, P2 /95, P3 /100, Onsite /100) |
+| [`docs/assets/aerial-junior-rulebook-2026-en-v1.pdf`](docs/assets/aerial-junior-rulebook-2026-en-v1.pdf) | Aerial Junior Rulebook 2026 |
+| [`docs/assets/Results 2026.xlsx`](<docs/assets/Results 2026.xlsx>) | Ergebnisse ECER 2026 (Referenz für die Vorlagen 2026 und den Ergebnis-Export) |
+| [`docs/assets/2026 Botball Game Review v1.3.pdf`](<docs/assets/2026 Botball Game Review v1.3.pdf>) | Game Review 2026, frühere Fassung v1.3 |
 | [`docs/assets/2026 Call for Papers v1.0.pdf`](<docs/assets/2026 Call for Papers v1.0.pdf>) | Call for Papers 2026 |
 | [`docs/assets/2025 Botball Game Review v1.2.pdf`](<docs/assets/2025 Botball Game Review v1.2.pdf>) | Game Review 2025 |
 | [`docs/assets/2025 Call for Papers v1.0.pdf`](<docs/assets/2025 Call for Papers v1.0.pdf>) | Call for Papers 2025 |

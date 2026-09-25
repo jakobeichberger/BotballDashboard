@@ -30,6 +30,8 @@ from modules.scoring.competition_schemas import (
     DEResultUpsert,
     DocScoreResponse,
     DocScoreUpsert,
+    JBCResultResponse,
+    JBCResultUpsert,
     OverallRankingEntry,
     ResultRevisionResponse,
     TeamRankingEntry,
@@ -360,7 +362,7 @@ async def list_event_score_revisions(
 @router.get("/events/{event_id}/result-revisions", response_model=list[ResultRevisionResponse])
 async def list_result_revisions(
     event_id: str,
-    kind: str | None = Query(None, pattern="^(de|aerial|doc)$"),
+    kind: str | None = Query(None, pattern="^(de|aerial|doc|jbc)$"),
     team_id: str | None = Query(None),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
@@ -602,6 +604,59 @@ async def upsert_event_aerial_result(
     data = body.model_dump()
     data["team_id"] = team_id
     row = await comp_svc.upsert_aerial_result(db, event, data, current_user.id)
+    await _broadcast_ranking_update(db, event.id)
+    return row
+
+
+# ── Junior Botball Challenge ──────────────────────────────────────────────────
+
+
+@router.get("/events/{event_id}/jbc-results", response_model=list[JBCResultResponse])
+async def list_event_jbc_results(
+    event_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Points for solved challenges per team (Junior Botball Challenge)."""
+    return await comp_svc.get_jbc_results(db, await event_svc.get_event(db, event_id))
+
+
+@router.get("/events/{event_id}/jbc-ranking")
+async def get_event_jbc_ranking(
+    event_id: str,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    return await comp_svc.get_jbc_ranking(db, await _event_for_ranking(db, credentials, event_id))
+
+
+@router.put("/events/{event_id}/jbc-results", response_model=list[JBCResultResponse])
+async def bulk_upsert_event_jbc_results(
+    event_id: str,
+    body: list[JBCResultUpsert],
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await event_svc.get_event(db, event_id)
+    rows = await comp_svc.bulk_upsert_jbc_results(
+        db, event, [e.model_dump() for e in body], current_user.id
+    )
+    await _broadcast_ranking_update(db, event.id)
+    return rows
+
+
+@router.put("/events/{event_id}/jbc-results/{team_id}", response_model=JBCResultResponse)
+async def upsert_event_jbc_result(
+    event_id: str,
+    team_id: str,
+    body: JBCResultUpsert,
+    current_user=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await event_svc.get_event(db, event_id)
+    data = body.model_dump()
+    data["team_id"] = team_id
+    row = await comp_svc.upsert_jbc_result(db, event, data, current_user.id)
     await _broadcast_ranking_update(db, event.id)
     return row
 

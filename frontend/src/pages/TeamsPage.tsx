@@ -9,7 +9,8 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
-import { CATEGORY_LABEL, EMPTY_TEAM_FILTERS as EMPTY_FILTERS, teamFilterParams, type TeamFilters } from "@/lib/teams";
+import { EMPTY_TEAM_FILTERS as EMPTY_FILTERS, teamFilterParams, type TeamFilters } from "@/lib/teams";
+import CategoryOptions from "@/components/seasons/CategoryOptions";
 import { confirmAction } from "@/lib/confirm";
 
 interface TeamForm {
@@ -246,7 +247,7 @@ export default function TeamsPage() {
           {t("registrations.teamType")}
           <select className="input mt-1 block" disabled={!filters.season_id} value={filters.category} onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}>
             <option value="">{t("filter.all")}</option>
-            {Object.entries(CATEGORY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            <CategoryOptions seasonId={filters.season_id || undefined} />
           </select>
         </label>
         {(filters.q || filters.country || filters.status || filters.season_id) && (

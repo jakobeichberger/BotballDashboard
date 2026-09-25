@@ -14,6 +14,7 @@ import {
   Settings2,
   ShieldCheck,
   Sigma,
+  Trophy,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -36,5 +37,6 @@ export const NAV_ICONS: Record<RouteDefinition["icon"], LucideIcon> = {
   scouting: ScanSearch,
   ranking: ListOrdered,
   formulas: Sigma,
+  awards: Trophy,
   admin: ShieldCheck,
 };

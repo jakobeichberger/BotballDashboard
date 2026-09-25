@@ -13,6 +13,7 @@ import { formatNumber } from "@/i18n/format";
 import Freshness from "@/components/Freshness";
 import { pollWhileOffline, useLiveUpdates } from "@/hooks/useLiveUpdates";
 import { CATEGORY_LABEL as CATEGORY_LABELS } from "@/lib/teams";
+import { useSeasonCategories } from "@/lib/categories";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,13 +53,12 @@ interface DEEntry {
 }
 
 interface AerialEntry {
-  rank: number;
+  rank: number | null;
   team_id: string;
   team_name: string | null;
-  run1: number | null;
-  run2: number | null;
-  run3: number | null;
-  run4: number | null;
+  /** Ranked within this category (Aerial Junior / Senior). */
+  category?: string;
+  runs: (number | null)[];
   score: number | null;
 }
 
@@ -325,6 +325,7 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
     },
     enabled: !!base,
   });
+  const runColumns = Math.max(4, ...(data ?? []).map((e) => e.runs?.length ?? 0));
 
   return (
     <div>
@@ -342,8 +343,9 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
             <tr>
               <th className="px-4 py-3 text-left font-semibold">#</th>
               <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
-              {[1, 2, 3, 4].map((n) => (
-                <th key={n} className="px-4 py-3 text-right font-semibold">{t("aerial.run", { number: n })}</th>
+              <th className="px-4 py-3 text-left font-semibold">{t("aerial.category")}</th>
+              {Array.from({ length: runColumns }, (_, i) => (
+                <th key={i} className="px-4 py-3 text-right font-semibold">{t("aerial.run", { number: i + 1 })}</th>
               ))}
               <th className="px-4 py-3 text-right font-semibold">{t("aerial.score")}</th>
             </tr>
@@ -351,22 +353,22 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
           <tbody className="divide-y">
             {data?.map((e) => (
               <tr key={e.team_id} className="hover:bg-flaeche-2">
-                <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank)}`}>{e.rank}</td>
+                <td className={`px-4 py-3 font-bold ${RANK_COLOR(e.rank ?? 0)}`}>{e.rank ?? "–"}</td>
                 <td className="px-4 py-3">
                   <EventLink to={`/teams/${e.team_id}`} className="font-medium text-fg hover:text-akzent hover:underline">
                     {e.team_name ?? t("scoreboard.unknownTeam")}
                   </EventLink>
                 </td>
-                <td className="px-4 py-3 text-right">{fmt(e.run1, 1)}</td>
-                <td className="px-4 py-3 text-right">{fmt(e.run2, 1)}</td>
-                <td className="px-4 py-3 text-right">{fmt(e.run3, 1)}</td>
-                <td className="px-4 py-3 text-right">{fmt(e.run4, 1)}</td>
+                <td className="px-4 py-3"><span className="badge-blue">{CATEGORY_LABELS[e.category ?? ""] ?? e.category}</span></td>
+                {Array.from({ length: runColumns }, (_, i) => (
+                  <td key={i} className="px-4 py-3 text-right">{fmt(e.runs?.[i] ?? null, 1)}</td>
+                ))}
                 <td className="px-4 py-3 text-right font-bold">{fmt(e.score, 1)}</td>
               </tr>
             ))}
             {data?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-leise">{t("scoreboard.noAerial")}</td>
+                <td colSpan={runColumns + 4} className="px-4 py-8 text-center text-leise">{t("scoreboard.noAerial")}</td>
               </tr>
             )}
           </tbody>
@@ -496,6 +498,7 @@ export default function ScoreboardPage() {
   const currentTab = visibleTabs.find((t) => t.id === activeTab) ?? visibleTabs[0];
 
   const categories = season?.active_categories ?? ["botball"];
+  const registry = useSeasonCategories(sid);
 
   return (
     <div className="p-6">
@@ -527,6 +530,11 @@ export default function ScoreboardPage() {
           {isAdmin && season?.use_aerial && (
             <EventLink to={`/scoring/aerial${entryQuery}`} className="btn-secondary text-sm">
               {t("scoreboard.enterAerialShort")}
+            </EventLink>
+          )}
+          {isAdmin && categories.some((key) => registry.kindOf(key) === "jbc") && (
+            <EventLink to="/scoring/jbc" className="btn-secondary text-sm">
+              {t("scoreboard.enterJbcShort")}
             </EventLink>
           )}
           {isAdmin && (season?.use_documentation_scoring || season?.use_paper_scoring) && (

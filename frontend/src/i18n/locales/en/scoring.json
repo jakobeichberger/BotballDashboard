@@ -91,10 +91,20 @@
   "saving": "Saving…",
   "aerial": {
     "title": "Aerial – results",
-    "hint": "Score = average of all runs. Only fields with a value ≥ 0 are saved.",
+    "hint": "Score = average of all runs (unless the category says otherwise). Empty fields do not count.",
     "run": "Run {{number}}",
-    "score": "Score (⌀ of all runs)",
-    "runFor": "Run {{number}} for {{team}}"
+    "score": "Score",
+    "runFor": "Run {{number}} for {{team}}",
+    "hintBest": "Score = average of the best {{count}} runs (Aerial Junior Rulebook 2026). Empty fields do not count.",
+    "category": "Category",
+    "allTeams": "All teams",
+    "addRun": "Add run",
+    "kpi": {
+      "label": "Aerial at a glance",
+      "teams": "Teams in view",
+      "scored": "With a score",
+      "best": "Best score"
+    }
   },
   "de": {
     "title": "Double elimination – results",
@@ -161,7 +171,20 @@
     "checkItemKey": "Check item key",
     "removeCheckItem": "Remove check item",
     "newCheckItem": "New check item",
-    "save": "Save rules"
+    "save": "Save rules",
+    "seedingTiebreakers": "Apply tie-breakers to seeding ties",
+    "seedingTiebreakersHint": "Off (default): equal seed scores share a rank, as in the game review and at ECER 2026. The seeding rank of the overall score (seed_rank) is always the displayed rank.",
+    "docMax": "Documentation rubric maxima",
+    "docMaxHint": "Points of each period's rubric. Entries above are refused; the formulas use them for percentages (doc_p1_max …).",
+    "docMaxPart": {
+      "p1": "Period 1",
+      "p2": "Period 2",
+      "p3": "Period 3",
+      "onsite": "Onsite"
+    },
+    "docMax2026": "2026 rubrics (100/95/100/100)",
+    "checklistPreset": "Checklist preset",
+    "applyChecklist": "Use checklist"
   },
   "qualification": {
     "qualified": "{{count}} team(s) qualified for {{level}}.",
@@ -191,7 +214,8 @@
       "sectionEmpty": "Section “{{name}}” has no fields.",
       "eitherTooFew": "“{{name}}” needs at least two alternatives.",
       "keyInvalid": "Key “{{key}}” is invalid (a–z, 0–9, _).",
-      "keyDuplicate": "Key “{{key}}” is duplicated."
+      "keyDuplicate": "Key “{{key}}” is duplicated.",
+      "sourceUnknown": "{{name}}: there is no field “{{key}}” in this section."
     },
     "sectionNumber": "Section {{number}}",
     "pieces": "Game pieces",
@@ -261,14 +285,17 @@
     "offset": "Offset",
     "offsetHint": "Offset (+n)",
     "multiplierMax": "Multiplier maximum",
-    "removeMultiplier": "Remove multiplier"
+    "removeMultiplier": "Remove multiplier",
+    "triggeredBy": "Triggered by",
+    "triggeredByCheckbox": "Own checkbox"
   },
   "sheet": {
     "side": "Side",
     "sideTotal": "Side {{side}} · {{total}}",
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – the better alternative counts",
-    "area": "Section"
+    "area": "Section",
+    "derivedHint": "(automatic once “{{field}}” is at least 1)"
   },
   "entry": {
     "offlineLabel": "{{team}} · round {{round}} · {{points}} pts",
@@ -340,7 +367,8 @@
     },
     "noSeason": "No active season found",
     "unknownTeam": "Unknown team",
-    "subtitle": "Seeding and overall ranking, live – with exports for posting and archive."
+    "subtitle": "Seeding and overall ranking, live – with exports for posting and archive.",
+    "enterJbcShort": "JBC points"
   },
   "formulas": {
     "saveFailed": "Saving failed",
@@ -546,5 +574,33 @@
     "description": "Description",
     "descriptionPlaceholder": "e.g. servo that is not part of the kit",
     "file": "File challenge"
+  },
+  "jbc": {
+    "title": "Junior Botball Challenge – points",
+    "hint": "Points for solved challenges per team. Equal points share a rank. The overall ranking uses them with the formula preset “Junior Botball Challenge 2026” (jbc_points).",
+    "points": "Points for solved challenges",
+    "pointsFor": "Points for {{team}}",
+    "rank": "Rank",
+    "fromChallenges": "Sum of the recorded challenges",
+    "noTeams": "No teams registered in a JBC category.",
+    "kpi": {
+      "label": "JBC at a glance",
+      "teams": "JBC teams",
+      "scored": "With points",
+      "best": "Best points"
+    }
+  },
+  "timeouts": {
+    "title": "Timeout cards",
+    "hint": "Every team has one card for a single 3-minute timeout in the whole tournament – at the table before Hands-Off or at the on-deck inspection.",
+    "team": "Team taking the timeout",
+    "round": "Round",
+    "roundN": "Round {{round}}",
+    "reason": "Occasion",
+    "beforeHandsOff": "Before Hands-Off",
+    "inspection": "Inspection (illegal part)",
+    "record": "Record timeout",
+    "revoke": "Revoke the timeout of {{team}}",
+    "none": "No team has used its timeout card yet."
   }
 }

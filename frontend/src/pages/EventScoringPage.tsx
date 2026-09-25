@@ -18,6 +18,7 @@ import type { EventRegistration, RankingEntry, ScheduledMatch, ScoringSchema } f
 import { computeSheet, normalize, type RawScores } from "@/modules/scoring/sheet/calculator";
 import SheetForm from "@/modules/scoring/sheet/SheetForm";
 import PartsChallengePanel from "@/modules/scoring/extras/PartsChallengePanel";
+import TimeoutCardsPanel from "@/modules/scoring/extras/TimeoutCardsPanel";
 import { LOSE_ROUND_REASONS, type HeadToHeadOutcome, type LoseRoundReason, type RuleSet } from "@/modules/scoring/extras/types";
 
 // Horizontal swipe distance (px) that switches to the neighbouring match.
@@ -205,6 +206,7 @@ export default function EventScoringPage() {
         onCancel={() => setConfirming(false)}
       />
       <div className="mt-8"><PartsChallengePanel eventId={eventId} matches={matches} registrations={registrations.data ?? []} /></div>
+      <div className="mt-8"><TimeoutCardsPanel eventId={eventId} registrations={registrations.data ?? []} /></div>
       <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><Freshness query={ranking} live={live} className="mb-3" /><div className="card table-scroll"><table className="w-full text-sm"><thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">{t("seed")}</th><th className="p-3 text-right">{t("best")}</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{formatScore(item.seed_score)}</td><td className="p-3 text-right">{formatScore(item.best_score)}</td><td className="p-3 text-xs text-leise">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
     </div>
   );

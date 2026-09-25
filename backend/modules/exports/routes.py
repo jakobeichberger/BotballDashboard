@@ -135,6 +135,57 @@ async def _overall_entries(db: AsyncSession, event) -> list[dict]:
     return await compute_overall_ranking(db, event.id, categories)
 
 
+@router.get("/events/{event_id}/results.xlsx")
+async def export_event_results_xlsx(
+    event_id: str,
+    _=Depends(require_any_permission("scoring:read", "dashboard:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """All results in the layout of the official ECER results spreadsheet
+    (Teams, Botball & Open, Aerial, Alliance, Junior Botball Challenge)."""
+    from modules.exports.ecer_results import build_results
+    from modules.exports.xlsx import build_xlsx
+
+    event = await get_event(db, event_id)
+    sheets = await build_results(db, event.id)
+    content = await run_in_threadpool(build_xlsx, sheets)
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="results-{event.slug}.xlsx"'},
+    )
+
+
+@router.get("/events/{event_id}/results.csv")
+async def export_event_results_csv(
+    event_id: str,
+    sheet: str = Query(
+        "Botball & Open",
+        max_length=100,
+        description="Teams, Botball & Open, Aerial, Alliance or Junior Botball Challenge",
+    ),
+    _=Depends(require_any_permission("scoring:read", "dashboard:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """One sheet of the ECER results layout as CSV (blocks per category)."""
+    from core.exceptions import NotFoundError
+    from modules.exports.ecer_results import build_results
+
+    event = await get_event(db, event_id)
+    sheets = {s.name.lower(): s for s in await build_results(db, event.id)}
+    chosen = sheets.get(sheet.lower())
+    if chosen is None:
+        raise NotFoundError(f"No results sheet '{sheet}' (available: {', '.join(sheets)})")
+    buf = io.StringIO()
+    _SafeWriter(buf).writerows(chosen.rows)
+    slug = "".join(ch if ch.isalnum() else "-" for ch in chosen.name.lower()).strip("-")
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="results-{event.slug}-{slug}.csv"'},
+    )
+
+
 @router.get("/events/{event_id}/overall-ranking.csv")
 async def export_event_overall_ranking_csv(
     event_id: str,

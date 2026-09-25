@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ── Double Elimination ────────────────────────────────────────────────────────
 
@@ -40,13 +40,30 @@ class DEResultResponse(BaseModel):
 # ── Aerial ────────────────────────────────────────────────────────────────────
 
 
+MAX_AERIAL_RUNS = 20
+
+
 class AerialResultUpsert(BaseModel):
     team_id: str | None = None
-    run1: float | None = Field(default=None, ge=0)
-    run2: float | None = Field(default=None, ge=0)
-    run3: float | None = Field(default=None, ge=0)
-    run4: float | None = Field(default=None, ge=0)
+    # The scoring runs in order; null for a run not flown (yet).
+    runs: list[float | None] = Field(default_factory=list, max_length=MAX_AERIAL_RUNS)
+    # Former fixed columns, still accepted from older clients.
+    run1: float | None = Field(default=None, ge=0, exclude=True)
+    run2: float | None = Field(default=None, ge=0, exclude=True)
+    run3: float | None = Field(default=None, ge=0, exclude=True)
+    run4: float | None = Field(default=None, ge=0, exclude=True)
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def normalise_runs(self) -> "AerialResultUpsert":
+        legacy = [self.run1, self.run2, self.run3, self.run4]
+        if not self.runs and any(v is not None for v in legacy):
+            self.runs = legacy
+        if any(v is not None and v < 0 for v in self.runs):
+            raise ValueError("Aerial runs must not be negative")
+        while self.runs and self.runs[-1] is None:
+            self.runs.pop()
+        return self
 
 
 class AerialResultResponse(BaseModel):
@@ -56,10 +73,7 @@ class AerialResultResponse(BaseModel):
     season_id: str
     event_id: str
     team_id: str
-    run1: float | None
-    run2: float | None
-    run3: float | None
-    run4: float | None
+    runs: list[float | None]
     score: float | None
     rank: int | None
     notes: str | None
@@ -70,11 +84,14 @@ class AerialResultResponse(BaseModel):
 
 
 class DocScoreUpsert(BaseModel):
+    """Rubric points per period; the upper bound is the season's rubric maximum
+    (ScoringRuleSet.doc_max_points, 2026: P1 /100, P2 /95, P3 /100, Onsite /100)."""
+
     team_id: str | None = None
-    part1: float | None = Field(default=None, ge=0, le=100)
-    part2: float | None = Field(default=None, ge=0, le=100)
-    part3: float | None = Field(default=None, ge=0, le=100)
-    onsite: float | None = Field(default=None, ge=0, le=100)
+    part1: float | None = Field(default=None, ge=0, le=1000)
+    part2: float | None = Field(default=None, ge=0, le=1000)
+    part3: float | None = Field(default=None, ge=0, le=1000)
+    onsite: float | None = Field(default=None, ge=0, le=1000)
     notes: str | None = None
 
 
@@ -95,6 +112,37 @@ class DocScoreResponse(BaseModel):
     updated_at: datetime
 
 
+# ── Junior Botball Challenge ──────────────────────────────────────────────────
+
+
+class JBCChallenge(BaseModel):
+    key: str = Field(min_length=1, max_length=50)
+    label: str | None = Field(default=None, max_length=255)
+    points: float = Field(ge=0, le=1000)
+
+
+class JBCResultUpsert(BaseModel):
+    team_id: str | None = None
+    # Either the points directly or the solved challenges (points = their sum).
+    points: float | None = Field(default=None, ge=0, le=10000)
+    challenges: list[JBCChallenge] = Field(default_factory=list, max_length=100)
+    notes: str | None = None
+
+
+class JBCResultResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    season_id: str
+    event_id: str
+    team_id: str
+    points: float | None
+    challenges: list[dict]
+    rank: int | None
+    notes: str | None
+    updated_at: datetime
+
+
 # ── Overall Ranking ───────────────────────────────────────────────────────────
 
 
@@ -111,6 +159,10 @@ class OverallRankingEntry(BaseModel):
     paper_score: float | None
     doc_score: float | None
     aerial_score: float | None
+    # Categories ranked per DE bracket (GCER courses/tiers): the bracket and
+    # the team's place within it.
+    course: str | None = None
+    course_rank: int | None = None
     # Every value the season's formula set produced, including any custom keys
     # that have no dedicated field above.
     values: dict[str, float] = {}

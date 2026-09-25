@@ -30,7 +30,7 @@ import {
   type PrinterInfo,
 } from "@/lib/printing";
 
-const EMPTY_FORM = { team_id: "", material: "PLA", color: "", estimated_grams: "", estimated_minutes: "", notes: "", quota_override: false };
+const EMPTY_FORM = { team_id: "", material: "PLA", color: "", purpose: "robot", part_count: "1", estimated_grams: "", estimated_minutes: "", notes: "", quota_override: false };
 const EMPTY_PRINTER = { name: "", printer_type: "octoprint", api_url: "", device_id: "", api_key: "" };
 
 export default function PrintingPage() {
@@ -92,6 +92,8 @@ export default function PrintingPage() {
         file_name: file.name,
         material: form.material,
         color: form.color || null,
+        purpose: form.purpose,
+        part_count: Math.max(1, Number(form.part_count) || 1),
         estimated_grams: form.estimated_grams ? Number(form.estimated_grams) : null,
         estimated_minutes: form.estimated_minutes ? Number(form.estimated_minutes) : null,
         notes: form.notes || null,
@@ -316,7 +318,15 @@ export default function PrintingPage() {
               </select>
             </label>
             <label className="block text-sm font-medium">{t("create.color")}
-              <input className="input mt-1 w-full" value={form.color} onChange={(e) => setForm((current) => ({ ...current, color: e.target.value }))} />
+              <input className="input mt-1 w-full" value={form.color} onChange={(e) => setForm((current) => ({ ...current, color: e.target.value }))} placeholder={t("create.colorHint")} />
+            </label>
+            <label className="block text-sm font-medium">{t("create.purpose")}
+              <select className="input mt-1 w-full" value={form.purpose} onChange={(e) => setForm((current) => ({ ...current, purpose: e.target.value }))}>
+                {["robot", "spare", "jig"].map((purpose) => <option key={purpose} value={purpose}>{t(`purpose.${purpose}`)}</option>)}
+              </select>
+            </label>
+            <label className="block text-sm font-medium">{t("create.partCount")}
+              <input className="input mt-1 w-full" type="number" min={1} max={50} value={form.part_count} onChange={(e) => setForm((current) => ({ ...current, part_count: e.target.value }))} />
             </label>
             <label className="block text-sm font-medium">{t("create.estimatedGrams")}
               <input className="input mt-1 w-full" type="number" min={0} step={0.1} value={form.estimated_grams} onChange={(e) => setForm((current) => ({ ...current, estimated_grams: e.target.value }))} />

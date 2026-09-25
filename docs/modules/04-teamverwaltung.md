@@ -20,7 +20,7 @@ Verwaltung aller Teams über mehrere Saisons hinweg. Ein Team gehört entweder z
 - Kit wird von KIPR bereitgestellt (Versandstatus relevant)
 - Paper-Einreichung: **Pflicht** (bei uns intern)
 
-### Open-Teams (PRIA Open)
+### Open-Teams (ECER Open, in den Amendments bis 2026 „PRIA Open“)
 - Roboter-Teilnahme ohne offizielle Botball-Dokumentation (Period-Scores)
 - Gesamt-Score: `DE + Seeding + ½·PaperScore` (kein DocScore)
 - Kein Kit-Versand (bringen eigene Hardware oder verwenden Schul-Equipment)

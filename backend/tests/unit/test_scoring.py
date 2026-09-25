@@ -71,8 +71,12 @@ class TestOfficialRunScore:
     @pytest.mark.asyncio
     async def test_documentation_score_includes_onsite(self, db, season, team):
         from modules.scoring.competition_service import upsert_doc_score
+        from modules.scoring.formula_service import apply_preset
         from modules.scoring.service import get_default_event
 
+        # The stored score follows the category's formula set; the regional
+        # preset is the game review's weighting.
+        await apply_preset(db, season.id, "regional_2026_botball")
         score = await upsert_doc_score(
             db,
             await get_default_event(db, season.id),

@@ -8,7 +8,9 @@
  *
  * Structured sheet: per side, each section's Σ value × multiplier is multiplied
  * by its area multipliers (checkbox → factor, count → value × factor + offset,
- * either-or → the best alternative; anything below 1 counts as ×1). The total
+ * either-or → the best alternative; anything below 1 counts as ×1). A derived
+ * multiplier (`source`) has no input: it is on when that field of the section
+ * is at least 1 (2026 Lower Start Box "Drum ×2"). The total
  * is the sum over sides ("Total A + B"). A flat field list is the special case
  * of sections without multipliers.
  */
@@ -36,6 +38,8 @@ export interface SheetMultiplier {
   offset?: number;
   min_value?: number | null;
   max_value?: number | null;
+  /** Field of the same section that switches this checkbox multiplier on (≥ 1). */
+  source?: string | null;
 }
 
 export interface SheetEitherMultiplier {
@@ -119,7 +123,9 @@ export function normalize(fields: SheetField[] | null | undefined, definition: u
   return null;
 }
 
-const multiplierInputs = (multiplier: SectionMultiplier): SheetMultiplier[] => (isEither(multiplier) ? multiplier.either : [multiplier]);
+export const isDerived = (multiplier: SheetMultiplier): boolean => !!multiplier.source;
+
+const multiplierInputs = (multiplier: SectionMultiplier): SheetMultiplier[] => (isEither(multiplier) ? multiplier.either : [multiplier]).filter((option) => !isDerived(option));
 
 /** Every value the sheet asks for, keyed like the raw scores the API expects. */
 export function inputFields(definition: SheetDefinition): InputSpec[] {
@@ -165,6 +171,10 @@ function readValue(raw: RawScores, key: string, spec: { max_value?: number | nul
 }
 
 function effective(raw: RawScores, side: string | null, spec: SheetMultiplier): number {
+  if (spec.source) {
+    const trigger = rawKey(side, spec.source);
+    return toNumber(trigger, raw[trigger]) >= 1 ? spec.factor ?? 1 : 1;
+  }
   const value = readValue(raw, rawKey(side, spec.key), spec);
   const factor = (spec.type ?? "boolean") === "boolean" ? (value ? spec.factor ?? 1 : 1) : value * (spec.factor ?? 1) + (spec.offset ?? 0);
   return factor >= 1 ? factor : 1;

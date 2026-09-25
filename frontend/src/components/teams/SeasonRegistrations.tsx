@@ -14,6 +14,7 @@ import {
   type SeasonRosterEntry,
   type TeamSeasonRegistration,
 } from "@/lib/teams";
+import CategoryOptions from "@/components/seasons/CategoryOptions";
 
 interface Member {
   id: string;
@@ -174,7 +175,7 @@ export function SeasonRegistrations({
                   <div className="grid gap-3 sm:grid-cols-4">
                     <label className="text-sm">{t("registrations.teamType")}
                       <select className="input mt-1" value={form.category} onChange={(e) => set("category", e.target.value)}>
-                        {Object.entries(CATEGORY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        <CategoryOptions seasonId={reg.season_id} current={form.category} />
                       </select>
                     </label>
                     <label className="text-sm">{t("registrations.fee")}

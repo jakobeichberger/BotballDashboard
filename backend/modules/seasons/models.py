@@ -2,7 +2,18 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -51,7 +62,8 @@ class Season(Base):
     use_paper_scoring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     use_documentation_scoring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     use_aerial: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    # Active team categories in this season: ["botball", "open", "aerial", "jbc"]
+    # Active team categories in this season (keys of the category registry,
+    # see SeasonCategory / modules.seasons.categories)
     active_categories: Mapped[list] = mapped_column(
         JSON, default=lambda: ["botball"], nullable=False
     )
@@ -130,3 +142,36 @@ class SeasonEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class SeasonCategory(Base):
+    """One competition category of a season (Botball, ECER Open, Aerial Junior, …).
+
+    Team registrations, formula sets, bracket weights and rankings refer to a
+    category by its ``key``. A season without rows uses the defaults of
+    ``modules.seasons.categories``; ``kind`` says which results a category
+    has (seeding/DE/documentation, aerial runs, JBC points) and which shipped
+    formula set it falls back to.
+    """
+
+    __tablename__ = "season_categories"
+    __table_args__ = (UniqueConstraint("season_id", "key", name="uq_season_category_key"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    season_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    key: Mapped[str] = mapped_column(String(20), nullable=False)
+    label_de: Mapped[str] = mapped_column(String(100), nullable=False)
+    label_en: Mapped[str] = mapped_column(String(100), nullable=False)
+    # botball | open | aerial | jbc | custom
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="custom")
+    # Formula preset used while the season stores no formulas for the category.
+    formula_preset: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Aerial: run columns offered for entry and how many of the best count
+    # (None: all runs).
+    run_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    counted_runs: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # GCER: rank the overall score per DE bracket ("course"/tier) as well.
+    rank_per_bracket: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

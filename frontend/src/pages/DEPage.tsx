@@ -87,10 +87,10 @@ export default function DEPage() {
 
   return (
     <div className="p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-leise hover:text-gray-600">
-            <ArrowLeft className="w-5 h-5" />
+      <div className="page-header items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="btn-icon">
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </EventLink>
           <h1 className="page-title flex items-center gap-2">
             <Medal className="h-7 w-7 shrink-0 text-akzent" />
@@ -100,7 +100,7 @@ export default function DEPage() {
         <button
           onClick={handleSave}
           disabled={saveMutation.isPending || Object.keys(draft).length === 0}
-          className="btn-primary text-sm flex items-center gap-2"
+          className="btn-primary"
         >
           <Save className="w-4 h-4" />
           {saveMutation.isPending ? t("saving") : t("common:save")}

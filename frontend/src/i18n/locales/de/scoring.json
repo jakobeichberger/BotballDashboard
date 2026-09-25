@@ -91,10 +91,20 @@
   "saving": "Speichern…",
   "aerial": {
     "title": "Aerial – Ergebnisse",
-    "hint": "Score = Durchschnitt aller Läufe. Nur Felder mit Wert ≥ 0 werden gespeichert.",
+    "hint": "Score = Durchschnitt aller Läufe (sofern die Kategorie nichts anderes festlegt). Leere Felder zählen nicht.",
     "run": "Run {{number}}",
-    "score": "Score (⌀ aller Läufe)",
-    "runFor": "Run {{number}} für {{team}}"
+    "score": "Score",
+    "runFor": "Run {{number}} für {{team}}",
+    "hintBest": "Score = Durchschnitt der besten {{count}} Läufe (Aerial Junior Rulebook 2026). Leere Felder zählen nicht.",
+    "category": "Kategorie",
+    "allTeams": "Alle Teams",
+    "addRun": "Lauf hinzufügen",
+    "kpi": {
+      "label": "Aerial im Überblick",
+      "teams": "Teams in der Ansicht",
+      "scored": "Mit Score",
+      "best": "Bester Score"
+    }
   },
   "de": {
     "title": "Double Elimination – Ergebnisse",
@@ -161,7 +171,20 @@
     "checkItemKey": "Prüfpunkt-Schlüssel",
     "removeCheckItem": "Prüfpunkt entfernen",
     "newCheckItem": "Neuer Prüfpunkt",
-    "save": "Regeln speichern"
+    "save": "Regeln speichern",
+    "seedingTiebreakers": "Tie-Breaker auch auf Seeding-Gleichstände anwenden",
+    "seedingTiebreakersHint": "Aus (Standard): gleiche Seed-Scores teilen sich den Rang, wie im Game Review und bei ECER 2026. Der Seeding-Rang der Gesamtwertung (seed_rank) ist immer der angezeigte Rang.",
+    "docMax": "Maximalpunkte der Dokumentation",
+    "docMaxHint": "Punkte laut Bewertungsbogen je Periode. Eingaben darüber werden abgelehnt; die Formeln rechnen damit in Prozent um (doc_p1_max …).",
+    "docMaxPart": {
+      "p1": "Periode 1",
+      "p2": "Periode 2",
+      "p3": "Periode 3",
+      "onsite": "Onsite"
+    },
+    "docMax2026": "Bewertungsbögen 2026 (100/95/100/100)",
+    "checklistPreset": "Vorlage für die Checkliste",
+    "applyChecklist": "Checkliste übernehmen"
   },
   "qualification": {
     "qualified": "{{count}} Team(s) für {{level}} qualifiziert.",
@@ -191,7 +214,8 @@
       "sectionEmpty": "Bereich „{{name}}“ hat keine Felder.",
       "eitherTooFew": "„{{name}}“ braucht mindestens zwei Alternativen.",
       "keyInvalid": "Schlüssel „{{key}}“ ist ungültig (a–z, 0–9, _).",
-      "keyDuplicate": "Schlüssel „{{key}}“ ist doppelt."
+      "keyDuplicate": "Schlüssel „{{key}}“ ist doppelt.",
+      "sourceUnknown": "{{name}}: Feld „{{key}}“ gibt es in diesem Bereich nicht."
     },
     "sectionNumber": "Bereich {{number}}",
     "pieces": "Spielteile",
@@ -261,14 +285,17 @@
     "offset": "Offset",
     "offsetHint": "Offset (+n)",
     "multiplierMax": "Multiplikator-Maximum",
-    "removeMultiplier": "Multiplikator entfernen"
+    "removeMultiplier": "Multiplikator entfernen",
+    "triggeredBy": "Ausgelöst durch",
+    "triggeredByCheckbox": "Eigenes Kästchen"
   },
   "sheet": {
     "side": "Seite",
     "sideTotal": "Seite {{side}} · {{total}}",
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – es zählt die bessere Alternative",
-    "area": "Bereich"
+    "area": "Bereich",
+    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)"
   },
   "entry": {
     "offlineLabel": "{{team}} · Runde {{round}} · {{points}} P.",
@@ -340,7 +367,8 @@
     },
     "noSeason": "Keine aktive Saison gefunden",
     "unknownTeam": "Unbekanntes Team",
-    "subtitle": "Seeding und Gesamtwertung live – mit Exporten für Aushang und Archiv."
+    "subtitle": "Seeding und Gesamtwertung live – mit Exporten für Aushang und Archiv.",
+    "enterJbcShort": "JBC-Punkte"
   },
   "formulas": {
     "saveFailed": "Speichern fehlgeschlagen",
@@ -546,5 +574,33 @@
     "description": "Beschreibung",
     "descriptionPlaceholder": "z. B. Servo, das nicht aus dem Kit stammt",
     "file": "Challenge erfassen"
+  },
+  "jbc": {
+    "title": "Junior Botball Challenge – Punkte",
+    "hint": "Punkte für gelöste Challenges je Team. Gleiche Punkte teilen sich den Rang. Die Gesamtwertung nutzt sie mit der Formel-Vorlage „Junior Botball Challenge 2026“ (jbc_points).",
+    "points": "Punkte für gelöste Challenges",
+    "pointsFor": "Punkte für {{team}}",
+    "rank": "Rang",
+    "fromChallenges": "Summe der erfassten Challenges",
+    "noTeams": "Keine Teams in einer JBC-Kategorie angemeldet.",
+    "kpi": {
+      "label": "JBC im Überblick",
+      "teams": "JBC-Teams",
+      "scored": "Mit Punkten",
+      "best": "Beste Punktzahl"
+    }
+  },
+  "timeouts": {
+    "title": "Timeout-Karten",
+    "hint": "Jedes Team hat eine Karte für einen einzigen 3-Minuten-Timeout im ganzen Turnier – vor Hands-Off am Tisch oder bei der On-Deck-Inspektion.",
+    "team": "Team mit Timeout",
+    "round": "Runde",
+    "roundN": "Runde {{round}}",
+    "reason": "Anlass",
+    "beforeHandsOff": "Vor Hands-Off",
+    "inspection": "Inspektion (illegales Teil)",
+    "record": "Timeout erfassen",
+    "revoke": "Timeout von {{team}} zurücknehmen",
+    "none": "Noch kein Team hat seine Timeout-Karte genutzt."
   }
 }

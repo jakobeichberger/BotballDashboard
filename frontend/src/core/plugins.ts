@@ -21,7 +21,7 @@ export interface RouteDefinition {
   component: LazyExoticComponent<ComponentType>;
   permission: string;
   label: { de: string; en: string };
-  icon: "dashboard" | "teams" | "schedule" | "scoring" | "scans" | "papers" | "printing" | "bots" | "settings" | "stats" | "performance" | "calendar" | "scouting" | "ranking" | "formulas" | "admin";
+  icon: "dashboard" | "teams" | "schedule" | "scoring" | "scans" | "papers" | "printing" | "bots" | "settings" | "stats" | "performance" | "calendar" | "scouting" | "ranking" | "formulas" | "awards" | "admin";
   navigation?: boolean;
   /** Sidebar section the navigation entry is listed under (see NAV_GROUPS). */
   group?: NavGroup;
@@ -83,11 +83,13 @@ export const modules: readonly ModuleDefinition[] = [
       { path: "scoring/entry", component: lazy(() => import("@/pages/ScoreEntryPage")), permission: "scoring:write", label: { de: "Punkte eintragen", en: "Enter scores" }, icon: "scoring", navigation: false },
       { path: "scoring/de", component: lazy(() => import("@/pages/DEPage")), permission: "scoring:admin", label: { de: "Double Elimination", en: "Double elimination" }, icon: "scoring", navigation: false, module: "double_elimination" },
       { path: "scoring/aerial", component: lazy(() => import("@/pages/AerialPage")), permission: "scoring:admin", label: { de: "Aerial", en: "Aerial" }, icon: "scoring", navigation: false, module: "aerial" },
+      { path: "scoring/jbc", component: lazy(() => import("@/pages/JBCPage")), permission: "scoring:admin", label: { de: "Junior Botball Challenge", en: "Junior Botball Challenge" }, icon: "scoring", navigation: false },
       { path: "scoring/doc", component: lazy(() => import("@/pages/DocScoringPage")), permission: "scoring:admin", label: { de: "Dokumentation", en: "Documentation" }, icon: "scoring", navigation: false, module: ["documentation", "paper_scoring"] },
       { path: "scoring/score-sheets", component: lazy(() => import("@/modules/scoring/score-sheets/pages/ScoreSheetsPage")), permission: "scoring:admin", label: { de: "Score-Sheets", en: "Score sheets" }, icon: "scans", navigation: false },
       // Mentors see their own team only; the backend scopes the data.
       { path: "performance", component: lazy(() => import("@/pages/PerformancePage")), permission: "scoring:write", label: { de: "Performance", en: "Performance" }, icon: "performance", navigation: true, group: "scoring" },
       { path: "statistics", component: lazy(() => import("@/pages/StatisticsPage")), permission: "scoring:admin", label: { de: "Statistik & Anomalien", en: "Statistics & anomalies" }, icon: "stats", navigation: true, group: "scoring" },
+      { path: "awards", component: lazy(() => import("@/pages/AwardsPage")), permission: "scoring:read", label: { de: "Awards", en: "Awards" }, icon: "awards", navigation: true, group: "scoring" },
       { path: "formulas", component: lazy(() => import("@/pages/FormulasPage")), permission: "scoring:formulas", label: { de: "Punkteformeln", en: "Scoring formulas" }, icon: "formulas", navigation: true, group: "scoring" },
     ],
     translations: ["scoring", "events", "analytics"],

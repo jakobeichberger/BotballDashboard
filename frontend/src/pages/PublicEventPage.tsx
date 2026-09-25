@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import {
+  Award,
   CalendarDays,
   Expand,
   Megaphone,
@@ -32,6 +33,13 @@ interface Announcement {
   body: string;
 }
 
+/** GET /v1/public/events/{slug}/awards (modules.awards; local type). */
+interface PublicAward {
+  key: string;
+  label: string;
+  results: { team_id: string; team_name: string | null; team_number: string | null; place: number; course: string | null }[];
+}
+
 const FALLBACK_POLL_MS = 20_000;
 // The live stream tells the screen when something changed, so the lists do not
 // need to be re-fetched on a timer or on every panel switch.
@@ -47,8 +55,10 @@ const LIVE_EVENT_QUERIES: Record<string, string[]> = {
   schedule_updated: ["public-schedule", "public-bracket"],
   announcement_published: ["public-announcements"],
   announcement_removed: ["public-announcements"],
+  awards_updated: ["public-awards"],
 };
 const QUERY_PANEL: Record<string, string> = {
+  "public-awards": "awards",
   "public-ranking": "ranking",
   "public-results": "results",
   "public-schedule": "schedule",
@@ -123,6 +133,14 @@ export default function PublicEventPage() {
     refetchInterval: pollMs,
     staleTime: LIVE_STALE_TIME,
   });
+  // Published awards only; 404 until the organisers publish them.
+  const awards = useQuery<PublicAward[]>({
+    queryKey: ["public-awards", eventSlug],
+    queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/awards`)).data,
+    enabled: !!event.data,
+    retry: false,
+    staleTime: LIVE_STALE_TIME,
+  });
   const panels = useMemo(
     () =>
       [
@@ -131,8 +149,9 @@ export default function PublicEventPage() {
         event.data?.public_schedule && !!bracket.data?.length && "bracket",
         event.data?.public_announcements && "announcements",
         event.data?.public_results && "results",
+        !!awards.data?.length && "awards",
       ].filter(Boolean) as string[],
-    [event.data, bracket.data],
+    [event.data, bracket.data, awards.data],
   );
 
   useEffect(() => {
@@ -419,12 +438,48 @@ export default function PublicEventPage() {
         </section>
       )}
 
+      {current === "awards" && awards.data && (
+        <section className="reveal">
+          <h2 className={panelTitle}>
+            <Award className={panelIcon} strokeWidth={1.75} aria-hidden="true" />
+            {t("awards.publicTitle")}
+          </h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {awards.data.map((award) => (
+              <article key={award.key} className={clsx(tile, "border-t-4 border-t-primary")}>
+                <h3 className="font-display text-2xl font-extrabold tracking-display md:text-3xl">{award.label}</h3>
+                <ol className="mt-4 space-y-3">
+                  {award.results.map((result) => (
+                    <li key={`${result.course}-${result.team_id}`} className="flex items-center gap-4">
+                      <span
+                        className={clsx(
+                          "w-10 shrink-0 text-center font-display text-4xl font-extrabold tabular-nums",
+                          result.place === 1 ? "text-rot-auf-dunkel" : "text-sidebar-leise",
+                        )}
+                      >
+                        <span className="sr-only">{t("awards.place", { place: result.place })}</span>
+                        <span aria-hidden="true">{result.place}</span>
+                      </span>
+                      <span className="min-w-0">
+                        {result.course && <span className="block font-ui text-sm font-semibold uppercase tracking-overline text-sidebar-leise">{result.course}</span>}
+                        <span className="font-ui text-xl font-bold md:text-2xl">{result.team_name}</span>
+                        {result.team_number && <span className="ml-3 text-lg text-sidebar-leise">#{result.team_number}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       <footer className="fixed bottom-1 right-3 flex">
         {panels.map((item, index) => (
           <button
             type="button"
             key={item}
-            aria-label={t("showPanel", { panel: t(item === "bracket" ? "bracket.title" : item) })}
+            aria-label={t("showPanel", { panel: t(item === "bracket" ? "bracket.title" : item === "awards" ? "awards.publicTitle" : item) })}
             aria-current={index === shown ? "true" : undefined}
             onClick={() => setPanel(index)}
             className="grid h-11 place-items-center px-1"

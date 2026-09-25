@@ -102,6 +102,19 @@ class PrintJob(Base):
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     material: Mapped[str] = mapped_column(String(50), default="PLA", nullable=False)  # PLA | PETG
     color: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Game Review 3D print rules (modules.printing.rules): what the parts are
+    # for (robot | spare | jig), how many distinct robot parts the job prints,
+    # the STL's bounding box in mm and whether the STL went in with Period 3.
+    purpose: Mapped[str] = mapped_column(
+        String(10), default="robot", server_default="robot", nullable=False
+    )
+    part_count: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    bbox_x_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    bbox_y_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    bbox_z_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    stl_submitted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
     estimated_grams: Mapped[float | None] = mapped_column(Float, nullable=True)
     actual_grams: Mapped[float | None] = mapped_column(Float, nullable=True)
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -133,6 +146,19 @@ class PrintJob(Base):
     )
 
     printer: Mapped[Printer | None] = relationship(Printer, back_populates="print_jobs")
+
+    @property
+    def bounding_box(self) -> tuple[float, float, float] | None:
+        if self.bbox_x_mm is None or self.bbox_y_mm is None or self.bbox_z_mm is None:
+            return None
+        return (self.bbox_x_mm, self.bbox_y_mm, self.bbox_z_mm)
+
+    @property
+    def rule_warnings(self) -> list[str]:
+        """Game-review rule codes this job breaks (material, color, volume)."""
+        from modules.printing.rules import job_warnings
+
+        return job_warnings(self.material, self.color, self.bounding_box)
 
 
 class TeamSeasonPrintQuota(Base):

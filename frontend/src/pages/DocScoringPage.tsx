@@ -50,6 +50,14 @@ export default function DocScoringPage() {
     queryFn: async () => { const { data } = await api.get("/teams"); return data; },
   });
 
+  // Rubric maxima of the season (2026: P1 /100, P2 /95, P3 /100, Onsite /100).
+  const { data: rules } = useQuery<{ doc_max_points?: Record<"p1" | "p2" | "p3" | "onsite", number> }>({
+    queryKey: ["scoring-rules", seasonId],
+    queryFn: async () => (await api.get(`/scoring/seasons/${seasonId}/rules`)).data,
+    enabled: !!seasonId,
+  });
+  const maxima = [rules?.doc_max_points?.p1 ?? 100, rules?.doc_max_points?.p2 ?? 100, rules?.doc_max_points?.p3 ?? 100, rules?.doc_max_points?.onsite ?? 100];
+
   // ── Documentation ────────────────────────────────────────────────────────
 
   const { data: existingDoc } = useQuery<DocEntry[]>({
@@ -157,10 +165,10 @@ export default function DocScoringPage() {
 
   return (
     <div className="p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="text-leise hover:text-gray-600">
-            <ArrowLeft className="w-5 h-5" />
+      <div className="page-header items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="btn-icon">
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </EventLink>
           <h1 className="page-title flex items-center gap-2">
             <FileText className="h-7 w-7 shrink-0 text-akzent" />
@@ -174,7 +182,7 @@ export default function DocScoringPage() {
               ? saveDocMutation.isPending || Object.keys(docDraft).length === 0
               : savePaperMutation.isPending || Object.keys(paperDraft).length === 0
           }
-          className="btn-primary text-sm flex items-center gap-2"
+          className="btn-primary"
         >
           <Save className="w-4 h-4" />
           {t("common:save")}
@@ -189,7 +197,7 @@ export default function DocScoringPage() {
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "doc"
                 ? "border-primary text-akzent"
-                : "border-transparent text-leise hover:text-gray-700"
+                : "border-transparent text-leise hover:text-fg"
             }`}
           >
             {t("doc.tabDoc")}
@@ -201,7 +209,7 @@ export default function DocScoringPage() {
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "paper"
                 ? "border-primary text-akzent"
-                : "border-transparent text-leise hover:text-gray-700"
+                : "border-transparent text-leise hover:text-fg"
             }`}
           >
             {t("doc.tabPaper")}
@@ -222,8 +230,8 @@ export default function DocScoringPage() {
             <thead className="bg-flaeche-2">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold">{t("scouting.team")}</th>
-                {[t("doc.part", { number: 1 }), t("doc.part", { number: 2 }), t("doc.part", { number: 3 }), t("doc.onsite")].map((h) => (
-                  <th key={h} className="px-4 py-3 text-center font-semibold">{h} (0–100)</th>
+                {[t("doc.part", { number: 1 }), t("doc.part", { number: 2 }), t("doc.part", { number: 3 }), t("doc.onsite")].map((h, i) => (
+                  <th key={h} className="px-4 py-3 text-center font-semibold">{h} (0–{maxima[i]})</th>
                 ))}
                 <th className="px-4 py-3 text-center font-semibold">{t("doc.docScore")}</th>
                 <th className="px-4 py-3 text-center font-semibold">{t("doc.formulaValue")}</th>
@@ -233,7 +241,7 @@ export default function DocScoringPage() {
               {teams?.map((team) => {
                 const e = effectiveDoc(team.id);
                 const dirty = !!docDraft[team.id];
-                const regional = regionalDocScore([e.part1, e.part2, e.part3, e.onsite]);
+                const regional = regionalDocScore([e.part1, e.part2, e.part3, e.onsite], maxima);
                 const docScore = regional == null ? "–" : formatNumber(regional, fourDecimals);
                 const formulaValue = formulaDocScore(team.id);
                 return (
@@ -242,10 +250,10 @@ export default function DocScoringPage() {
                       <div className="font-medium">{team.name}</div>
                       <div className="text-xs text-leise font-mono">{team.team_number ?? team.id}</div>
                     </td>
-                    {(["part1", "part2", "part3", "onsite"] as const).map((f) => (
+                    {(["part1", "part2", "part3", "onsite"] as const).map((f, i) => (
                       <td key={f} className="px-4 py-2 text-center">
                         <input
-                          type="number" min={0} max={100} step={0.5}
+                          type="number" min={0} max={maxima[i]} step={0.5}
                           value={e[f] ?? ""}
                           onChange={(ev) => setDocField(team.id, f, ev.target.value === "" ? null : Number(ev.target.value))}
                           aria-label={t("doc.fieldFor", { field: f, team: team.name })}

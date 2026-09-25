@@ -189,7 +189,7 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
                 <button type="button" className="btn-secondary text-xs" onClick={() => updateMultiplier(i, { ...multiplier, either: [...multiplier.either, { key: newKey(`option_${multiplier.either.length + 1}`), label: t("schema.alternative"), type: "count", factor: 1, offset: 0, max_value: null }] })}><Plus className="h-3 w-3" />{t("schema.alternative")}</button>
               </div>
             ) : (
-              <MultiplierRow value={multiplier} onChange={(next) => updateMultiplier(i, next)} onRemove={() => onChange({ multipliers: section.multipliers.filter((_, j) => j !== i) })} />
+              <MultiplierRow value={multiplier} fields={section.fields} onChange={(next) => updateMultiplier(i, next)} onRemove={() => onChange({ multipliers: section.multipliers.filter((_, j) => j !== i) })} />
             )}
           </div>
         ))}
@@ -202,10 +202,11 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
   );
 }
 
-function MultiplierRow({ value, onChange, onRemove }: { value: SheetMultiplier; onChange: (next: SheetMultiplier) => void; onRemove: () => void }) {
+function MultiplierRow({ value, fields, onChange, onRemove }: { value: SheetMultiplier; fields?: SheetField[]; onChange: (next: SheetMultiplier) => void; onRemove: () => void }) {
   const { t } = useTranslation("scoring");
   const counted = (value.type ?? "boolean") !== "boolean";
   return (
+    <div className="space-y-2">
     <div className="grid gap-2 sm:grid-cols-[1.4fr_1fr_8rem_4.5rem_4.5rem_4.5rem_auto]">
       <input aria-label={t("schema.multiplierName")} className="input" value={value.label} onChange={(e) => onChange({ ...value, label: e.target.value })} />
       <input aria-label={t("schema.multiplierKey")} className="input font-mono text-xs" value={value.key} onChange={(e) => onChange({ ...value, key: e.target.value })} />
@@ -214,6 +215,16 @@ function MultiplierRow({ value, onChange, onRemove }: { value: SheetMultiplier; 
       <input aria-label={t("schema.offset")} title={t("schema.offsetHint")} type="number" step="any" className="input" disabled={!counted} value={counted ? value.offset ?? 0 : ""} onChange={(e) => onChange({ ...value, offset: Number(e.target.value) })} />
       <input aria-label={t("schema.multiplierMax")} title={t("schema.maximum")} type="number" min={0} className="input" disabled={!counted} value={counted ? value.max_value ?? "" : ""} placeholder="max" onChange={(e) => onChange({ ...value, max_value: e.target.value === "" ? null : Number(e.target.value) })} />
       <button type="button" className="btn-secondary px-2" aria-label={t("schema.removeMultiplier")} onClick={onRemove}><Trash2 className="h-4 w-4" /></button>
+    </div>
+    {!counted && fields && (
+      <label className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+        {t("schema.triggeredBy")}
+        <select aria-label={t("schema.triggeredBy")} className="input w-auto text-xs" value={value.source ?? ""} onChange={(e) => { const next = { ...value }; if (e.target.value) next.source = e.target.value; else delete next.source; onChange(next); }}>
+          <option value="">{t("schema.triggeredByCheckbox")}</option>
+          {fields.map((field) => <option key={field.key} value={field.key}>{field.label}</option>)}
+        </select>
+      </label>
+    )}
     </div>
   );
 }

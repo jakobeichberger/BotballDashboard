@@ -241,6 +241,12 @@ export default function PaperDetailPage() {
     onError,
   });
 
+  const stageM = useMutation({
+    mutationFn: (presented: boolean) => api.put(`/papers/${id}/score`, { presented_on_stage: presented }),
+    onSuccess: refresh,
+    onError,
+  });
+
   const reopenM = useMutation({
     mutationFn: (reviewId: string) => api.post(`/papers/${id}/reviews/${reviewId}/reopen`),
     onSuccess: refresh,
@@ -392,7 +398,7 @@ export default function PaperDetailPage() {
             {versions.map((v) => (
               <tr key={v.id}>
                 <td className="px-4 py-3 font-medium text-fg">v{v.version_number}</td>
-                <td className="px-4 py-3 text-leise">{v.file_name} <span className="text-leise">({fmtBytes(v.file_size_bytes)})</span></td>
+                <td className="px-4 py-3 text-leise">{v.file_name} <span className="text-leise">({fmtBytes(v.file_size_bytes)}{v.page_count != null ? ` · ${t("detail.pages", { count: v.page_count })}` : ""})</span></td>
                 <td className="px-4 py-3 text-leise">{t("detail.round", { round: v.revision_number })}</td>
                 <td className="px-4 py-3 text-leise">{t("detail.uploadedAt", { date: fmtDate(v.uploaded_at) })}</td>
                 <td className="px-4 py-3">{v.submitted_at ? <span className="badge-green">{t("detail.submittedAt", { date: fmtDate(v.submitted_at) })}</span> : <span className="badge-gray">{t("detail.notSubmitted")}</span>}</td>
@@ -524,6 +530,15 @@ export default function PaperDetailPage() {
                 <button disabled={deductionM.isPending} onClick={() => deductionM.mutate()} className="btn-secondary text-sm disabled:opacity-40">{t("common:save")}</button>
               </div>
               <p className="text-xs text-leise mt-1">{t("detail.deductionHint")}</p>
+            </div>
+
+            {/* On-stage presentation */}
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" className="h-4 w-4" checked={!!paper.presented_on_stage} disabled={stageM.isPending} onChange={(e) => stageM.mutate(e.target.checked)} />
+                {t("detail.presentedOnStage")}
+              </label>
+              <p className="text-xs text-leise mt-1">{t("detail.presentedOnStageHint")}</p>
             </div>
           </div>
 

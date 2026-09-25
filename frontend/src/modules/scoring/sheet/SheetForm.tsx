@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { computeSheet, isEither, rawKey, type RawScores, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetResult } from "./calculator";
+import { computeSheet, isDerived, isEither, rawKey, type RawScores, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetResult } from "./calculator";
 
 interface Props {
   definition: SheetDefinition;
@@ -49,6 +49,10 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
                     <p className="mb-2 text-xs font-medium text-leise">{t("sheet.eitherHint", { name: multiplier.label })}</p>
                     <div className="grid gap-3 sm:grid-cols-2">{multiplier.either.map((option) => <Input key={option.key} spec={option} rawKey={rawKey(side, option.key)} hint={multiplierHint(option, t)} values={values} onChange={onChange} />)}</div>
                   </div>
+                ) : isDerived(multiplier) ? (
+                  <p key={multiplier.key} className="text-sm text-gray-500">
+                    {multiplier.label} <span className="text-xs">{t("sheet.derivedHint", { field: section.fields.find((f) => f.key === multiplier.source)?.label ?? multiplier.source })}</span>
+                  </p>
                 ) : <Input key={multiplier.key} spec={multiplier} rawKey={rawKey(side, multiplier.key)} hint={multiplierHint(multiplier, t)} values={values} onChange={onChange} />)}
               </div>
             )}

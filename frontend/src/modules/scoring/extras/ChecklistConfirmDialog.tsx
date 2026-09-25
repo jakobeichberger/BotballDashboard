@@ -27,6 +27,7 @@ export default function ChecklistConfirmDialog({ open, items, pending, error, on
               <input type="checkbox" checked={!!checked[item.key]} onChange={(e) => setChecked({ ...checked, [item.key]: e.target.checked })} />
               {item.label}{item.required && <span className="text-danger" aria-label={t("rules.required")}>*</span>}
             </label>
+            {item.description && <p className="ml-6 mt-0.5 text-xs text-gray-500">{item.description}</p>}
           </li>
         ))}
       </ul>

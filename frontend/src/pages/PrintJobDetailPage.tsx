@@ -141,6 +141,8 @@ export default function PrintJobDetailPage() {
     [t("printer"), printer?.name ?? "—"],
     [t("detail.spool"), spool ? spoolLabel(spool) : job.spool_id ? t("detail.assigned") : "—"],
     [t("col.file"), job.file_url ? formatBytes(job.file_size_bytes) : t("detail.noFile")],
+    [t("create.purpose"), `${t(`purpose.${job.purpose ?? "robot"}`)} · ${t("detail.parts", { count: job.part_count ?? 1 })}`],
+    [t("detail.boundingBox"), job.bbox_x_mm != null && job.bbox_y_mm != null && job.bbox_z_mm != null ? `${job.bbox_x_mm.toFixed(1)} × ${job.bbox_y_mm.toFixed(1)} × ${job.bbox_z_mm.toFixed(1)} mm` : "—"],
   ];
 
   const timeline: [string, string | null][] = [
@@ -196,6 +198,22 @@ export default function PrintJobDetailPage() {
           <p className="mt-4 text-sm text-danger"><strong>{t("detail.rejectionReasonLabel")}</strong> {job.rejection_reason}</p>
         )}
         {job.quota_override && <p className="mt-2 text-xs text-warning">{t("detail.quotaOverride")}</p>}
+        {(job.rule_warnings ?? []).length > 0 && (
+          <ul role="status" className="mt-3 flex flex-col gap-1.5 rounded-lg border border-warning/45 bg-warning/[0.08] p-3 text-sm text-warning">
+            {(job.rule_warnings ?? []).map((code) => (
+              <li key={code} className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                {t(`rules.${code}`)}
+              </li>
+            ))}
+          </ul>
+        )}
+        {canAdmin && (
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4" checked={!!job.stl_submitted} disabled={patchM.isPending} onChange={(e) => patchM.mutate({ stl_submitted: e.target.checked })} />
+            {t("detail.stlSubmitted")}
+          </label>
+        )}
 
         <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           {details.map(([label, val]) => (

@@ -3,10 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
-import type { ChecklistItem, RuleSet, TiebreakerCriterion, TiebreakerPreset } from "./types";
+import type { ChecklistItem, ChecklistPreset, DocMaxPoints, RuleSet, TiebreakerCriterion, TiebreakerPreset } from "./types";
 import { apiErrorMessage } from "@/lib/errors";
 
-const EMPTY: Omit<RuleSet, "season_id"> = { tiebreakers: [], finals_replay: false, end_contact_bonus_percent: 25, referee_checklist: [] };
+const DOC_MAX_DEFAULT: DocMaxPoints = { p1: 100, p2: 100, p3: 100, onsite: 100 };
+// The 2026 documentation rubrics: Period 1 /100, Period 2 /95, Period 3 /100, Onsite /100.
+const DOC_MAX_2026: DocMaxPoints = { p1: 100, p2: 95, p3: 100, onsite: 100 };
+const EMPTY: Omit<RuleSet, "season_id"> = { tiebreakers: [], finals_replay: false, end_contact_bonus_percent: 25, referee_checklist: [], seeding_tiebreakers: false, doc_max_points: DOC_MAX_DEFAULT };
 
 /** Per-season tie-breaker order, finals replay rule, contact bonus and referee checklist. */
 export default function SeasonRulesEditor({ seasonId, onMessage }: { seasonId: string; onMessage: (message: string) => void }) {
@@ -16,6 +19,9 @@ export default function SeasonRulesEditor({ seasonId, onMessage }: { seasonId: s
   const presets = useQuery<TiebreakerPreset[]>({ queryKey: ["tiebreaker-presets"], queryFn: async () => (await api.get("/scoring/tiebreaker-presets")).data });
   const [draft, setDraft] = useState(EMPTY);
   const [presetId, setPresetId] = useState("");
+  const checklistPresets = useQuery<ChecklistPreset[]>({ queryKey: ["checklist-presets"], queryFn: async () => (await api.get("/scoring/referee-checklist-presets")).data });
+  const [checklistPresetId, setChecklistPresetId] = useState("");
+  const docMax = draft.doc_max_points ?? DOC_MAX_DEFAULT;
   useEffect(() => { if (rules.data) setDraft({ ...EMPTY, ...rules.data }); }, [rules.data]);
 
   const save = useMutation({
@@ -69,10 +75,24 @@ export default function SeasonRulesEditor({ seasonId, onMessage }: { seasonId: s
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={draft.finals_replay} onChange={(e) => setDraft({ ...draft, finals_replay: e.target.checked })} /><span><strong>{t("rules.finalsReplay")}</strong><br /><span className="text-leise">{t("rules.finalsReplayHint")}</span></span></label>
         <label className="text-sm font-medium">{t("rules.contactBonus")}<input type="number" min={0} max={100} className="input mt-1 w-32" value={draft.end_contact_bonus_percent} onChange={(e) => setDraft({ ...draft, end_contact_bonus_percent: Number(e.target.value) })} /></label>
+        <label className="flex items-start gap-2 text-sm md:col-span-2"><input className="mt-1" type="checkbox" checked={!!draft.seeding_tiebreakers} onChange={(e) => setDraft({ ...draft, seeding_tiebreakers: e.target.checked })} /><span><strong>{t("rules.seedingTiebreakers")}</strong><br /><span className="text-leise">{t("rules.seedingTiebreakersHint")}</span></span></label>
+      </div>
+
+      <h3 className="mb-2 mt-5 font-semibold">{t("rules.docMax")}</h3>
+      <p className="mb-2 text-sm text-leise">{t("rules.docMaxHint")}</p>
+      <div className="flex flex-wrap items-end gap-2">
+        {(["p1", "p2", "p3", "onsite"] as const).map((part) => (
+          <label key={part} className="text-sm font-medium">{t(`rules.docMaxPart.${part}`)}<input type="number" min={1} max={1000} className="input mt-1 block w-24" value={docMax[part]} onChange={(e) => setDraft({ ...draft, doc_max_points: { ...docMax, [part]: Number(e.target.value) } })} /></label>
+        ))}
+        <button type="button" className="btn-secondary" onClick={() => setDraft({ ...draft, doc_max_points: { ...DOC_MAX_2026 } })}>{t("rules.docMax2026")}</button>
       </div>
 
       <h3 className="mb-2 mt-5 font-semibold">{t("rules.checklist")}</h3>
       <p className="mb-2 text-sm text-leise">{t("rules.checklistHint")}</p>
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <label className="text-sm font-medium">{t("rules.checklistPreset")}<select className="input mt-1 block" value={checklistPresetId} onChange={(e) => setChecklistPresetId(e.target.value)}><option value="">{t("rules.choosePreset")}</option>{checklistPresets.data?.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label>
+        <button type="button" className="btn-secondary" disabled={!checklistPresetId} onClick={() => { const preset = checklistPresets.data?.find((item) => item.id === checklistPresetId); if (preset) setDraft({ ...draft, referee_checklist: preset.items.map((item) => ({ ...item })) }); }}>{t("rules.applyChecklist")}</button>
+      </div>
       <ul className="space-y-2">
         {draft.referee_checklist.map((item, index) => (
           <li key={index} className="grid items-center gap-2 sm:grid-cols-[2fr_1fr_auto_auto]">

@@ -29,6 +29,17 @@ export interface PrintJob {
   file_size_bytes: number | null;
   material: string;
   color: string | null;
+  /** robot parts count towards the game review's limit of 6; spares and jigs do not. */
+  purpose?: "robot" | "spare" | "jig" | string;
+  part_count?: number;
+  /** Bounding box of the uploaded STL in mm. */
+  bbox_x_mm?: number | null;
+  bbox_y_mm?: number | null;
+  bbox_z_mm?: number | null;
+  /** STL handed in with documentation Period 3. */
+  stl_submitted?: boolean;
+  /** material_not_allowed | color_not_greyscale | exceeds_build_volume */
+  rule_warnings?: string[];
   estimated_grams: number | null;
   actual_grams: number | null;
   estimated_minutes: number | null;

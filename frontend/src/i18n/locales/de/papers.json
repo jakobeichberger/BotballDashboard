@@ -43,7 +43,8 @@
     "internal_draft": "Interner Entwurf",
     "internal_review": "Interne Review-Frist",
     "internal_revision": "Interne Überarbeitung",
-    "internal_final": "Interne finale Abgabe"
+    "internal_final": "Interne finale Abgabe",
+    "official_notification": "Benachrichtigung über Annahme"
   },
   "countdown": {
     "days": "{{days}} T {{hours}} Std",
@@ -220,7 +221,11 @@
     "remind": "Erinnern",
     "remindReviewer": "{{name}} an das Review erinnern",
     "remindedAt": "erinnert am {{date}}",
-    "statusHistory": "Statusverlauf"
+    "statusHistory": "Statusverlauf",
+    "pages_one": "{{count}} Seite",
+    "pages_other": "{{count}} Seiten",
+    "presentedOnStage": "Präsentation auf der Bühne",
+    "presentedOnStageHint": "Vom Programmkomitee für die Präsentation ausgewählt (bis 10 min + 5 min Fragen). Nominiert das Paper für „Best Paper Presentation“."
   },
   "subtitle": "Eingereichte Paper prüfen, begutachten, bewerten und exportieren."
 }

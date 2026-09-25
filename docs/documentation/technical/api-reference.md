@@ -195,6 +195,8 @@ Legende Recht: `öffentlich` = ohne Token · `Login` = jeder angemeldete Nutzer 
 | GET | `/api/seasons/{season_id}/events` | `seasons:read` | Termine und Deadlines der Saison (`season_events`) |
 | POST | `/api/seasons/{season_id}/events` | `seasons:write` | Termin/Deadline anlegen |
 | DELETE | `/api/seasons/{season_id}/events/{event_id}` | `seasons:write` | Termin/Deadline löschen |
+| GET | `/api/seasons/{season_id}/categories` | `seasons:read` | Kategorien der Saison (Schlüssel, Bezeichnungen DE/EN, Art, Formelvorlage, Aerial-Läufe, Rang je Kurs); ohne eigene Liste die Standard-Kategorien |
+| PUT | `/api/seasons/{season_id}/categories` | `seasons:write` | Kategorienliste ersetzen; 409, wenn ein entfernter Schlüssel noch von Anmeldungen genutzt wird |
 
 ### Events (`/api/v1/events`)
 
@@ -329,13 +331,35 @@ Die Ergebnisse gehören zu einem Event (`/events/{event_id}/…`); die früheren
 | PUT | `…/de-results` | `scoring:admin` · Modul `double_elimination` | DE-Ergebnisse (Liste) speichern |
 | PUT | `…/de-results/{team_id}` | `scoring:admin` · Modul `double_elimination` | DE-Ergebnis eines Teams |
 | GET | `…/aerial-results` | `scoring:read` · Modul `aerial` | Aerial-Läufe |
-| GET | `…/aerial-ranking` | öffentlich · Modul `aerial` | Aerial-Rangliste (Ø aller Läufe) |
-| PUT | `…/aerial-results` | `scoring:admin` · Modul `aerial` | Aerial-Läufe speichern |
+| GET | `…/aerial-ranking` | öffentlich · Modul `aerial` | Aerial-Rangliste je Kategorie (Score nach der Formel der Kategorie) |
+| PUT | `…/aerial-results` | `scoring:admin` · Modul `aerial` | Aerial-Läufe speichern (`runs`: Liste; `run1`–`run4` werden noch angenommen) |
 | PUT | `…/aerial-results/{team_id}` | `scoring:admin` · Modul `aerial` | Aerial-Läufe eines Teams |
 | GET | `…/doc-scores` | `scoring:read` · Modul `documentation` | Doku-Bewertungen |
 | PUT | `…/doc-scores` | `scoring:admin` · Modul `documentation` | Doku-Bewertungen speichern |
 | PUT | `…/doc-scores/{team_id}` | `scoring:admin` · Modul `documentation` | Doku-Bewertung eines Teams |
 | GET | `/api/scoring/events/{event_id}/de-placement` | `scoring:read` | DE-Platzierung aus dem Bracket, inkl. Tie-Breaker |
+| GET | `/api/scoring/events/{event_id}/jbc-results` | `scoring:read` | Junior Botball Challenge: Punkte für gelöste Challenges |
+| GET | `…/jbc-ranking` | öffentlich (wie Ranglisten) | JBC-Rangliste |
+| PUT | `…/jbc-results` · `…/jbc-results/{team_id}` | `scoring:admin` | JBC-Punkte (oder Challenge-Liste) speichern |
+| GET | `/api/scoring/events/{event_id}/timeouts` | `scoring:read` | Genutzte Timeout-Karten |
+| POST | `…/timeouts` | `scoring:admin` | Timeout eines Teams erfassen; 409 beim zweiten im Turnier |
+| DELETE | `…/timeouts/{team_id}` | `scoring:admin` | Irrtümlich erfassten Timeout zurücknehmen |
+| GET | `/api/scoring/referee-checklist-presets` | `scoring:read` | Vorlagen der Schiedsrichter-Checkliste (2026: Game Review v1.4) |
+
+#### Awards (`/api/awards`)
+
+| Methode | Pfad | Recht | Zweck |
+|---|---|---|---|
+| GET | `/api/awards/templates` | `scoring:read` | Vorlagen ECER und GCER |
+| GET | `/api/awards/events/{event_id}` | `scoring:read` | Awards des Events mit Nominierungen und Ergebnissen |
+| POST | `/api/awards/events/{event_id}/templates/{template_id}` | `awards:admin` oder `scoring:admin` | Fehlende Awards der Vorlage anlegen |
+| POST | `/api/awards/events/{event_id}/awards` · PUT/DELETE `/api/awards/{award_id}` | `awards:admin` oder `scoring:admin` | Eigene Awards verwalten |
+| POST | `/api/awards/events/{event_id}/compute` | `awards:admin` oder `scoring:admin` | Berechnete Awards aus den Ranglisten füllen |
+| POST/DELETE | `/api/awards/{award_id}/nominations[/{team_id}]` | `awards:admin` oder `scoring:admin` | Nominierung |
+| PUT | `/api/awards/{award_id}/results` | `awards:admin` oder `scoring:admin` | Entscheidung der Jury (ersetzt die Ergebnisse) |
+| PUT | `/api/awards/events/{event_id}/publish` | `awards:admin` oder `scoring:admin` | Auf der öffentlichen Seite zeigen/verbergen |
+| GET | `/api/awards/events/{event_id}/export.csv` · `.pdf` | `scoring:read` | Export |
+| GET | `/api/v1/public/events/{slug}/awards` | öffentlich | Veröffentlichte Awards (404 bis zur Veröffentlichung) |
 
 #### Score-Sheet-Vorlagen (PDF)
 
@@ -490,6 +514,8 @@ CSV-Dateien sind UTF-8 mit BOM. Zellen, die mit `=`, `+`, `-` oder `@` beginnen,
 | GET | `/api/exports/events/{event_id}/ranking.csv` · `.pdf` | `scoring:read` oder `dashboard:read` | Seeding-Rangliste des Events |
 | GET | `/api/exports/events/{event_id}/overall-ranking.csv` · `.pdf` | `scoring:read` oder `dashboard:read` | Gesamtwertung mit allen Formelwerten |
 | GET | `/api/exports/events/{event_id}/matches.csv` | `scoring:read` | Alle Wertungen des Events |
+| GET | `/api/exports/events/{event_id}/results.xlsx` | `scoring:read` oder `dashboard:read` | Alle Ergebnisse im Format der offiziellen ECER-Ergebnisse (Teams, Botball & Open, Aerial, Alliance, Junior Botball Challenge) |
+| GET | `/api/exports/events/{event_id}/results.csv?sheet=…` | `scoring:read` oder `dashboard:read` | Ein Blatt davon als CSV |
 | GET | `/api/exports/seasons/{season_id}/ranking.csv` · `.pdf` | `scoring:read` oder `dashboard:read` | Rangliste (Standard-Event der Saison) |
 | GET | `/api/exports/seasons/{season_id}/matches.csv` | `scoring:read` | Wertungen der Saison |
 | GET | `/api/exports/seasons/{season_id}/papers.csv` · `.pdf` | `papers:admin` | Paper-Übersicht |

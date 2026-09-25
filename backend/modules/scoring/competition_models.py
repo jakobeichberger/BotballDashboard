@@ -3,7 +3,8 @@ Models for extended competition scoring:
   - DEResult: Double Elimination bracket results
   - AerialResult: Aerial drone competition runs
   - DocumentationScore: Documentation evaluation (P1/P2/P3 + Onsite)
-  - ResultRevision: append-only audit trail for the three tables above
+  - JBCResult: Junior Botball Challenge – points for solved challenges
+  - ResultRevision: append-only audit trail for the tables above
 """
 
 import uuid
@@ -59,7 +60,12 @@ class DEResult(Base):
 
 
 class AerialResult(Base):
-    """Aerial competition results for one team – up to 4 timed/scored runs."""
+    """Aerial competition results for one team: its scoring runs in order.
+
+    ``runs`` is a list (ECER 2026: six runs, the best three count); an entry
+    may be null for a run not flown yet. How many runs count is configured on
+    the category (SeasonCategory.counted_runs) or by the formula set.
+    """
 
     __tablename__ = "aerial_results"
     __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_aerial_result_event_team"),)
@@ -74,11 +80,10 @@ class AerialResult(Base):
     team_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    run1: Mapped[float | None] = mapped_column(Float, nullable=True)
-    run2: Mapped[float | None] = mapped_column(Float, nullable=True)
-    run3: Mapped[float | None] = mapped_column(Float, nullable=True)
-    run4: Mapped[float | None] = mapped_column(Float, nullable=True)
-    score: Mapped[float | None] = mapped_column(Float, nullable=True)  # mean of all runs
+    runs: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # aerial_score of the category's formula set (default: mean of the
+    # counted runs), rank within the category
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
     rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -109,11 +114,44 @@ class DocumentationScore(Base):
     part2: Mapped[float | None] = mapped_column(Float, nullable=True)
     part3: Mapped[float | None] = mapped_column(Float, nullable=True)
     onsite: Mapped[float | None] = mapped_column(Float, nullable=True)
-    # Regional formula 0.2·P1 + 0.2·P2 + 0.2·P3 + 0.4·Onsite (each /100),
-    # missing parts count 0. Event-specific rules (ECER, GCER) are applied by
-    # the formula engine; this column is the plain game-review value.
+    # doc_score of the team's category formula set (ECER 2026: each period
+    # normalised to the best team), else the game-review weighting
+    # 0.2·P1 + 0.2·P2 + 0.2·P3 + 0.4·Onsite of the rubric maxima.
     doc_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     doc_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class JBCResult(Base):
+    """Junior Botball Challenge: points for the challenges a team solved.
+
+    ECER publishes "Points for Solved Challenges" and a rank. ``challenges``
+    optionally lists what was solved ({key, points}); ``points`` is then their
+    sum, otherwise it is entered directly.
+    """
+
+    __tablename__ = "jbc_results"
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_jbc_result_event_team"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    season_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("seasons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    team_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    points: Mapped[float | None] = mapped_column(Float, nullable=True)
+    challenges: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -139,7 +177,7 @@ class ResultRevision(Base):
         String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )
     team_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # de | aerial | doc
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # de | aerial | doc | jbc
     previous_value: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     new_value: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     changed_by: Mapped[str | None] = mapped_column(

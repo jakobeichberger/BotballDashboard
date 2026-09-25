@@ -11,7 +11,7 @@ DEFAULT_FORMULA_SETS for the citations.
 
 import pytest
 
-from modules.scoring.formula_engine import DEFAULT_FORMULA_SETS, run_formula_set
+from modules.scoring.formula_engine import DEFAULT_FORMULA_SETS, FORMULA_PRESETS, run_formula_set
 
 # Bracket weighting is announced per tournament ("Note #2" in the game review).
 # ECER 2025 used 1.0 for bracket A and this value for bracket B.
@@ -396,14 +396,14 @@ class TestAerial2025:
     def test_score_is_the_mean_of_all_runs(self, case):
         name, runs, expected = case
         rows = [{"team_id": n, "aerial_runs": r} for n, r, _ in AERIAL_2025]
-        res = run_formula_set(DEFAULT_FORMULA_SETS["aerial"], rows)
+        res = run_formula_set(FORMULA_PRESETS["aerial_2025"].formulas, rows)
         assert res.ok, res.issues
         row = next(r for r in res.rows if r["team_id"] == name)
         assert row["aerial_score"] == pytest.approx(expected, abs=1e-12)
 
     def test_ranking_order_matches_the_published_sheet(self):
         rows = [{"team_id": n, "aerial_runs": r} for n, r, _ in AERIAL_2025]
-        res = run_formula_set(DEFAULT_FORMULA_SETS["aerial"], rows)
+        res = run_formula_set(FORMULA_PRESETS["aerial_2025"].formulas, rows)
         ranked = sorted(res.rows, key=lambda r: r["aerial_score"], reverse=True)
         expected = [n for n, _, _ in sorted(AERIAL_2025, key=lambda c: c[2], reverse=True)]
         assert [r["team_id"] for r in ranked] == expected

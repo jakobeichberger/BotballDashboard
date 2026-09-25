@@ -24,6 +24,7 @@ from modules.events.module_access import assert_phase_allowed, modules_for_seaso
 from modules.scoring.competition_models import DEResult
 from modules.scoring.competition_service import rescore_brackets
 from modules.scoring.models import Match, Ranking
+from modules.seasons.categories import assert_category
 from modules.seasons.lifecycle import ARCHIVED, DRAFT, ensure_writable
 from modules.seasons.models import CompetitionLevel, Season
 from modules.teams.models import Team, TeamSeasonRegistration
@@ -152,6 +153,7 @@ async def add_registration(db: AsyncSession, event_id: str, data: dict) -> Event
     if level_id and not await db.get(CompetitionLevel, level_id):
         raise NotFoundError("Competition level not found")
     await _assert_qualified(db, event, team.id, level_id)
+    await assert_category(db, event.season_id, data.get("category"))
 
     registration = EventRegistration(event_id=event.id, **data)
     db.add(registration)
@@ -245,6 +247,8 @@ async def update_registration(
         if not await db.get(CompetitionLevel, level_id):
             raise NotFoundError("Competition level not found")
         await _assert_qualified(db, await get_event(db, event_id), registration.team_id, level_id)
+    if data.get("category"):
+        await assert_category(db, (await get_event(db, event_id)).season_id, data["category"])
     for key, value in data.items():
         setattr(registration, key, value)
     if checked_in is not None:

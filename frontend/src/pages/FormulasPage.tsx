@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { CATEGORY_LABEL } from "@/lib/teams";
+import { useSeasonCategories } from "@/lib/categories";
 import { api } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/errors";
 import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
@@ -17,15 +17,6 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-
-const CATEGORIES = [
-  { key: "botball", label: "Botball" },
-  { key: "open", label: "PRIA Open" },
-  { key: "aerial", label: "Aerial" },
-  { key: "jbc", label: "JBC" },
-] as const;
-
-type Category = (typeof CATEGORIES)[number]["key"];
 
 interface Formula {
   key: string;
@@ -84,7 +75,7 @@ export default function FormulasPage() {
   const { t } = useTranslation("scoring");
   const { eventId = "" } = useParams();
   const queryClient = useQueryClient();
-  const [category, setCategory] = useState<Category>("botball");
+  const [category, setCategory] = useState<string>("botball");
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -97,6 +88,7 @@ export default function FormulasPage() {
     enabled: !!eventId,
   });
   const seasonId = event?.season_id ?? "";
+  const registry = useSeasonCategories(seasonId || undefined);
 
   const { data: reference } = useQuery<Reference>({
     queryKey: ["formula-reference"],
@@ -235,7 +227,8 @@ export default function FormulasPage() {
 
   // Presets (ECER, regional, GCER, …) are loaded into the editor as a draft,
   // so they can be reviewed against the live preview before saving.
-  const presets = (reference?.presets ?? []).filter((p) => p.category === category);
+  // Presets are written for a category kind (botball, open, aerial, jbc).
+  const presets = (reference?.presets ?? []).filter((p) => p.category === registry.kindOf(category));
   const [presetId, setPresetId] = useState("");
   const loadPreset = (id: string) => {
     const preset = presets.find((p) => p.id === id);
@@ -309,7 +302,7 @@ export default function FormulasPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((c) => (
+        {registry.categories.map((c) => (
           <button
             key={c.key}
             onClick={() => setCategory(c.key)}
@@ -319,7 +312,7 @@ export default function FormulasPage() {
                 : "btn-secondary"
             }
           >
-            {c.key === "open" ? c.label : CATEGORY_LABEL[c.key]}
+            {registry.label(c.key)}
           </button>
         ))}
       </div>

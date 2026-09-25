@@ -846,6 +846,436 @@
           }
         ]
       }
+    },
+    "botball_2026": {
+      "definition": {
+        "sides": [
+          "A",
+          "B"
+        ],
+        "sections": [
+          {
+            "key": "lower_start_box",
+            "label": "Lower Start Box",
+            "fields": [
+              {
+                "key": "lower_start_box_poms",
+                "label": "Poms",
+                "type": "count",
+                "multiplier": 2,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "lower_start_box_cubes",
+                "label": "Cubes",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              },
+              {
+                "key": "lower_start_box_cubes_on_pallets",
+                "label": "Cubes on Pallets",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              },
+              {
+                "key": "lower_start_box_drums",
+                "label": "Drums",
+                "type": "count",
+                "multiplier": 25,
+                "min_value": 0,
+                "max_value": 16,
+                "required": false
+              },
+              {
+                "key": "lower_start_box_traffic_cones",
+                "label": "Traffic Cone",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 4,
+                "required": false
+              },
+              {
+                "key": "lower_start_box_botguy",
+                "label": "Botguy",
+                "type": "count",
+                "multiplier": 100,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "lower_start_box_drum_bonus",
+                "label": "Drum ×2",
+                "type": "boolean",
+                "factor": 2,
+                "source": "lower_start_box_drums"
+              },
+              {
+                "key": "lower_start_box_botguy_bonus",
+                "label": "Botguy ×2",
+                "type": "boolean",
+                "factor": 2,
+                "source": "lower_start_box_botguy"
+              }
+            ]
+          },
+          {
+            "key": "upper_start_box",
+            "label": "Upper Start Box",
+            "fields": [
+              {
+                "key": "upper_start_box_poms",
+                "label": "Poms",
+                "type": "count",
+                "multiplier": 2,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "upper_start_box_cubes",
+                "label": "Cubes",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              },
+              {
+                "key": "upper_start_box_cubes_on_pallets",
+                "label": "Cubes on Pallets",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              },
+              {
+                "key": "upper_start_box_drums",
+                "label": "Drums",
+                "type": "count",
+                "multiplier": 25,
+                "min_value": 0,
+                "max_value": 16,
+                "required": false
+              },
+              {
+                "key": "upper_start_box_traffic_cones",
+                "label": "Traffic Cone",
+                "type": "count",
+                "multiplier": 100,
+                "min_value": 0,
+                "max_value": 4,
+                "required": false
+              },
+              {
+                "key": "upper_start_box_botguy",
+                "label": "Botguy",
+                "type": "count",
+                "multiplier": 200,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "upper_start_box_robots",
+                "label": "# of Robots (× n + 2)",
+                "type": "count",
+                "factor": 1,
+                "offset": 2,
+                "min_value": 0,
+                "max_value": 4
+              }
+            ]
+          },
+          {
+            "key": "warehouse_floor",
+            "label": "Warehouse Floor",
+            "fields": [
+              {
+                "key": "floor_unsorted_poms",
+                "label": "Unsorted Poms",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "floor_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "floor_cubes",
+                "label": "Cubes",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              },
+              {
+                "key": "floor_cubes_on_pallets",
+                "label": "Cubes on Pallets",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              },
+              {
+                "key": "floor_drums",
+                "label": "Drums",
+                "type": "count",
+                "multiplier": 25,
+                "min_value": 0,
+                "max_value": 16,
+                "required": false
+              },
+              {
+                "key": "floor_botguy",
+                "label": "Botguy",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "floor_sorted_pom_sections",
+                "label": "# of Sorted Pom Sections",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 6
+              }
+            ]
+          },
+          {
+            "key": "internal_loading_dock",
+            "label": "Internal Loading Dock",
+            "fields": [
+              {
+                "key": "internal_dock_unsorted_cubes",
+                "label": "Unsorted Cubes",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              },
+              {
+                "key": "internal_dock_sorted_cubes",
+                "label": "Sorted Cubes",
+                "type": "count",
+                "multiplier": 30,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "internal_dock_pallets",
+                "label": "# of Pallets with Cubes",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 8
+              }
+            ]
+          },
+          {
+            "key": "drum_storage",
+            "label": "Drum Storage",
+            "fields": [
+              {
+                "key": "drum_pipes_unsorted",
+                "label": "2\" PVC Pipes Unsorted",
+                "type": "count",
+                "multiplier": 100,
+                "min_value": 0,
+                "max_value": 16,
+                "required": false
+              },
+              {
+                "key": "drum_pipes_sorted",
+                "label": "2\" PVC Pipes Sorted",
+                "type": "count",
+                "multiplier": 200,
+                "min_value": 0,
+                "max_value": 16,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "drum_posts",
+                "label": "# of Posts",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 2
+              }
+            ]
+          },
+          {
+            "key": "packaging_bin",
+            "label": "Packaging Bin",
+            "fields": [
+              {
+                "key": "bin_non_matched_poms",
+                "label": "Non-matched Poms",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "bin_matched_poms",
+                "label": "Matched Poms",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "bin_botguy",
+                "label": "Botguy",
+                "type": "count",
+                "multiplier": 150,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "bin_sorted_baskets",
+                "label": "Sorted Baskets (× n + 1)",
+                "type": "count",
+                "factor": 1,
+                "offset": 1,
+                "min_value": 0,
+                "max_value": 4
+              },
+              {
+                "key": "bin_returned_baskets",
+                "label": "Returned Baskets",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 4
+              }
+            ]
+          },
+          {
+            "key": "upper_warehouse",
+            "label": "Upper Warehouse",
+            "fields": [
+              {
+                "key": "upper_poms",
+                "label": "Poms",
+                "type": "count",
+                "multiplier": 2,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "upper_botguy",
+                "label": "Botguy",
+                "type": "count",
+                "multiplier": 200,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              },
+              {
+                "key": "upper_clean_deck",
+                "label": "Clean Deck",
+                "type": "boolean",
+                "multiplier": 100,
+                "min_value": 0,
+                "max_value": 1,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "upper_robots",
+                "label": "# of Robots",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 4
+              }
+            ]
+          },
+          {
+            "key": "external_loading_dock",
+            "label": "External Loading Dock",
+            "fields": [
+              {
+                "key": "external_dock_unsorted_cubes",
+                "label": "Unsorted Cubes",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              },
+              {
+                "key": "external_dock_sorted_cubes",
+                "label": "Sorted Cubes",
+                "type": "count",
+                "multiplier": 45,
+                "min_value": 0,
+                "max_value": 30,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "external_dock_pallets",
+                "label": "# of Pallets with Cubes (× n + 1)",
+                "type": "count",
+                "factor": 1,
+                "offset": 1,
+                "min_value": 0,
+                "max_value": 8
+              }
+            ]
+          }
+        ]
+      }
     }
   },
   "cases": [
@@ -1095,6 +1525,264 @@
           13.5
         ]
       }
+    },
+    {
+      "name": "2026 Scoring Examples – Basic: 2 small yellow crates onto a pallet on the Interior Dock",
+      "schema": "botball_2026",
+      "raw": {
+        "A.internal_dock_sorted_cubes": 2,
+        "A.internal_dock_pallets": 1
+      },
+      "total": 60,
+      "sections": {
+        "A.internal_loading_dock": [
+          60,
+          1,
+          60
+        ]
+      }
+    },
+    {
+      "name": "2026 Scoring Examples – Basic: packaging material pushed into a Warehouse Floor area (sorted)",
+      "schema": "botball_2026",
+      "raw": {
+        "A.floor_sorted_poms": 6,
+        "A.floor_sorted_pom_sections": 1
+      },
+      "total": 30
+    },
+    {
+      "name": "2026 Scoring Examples – Intermediate: packaging material into multiple Warehouse Floor areas",
+      "schema": "botball_2026",
+      "raw": {
+        "A.floor_sorted_poms": 12,
+        "A.floor_unsorted_poms": 3,
+        "A.floor_sorted_pom_sections": 2
+      },
+      "total": 126,
+      "sections": {
+        "A.warehouse_floor": [
+          63,
+          2,
+          126
+        ]
+      }
+    },
+    {
+      "name": "2026 Scoring Examples – Intermediate: packing material into packing material bins, unsorted",
+      "schema": "botball_2026",
+      "raw": {
+        "A.bin_non_matched_poms": 4
+      },
+      "total": 40
+    },
+    {
+      "name": "2026 Scoring Examples – Intermediate: packing material bins moved into the Packaging Center",
+      "schema": "botball_2026",
+      "raw": {
+        "A.bin_matched_poms": 4,
+        "A.bin_non_matched_poms": 3,
+        "A.bin_sorted_baskets": 1,
+        "A.bin_returned_baskets": 2
+      },
+      "total": 440,
+      "sections": {
+        "A.packaging_bin": [
+          110,
+          4,
+          440
+        ]
+      }
+    },
+    {
+      "name": "2026 Scoring Examples – Intermediate: stacking unsorted crates on the warehouse floor",
+      "schema": "botball_2026",
+      "raw": {
+        "A.floor_cubes": 3
+      },
+      "total": 3
+    },
+    {
+      "name": "2026 Scoring Examples – Intermediate: Botguy moved to the lower starting box",
+      "schema": "botball_2026",
+      "raw": {
+        "A.lower_start_box_botguy": 1
+      },
+      "total": 200,
+      "sections": {
+        "A.lower_start_box": [
+          100,
+          2,
+          200
+        ]
+      }
+    },
+    {
+      "name": "2026 Scoring Examples – Intermediate: Botguy moved to the upper starting box",
+      "schema": "botball_2026",
+      "raw": {
+        "A.upper_start_box_botguy": 1,
+        "A.upper_start_box_robots": 1
+      },
+      "total": 600,
+      "sections": {
+        "A.upper_start_box": [
+          200,
+          3,
+          600
+        ]
+      }
+    },
+    {
+      "name": "2026 upper start box: × (robots + 2) without a robot is × 2",
+      "schema": "botball_2026",
+      "raw": {
+        "A.upper_start_box_poms": 2
+      },
+      "total": 8
+    },
+    {
+      "name": "2026 Scoring Examples – Intermediate/Advanced: delivered Drums retrieved onto your side",
+      "schema": "botball_2026",
+      "raw": {
+        "A.lower_start_box_drums": 2,
+        "A.floor_drums": 1
+      },
+      "total": 125,
+      "sections": {
+        "A.lower_start_box": [
+          50,
+          2,
+          100
+        ],
+        "A.warehouse_floor": [
+          25,
+          1,
+          25
+        ]
+      }
+    },
+    {
+      "name": "2026 lower start box: Drum ×2 and Botguy ×2 multiply",
+      "schema": "botball_2026",
+      "raw": {
+        "A.lower_start_box_drums": 1,
+        "A.lower_start_box_botguy": 1
+      },
+      "total": 500,
+      "sections": {
+        "A.lower_start_box": [
+          125,
+          4,
+          500
+        ]
+      }
+    },
+    {
+      "name": "2026 Scoring Examples – Advanced: Drums onto the Drum Storage uprights",
+      "schema": "botball_2026",
+      "raw": {
+        "A.drum_pipes_unsorted": 3,
+        "A.drum_posts": 1
+      },
+      "total": 300
+    },
+    {
+      "name": "2026 Scoring Examples – Advanced/Expert: 8 Drums sorted onto the Drum Storage uprights",
+      "schema": "botball_2026",
+      "raw": {
+        "A.drum_pipes_sorted": 8,
+        "A.drum_posts": 2
+      },
+      "total": 3200,
+      "sections": {
+        "A.drum_storage": [
+          1600,
+          2,
+          3200
+        ]
+      }
+    },
+    {
+      "name": "2026 Scoring Examples – Intermediate: cube and pallet from the upper warehouse onto a loading dock",
+      "schema": "botball_2026",
+      "raw": {
+        "A.external_dock_unsorted_cubes": 1,
+        "A.external_dock_pallets": 1
+      },
+      "total": 30
+    },
+    {
+      "name": "2026 Scoring Examples – Advanced/Expert: sorted stacks on pallets in the interior and exterior docks",
+      "schema": "botball_2026",
+      "raw": {
+        "A.internal_dock_sorted_cubes": 3,
+        "A.internal_dock_pallets": 1,
+        "A.external_dock_sorted_cubes": 4,
+        "A.external_dock_pallets": 2
+      },
+      "total": 630,
+      "sections": {
+        "A.internal_loading_dock": [
+          90,
+          1,
+          90
+        ],
+        "A.external_loading_dock": [
+          180,
+          3,
+          540
+        ]
+      }
+    },
+    {
+      "name": "2026 upper warehouse: clean deck × # of robots",
+      "schema": "botball_2026",
+      "raw": {
+        "A.upper_clean_deck": true,
+        "A.upper_robots": 2
+      },
+      "total": 200
+    },
+    {
+      "name": "2026 seeding sheet, both sides filled",
+      "schema": "botball_2026",
+      "raw": {
+        "A.lower_start_box_botguy": 1,
+        "A.floor_sorted_poms": 6,
+        "A.floor_cubes": 2,
+        "A.floor_sorted_pom_sections": 1,
+        "A.internal_dock_sorted_cubes": 2,
+        "A.internal_dock_pallets": 1,
+        "B.drum_pipes_unsorted": 2,
+        "B.drum_posts": 1,
+        "B.upper_poms": 4,
+        "B.upper_robots": 1
+      },
+      "total": 500,
+      "side_totals": {
+        "A": 292,
+        "B": 208
+      }
+    },
+    {
+      "name": "2026 empty sheet scores 0",
+      "schema": "botball_2026",
+      "raw": {},
+      "total": 0,
+      "side_totals": {
+        "A": 0,
+        "B": 0
+      }
+    },
+    {
+      "name": "2026 more posts than the table has is rejected",
+      "schema": "botball_2026",
+      "raw": {
+        "A.drum_pipes_sorted": 2,
+        "A.drum_posts": 3
+      },
+      "error": true
     }
   ]
 }

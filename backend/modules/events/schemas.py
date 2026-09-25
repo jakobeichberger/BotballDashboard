@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from modules.events.module_access import MODULE_KEYS
 from modules.scoring.sheet_schemas import SheetDefinition
+from modules.seasons.categories import CategoryKey
 
 EventStatus = Literal["draft", "published", "live", "completed", "archived"]
 PhaseType = Literal["seeding", "double_seeding", "double_elimination", "alliance", "final"]
@@ -132,14 +133,14 @@ class EventPublicResponse(BaseModel):
 class EventRegistrationCreate(BaseModel):
     team_id: str
     competition_level_id: str | None = None
-    category: Literal["botball", "open", "aerial", "jbc"] = "botball"
+    category: CategoryKey = "botball"
     seed_number: int | None = Field(default=None, ge=1)
     notes: str | None = None
 
 
 class EventRegistrationUpdate(BaseModel):
     competition_level_id: str | None = None
-    category: Literal["botball", "open", "aerial", "jbc"] | None = None
+    category: CategoryKey | None = None
     seed_number: int | None = Field(default=None, ge=1)
     checked_in: bool | None = None
     notes: str | None = None
@@ -205,7 +206,7 @@ class ScheduleGenerateRequest(BaseModel):
     table_count: int | None = Field(default=None, ge=1, le=100)
     team_ids: list[str] | None = None
     # Restrict the phase to the teams of one category (default: phase settings).
-    category: Literal["botball", "open", "aerial", "jbc"] | None = None
+    category: CategoryKey | None = None
     replace_existing: bool = False
 
 
@@ -259,7 +260,7 @@ class MatchResultRequest(BaseModel):
 
 
 class SeedAssignmentRequest(BaseModel):
-    category: Literal["botball", "open", "aerial", "jbc"] | None = None
+    category: CategoryKey | None = None
     phase_id: str | None = None
 
 

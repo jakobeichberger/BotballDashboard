@@ -423,7 +423,8 @@ class TestEventScoping:
         resp = await client.put(
             f"/api/scoring/events/{event.id}/aerial-results",
             json=[
-                {"team_id": a.id, "run1": 20, "run2": 100, "run3": 80, "run4": 0},
+                {"team_id": a.id, "runs": [20, 100, 80, 0]},
+                # the former fixed columns are still accepted
                 {"team_id": b.id, "run1": 50, "run2": 50, "run3": 50, "run4": 50},
             ],
             headers=auth_headers,
@@ -432,12 +433,18 @@ class TestEventScoping:
         assert aerial[a.id]["score"] == pytest.approx(50.0)  # mean of all four runs
         assert aerial[a.id]["rank"] == aerial[b.id]["rank"] == 1  # tie shares the rank
 
+        assert aerial[b.id]["runs"] == [50, 50, 50, 50]
+
+        await client.post(
+            f"/api/scoring/formulas/seasons/{season.id}/presets/regional_2026_botball",
+            headers=auth_headers,
+        )
         resp = await client.put(
             f"/api/scoring/events/{event.id}/doc-scores/{a.id}",
             json={"part1": 100, "part2": 100, "part3": None, "onsite": 50},
             headers=auth_headers,
         )
-        # 0.2 + 0.2 + 0 (missing) + 0.4 · 0.5
+        # Regional preset: 0.2 + 0.2 + 0 (missing) + 0.4 · 0.5
         assert resp.json()["doc_score"] == pytest.approx(0.6)
 
 
@@ -490,7 +497,7 @@ class TestPresets:
         )
         assert resp.status_code == 200
         doc = next(f for f in resp.json() if f["key"] == "doc_score")
-        assert "0.4 * (onsite/100)" in doc["expression"]
+        assert "0.4 * safe_div(onsite, onsite_max)" in doc["expression"]
 
         resp = await client.post(
             f"/api/scoring/formulas/seasons/{season.id}/presets/nope", headers=auth_headers
