@@ -88,7 +88,7 @@ function RankCell({ rank }: { rank: number | null }) {
       </td>
     );
   }
-  return <td className={`px-4 py-3 font-bold ${RANK_COLOR(rank)}`}>{rank}</td>;
+  return <td className={`px-4 py-3 font-display text-base font-extrabold tabular-nums ${RANK_COLOR(rank)}`}>{rank}</td>;
 }
 
 const RANK_COLOR = (r: number) =>
