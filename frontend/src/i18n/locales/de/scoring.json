@@ -191,7 +191,8 @@
       "sectionEmpty": "Bereich „{{name}}“ hat keine Felder.",
       "eitherTooFew": "„{{name}}“ braucht mindestens zwei Alternativen.",
       "keyInvalid": "Schlüssel „{{key}}“ ist ungültig (a–z, 0–9, _).",
-      "keyDuplicate": "Schlüssel „{{key}}“ ist doppelt."
+      "keyDuplicate": "Schlüssel „{{key}}“ ist doppelt.",
+      "sourceUnknown": "{{name}}: Feld „{{key}}“ gibt es in diesem Bereich nicht."
     },
     "sectionNumber": "Bereich {{number}}",
     "pieces": "Spielteile",
@@ -261,14 +262,17 @@
     "offset": "Offset",
     "offsetHint": "Offset (+n)",
     "multiplierMax": "Multiplikator-Maximum",
-    "removeMultiplier": "Multiplikator entfernen"
+    "removeMultiplier": "Multiplikator entfernen",
+    "triggeredBy": "Ausgelöst durch",
+    "triggeredByCheckbox": "Eigenes Kästchen"
   },
   "sheet": {
     "side": "Seite",
     "sideTotal": "Seite {{side}} · {{total}}",
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – es zählt die bessere Alternative",
-    "area": "Bereich"
+    "area": "Bereich",
+    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)"
   },
   "entry": {
     "offlineLabel": "{{team}} · Runde {{round}} · {{points}} P.",

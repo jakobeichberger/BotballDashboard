@@ -33,7 +33,9 @@ class SheetMultiplier(BaseModel):
     """A value applied to a section subtotal.
 
     boolean: checked → × factor. count/number: × (value × factor + offset).
-    A result below 1 leaves the subtotal unchanged.
+    A result below 1 leaves the subtotal unchanged. With ``source`` (boolean
+    only) the multiplier has no input: it is on when that field of the same
+    section is at least 1, e.g. 2026 "Drum ×2" in the Lower Start Box.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -45,6 +47,13 @@ class SheetMultiplier(BaseModel):
     offset: float = 0.0
     min_value: float | None = None
     max_value: float | None = None
+    source: str | None = Field(default=None, pattern=_KEY, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_source(self) -> "SheetMultiplier":
+        if self.source and self.type != "boolean":
+            raise ValueError(f"{self.key}: only a checkbox multiplier can follow a field")
+        return self
 
 
 class SheetEitherMultiplier(BaseModel):
@@ -86,7 +95,19 @@ class SheetDefinition(BaseModel):
                 raise ValueError(f"Duplicate section key: {section.key}")
             section_keys.add(section.key)
             keys = [f.key for f in section.fields]
+            field_keys = set(keys)
             for multiplier in section.multipliers:
+                options = (
+                    multiplier.either
+                    if isinstance(multiplier, SheetEitherMultiplier)
+                    else [multiplier]
+                )
+                for option in options:
+                    if option.source and option.source not in field_keys:
+                        raise ValueError(
+                            f"{option.key}: source '{option.source}' is not a field of "
+                            f"section '{section.key}'"
+                        )
                 if isinstance(multiplier, SheetEitherMultiplier):
                     keys.extend(option.key for option in multiplier.either)
                 else:
@@ -98,4 +119,12 @@ class SheetDefinition(BaseModel):
         return self
 
     def to_dict(self) -> dict:
-        return self.model_dump(mode="json")
+        data = self.model_dump(mode="json")
+        # Leave "source" out where it is unset, so definitions without derived
+        # multipliers keep their exact stored shape.
+        for section in data["sections"]:
+            for multiplier in section["multipliers"]:
+                for option in multiplier.get("either") or [multiplier]:
+                    if option.get("source") is None:
+                        option.pop("source", None)
+        return data

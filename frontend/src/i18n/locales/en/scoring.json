@@ -191,7 +191,8 @@
       "sectionEmpty": "Section “{{name}}” has no fields.",
       "eitherTooFew": "“{{name}}” needs at least two alternatives.",
       "keyInvalid": "Key “{{key}}” is invalid (a–z, 0–9, _).",
-      "keyDuplicate": "Key “{{key}}” is duplicated."
+      "keyDuplicate": "Key “{{key}}” is duplicated.",
+      "sourceUnknown": "{{name}}: there is no field “{{key}}” in this section."
     },
     "sectionNumber": "Section {{number}}",
     "pieces": "Game pieces",
@@ -261,14 +262,17 @@
     "offset": "Offset",
     "offsetHint": "Offset (+n)",
     "multiplierMax": "Multiplier maximum",
-    "removeMultiplier": "Remove multiplier"
+    "removeMultiplier": "Remove multiplier",
+    "triggeredBy": "Triggered by",
+    "triggeredByCheckbox": "Own checkbox"
   },
   "sheet": {
     "side": "Side",
     "sideTotal": "Side {{side}} · {{total}}",
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – the better alternative counts",
-    "area": "Section"
+    "area": "Section",
+    "derivedHint": "(automatic once “{{field}}” is at least 1)"
   },
   "entry": {
     "offlineLabel": "{{team}} · round {{round}} · {{points}} pts",

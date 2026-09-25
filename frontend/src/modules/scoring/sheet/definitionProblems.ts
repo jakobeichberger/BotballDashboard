@@ -16,6 +16,12 @@ export function definitionProblems(definition: SheetDefinition): string[] {
     if (!section.fields.length) problems.push(i18n.t("scoring:schema.problem.sectionEmpty", { name: section.label || section.key }));
     const keys = [...section.fields.map((field) => field.key), ...section.multipliers.flatMap((m) => (isEither(m) ? m.either.map((o) => o.key) : [m.key]))];
     for (const multiplier of section.multipliers) if (isEither(multiplier) && multiplier.either.length < 2) problems.push(i18n.t("scoring:schema.problem.eitherTooFew", { name: multiplier.label }));
+    const fieldKeys = new Set(section.fields.map((field) => field.key));
+    for (const multiplier of section.multipliers) {
+      for (const option of isEither(multiplier) ? multiplier.either : [multiplier]) {
+        if (option.source && !fieldKeys.has(option.source)) problems.push(i18n.t("scoring:schema.problem.sourceUnknown", { name: option.label, key: option.source }));
+      }
+    }
     for (const key of keys) {
       if (!KEY_PATTERN.test(key)) problems.push(i18n.t("scoring:schema.problem.keyInvalid", { key }));
       if (seen.has(key)) problems.push(i18n.t("scoring:schema.problem.keyDuplicate", { key }));

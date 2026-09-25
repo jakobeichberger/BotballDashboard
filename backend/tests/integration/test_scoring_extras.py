@@ -81,7 +81,7 @@ async def test_templates_endpoint_lists_2024_to_2026(client, auth_headers):
     assert resp.status_code == 200
     templates = {t["id"]: t for t in resp.json()}
     assert set(templates) == {"botball_2024", "botball_2025", "botball_2026"}
-    assert templates["botball_2026"]["complete"] is False
+    assert templates["botball_2026"]["complete"] is True
     assert templates["botball_2025"]["definition"]["sides"] == ["A", "B"]
 
 

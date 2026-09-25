@@ -63,3 +63,19 @@ describe("validation mirror", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 });
+
+describe("2026 sheet (derived multipliers)", () => {
+  const definition = schemas.botball_2026.definition as SheetDefinition;
+
+  it("has no input for a multiplier that follows a field", () => {
+    const keys = inputFields(definition).map((spec) => spec.key);
+    expect(keys).toContain("A.lower_start_box_drums");
+    expect(keys).not.toContain("A.lower_start_box_drum_bonus");
+    expect(validate({ "A.lower_start_box_drum_bonus": true }, definition)).toEqual(["A.lower_start_box_drum_bonus is not part of the active scoring schema"]);
+  });
+
+  it("switches the Lower Start Box bonus on with the drum count", () => {
+    expect(computeSheet({ "A.lower_start_box_drums": 0, "A.lower_start_box_poms": 1 }, definition).total).toBe(2);
+    expect(computeSheet({ "A.lower_start_box_drums": 1, "A.lower_start_box_poms": 1 }, definition).total).toBe(54);
+  });
+});
