@@ -534,6 +534,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/seasons/{season_id}/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Season Categories
+         * @description The season's categories (keys, labels, kind, scoring defaults).
+         */
+        get: operations["list_season_categories_api_seasons__season_id__categories_get"];
+        /** Replace Season Categories */
+        put: operations["replace_season_categories_api_seasons__season_id__categories_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events": {
         parameters: {
             query?: never;
@@ -1791,6 +1812,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scoring/events/{event_id}/jbc-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Event Jbc Results
+         * @description Points for solved challenges per team (Junior Botball Challenge).
+         */
+        get: operations["list_event_jbc_results_api_scoring_events__event_id__jbc_results_get"];
+        /** Bulk Upsert Event Jbc Results */
+        put: operations["bulk_upsert_event_jbc_results_api_scoring_events__event_id__jbc_results_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/jbc-ranking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event Jbc Ranking */
+        get: operations["get_event_jbc_ranking_api_scoring_events__event_id__jbc_ranking_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/jbc-results/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upsert Event Jbc Result */
+        put: operations["upsert_event_jbc_result_api_scoring_events__event_id__jbc_results__team_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scoring/events/{event_id}/doc-scores": {
         parameters: {
             query?: never;
@@ -2120,6 +2196,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scoring/referee-checklist-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Checklist Presets
+         * @description Referee checklists transcribed from the game review (2026: v1.4).
+         */
+        get: operations["list_checklist_presets_api_scoring_referee_checklist_presets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scoring/schema-templates": {
         parameters: {
             query?: never;
@@ -2212,6 +2308,47 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/timeouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Timeouts
+         * @description Teams that turned in their timeout card at this event.
+         */
+        get: operations["list_timeouts_api_scoring_events__event_id__timeouts_get"];
+        put?: never;
+        /**
+         * Record Timeout
+         * @description Record a team's timeout (one 3-minute timeout per tournament, 409 on a second).
+         */
+        post: operations["record_timeout_api_scoring_events__event_id__timeouts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scoring/events/{event_id}/timeouts/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Timeout */
+        delete: operations["revoke_timeout_api_scoring_events__event_id__timeouts__team_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3159,6 +3296,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/printing/teams/{team_id}/seasons/{season_id}/robot-parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Robot Parts
+         * @description Printed robot parts against the game review's limit of six.
+         */
+        get: operations["get_robot_parts_api_printing_teams__team_id__seasons__season_id__robot_parts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/printing/quotas": {
         parameters: {
             query?: never;
@@ -3586,6 +3743,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exports/events/{event_id}/results.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Event Results Xlsx
+         * @description All results in the layout of the official ECER results spreadsheet
+         *     (Teams, Botball & Open, Aerial, Alliance, Junior Botball Challenge).
+         */
+        get: operations["export_event_results_xlsx_api_exports_events__event_id__results_xlsx_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/events/{event_id}/results.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Event Results Csv
+         * @description One sheet of the ECER results layout as CSV (blocks per category).
+         */
+        get: operations["export_event_results_csv_api_exports_events__event_id__results_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exports/events/{event_id}/overall-ranking.csv": {
         parameters: {
             query?: never;
@@ -3859,6 +4057,247 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/awards/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Templates
+         * @description Award line-ups of ECER and GCER.
+         */
+        get: operations["list_templates_api_awards_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event Awards */
+        get: operations["get_event_awards_api_awards_events__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/events/{event_id}/templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Template
+         * @description Add the template's awards the event does not have yet.
+         */
+        post: operations["apply_template_api_awards_events__event_id__templates__template_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/events/{event_id}/awards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Award */
+        post: operations["create_award_api_awards_events__event_id__awards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/{award_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Award */
+        put: operations["update_award_api_awards__award_id__put"];
+        post?: never;
+        /** Delete Award */
+        delete: operations["delete_award_api_awards__award_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/events/{event_id}/compute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compute Awards
+         * @description Fill the computed awards from the current rankings (and seed the
+         *     Best Paper Presentation nominations from the papers presented on stage).
+         */
+        post: operations["compute_awards_api_awards_events__event_id__compute_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/{award_id}/nominations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nominate */
+        post: operations["nominate_api_awards__award_id__nominations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/{award_id}/nominations/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Withdraw Nomination */
+        delete: operations["withdraw_nomination_api_awards__award_id__nominations__team_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/{award_id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Decide Award
+         * @description The jury's placing; replaces the award's results.
+         */
+        put: operations["decide_award_api_awards__award_id__results_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/events/{event_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Publish Awards
+         * @description Show (or hide) the placed awards on the public event page.
+         */
+        put: operations["publish_awards_api_awards_events__event_id__publish_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/events/{event_id}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Awards Csv */
+        get: operations["export_awards_csv_api_awards_events__event_id__export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/events/{event_id}/export.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Awards Pdf */
+        get: operations["export_awards_pdf_api_awards_events__event_id__export_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/events/{slug}/awards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Public Awards
+         * @description Published awards of a public event (404 until the organisers publish).
+         */
+        get: operations["get_public_awards_api_v1_public_events__slug__awards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bots": {
         parameters: {
             query?: never;
@@ -4023,14 +4462,8 @@ export interface components {
             event_id: string;
             /** Team Id */
             team_id: string;
-            /** Run1 */
-            run1: number | null;
-            /** Run2 */
-            run2: number | null;
-            /** Run3 */
-            run3: number | null;
-            /** Run4 */
-            run4: number | null;
+            /** Runs */
+            runs: (number | null)[];
             /** Score */
             score: number | null;
             /** Rank */
@@ -4047,6 +4480,8 @@ export interface components {
         AerialResultUpsert: {
             /** Team Id */
             team_id?: string | null;
+            /** Runs */
+            runs?: (number | null)[];
             /** Run1 */
             run1?: number | null;
             /** Run2 */
@@ -4212,6 +4647,123 @@ export interface components {
             reviewer_id: string;
             /** Reviewer Name */
             reviewer_name: string;
+        };
+        /** AwardCategoryCreate */
+        AwardCategoryCreate: {
+            /** Label */
+            label: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Kind
+             * @default judged
+             * @enum {string}
+             */
+            kind: "computed" | "judged";
+            /** Source */
+            source?: ("overall" | "seeding" | "de" | "doc" | "adapted_doc" | "paper" | "aerial" | "jbc" | "paper_on_stage") | null;
+            /** Team Category */
+            team_category?: string | null;
+            /**
+             * Places
+             * @default 1
+             */
+            places: number;
+            /**
+             * Per Course
+             * @default false
+             */
+            per_course: boolean;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Key */
+            key: string;
+        };
+        /** AwardCategoryUpdate */
+        AwardCategoryUpdate: {
+            /** Label */
+            label: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Kind
+             * @default judged
+             * @enum {string}
+             */
+            kind: "computed" | "judged";
+            /** Source */
+            source?: ("overall" | "seeding" | "de" | "doc" | "adapted_doc" | "paper" | "aerial" | "jbc" | "paper_on_stage") | null;
+            /** Team Category */
+            team_category?: string | null;
+            /**
+             * Places
+             * @default 1
+             */
+            places: number;
+            /**
+             * Per Course
+             * @default false
+             */
+            per_course: boolean;
+            /** Sort Order */
+            sort_order?: number | null;
+        };
+        /** AwardDecision */
+        AwardDecision: {
+            /** Placements */
+            placements?: components["schemas"]["Placement"][];
+        };
+        /** AwardResponse */
+        AwardResponse: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Description */
+            description: string | null;
+            /** Kind */
+            kind: string;
+            /** Source */
+            source: string | null;
+            /** Team Category */
+            team_category: string | null;
+            /** Places */
+            places: number;
+            /** Per Course */
+            per_course: boolean;
+            /** Sort Order */
+            sort_order: number;
+            /**
+             * Nominations
+             * @default []
+             */
+            nominations: components["schemas"]["NominationResponse"][];
+            /**
+             * Results
+             * @default []
+             */
+            results: components["schemas"]["AwardResultResponse"][];
+        };
+        /** AwardResultResponse */
+        AwardResultResponse: {
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string | null;
+            /** Team Number */
+            team_number?: string | null;
+            /** Place */
+            place: number;
+            /** Course */
+            course: string | null;
+            /** Score */
+            score: number | null;
+            /** Note */
+            note: string | null;
         };
         /** Body_upload_bot_image_api_bots__bot_id__image_post */
         Body_upload_bot_image_api_bots__bot_id__image_post: {
@@ -4437,6 +4989,17 @@ export interface components {
              * @default true
              */
             required: boolean;
+            /** Description */
+            description?: string | null;
+        };
+        /** ChecklistPreset */
+        ChecklistPreset: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Items */
+            items: components["schemas"]["ChecklistItem"][];
         };
         /** CompetitionLevelCreate */
         CompetitionLevelCreate: {
@@ -4719,6 +5282,32 @@ export interface components {
             /** Done */
             done?: boolean | null;
         };
+        /**
+         * DocMaxPoints
+         * @description Rubric maximum of each documentation period (2026: 100 / 95 / 100 / 100).
+         */
+        DocMaxPoints: {
+            /**
+             * P1
+             * @default 100
+             */
+            p1: number;
+            /**
+             * P2
+             * @default 100
+             */
+            p2: number;
+            /**
+             * P3
+             * @default 100
+             */
+            p3: number;
+            /**
+             * Onsite
+             * @default 100
+             */
+            onsite: number;
+        };
         /** DocScoreResponse */
         DocScoreResponse: {
             /** Id */
@@ -4749,7 +5338,11 @@ export interface components {
              */
             updated_at: string;
         };
-        /** DocScoreUpsert */
+        /**
+         * DocScoreUpsert
+         * @description Rubric points per period; the upper bound is the season's rubric maximum
+         *     (ScoringRuleSet.doc_max_points, 2026: P1 /100, P2 /95, P3 /100, Onsite /100).
+         */
         DocScoreUpsert: {
             /** Team Id */
             team_id?: string | null;
@@ -4773,6 +5366,19 @@ export interface components {
             new_email: string;
             /** Current Password */
             current_password: string;
+        };
+        /** EventAwardsResponse */
+        EventAwardsResponse: {
+            /** Event Id */
+            event_id: string;
+            /** Template */
+            template: string | null;
+            /** Published */
+            published: boolean;
+            /** Published At */
+            published_at: string | null;
+            /** Awards */
+            awards: components["schemas"]["AwardResponse"][];
         };
         /** EventCreate */
         EventCreate: {
@@ -4969,9 +5575,8 @@ export interface components {
             /**
              * Category
              * @default botball
-             * @enum {string}
              */
-            category: "botball" | "open" | "aerial" | "jbc";
+            category: string;
             /** Seed Number */
             seed_number?: number | null;
             /** Notes */
@@ -5010,7 +5615,7 @@ export interface components {
             /** Competition Level Id */
             competition_level_id?: string | null;
             /** Category */
-            category?: ("botball" | "open" | "aerial" | "jbc") | null;
+            category?: string | null;
             /** Seed Number */
             seed_number?: number | null;
             /** Checked In */
@@ -5569,6 +6174,52 @@ export interface components {
             /** Values */
             values: components["schemas"]["HeatmapCell"][];
         };
+        /** JBCChallenge */
+        JBCChallenge: {
+            /** Key */
+            key: string;
+            /** Label */
+            label?: string | null;
+            /** Points */
+            points: number;
+        };
+        /** JBCResultResponse */
+        JBCResultResponse: {
+            /** Id */
+            id: string;
+            /** Season Id */
+            season_id: string;
+            /** Event Id */
+            event_id: string;
+            /** Team Id */
+            team_id: string;
+            /** Points */
+            points: number | null;
+            /** Challenges */
+            challenges: {
+                [key: string]: unknown;
+            }[];
+            /** Rank */
+            rank: number | null;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** JBCResultUpsert */
+        JBCResultUpsert: {
+            /** Team Id */
+            team_id?: string | null;
+            /** Points */
+            points?: number | null;
+            /** Challenges */
+            challenges?: components["schemas"]["JBCChallenge"][];
+            /** Notes */
+            notes?: string | null;
+        };
         /** JurorSection */
         JurorSection: {
             /** Unconfirmed Count */
@@ -5974,6 +6625,31 @@ export interface components {
             /** Latest Scores */
             latest_scores: components["schemas"]["MentorScore"][];
         };
+        /** NominationCreate */
+        NominationCreate: {
+            /** Team Id */
+            team_id: string;
+            /** Note */
+            note?: string | null;
+        };
+        /** NominationResponse */
+        NominationResponse: {
+            /** Id */
+            id: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name: string | null;
+            /** Note */
+            note: string | null;
+            /** Nominated By */
+            nominated_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** NotificationItem */
         NotificationItem: {
             /** Id */
@@ -6239,6 +6915,10 @@ export interface components {
             doc_score: number | null;
             /** Aerial Score */
             aerial_score: number | null;
+            /** Course */
+            course?: string | null;
+            /** Course Rank */
+            course_rank?: number | null;
             /**
              * Values
              * @default {}
@@ -6272,7 +6952,7 @@ export interface components {
              * Deadline Type
              * @enum {string}
              */
-            deadline_type: "official_submission" | "official_final" | "internal_draft" | "internal_review" | "internal_revision" | "internal_final";
+            deadline_type: "official_submission" | "official_notification" | "official_final" | "internal_draft" | "internal_review" | "internal_revision" | "internal_final";
             /**
              * Due Date
              * Format: date
@@ -6378,7 +7058,7 @@ export interface components {
         /** PaperDeadlineUpdate */
         PaperDeadlineUpdate: {
             /** Deadline Type */
-            deadline_type?: ("official_submission" | "official_final" | "internal_draft" | "internal_review" | "internal_revision" | "internal_final") | null;
+            deadline_type?: ("official_submission" | "official_notification" | "official_final" | "internal_draft" | "internal_review" | "internal_revision" | "internal_final") | null;
             /** Due Date */
             due_date?: string | null;
             /** Label */
@@ -6454,6 +7134,11 @@ export interface components {
             format_deduction: number;
             /** Format Deduction Reason */
             format_deduction_reason: string | null;
+            /**
+             * Presented On Stage
+             * @default false
+             */
+            presented_on_stage: boolean;
             /** Finalized At */
             finalized_at: string | null;
             /** Notes */
@@ -6501,6 +7186,8 @@ export interface components {
             format_deduction?: number | null;
             /** Format Deduction Reason */
             format_deduction_reason?: string | null;
+            /** Presented On Stage */
+            presented_on_stage?: boolean | null;
         };
         /**
          * PaperStatsResponse
@@ -6627,6 +7314,8 @@ export interface components {
             file_name: string;
             /** File Size Bytes */
             file_size_bytes: number;
+            /** Page Count */
+            page_count?: number | null;
             /** Uploaded By */
             uploaded_by: string | null;
             /**
@@ -6829,6 +7518,17 @@ export interface components {
             /** Description */
             description: string | null;
         };
+        /** Placement */
+        Placement: {
+            /** Team Id */
+            team_id: string;
+            /** Place */
+            place: number;
+            /** Course */
+            course?: string | null;
+            /** Note */
+            note?: string | null;
+        };
         /** PrintJobCancelResponse */
         PrintJobCancelResponse: {
             /** Id */
@@ -6853,6 +7553,32 @@ export interface components {
             material: string;
             /** Color */
             color: string | null;
+            /**
+             * Purpose
+             * @default robot
+             */
+            purpose: string;
+            /**
+             * Part Count
+             * @default 1
+             */
+            part_count: number;
+            /** Bbox X Mm */
+            bbox_x_mm?: number | null;
+            /** Bbox Y Mm */
+            bbox_y_mm?: number | null;
+            /** Bbox Z Mm */
+            bbox_z_mm?: number | null;
+            /**
+             * Stl Submitted
+             * @default false
+             */
+            stl_submitted: boolean;
+            /**
+             * Rule Warnings
+             * @default []
+             */
+            rule_warnings: string[];
             /** Estimated Grams */
             estimated_grams: number | null;
             /** Actual Grams */
@@ -6937,6 +7663,17 @@ export interface components {
              * @default false
              */
             quota_override: boolean;
+            /**
+             * Purpose
+             * @default robot
+             * @enum {string}
+             */
+            purpose: "robot" | "spare" | "jig";
+            /**
+             * Part Count
+             * @default 1
+             */
+            part_count: number;
         };
         /** PrintJobCreateResponse */
         PrintJobCreateResponse: {
@@ -6962,6 +7699,32 @@ export interface components {
             material: string;
             /** Color */
             color: string | null;
+            /**
+             * Purpose
+             * @default robot
+             */
+            purpose: string;
+            /**
+             * Part Count
+             * @default 1
+             */
+            part_count: number;
+            /** Bbox X Mm */
+            bbox_x_mm?: number | null;
+            /** Bbox Y Mm */
+            bbox_y_mm?: number | null;
+            /** Bbox Z Mm */
+            bbox_z_mm?: number | null;
+            /**
+             * Stl Submitted
+             * @default false
+             */
+            stl_submitted: boolean;
+            /**
+             * Rule Warnings
+             * @default []
+             */
+            rule_warnings: string[];
             /** Estimated Grams */
             estimated_grams: number | null;
             /** Actual Grams */
@@ -7044,6 +7807,32 @@ export interface components {
             material: string;
             /** Color */
             color: string | null;
+            /**
+             * Purpose
+             * @default robot
+             */
+            purpose: string;
+            /**
+             * Part Count
+             * @default 1
+             */
+            part_count: number;
+            /** Bbox X Mm */
+            bbox_x_mm?: number | null;
+            /** Bbox Y Mm */
+            bbox_y_mm?: number | null;
+            /** Bbox Z Mm */
+            bbox_z_mm?: number | null;
+            /**
+             * Stl Submitted
+             * @default false
+             */
+            stl_submitted: boolean;
+            /**
+             * Rule Warnings
+             * @default []
+             */
+            rule_warnings: string[];
             /** Estimated Grams */
             estimated_grams: number | null;
             /** Actual Grams */
@@ -7109,6 +7898,12 @@ export interface components {
             notes?: string | null;
             /** Priority */
             priority?: number | null;
+            /** Purpose */
+            purpose?: ("robot" | "spare" | "jig") | null;
+            /** Part Count */
+            part_count?: number | null;
+            /** Stl Submitted */
+            stl_submitted?: boolean | null;
         };
         /** PrintQueueStatus */
         PrintQueueStatus: {
@@ -7199,6 +7994,15 @@ export interface components {
             /** Expires At */
             expires_at: string | null;
         };
+        /** PublicAward */
+        PublicAward: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Results */
+            results: components["schemas"]["AwardResultResponse"][];
+        };
         /** PublicRankingResponse */
         PublicRankingResponse: {
             /** Rank */
@@ -7258,6 +8062,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** PublishRequest */
+        PublishRequest: {
+            /** Published */
+            published: boolean;
         };
         /** PushSubscriptionCreate */
         PushSubscriptionCreate: {
@@ -7441,9 +8250,8 @@ export interface components {
             /**
              * Category
              * @default botball
-             * @enum {string}
              */
-            category: "botball" | "open" | "aerial" | "jbc";
+            category: string;
         };
         /**
          * RegisteredTeam
@@ -7662,6 +8470,24 @@ export interface components {
             /** Completed */
             completed: number;
         };
+        /**
+         * RobotPartsSummary
+         * @description Printed robot parts of a team in a season against the game-review limit.
+         */
+        RobotPartsSummary: {
+            /** Team Id */
+            team_id: string;
+            /** Season Id */
+            season_id: string;
+            /** Used */
+            used: number;
+            /** Limit */
+            limit: number;
+            /** Over Limit */
+            over_limit: boolean;
+            /** Stl Missing */
+            stl_missing: number;
+        };
         /** RoleCreate */
         RoleCreate: {
             /** Name */
@@ -7741,6 +8567,12 @@ export interface components {
             end_contact_bonus_percent: number;
             /** Referee Checklist */
             referee_checklist?: components["schemas"]["ChecklistItem"][];
+            /**
+             * Seeding Tiebreakers
+             * @default false
+             */
+            seeding_tiebreakers: boolean;
+            doc_max_points?: components["schemas"]["DocMaxPoints"];
             /** Season Id */
             season_id: string;
         };
@@ -7760,6 +8592,12 @@ export interface components {
             end_contact_bonus_percent: number;
             /** Referee Checklist */
             referee_checklist?: components["schemas"]["ChecklistItem"][];
+            /**
+             * Seeding Tiebreakers
+             * @default false
+             */
+            seeding_tiebreakers: boolean;
+            doc_max_points?: components["schemas"]["DocMaxPoints"];
         };
         /** ScheduleGenerateRequest */
         ScheduleGenerateRequest: {
@@ -7780,7 +8618,7 @@ export interface components {
             /** Team Ids */
             team_ids?: string[] | null;
             /** Category */
-            category?: ("botball" | "open" | "aerial" | "jbc") | null;
+            category?: string | null;
             /**
              * Replace Existing
              * @default false
@@ -8253,6 +9091,37 @@ export interface components {
             /** Threat Level */
             threat_level?: number | null;
         };
+        /**
+         * SeasonCategoryEntry
+         * @description One category of the season's registry (see modules.seasons.categories).
+         */
+        SeasonCategoryEntry: {
+            /** Key */
+            key: string;
+            /** Label De */
+            label_de: string;
+            /** Label En */
+            label_en: string;
+            /**
+             * Kind
+             * @default custom
+             * @enum {string}
+             */
+            kind: "botball" | "open" | "aerial" | "jbc" | "custom";
+            /** Formula Preset */
+            formula_preset?: string | null;
+            /** Run Count */
+            run_count?: number | null;
+            /** Counted Runs */
+            counted_runs?: number | null;
+            /**
+             * Rank Per Bracket
+             * @default false
+             */
+            rank_per_bracket: boolean;
+            /** Sort Order */
+            sort_order?: number | null;
+        };
         /** SeasonClone */
         SeasonClone: {
             /** Name */
@@ -8525,7 +9394,7 @@ export interface components {
         /** SeedAssignmentRequest */
         SeedAssignmentRequest: {
             /** Category */
-            category?: ("botball" | "open" | "aerial" | "jbc") | null;
+            category?: string | null;
             /** Phase Id */
             phase_id?: string | null;
         };
@@ -8586,7 +9455,9 @@ export interface components {
          * @description A value applied to a section subtotal.
          *
          *     boolean: checked → × factor. count/number: × (value × factor + offset).
-         *     A result below 1 leaves the subtotal unchanged.
+         *     A result below 1 leaves the subtotal unchanged. With ``source`` (boolean
+         *     only) the multiplier has no input: it is on when that field of the same
+         *     section is at least 1, e.g. 2026 "Drum ×2" in the Lower Start Box.
          */
         SheetMultiplier: {
             /** Key */
@@ -8613,6 +9484,8 @@ export interface components {
             min_value?: number | null;
             /** Max Value */
             max_value?: number | null;
+            /** Source */
+            source?: string | null;
         };
         /** SheetSection */
         SheetSection: {
@@ -9103,7 +9976,7 @@ export interface components {
          */
         TeamSeasonUpdate: {
             /** Category */
-            category?: ("botball" | "open" | "aerial" | "jbc") | null;
+            category?: string | null;
             /** Competition Level Id */
             competition_level_id?: string | null;
             /** Fee Status */
@@ -9143,6 +10016,17 @@ export interface components {
             is_active?: boolean | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** TemplateInfo */
+        TemplateInfo: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Awards */
+            awards: {
+                [key: string]: unknown;
+            }[];
         };
         /** TiebreakerCriterion */
         TiebreakerCriterion: {
@@ -9214,6 +10098,49 @@ export interface components {
             ends_at: string | null;
             /** Status */
             status: string;
+        };
+        /** TimeoutCardCreate */
+        TimeoutCardCreate: {
+            /** Team Id */
+            team_id: string;
+            /** Scheduled Match Id */
+            scheduled_match_id?: string | null;
+            /** Round Number */
+            round_number?: number | null;
+            /**
+             * Reason
+             * @default before_hands_off
+             * @enum {string}
+             */
+            reason: "before_hands_off" | "inspection";
+            /** Note */
+            note?: string | null;
+        };
+        /** TimeoutCardResponse */
+        TimeoutCardResponse: {
+            /** Id */
+            id: string;
+            /** Event Id */
+            event_id: string;
+            /** Team Id */
+            team_id: string;
+            /** Team Name */
+            team_name?: string | null;
+            /** Scheduled Match Id */
+            scheduled_match_id: string | null;
+            /** Round Number */
+            round_number: number | null;
+            /** Reason */
+            reason: string;
+            /** Note */
+            note: string | null;
+            /** Recorded By */
+            recorded_by: string | null;
+            /**
+             * Used At
+             * Format: date-time
+             */
+            used_at: string;
         };
         /** TokenResponse */
         TokenResponse: {
@@ -10653,6 +11580,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_season_categories_api_seasons__season_id__categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeasonCategoryEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_season_categories_api_seasons__season_id__categories_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeasonCategoryEntry"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeasonCategoryEntry"][];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -13668,6 +14661,139 @@ export interface operations {
             };
         };
     };
+    list_event_jbc_results_api_scoring_events__event_id__jbc_results_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JBCResultResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_upsert_event_jbc_results_api_scoring_events__event_id__jbc_results_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JBCResultUpsert"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JBCResultResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_jbc_ranking_api_scoring_events__event_id__jbc_ranking_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_event_jbc_result_api_scoring_events__event_id__jbc_results__team_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JBCResultUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JBCResultResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_event_doc_scores_api_scoring_events__event_id__doc_scores_get: {
         parameters: {
             query?: never;
@@ -14411,6 +15537,26 @@ export interface operations {
             };
         };
     };
+    list_checklist_presets_api_scoring_referee_checklist_presets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistPreset"][];
+                };
+            };
+        };
+    };
     list_schema_templates_api_scoring_schema_templates_get: {
         parameters: {
             query?: never;
@@ -14547,6 +15693,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DEPlacementEntry"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_timeouts_api_scoring_events__event_id__timeouts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeoutCardResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_timeout_api_scoring_events__event_id__timeouts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimeoutCardCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeoutCardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_timeout_api_scoring_events__event_id__timeouts__team_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -16711,6 +17953,38 @@ export interface operations {
             };
         };
     };
+    get_robot_parts_api_printing_teams__team_id__seasons__season_id__robot_parts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                season_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RobotPartsSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_quota_api_printing_quotas_get: {
         parameters: {
             query: {
@@ -17552,6 +18826,71 @@ export interface operations {
             };
         };
     };
+    export_event_results_xlsx_api_exports_events__event_id__results_xlsx_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_event_results_csv_api_exports_events__event_id__results_csv_get: {
+        parameters: {
+            query?: {
+                /** @description Teams, Botball & Open, Aerial, Alliance or Junior Botball Challenge */
+                sheet?: string;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_event_overall_ranking_csv_api_exports_events__event_id__overall_ranking_csv_get: {
         parameters: {
             query?: never;
@@ -18007,6 +19346,449 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_templates_api_awards_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateInfo"][];
+                };
+            };
+        };
+    };
+    get_event_awards_api_awards_events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventAwardsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_template_api_awards_events__event_id__templates__template_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventAwardsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_award_api_awards_events__event_id__awards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardCategoryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_award_api_awards__award_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardCategoryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_award_api_awards__award_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compute_awards_api_awards_events__event_id__compute_post: {
+        parameters: {
+            query?: {
+                award_id?: string | null;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventAwardsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    nominate_api_awards__award_id__nominations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NominationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdraw_nomination_api_awards__award_id__nominations__team_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_award_api_awards__award_id__results_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_awards_api_awards_events__event_id__publish_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventAwardsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_awards_csv_api_awards_events__event_id__export_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_awards_pdf_api_awards_events__event_id__export_pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_awards_api_v1_public_events__slug__awards_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicAward"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
