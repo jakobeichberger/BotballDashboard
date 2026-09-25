@@ -28,6 +28,7 @@ from modules.printing.schemas import (
     PrintJobUpdate,
     QuotaResponse,
     QuotaUpsert,
+    RobotPartsSummary,
 )
 
 router = APIRouter(prefix="/printing", tags=["printing"])
@@ -190,7 +191,26 @@ async def upload_print_file(
     as_admin = await has_elevated_access(db, current_user, "printing:admin")
     service.assert_file_replaceable(job, as_admin=as_admin)
     relative_path, file_name, size = await files.save_print_file(file, job.id)
-    return service.attach_file(job, relative_path, file_name, size)
+    box = None
+    if file_name.lower().endswith(".stl"):
+        import asyncio
+
+        from modules.printing.rules import stl_bounding_box
+
+        box = await asyncio.to_thread(stl_bounding_box, files.stored_path(job.id, file_name))
+    return service.attach_file(job, relative_path, file_name, size, box)
+
+
+@router.get("/teams/{team_id}/seasons/{season_id}/robot-parts", response_model=RobotPartsSummary)
+async def get_robot_parts(
+    team_id: str,
+    season_id: str,
+    current_user=Depends(require_permission("printing:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Printed robot parts against the game review's limit of six."""
+    await assert_team_access(db, current_user, team_id, "printing:admin")
+    return await service.robot_parts_summary(db, team_id, season_id)
 
 
 @router.get("/jobs/{job_id}/file")

@@ -39,6 +39,8 @@ from modules.scoring.extras_schemas import (
     ScoutingNoteResponse,
     ScoutingNoteUpdate,
     TiebreakerPreset,
+    TimeoutCardCreate,
+    TimeoutCardResponse,
 )
 from modules.scoring.routes import _broadcast_ranking_update
 from modules.scoring.schemas import ScoringSchemaResponse
@@ -148,6 +150,41 @@ async def get_de_placement(
 
 
 # ── Parts challenges ──────────────────────────────────────────────────────────
+
+
+# ── Timeout cards ─────────────────────────────────────────────────────────────
+
+
+@router.get("/events/{event_id}/timeouts", response_model=list[TimeoutCardResponse])
+async def list_timeouts(
+    event_id: str,
+    _=Depends(require_permission("scoring:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Teams that turned in their timeout card at this event."""
+    return await svc.list_timeouts(db, event_id)
+
+
+@router.post("/events/{event_id}/timeouts", response_model=TimeoutCardResponse, status_code=201)
+async def record_timeout(
+    event_id: str,
+    body: TimeoutCardCreate,
+    current_user=Depends(require_permission("scoring:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Record a team's timeout (one 3-minute timeout per tournament, 409 on a second)."""
+    return await svc.record_timeout(db, event_id, body.model_dump(), current_user.id)
+
+
+@router.delete("/events/{event_id}/timeouts/{team_id}", status_code=204)
+async def revoke_timeout(
+    event_id: str,
+    team_id: str,
+    _=Depends(require_permission("scoring:admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    await svc.revoke_timeout(db, event_id, team_id)
+    return Response(status_code=204)
 
 
 @router.get("/events/{event_id}/parts-challenges", response_model=list[PartsChallengeResponse])

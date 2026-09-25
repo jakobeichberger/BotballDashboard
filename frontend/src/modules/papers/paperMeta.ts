@@ -117,6 +117,8 @@ export interface PaperVersion {
   revision_number: number;
   file_name: string;
   file_size_bytes: number;
+  /** Pages of the PDF; null when it could not be read. */
+  page_count?: number | null;
   uploaded_by: string | null;
   uploaded_at: string;
   submitted_at: string | null;
@@ -149,13 +151,14 @@ export interface PaperDeadlineRow {
 
 export const DEADLINE_TYPE_LABEL = labelMap("papers:deadlineType", [
   "official_submission",
+  "official_notification",
   "official_final",
   "internal_draft",
   "internal_review",
   "internal_revision",
   "internal_final",
 ]);
-export const OFFICIAL_DEADLINE_TYPES = new Set(["official_submission", "official_final"]);
+export const OFFICIAL_DEADLINE_TYPES = new Set(["official_submission", "official_notification", "official_final"]);
 
 /** Internal deadlines that have passed: a warning, never a lock. */
 export function passedInternalDeadlines(deadline?: PaperDeadline | null) {
@@ -214,6 +217,8 @@ export interface PaperDetail {
   paper_rank: number | null;
   format_deduction: number;
   format_deduction_reason: string | null;
+  /** Chosen for the on-stage presentation (Best Paper Presentation). */
+  presented_on_stage?: boolean;
   finalized_at: string | null;
   reviews: PaperReview[];
   assignments: ReviewerAssignment[];

@@ -108,7 +108,9 @@
     "runsCsv": "Runs CSV",
     "teamReportPdf": "Team report PDF",
     "historyCsv": "History CSV",
-    "multiYearCsv": "Multi-year comparison CSV"
+    "multiYearCsv": "Multi-year comparison CSV",
+    "resultsXlsx": "Results (ECER layout, XLSX)",
+    "resultsCsv": "Results Botball & Open (CSV)"
   },
   "add": "Add",
   "actionFailed": "Action failed.",

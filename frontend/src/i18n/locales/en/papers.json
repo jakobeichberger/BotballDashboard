@@ -43,7 +43,8 @@
     "internal_draft": "Internal draft",
     "internal_review": "Internal review deadline",
     "internal_revision": "Internal revision",
-    "internal_final": "Internal final submission"
+    "internal_final": "Internal final submission",
+    "official_notification": "Notification of acceptance"
   },
   "countdown": {
     "days": "{{days}} d {{hours}} h",
@@ -219,6 +220,10 @@
     "remind": "Remind",
     "remindReviewer": "Remind {{name}} of the review",
     "remindedAt": "reminded {{date}}",
-    "statusHistory": "Status history"
+    "statusHistory": "Status history",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "presentedOnStage": "Presented on stage",
+    "presentedOnStageHint": "Selected by the programme committee for the presentation (up to 10 min + 5 min Q&A). Nominates the paper for “Best Paper Presentation”."
   }
 }

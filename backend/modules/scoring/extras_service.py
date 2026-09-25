@@ -23,6 +23,7 @@ from modules.scoring.extras_models import (
     ScoutingNote,
     ScoutingObservation,
     TeamQualification,
+    TimeoutCard,
 )
 from modules.scoring.models import Ranking, ScoringSchema
 from modules.seasons.lifecycle import DRAFT, ensure_writable
@@ -266,6 +267,91 @@ async def de_placement(db: AsyncSession, event_id: str) -> list[dict[str, Any]]:
                 }
             )
     return out
+
+
+# ── Timeout cards ─────────────────────────────────────────────────────────────
+
+_TIMEOUT_FIELDS = (
+    "id",
+    "event_id",
+    "team_id",
+    "scheduled_match_id",
+    "round_number",
+    "reason",
+    "note",
+    "recorded_by",
+    "used_at",
+)
+
+
+async def list_timeouts(db: AsyncSession, event_id: str) -> list[dict[str, Any]]:
+    rows = list(
+        (
+            await db.execute(
+                select(TimeoutCard, Team.name)
+                .join(Team, Team.id == TimeoutCard.team_id)
+                .where(TimeoutCard.event_id == event_id)
+                .order_by(TimeoutCard.used_at)
+            )
+        ).all()
+    )
+    return [
+        {
+            **{c: getattr(card, c) for c in _TIMEOUT_FIELDS},
+            "team_name": name,
+        }
+        for card, name in rows
+    ]
+
+
+async def record_timeout(
+    db: AsyncSession, event_id: str, data: dict[str, Any], user_id: str
+) -> dict[str, Any]:
+    """A team turns in its timeout card: refused if it has used it already."""
+    if not await db.get(Event, event_id):
+        raise NotFoundError("Event not found")
+    await ensure_writable(db, event_id=event_id)
+    if not await db.get(Team, data["team_id"]):
+        raise NotFoundError("Team not found")
+    if data.get("scheduled_match_id"):
+        scheduled = await db.get(ScheduledMatch, data["scheduled_match_id"])
+        if not scheduled or scheduled.event_id != event_id:
+            raise ValidationError("Scheduled match does not belong to this event")
+    used = await db.execute(
+        select(TimeoutCard.id).where(
+            TimeoutCard.event_id == event_id, TimeoutCard.team_id == data["team_id"]
+        )
+    )
+    if used.first() is not None:
+        raise ConflictError(
+            "This team has already used its timeout card "
+            "(one timeout per team for the entire tournament)"
+        )
+    card = TimeoutCard(event_id=event_id, recorded_by=user_id, **data)
+    db.add(card)
+    await db.flush()
+    await db.refresh(card)
+    team = await db.get(Team, card.team_id)
+    return {
+        **{c: getattr(card, c) for c in _TIMEOUT_FIELDS},
+        "team_name": team.name if team else None,
+    }
+
+
+async def revoke_timeout(db: AsyncSession, event_id: str, team_id: str) -> None:
+    """Undo a card recorded by mistake."""
+    await ensure_writable(db, event_id=event_id)
+    card = (
+        await db.execute(
+            select(TimeoutCard).where(
+                TimeoutCard.event_id == event_id, TimeoutCard.team_id == team_id
+            )
+        )
+    ).scalar_one_or_none()
+    if card is None:
+        raise NotFoundError("No timeout recorded for this team")
+    await db.delete(card)
+    await db.flush()
 
 
 # ── Parts challenges ──────────────────────────────────────────────────────────

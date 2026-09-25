@@ -575,5 +575,18 @@
     "rank": "Rang",
     "fromChallenges": "Summe der erfassten Challenges",
     "noTeams": "Keine Teams in einer JBC-Kategorie angemeldet."
+  },
+  "timeouts": {
+    "title": "Timeout-Karten",
+    "hint": "Jedes Team hat eine Karte für einen einzigen 3-Minuten-Timeout im ganzen Turnier – vor Hands-Off am Tisch oder bei der On-Deck-Inspektion.",
+    "team": "Team mit Timeout",
+    "round": "Runde",
+    "roundN": "Runde {{round}}",
+    "reason": "Anlass",
+    "beforeHandsOff": "Vor Hands-Off",
+    "inspection": "Inspektion (illegales Teil)",
+    "record": "Timeout erfassen",
+    "revoke": "Timeout von {{team}} zurücknehmen",
+    "none": "Noch kein Team hat seine Timeout-Karte genutzt."
   }
 }

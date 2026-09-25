@@ -92,6 +92,12 @@ class Paper(Base):
     # subtracts from the reviewers' average.
     format_deduction: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     format_deduction_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Selected by the programme committee for the on-stage presentation
+    # (call for papers: up to 10 min + 5 min Q&A); feeds the Best Paper
+    # Presentation award.
+    presented_on_stage: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     # Set by finalize_paper; locks the current round's reviews.
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -136,6 +142,8 @@ class PaperVersion(Base):
     # Relative to settings.upload_dir.
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Pages of the PDF, counted on upload (None: pypdf could not read it).
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     uploaded_by: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -247,8 +255,10 @@ class PaperStatusHistory(Base):
 
 
 # Deadline types of module 06. Official ones come from the organizer's call
-# for papers (KIPR/PRIA), internal ones are our own buffer for the review.
-OFFICIAL_DEADLINE_TYPES = ("official_submission", "official_final")
+# for papers (KIPR/PRIA/ERAA), internal ones are our own buffer for the review.
+# "official_notification" (notification of acceptance, 2026: 29 March) is a
+# date the committee keeps; it neither blocks uploads nor reminds teams.
+OFFICIAL_DEADLINE_TYPES = ("official_submission", "official_notification", "official_final")
 INTERNAL_DEADLINE_TYPES = (
     "internal_draft",
     "internal_review",

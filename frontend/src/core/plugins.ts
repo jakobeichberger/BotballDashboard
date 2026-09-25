@@ -80,6 +80,7 @@ export const modules: readonly ModuleDefinition[] = [
       // Mentors see their own team only; the backend scopes the data.
       { path: "performance", component: lazy(() => import("@/pages/PerformancePage")), permission: "scoring:write", label: { de: "Performance", en: "Performance" }, icon: "performance", navigation: true },
       { path: "statistics", component: lazy(() => import("@/pages/StatisticsPage")), permission: "scoring:admin", label: { de: "Statistik & Anomalien", en: "Statistics & anomalies" }, icon: "stats", navigation: true },
+      { path: "awards", component: lazy(() => import("@/pages/AwardsPage")), permission: "scoring:read", label: { de: "Awards", en: "Awards" }, icon: "scoring", navigation: true },
       { path: "formulas", component: lazy(() => import("@/pages/FormulasPage")), permission: "scoring:formulas", label: { de: "Punkteformeln", en: "Scoring formulas" }, icon: "scoring", navigation: true },
     ],
     translations: ["scoring", "events", "analytics"],

@@ -23,6 +23,7 @@ class TestPaperScoreIsAdminOnly:
             "paper_rank",
             "format_deduction",
             "format_deduction_reason",
+            "presented_on_stage",
         }
 
     def test_extra_keys_are_rejected_not_silently_kept(self):

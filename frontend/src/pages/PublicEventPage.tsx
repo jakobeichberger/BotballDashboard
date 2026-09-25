@@ -31,6 +31,13 @@ interface Announcement {
   body: string;
 }
 
+/** GET /v1/public/events/{slug}/awards (modules.awards; local type). */
+interface PublicAward {
+  key: string;
+  label: string;
+  results: { team_id: string; team_name: string | null; team_number: string | null; place: number; course: string | null }[];
+}
+
 const FALLBACK_POLL_MS = 20_000;
 // The live stream tells the screen when something changed, so the lists do not
 // need to be re-fetched on a timer or on every panel switch.
@@ -46,8 +53,10 @@ const LIVE_EVENT_QUERIES: Record<string, string[]> = {
   schedule_updated: ["public-schedule", "public-bracket"],
   announcement_published: ["public-announcements"],
   announcement_removed: ["public-announcements"],
+  awards_updated: ["public-awards"],
 };
 const QUERY_PANEL: Record<string, string> = {
+  "public-awards": "awards",
   "public-ranking": "ranking",
   "public-results": "results",
   "public-schedule": "schedule",
@@ -118,6 +127,14 @@ export default function PublicEventPage() {
     refetchInterval: pollMs,
     staleTime: LIVE_STALE_TIME,
   });
+  // Published awards only; 404 until the organisers publish them.
+  const awards = useQuery<PublicAward[]>({
+    queryKey: ["public-awards", eventSlug],
+    queryFn: async () => (await api.get(`/v1/public/events/${eventSlug}/awards`)).data,
+    enabled: !!event.data,
+    retry: false,
+    staleTime: LIVE_STALE_TIME,
+  });
   const panels = useMemo(
     () =>
       [
@@ -126,8 +143,9 @@ export default function PublicEventPage() {
         event.data?.public_schedule && !!bracket.data?.length && "bracket",
         event.data?.public_announcements && "announcements",
         event.data?.public_results && "results",
+        !!awards.data?.length && "awards",
       ].filter(Boolean) as string[],
-    [event.data, bracket.data],
+    [event.data, bracket.data, awards.data],
   );
 
   useEffect(() => {
@@ -316,7 +334,25 @@ export default function PublicEventPage() {
         </section>
       )}
 
-      <footer className="fixed bottom-3 right-4 flex gap-2">{panels.map((item, index) => <button key={item} aria-label={t("showPanel", { panel: t(item === "bracket" ? "bracket.title" : item) })} onClick={() => setPanel(index)} className={`h-2 rounded-full transition-all ${index === panel % panels.length ? "w-10 bg-cyan-400" : "w-2 bg-slate-600"}`} />)}</footer>
+      {current === "awards" && awards.data && (
+        <section>
+          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-cyan-400" />{t("awards.publicTitle")}</h2>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {awards.data.map((award) => (
+              <article key={award.key} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                <h3 className="text-xl font-bold">{award.label}</h3>
+                <ol className="mt-3 space-y-1 text-lg">
+                  {award.results.map((result) => (
+                    <li key={`${result.course}-${result.team_id}`}><span className="font-black text-cyan-300">{result.course ? `${result.course} · ` : ""}{t("awards.place", { place: result.place })}</span> {result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</li>
+                  ))}
+                </ol>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <footer className="fixed bottom-3 right-4 flex gap-2">{panels.map((item, index) => <button key={item} aria-label={t("showPanel", { panel: t(item === "bracket" ? "bracket.title" : item === "awards" ? "awards.publicTitle" : item) })} onClick={() => setPanel(index)} className={`h-2 rounded-full transition-all ${index === panel % panels.length ? "w-10 bg-cyan-400" : "w-2 bg-slate-600"}`} />)}</footer>
     </main>
   );
 }

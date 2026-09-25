@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # Files
     upload_dir: str = "/app/uploads"
     max_upload_size_mb: int = 20
+    # Page limit of a paper PDF (call for papers 2026: at most 5 pages
+    # including figures and references); 0 switches the check off.
+    paper_max_pages: int = 5
     # Print job files (STL/3MF/G-code) are much larger than papers or photos,
     # so they have their own limit. A reverse proxy in front of the API must
     # accept at least max(MAX_UPLOAD_SIZE_MB, PRINT_UPLOAD_MAX_MB) + 1 MB.

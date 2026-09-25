@@ -9,6 +9,8 @@
 * PartsChallenge – a challenge of the opponent's robot at a head-to-head match
   (game review "Challenges": the loser of the challenge is disqualified for the
   round).
+* TimeoutCard – the one red timeout card of a team (game review "Timeout
+  Card": a single 3-minute timeout per team for the entire tournament).
 """
 
 import uuid
@@ -169,6 +171,39 @@ class TeamQualification(Base):
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TimeoutCard(Base):
+    """A team turned in its timeout card at this event (one per tournament).
+
+    The unique constraint is the rule: "Only a single timeout per team is
+    allowed for the entire tournament." The match it was taken at is kept for
+    the record (seeding round, DE match or on-deck inspection).
+    """
+
+    __tablename__ = "timeout_cards"
+    __table_args__ = (UniqueConstraint("event_id", "team_id", name="uq_timeout_card_event_team"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    team_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    scheduled_match_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("scheduled_matches.id", ondelete="SET NULL"), nullable=True
+    )
+    round_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # before_hands_off | inspection (illegal part found at the on-deck check)
+    reason: Mapped[str] = mapped_column(String(20), nullable=False, default="before_hands_off")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recorded_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    used_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 

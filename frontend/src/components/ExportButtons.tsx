@@ -159,6 +159,9 @@ export function EventRankingExportButtons({
       <ExportButton url={`/exports/events/${eventId}/ranking.csv`} filename={`ranking-${slug}.csv`} label={t("export.seedingCsv")} variant="csv" />
       <ExportButton url={`/exports/events/${eventId}/overall-ranking.pdf`} filename={`gesamtwertung-${slug}.pdf`} label={t("export.overallPdf")} variant="pdf" />
       <ExportButton url={`/exports/events/${eventId}/overall-ranking.csv`} filename={`gesamtwertung-${slug}.csv`} label={t("export.overallCsv")} variant="csv" />
+      {/* All results in the layout of the official ECER results spreadsheet. */}
+      <ExportButton url={`/exports/events/${eventId}/results.xlsx`} filename={`results-${slug}.xlsx`} label={t("export.resultsXlsx")} variant="csv" />
+      <ExportButton url={`/exports/events/${eventId}/results.csv`} filename={`results-${slug}.csv`} label={t("export.resultsCsv")} variant="csv" />
       {includeMatches && (
         <ExportButton url={`/exports/events/${eventId}/matches.csv`} filename={`laeufe-${slug}.csv`} label={t("export.runsCsv")} variant="csv" />
       )}

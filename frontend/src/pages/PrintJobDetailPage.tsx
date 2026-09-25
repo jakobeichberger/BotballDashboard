@@ -141,6 +141,8 @@ export default function PrintJobDetailPage() {
     [t("printer"), printer?.name ?? "—"],
     [t("detail.spool"), spool ? spoolLabel(spool) : job.spool_id ? t("detail.assigned") : "—"],
     [t("col.file"), job.file_url ? formatBytes(job.file_size_bytes) : t("detail.noFile")],
+    [t("create.purpose"), `${t(`purpose.${job.purpose ?? "robot"}`)} · ${t("detail.parts", { count: job.part_count ?? 1 })}`],
+    [t("detail.boundingBox"), job.bbox_x_mm != null && job.bbox_y_mm != null && job.bbox_z_mm != null ? `${job.bbox_x_mm.toFixed(1)} × ${job.bbox_y_mm.toFixed(1)} × ${job.bbox_z_mm.toFixed(1)} mm` : "—"],
   ];
 
   const timeline: [string, string | null][] = [
@@ -196,6 +198,17 @@ export default function PrintJobDetailPage() {
           <p className="mt-4 text-sm text-red-600"><strong>{t("detail.rejectionReasonLabel")}</strong> {job.rejection_reason}</p>
         )}
         {job.quota_override && <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-300">{t("detail.quotaOverride")}</p>}
+        {(job.rule_warnings ?? []).length > 0 && (
+          <ul role="status" className="mt-3 list-inside list-disc rounded-lg bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-900/30 dark:text-yellow-100">
+            {(job.rule_warnings ?? []).map((code) => <li key={code}>{t(`rules.${code}`)}</li>)}
+          </ul>
+        )}
+        {canAdmin && (
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4" checked={!!job.stl_submitted} disabled={patchM.isPending} onChange={(e) => patchM.mutate({ stl_submitted: e.target.checked })} />
+            {t("detail.stlSubmitted")}
+          </label>
+        )}
 
         <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           {details.map(([label, val]) => (

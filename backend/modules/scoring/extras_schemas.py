@@ -70,6 +70,29 @@ class RuleSetResponse(RuleSetUpdate):
     season_id: str
 
 
+class TimeoutCardCreate(BaseModel):
+    team_id: str
+    scheduled_match_id: str | None = None
+    round_number: int | None = Field(default=None, ge=1)
+    reason: Literal["before_hands_off", "inspection"] = "before_hands_off"
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class TimeoutCardResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    event_id: str
+    team_id: str
+    team_name: str | None = None
+    scheduled_match_id: str | None
+    round_number: int | None
+    reason: str
+    note: str | None
+    recorded_by: str | None
+    used_at: datetime
+
+
 class ChecklistPreset(BaseModel):
     id: str
     name: str

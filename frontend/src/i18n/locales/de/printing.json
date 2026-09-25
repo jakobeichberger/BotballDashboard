@@ -70,7 +70,10 @@
     "notes": "Hinweise",
     "notesPlaceholder": "z.B. 0.2 mm Layer Height",
     "quotaOverride": "Kontingent überschreiben (Admin)",
-    "failed": "Druckauftrag konnte nicht angelegt werden."
+    "failed": "Druckauftrag konnte nicht angelegt werden.",
+    "colorHint": "Graustufen, z. B. Schwarz oder #808080",
+    "purpose": "Verwendung",
+    "partCount": "Teile am Roboter"
   },
   "detail": {
     "back": "Zurück zu 3D-Druck",
@@ -106,6 +109,20 @@
     "none": "Keine",
     "rejectionReason": "Ablehnungsgrund",
     "rejectionPlaceholder": "z.B. Modell zu groß für das Druckbett",
-    "history": "Verlauf"
+    "history": "Verlauf",
+    "parts_one": "{{count}} Teil",
+    "parts_other": "{{count}} Teile",
+    "boundingBox": "Abmessungen (STL)",
+    "stlSubmitted": "STL mit Periode 3 eingereicht"
+  },
+  "purpose": {
+    "robot": "Roboterteil",
+    "spare": "Zweitkopie für die Judges",
+    "jig": "Positionierhilfe (Jig)"
+  },
+  "rules": {
+    "material_not_allowed": "Nur PLA oder PETG sind erlaubt (Game Review, 3D-Druck-Regel 1).",
+    "color_not_greyscale": "Das Filament muss graustufig sein (3D-Druck-Regel 1a).",
+    "exceeds_build_volume": "Das Teil ist größer als der Bauraum 220 × 220 × 250 mm (3D-Druck-Regel 3)."
   }
 }

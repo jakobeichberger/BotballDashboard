@@ -70,7 +70,10 @@
     "notes": "Notes",
     "notesPlaceholder": "e.g. 0.2 mm layer height",
     "quotaOverride": "Override quota (admin)",
-    "failed": "The print job could not be created."
+    "failed": "The print job could not be created.",
+    "colorHint": "Greyscale, e.g. black or #808080",
+    "purpose": "Purpose",
+    "partCount": "Parts on the robot"
   },
   "detail": {
     "back": "Back to 3D printing",
@@ -106,6 +109,20 @@
     "none": "None",
     "rejectionReason": "Reason for rejection",
     "rejectionPlaceholder": "e.g. model too large for the print bed",
-    "history": "History"
+    "history": "History",
+    "parts_one": "{{count}} part",
+    "parts_other": "{{count}} parts",
+    "boundingBox": "Size (STL)",
+    "stlSubmitted": "STL submitted with Period 3"
+  },
+  "purpose": {
+    "robot": "Robot part",
+    "spare": "Spare copy for the judges",
+    "jig": "Positioning jig"
+  },
+  "rules": {
+    "material_not_allowed": "Only PLA or PETG are allowed (game review, 3D print rule 1).",
+    "color_not_greyscale": "The filament must be greyscale (3D print rule 1a).",
+    "exceeds_build_volume": "The part exceeds the build volume of 220 × 220 × 250 mm (3D print rule 3)."
   }
 }

@@ -35,9 +35,12 @@ SUBMISSION_TYPES = frozenset({"official_submission", "internal_draft", "internal
 REVISION_TYPES = frozenset({"internal_revision", "official_final"})
 # Deadline by which reviewers should have submitted their reviews.
 REVIEW_TYPES = frozenset({"internal_review"})
+# Dates announced to teams that ask nothing of them.
+NOTICE_TYPES = frozenset({"official_notification"})
 
 TYPE_LABELS = {
     "official_submission": "Official paper submission",
+    "official_notification": "Notification of acceptance",
     "official_final": "Official final submission",
     "internal_draft": "Internal draft deadline",
     "internal_review": "Internal review deadline",
@@ -68,6 +71,8 @@ async def get_deadline(db: AsyncSession, deadline_id: str) -> PaperDeadline:
 def _check_type(deadline_type: str, is_hard_block: bool) -> None:
     if deadline_type not in DEADLINE_TYPES:
         raise ValidationError(f"Unknown deadline type (allowed: {', '.join(DEADLINE_TYPES)})")
+    if is_hard_block and deadline_type == "official_notification":
+        raise ValidationError("The notification of acceptance does not block uploads")
     if is_hard_block and deadline_type not in OFFICIAL_DEADLINE_TYPES:
         # Internal deadlines only warn (spec: "kein hard Block").
         raise ValidationError("Only official deadlines can block uploads")
@@ -242,6 +247,8 @@ async def queue_paper_deadline_reminders(db: AsyncSession, today: date | None = 
         days = due_dates[due]
         when = _due_text(days)
         stem = f"paper-deadline:{key}:{due.isoformat()}:{days}"
+        if deadline_type in NOTICE_TYPES:
+            continue  # the committee's date, nothing for teams to do
         if deadline_type in REVIEW_TYPES:
             for reviewer_id in await _reviewers_to_remind(db, season_id):
                 item = await emit_event(

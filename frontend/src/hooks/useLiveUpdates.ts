@@ -14,6 +14,7 @@ const INVALIDATES: Record<string, readonly string[]> = {
   schedule_updated: ["event-schedule", "event-bracket", "h2h-outcome"],
   announcement_published: ["announcements"],
   announcement_removed: ["announcements"],
+  awards_updated: ["event-awards", "public-awards"],
 };
 
 /** Fallback polling while the live stream is unavailable. */

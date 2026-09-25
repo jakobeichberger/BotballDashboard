@@ -90,6 +90,34 @@ async def save_file(
     return str(file_path), safe_name, size
 
 
+def pdf_page_count(path: str | Path) -> int | None:
+    """Number of pages of a PDF, or None when pypdf cannot read it."""
+    try:
+        from pypdf import PdfReader
+
+        return len(PdfReader(str(path)).pages)
+    except Exception:  # noqa: BLE001 - pypdf raises many types for broken files
+        return None
+
+
+def check_page_limit(path: str | Path) -> int | None:
+    """Count the pages and refuse a paper above the page limit.
+
+    The call for papers allows at most ``paper_max_pages`` pages (2026: five,
+    figures and references included). A PDF pypdf cannot read passes: the
+    reviewers still see it, and a format deduction remains possible.
+    """
+    pages = pdf_page_count(path)
+    limit = settings.paper_max_pages
+    if limit and pages is not None and pages > limit:
+        Path(path).unlink(missing_ok=True)
+        raise ValidationError(
+            f"The paper has {pages} pages; at most {limit} are allowed "
+            "(including figures and references)"
+        )
+    return pages
+
+
 # ── Deadline ──────────────────────────────────────────────────────────────────
 
 
@@ -333,6 +361,7 @@ async def add_version(
 
     number = (paper.current_version or 0) + 1
     file_path, file_name, size = await save_file(file, paper_id, number)
+    page_count = check_page_limit(file_path)
     storage_path = Path(file_path).relative_to(Path(settings.upload_dir).resolve()).as_posix()
     db.add(
         PaperVersion(
@@ -342,6 +371,7 @@ async def add_version(
             file_name=file_name,
             storage_path=storage_path,
             file_size_bytes=size,
+            page_count=page_count,
             uploaded_by=uploaded_by,
         )
     )

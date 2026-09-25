@@ -481,3 +481,43 @@ def build_team_report_pdf(team: dict, history: list[dict]) -> bytes:
 
     doc.build(elements)
     return buf.getvalue()
+
+
+# ── Awards PDF ────────────────────────────────────────────────────────────────
+
+
+def build_awards_pdf(event_name: str, season_name: str, awards: list[dict]) -> bytes:
+    """awards: modules.awards.service.event_awards()["awards"] – placed teams per award."""
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=1.5 * cm,
+        rightMargin=1.5 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
+    elements: list = []
+    _header(elements, "Awards", f"{event_name} – {season_name}")
+    placed = [award for award in awards if award.get("results")]
+    if not placed:
+        elements.append(Paragraph("Keine Awards vergeben.", BODY))
+    for award in placed:
+        elements.append(Paragraph(escape(str(award["label"])), H2))
+        data = [["Kurs", "Platz", "Nr.", "Team", "Wert"]]
+        for result in award["results"]:
+            data.append(
+                [
+                    result.get("course") or "",
+                    str(result["place"]),
+                    str(result.get("team_number") or ""),
+                    Paragraph(escape(str(result.get("team_name") or result["team_id"])[:60]), BODY),
+                    _fmt(result.get("score"), 3) if result.get("score") is not None else "",
+                ]
+            )
+        table = Table(data, colWidths=[1.5 * cm, 1.5 * cm, 2.5 * cm, 9 * cm, 3 * cm], repeatRows=1)
+        table.setStyle(_table_style())
+        elements.append(table)
+        elements.append(Spacer(1, 0.4 * cm))
+    doc.build(elements)
+    return buf.getvalue()
