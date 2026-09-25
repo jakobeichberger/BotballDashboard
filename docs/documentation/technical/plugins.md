@@ -25,9 +25,11 @@ Die Datei heißt aus historischen Gründen `plugins.ts`, ist aber eine statische
 - das nötige Recht (`permission`, leer = jeder Angemeldete);
 - ob ein Navigationseintrag entsteht, mit Label (de/en) und Icon;
 - `module`: welcher Event-Modul-Schalter die Route braucht (`paper`, `printing`, `bots`, `double_elimination`, `aerial`, `documentation` oder das Saison-Flag `paper_scoring`);
-- Dashboard-Widget-Deklarationen und i18n-Namensräume.
+- `translations`: die i18n-Namensräume des Moduls.
 
-`App.tsx` erzeugt aus `eventRoutes` die Routen, jeweils eingepackt in `ProtectedRoute` (Recht) und `ModuleRoute` (Modul-Schalter). `Layout.tsx` baut aus `navigationRoutes` die Navigation und blendet Einträge für abgeschaltete Module aus. So bleiben Route, Navigation und Rechte-Prüfung konsistent. Die Felder `dashboardWidgets` und `translations` werden derzeit von keiner Komponente ausgewertet. Die Dashboards (`pages/dashboard/*`) wählen ihre Abschnitte selbst anhand der Rolle und von `/api/dashboard/summary`.
+`App.tsx` erzeugt aus `eventRoutes` die Routen, jeweils eingepackt in `ProtectedRoute` (Recht) und `ModuleRoute` (Modul-Schalter). `Layout.tsx` baut aus `navigationRoutes` die Navigation und blendet Einträge für abgeschaltete Module aus. So bleiben Route, Navigation und Rechte-Prüfung konsistent. `translationNamespaces` prüft der i18n-Test (`__tests__/i18n/translationKeys.test.ts`): Jeder deklarierte Namensraum muss in `de` und `en` existieren.
+
+Dashboard-Widgets deklariert die Registry nicht. Die Dashboards (`pages/dashboard/*`) wählen ihre Abschnitte selbst anhand der Rolle und von `/api/dashboard/summary`. Die früheren Widget-Deklarationen (Teams, Wertungen, Paper, Druckaufträge) doppelten nur die Kennzahlen, die `AdminDashboard` bereits aus `/api/dashboard/stats` zeigt, und passten mit ihren Zielgruppen (`juror`, `mentor`) nicht zu den drei Dashboard-Rollen. Sie wurden deshalb entfernt, ebenso der ungenutzte Typ `PluginDefinition` und `modules/scoring/index.tsx`.
 
 Außerhalb der Registry liegen nur die Routen ohne Event-Kontext:
 
