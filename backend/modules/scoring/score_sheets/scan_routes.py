@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import assert_team_access, require_permission
+from core.auth import assert_team_access, has_elevated_access, own_team_ids, require_permission
 from core.config import get_settings
 from core.database import get_db
 from core.rate_limit import rate_limit
@@ -21,6 +21,11 @@ from modules.scoring.score_sheets.schemas import (
 router = APIRouter(prefix="/v1/events", tags=["score-sheet-scans"])
 
 ALLOWED_SCAN_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
+
+# Scans show a team's handwritten score sheet. Organizers and jurors
+# (scoring:admin) review all of them; everyone else with scoring:read – mentors,
+# guests – only sees the scans of their own teams.
+_SCAN_REVIEWER = "scoring:admin"
 
 
 @router.post(
@@ -72,20 +77,25 @@ async def upload_scan(
 async def list_scans(
     event_id: UUID,
     status: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await scan_service.list_scans(db, str(event_id), status)
+    team_ids = None
+    if not await has_elevated_access(db, current_user, _SCAN_REVIEWER):
+        team_ids = await own_team_ids(db, current_user)
+    return await scan_service.list_scans(db, str(event_id), status, team_ids)
 
 
 @router.get("/{event_id}/score-sheet-scans/{scan_id}", response_model=ScoreSheetScanResponse)
 async def get_scan(
     event_id: UUID,
     scan_id: UUID,
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await scan_service.get_scan(db, str(event_id), str(scan_id))
+    scan = await scan_service.get_scan(db, str(event_id), str(scan_id))
+    await assert_team_access(db, current_user, scan.team_id, _SCAN_REVIEWER)
+    return scan
 
 
 @router.post(
@@ -99,7 +109,7 @@ async def retry_scan(
     db: AsyncSession = Depends(get_db),
 ):
     scan = await scan_service.get_scan(db, str(event_id), str(scan_id))
-    await assert_team_access(db, current_user, scan.team_id, "scoring:admin")
+    await assert_team_access(db, current_user, scan.team_id, _SCAN_REVIEWER)
     if scan.status not in ("failed", "queued"):
         raise HTTPException(status_code=409, detail="Only queued or failed scans can be retried")
     scan.status = "queued"
@@ -139,10 +149,11 @@ async def get_scan_crop(
     event_id: UUID,
     scan_id: UUID,
     file_name: str,
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     scan = await scan_service.get_scan(db, str(event_id), str(scan_id))
+    await assert_team_access(db, current_user, scan.team_id, _SCAN_REVIEWER)
     if Path(file_name).name != file_name:
         raise HTTPException(status_code=400, detail="Invalid crop name")
     path = Path(scan.file_url).parent / scan.id / "crops" / file_name
