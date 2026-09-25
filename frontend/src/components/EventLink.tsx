@@ -1,4 +1,4 @@
-import { Link, useParams, type LinkProps } from "react-router-dom";
+import { Link, useParams, type LinkProps } from "react-router";
 import { scopeToEvent } from "@/hooks/useEventPath";
 
 /** A Link whose app paths ("/teams/42") resolve under the current event. */

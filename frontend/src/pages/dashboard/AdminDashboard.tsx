@@ -1,5 +1,5 @@
 import { Users, Trophy, FileText, Printer, Settings, BarChart3, CalendarClock } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { DashboardSummary } from "@/api/analytics";
 import { AdminStatusPanel, JurorPanel, MentorPanel, UpcomingDeadlines } from "./roleSections";

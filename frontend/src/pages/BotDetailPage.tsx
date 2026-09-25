@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Bot as BotIcon, ArrowLeft, Users, Pencil, Trash2, Save, X, Upload } from "lucide-react";
 import { api } from "@/lib/api";

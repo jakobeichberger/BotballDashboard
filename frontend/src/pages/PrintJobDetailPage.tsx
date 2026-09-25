@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Printer, ArrowLeft, Users, Clock, CheckCircle2, Download, Upload, XCircle, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";

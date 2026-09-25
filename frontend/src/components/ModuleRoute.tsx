@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { PackageX } from "lucide-react";
 import { EventLink } from "@/components/EventLink";
 import { isModuleEnabled, useEventModules, type ModuleRequirement } from "@/hooks/useEventModules";

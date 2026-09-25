@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Routes, Route, NavLink } from "react-router-dom";
+import { Routes, Route, NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Settings, Users, Layers, Save, Calendar, CalendarClock, Printer, Megaphone, Award, Trash2, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";

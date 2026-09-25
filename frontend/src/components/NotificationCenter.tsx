@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Bell, BellOff, BellRing, CheckCheck } from "lucide-react";
 import clsx from "clsx";
 import { api } from "@/lib/api";

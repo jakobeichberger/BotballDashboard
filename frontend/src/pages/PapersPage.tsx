@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, Clock, FileText, Percent, Plus, Star, type LucideIcon } from "lucide-react";
 import clsx from "clsx";
 import { TONE_BORDER, TONE_ICON, type Tone } from "@/components/ui/tones";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import Modal from "@/components/Modal";

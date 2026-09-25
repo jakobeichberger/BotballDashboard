@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock, Loader, Plus, Printer, Timer } from "lucide-react";
 import clsx from "clsx";
 import { StatGrid } from "@/pages/dashboard/widgets";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";

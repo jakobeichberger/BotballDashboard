@@ -16,7 +16,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { useScoringScope } from '@/hooks/useScoringScope'
 import { scoreSheetApi, type ScoreSheetTemplateListItem } from '../api/scoreSheets'
 import ScoreSheetUploadForm from '../components/ScoreSheetUploadForm'

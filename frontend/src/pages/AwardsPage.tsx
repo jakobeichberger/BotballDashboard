@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import { Calculator, CheckCircle2, Clock, Eye, EyeOff, Gavel, Plus, Trash2, Trophy, Users } from "lucide-react";

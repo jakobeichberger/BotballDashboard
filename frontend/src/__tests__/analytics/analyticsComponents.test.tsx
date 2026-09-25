@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { daysUntil, type DeadlineEntry, type TeamHistoryRow } from "@/api/analytics";
 import { DeadlineList, MonthCalendar, RelativeBadge, SeasonTimelineView } from "@/components/analytics/Deadlines";
 import { BoxPlotList } from "@/components/analytics/BoxPlot";

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Camera, CheckCircle2, RefreshCw, RotateCcw, ScanLine, Upload } from "lucide-react";
 import { api } from "@/lib/api";

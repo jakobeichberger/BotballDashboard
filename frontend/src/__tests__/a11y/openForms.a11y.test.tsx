@@ -7,7 +7,7 @@ import "fake-indexeddb/auto";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";

@@ -1,6 +1,6 @@
 import { Suspense, lazy, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Users, ArrowLeft, FileText, Printer, MapPin, Pencil, Trash2, UserPlus, Save, X, Activity, ClipboardCheck } from "lucide-react";
 import { api } from "@/lib/api";

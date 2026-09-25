@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
 import { MultiYearExportButton, TeamExportButtons } from "@/components/ExportButtons";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
