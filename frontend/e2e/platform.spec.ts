@@ -41,7 +41,7 @@ test.describe("signed in as admin", () => {
   test("juror flow exposes dynamic official scoring form", async ({ page }) => {
     await mainNav(page).getByRole("link", { name: /wertung|scoring/i }).click();
     await expect(page.getByRole("heading", { name: /mobile wertung|mobile scoring/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /offiziell speichern|save officially/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /prüfen & absenden|review & submit/i })).toBeVisible();
   });
 
   test("paper review and printing workspaces are reachable", async ({ page }) => {
