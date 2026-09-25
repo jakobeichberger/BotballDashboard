@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Bell, CheckCheck } from "lucide-react";
 import clsx from "clsx";
 import { api } from "@/lib/api";
+import { formatDateTime } from "@/i18n/format";
 
 export interface NotificationItem {
   id: string;
@@ -111,11 +112,11 @@ export default function NotificationCenter() {
                     onClick={() => openItem(item)}
                   >
                     <span className="flex items-center gap-2 font-medium">
-                      {!item.read && <><span className="h-2 w-2 shrink-0 rounded-full bg-primary-600" aria-hidden="true" /><span className="sr-only">ungelesen:</span></>}
+                      {!item.read && <><span className="h-2 w-2 shrink-0 rounded-full bg-primary-600" aria-hidden="true" /><span className="sr-only">{t("notifications.unread")}</span></>}
                       {item.title}
                     </span>
                     {item.body && <span className="mt-0.5 block text-gray-600 dark:text-gray-400">{item.body}</span>}
-                    <span className="mt-1 block text-xs text-gray-400">{new Date(item.created_at).toLocaleString()}</span>
+                    <span className="mt-1 block text-xs text-gray-400">{formatDateTime(item.created_at)}</span>
                   </button>
                 </li>
               ))

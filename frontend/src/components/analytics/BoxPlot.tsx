@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { BoxSummary } from "@/api/analytics";
 import { fmtNum } from "@/api/analytics";
 
@@ -16,10 +17,17 @@ export function BoxPlotRow({
   domainMin: number;
   domainMax: number;
 }) {
+  const { t } = useTranslation("analytics");
   const span = domainMax - domainMin || 1;
   const pos = (v: number | null) => `${(((v ?? domainMin) - domainMin) / span) * 100}%`;
   const width = (a: number | null, b: number | null) => `${(((b ?? 0) - (a ?? 0)) / span) * 100}%`;
-  const summary = `min ${fmtNum(box.min)}, Q1 ${fmtNum(box.q1)}, Median ${fmtNum(box.median)}, Q3 ${fmtNum(box.q3)}, max ${fmtNum(box.max)}`;
+  const summary = t("boxplot.summary", {
+    min: fmtNum(box.min),
+    q1: fmtNum(box.q1),
+    median: fmtNum(box.median),
+    q3: fmtNum(box.q3),
+    max: fmtNum(box.max),
+  });
   return (
     <div className="grid grid-cols-[8rem_1fr_4rem] items-center gap-3 py-1.5" role="listitem">
       <span className="truncate text-sm text-gray-700 dark:text-gray-300" title={label}>{label}</span>
@@ -46,8 +54,9 @@ export function BoxPlotList({
   rows: Array<{ label: string; box: BoxSummary }>;
   ariaLabel: string;
 }) {
+  const { t } = useTranslation("analytics");
   const withData = rows.filter((r) => r.box.n > 0 && r.box.min != null && r.box.max != null);
-  if (!withData.length) return <p className="text-sm text-gray-500">Keine Daten.</p>;
+  if (!withData.length) return <p className="text-sm text-gray-500">{t("noData")}</p>;
   const domainMin = Math.min(0, ...withData.map((r) => r.box.min as number));
   const domainMax = Math.max(...withData.map((r) => r.box.max as number));
   return (

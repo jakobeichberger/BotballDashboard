@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Suspense, lazy } from "react";
+import { useTranslation } from "react-i18next";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ModuleRoute from "@/components/ModuleRoute";
@@ -16,11 +17,12 @@ const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 
 function AppRoutes() {
+  const { t } = useTranslation();
   useRestoreSession();
   useCurrentUser();
   const sessionChecked = useAuthStore((state) => state.sessionChecked);
-  if (!sessionChecked) return <div className="grid h-screen place-items-center text-gray-500">Sitzung wird wiederhergestellt…</div>;
-  return <Suspense fallback={<div className="grid h-screen place-items-center text-gray-500">Laden…</div>}>
+  if (!sessionChecked) return <div className="grid h-screen place-items-center text-gray-500">{t("restoringSession")}</div>;
+  return <Suspense fallback={<div className="grid h-screen place-items-center text-gray-500">{t("loadingEllipsis")}</div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />

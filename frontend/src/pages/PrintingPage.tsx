@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Printer } from "lucide-react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import Modal from "@/components/Modal";
@@ -31,6 +32,7 @@ const EMPTY_FORM = { team_id: "", material: "PLA", color: "", estimated_grams: "
 const EMPTY_PRINTER = { name: "", printer_type: "octoprint", api_url: "", device_id: "", api_key: "" };
 
 export default function PrintingPage() {
+  const { t } = useTranslation("printing");
   const { eventId = "" } = useParams();
   const { data: event } = useEvent(eventId);
   const canWrite = useAuthStore((state) => state.hasPermission("printing:write"));
@@ -133,7 +135,7 @@ export default function PrintingPage() {
     onError: (error) => setNotice(apiError(error)),
   });
   const reject = (id: string) => {
-    const reason = window.prompt("Begründung für die Ablehnung");
+    const reason = window.prompt(t("rejectReason"));
     if (reason?.trim()) changeJob.mutate({ id, action: "reject", reason: reason.trim() });
   };
   const isGeneric = printerForm.printer_type === "generic";
@@ -143,11 +145,11 @@ export default function PrintingPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Printer className="w-6 h-6" />
-          3D-Druck
+          {t("title")}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           {canAdmin && event?.season_id && <PrintingExportButtons seasonId={event.season_id} seasonYear={event.slug} />}
-          {canWrite && <button onClick={() => setOpen(true)} className="btn-primary">+ Druckauftrag</button>}
+          {canWrite && <button onClick={() => setOpen(true)} className="btn-primary">{t("newJob")}</button>}
         </div>
       </div>
 
@@ -155,22 +157,22 @@ export default function PrintingPage() {
         <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="flex-1">{notice}</span>
-          <button className="text-xs underline" onClick={() => setNotice(null)}>Schließen</button>
+          <button className="text-xs underline" onClick={() => setNotice(null)}>{t("common:close")}</button>
         </div>
       )}
 
       {!!printers?.length && (
-        <section className="mb-6" aria-label="Druckerstatus">
+        <section className="mb-6" aria-label={t("printerStatus")}>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {printers.filter((printer) => printer.is_active).map((printer) => (
               <div key={printer.id} className="card p-3 text-sm">
                 <p className="font-semibold text-gray-900 dark:text-white">{printer.name}</p>
                 <p className={printer.is_online ? "text-green-600" : "text-gray-500"}>
                   {printer.printer_type === "generic"
-                    ? "manuell"
+                    ? t("manual")
                     : printer.is_online
-                      ? PRINTER_STATE_LABEL[printer.current_state ?? ""] ?? "online"
-                      : "offline"}
+                      ? PRINTER_STATE_LABEL[printer.current_state ?? ""] ?? t("online")
+                      : t("offline")}
                   {" · "}{PRINTER_TYPE_LABEL[printer.printer_type] ?? printer.printer_type}
                 </p>
                 {printer.status_message && printer.current_state === "failed" && <p className="text-xs text-red-600">{printer.status_message}</p>}
@@ -180,19 +182,19 @@ export default function PrintingPage() {
         </section>
       )}
 
-      {isLoading && <p className="text-gray-500">Laden...</p>}
+      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Datei</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Material</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Gramm</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Fortschritt</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Aktion</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.file")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.team")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.material")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:status")}</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("col.grams")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.progress")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.action")}</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -200,7 +202,7 @@ export default function PrintingPage() {
               <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
                   <EventLink to={`/printing/jobs/${job.id}`} className="text-primary-700 hover:underline dark:text-primary-300">{job.file_name}</EventLink>
-                  {!job.file_url && <span className="ml-2 badge-gray">ohne Datei</span>}
+                  {!job.file_url && <span className="ml-2 badge-gray">{t("noFile")}</span>}
                 </td>
                 <td className="px-4 py-3 text-gray-500">{teamName(job.team_id)}</td>
                 <td className="px-4 py-3 text-gray-500">{job.material}</td>
@@ -213,28 +215,28 @@ export default function PrintingPage() {
                 </td>
                 <td className="px-4 py-3 text-gray-500">
                   {job.status === "printing" && job.progress != null
-                    ? `${job.progress.toFixed(0)}% · noch ${formatDuration(job.remaining_seconds)}`
+                    ? t("progress", { progress: job.progress.toFixed(0), remaining: formatDuration(job.remaining_seconds) })
                     : job.error_message ?? job.status_message ?? "—"}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
                     {canAdmin && job.status === "pending" && (
                       <>
-                        <button className="btn-secondary" onClick={() => changeJob.mutate({ id: job.id, action: "approve" })}>Freigeben</button>
-                        <button className="btn-secondary" onClick={() => reject(job.id)}>Ablehnen</button>
+                        <button className="btn-secondary" onClick={() => changeJob.mutate({ id: job.id, action: "approve" })}>{t("approve")}</button>
+                        <button className="btn-secondary" onClick={() => reject(job.id)}>{t("reject")}</button>
                       </>
                     )}
                     {canAdmin && job.status === "approved" && (
                       <>
-                        <select className="input" aria-label="Drucker wählen" value={jobPrinters[job.id] ?? ""} onChange={(e) => setJobPrinters((current) => ({ ...current, [job.id]: e.target.value }))}>
-                          <option value="">Drucker</option>
+                        <select className="input" aria-label={t("choosePrinter")} value={jobPrinters[job.id] ?? ""} onChange={(e) => setJobPrinters((current) => ({ ...current, [job.id]: e.target.value }))}>
+                          <option value="">{t("printer")}</option>
                           {printers?.filter((printer) => printer.is_active).map((printer) => <option key={printer.id} value={printer.id}>{printer.name}</option>)}
                         </select>
-                        <button className="btn-secondary" disabled={!jobPrinters[job.id]} onClick={() => changeJob.mutate({ id: job.id, action: "queue" })}>Einreihen</button>
+                        <button className="btn-secondary" disabled={!jobPrinters[job.id]} onClick={() => changeJob.mutate({ id: job.id, action: "queue" })}>{t("enqueue")}</button>
                       </>
                     )}
                     {!canAdmin && canWrite && job.status === "pending" && (
-                      <button className="btn-secondary" onClick={() => changeJob.mutate({ id: job.id, action: "cancel" })}>Zurückziehen</button>
+                      <button className="btn-secondary" onClick={() => changeJob.mutate({ id: job.id, action: "cancel" })}>{t("withdraw")}</button>
                     )}
                   </div>
                 </td>
@@ -243,7 +245,7 @@ export default function PrintingPage() {
             {jobs?.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                  Noch keine Druckaufträge
+                  {t("empty")}
                 </td>
               </tr>
             )}
@@ -252,55 +254,55 @@ export default function PrintingPage() {
       </div>
       {canAdmin && (
         <section className="card mt-6 p-5">
-          <h2 className="mb-4 text-lg font-semibold">Drucker-Adapter</h2>
+          <h2 className="mb-4 text-lg font-semibold">{t("adapter.title")}</h2>
           <form className="grid gap-2 md:grid-cols-6" onSubmit={(e) => { e.preventDefault(); createPrinter.mutate(); }}>
-            <input required className="input" placeholder="Name" value={printerForm.name} onChange={(e) => setPrinterForm({ ...printerForm, name: e.target.value })} />
-            <select className="input" aria-label="Druckertyp" value={printerForm.printer_type} onChange={(e) => setPrinterForm({ ...printerForm, printer_type: e.target.value })}>
+            <input required className="input" placeholder={t("common:name")} value={printerForm.name} onChange={(e) => setPrinterForm({ ...printerForm, name: e.target.value })} />
+            <select className="input" aria-label={t("adapter.type")} value={printerForm.printer_type} onChange={(e) => setPrinterForm({ ...printerForm, printer_type: e.target.value })}>
               {Object.entries(PRINTER_TYPE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
-            <input required={!isGeneric} disabled={isGeneric} className="input" placeholder="URL / Host" value={printerForm.api_url} onChange={(e) => setPrinterForm({ ...printerForm, api_url: e.target.value })} />
-            <input disabled={printerForm.printer_type !== "bambu"} className="input" placeholder="Bambu Seriennummer" value={printerForm.device_id} onChange={(e) => setPrinterForm({ ...printerForm, device_id: e.target.value })} />
-            <input required={!isGeneric} disabled={isGeneric} type="password" autoComplete="new-password" className="input" placeholder="API-Key / Access Code" value={printerForm.api_key} onChange={(e) => setPrinterForm({ ...printerForm, api_key: e.target.value })} />
-            <button className="btn-primary" disabled={createPrinter.isPending}>{isGeneric ? "Anlegen" : "Verbinden"}</button>
+            <input required={!isGeneric} disabled={isGeneric} className="input" placeholder={t("adapter.url")} value={printerForm.api_url} onChange={(e) => setPrinterForm({ ...printerForm, api_url: e.target.value })} />
+            <input disabled={printerForm.printer_type !== "bambu"} className="input" placeholder={t("adapter.serial")} value={printerForm.device_id} onChange={(e) => setPrinterForm({ ...printerForm, device_id: e.target.value })} />
+            <input required={!isGeneric} disabled={isGeneric} type="password" autoComplete="new-password" className="input" placeholder={t("settings:printers.apiKey")} value={printerForm.api_key} onChange={(e) => setPrinterForm({ ...printerForm, api_key: e.target.value })} />
+            <button className="btn-primary" disabled={createPrinter.isPending}>{isGeneric ? t("adapter.create") : t("adapter.connect")}</button>
           </form>
         </section>
       )}
-      <Modal open={open} title="Druckauftrag erstellen" onClose={() => setOpen(false)}>
+      <Modal open={open} title={t("create.title")} onClose={() => setOpen(false)}>
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); createJob.mutate(); }}>
-          <label className="block text-sm font-medium">Team *
+          <label className="block text-sm font-medium">{t("create.team")}
             <select className="input mt-1 w-full" required value={form.team_id} onChange={(e) => setForm((current) => ({ ...current, team_id: e.target.value }))}>
-              <option value="">Bitte wählen</option>
+              <option value="">{t("common:pleaseChoose")}</option>
               {registrations
                 ?.filter((registration) => canAdmin || myTeams?.some((team) => team.id === registration.team_id))
                 .map((registration) => <option key={registration.id} value={registration.team_id}>{registration.team_name}</option>)}
             </select>
           </label>
-          <label className="block text-sm font-medium">Datei * <span className="font-normal text-gray-500">(STL, 3MF, OBJ, G-Code)</span>
+          <label className="block text-sm font-medium">{t("create.file")} <span className="font-normal text-gray-500">{t("create.fileTypes")}</span>
             <input className="input mt-1 w-full" type="file" accept={PRINT_FILE_ACCEPT} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </label>
           <div className="grid grid-cols-2 gap-4">
-            <label className="block text-sm font-medium">Material
+            <label className="block text-sm font-medium">{t("col.material")}
               <select className="input mt-1 w-full" value={form.material} onChange={(e) => setForm((current) => ({ ...current, material: e.target.value }))}>
                 {["PLA", "PETG", "ABS", "TPU"].map((material) => <option key={material}>{material}</option>)}
               </select>
             </label>
-            <label className="block text-sm font-medium">Farbe
+            <label className="block text-sm font-medium">{t("create.color")}
               <input className="input mt-1 w-full" value={form.color} onChange={(e) => setForm((current) => ({ ...current, color: e.target.value }))} />
             </label>
-            <label className="block text-sm font-medium">Geschätzte Gramm
+            <label className="block text-sm font-medium">{t("create.estimatedGrams")}
               <input className="input mt-1 w-full" type="number" min={0} step={0.1} value={form.estimated_grams} onChange={(e) => setForm((current) => ({ ...current, estimated_grams: e.target.value }))} />
             </label>
-            <label className="block text-sm font-medium">Geschätzte Minuten
+            <label className="block text-sm font-medium">{t("create.estimatedMinutes")}
               <input className="input mt-1 w-full" type="number" min={0} step={1} value={form.estimated_minutes} onChange={(e) => setForm((current) => ({ ...current, estimated_minutes: e.target.value }))} />
             </label>
           </div>
-          <label className="block text-sm font-medium">Hinweise
-            <textarea className="input mt-1 w-full" rows={2} value={form.notes} onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))} placeholder="z.B. 0.2 mm Layer Height" />
+          <label className="block text-sm font-medium">{t("create.notes")}
+            <textarea className="input mt-1 w-full" rows={2} value={form.notes} onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))} placeholder={t("create.notesPlaceholder")} />
           </label>
           {canAdmin && (
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.quota_override} onChange={(e) => setForm((current) => ({ ...current, quota_override: e.target.checked }))} />
-              Kontingent überschreiben (Admin)
+              {t("create.quotaOverride")}
             </label>
           )}
           {complianceWarning && (
@@ -309,10 +311,10 @@ export default function PrintingPage() {
               {complianceWarning}
             </p>
           )}
-          {createJob.isError && <p className="text-sm text-red-600">{apiError(createJob.error, "Druckauftrag konnte nicht angelegt werden.")}</p>}
+          {createJob.isError && <p className="text-sm text-red-600">{apiError(createJob.error, t("create.failed"))}</p>}
           <div className="flex justify-end gap-3">
-            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Abbrechen</button>
-            <button type="submit" className="btn-primary" disabled={!event || !form.team_id || !file || createJob.isPending}>Erstellen</button>
+            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>{t("common:cancel")}</button>
+            <button type="submit" className="btn-primary" disabled={!event || !form.team_id || !file || createJob.isPending}>{t("common:create")}</button>
           </div>
         </form>
       </Modal>

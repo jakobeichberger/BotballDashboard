@@ -65,7 +65,7 @@ describe("PapersPage", () => {
     expect(await screen.findByText("Annahmequote")).toBeInTheDocument();
     expect(screen.getByText("50 %")).toBeInTheDocument();
     expect(screen.getByText("72 %")).toBeInTheDocument();
-    expect(screen.getByText("7.2 / 10")).toBeInTheDocument();
+    expect(screen.getByText("7,2 / 10")).toBeInTheDocument();
   });
 
   it("renders the new statuses", async () => {

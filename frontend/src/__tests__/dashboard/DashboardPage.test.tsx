@@ -7,9 +7,6 @@ import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn() } }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (k: string) => k }),
-}));
 
 const SEASON = { id: "s1", name: "Saison 2026", year: 2026, phases: [] };
 

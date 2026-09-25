@@ -47,7 +47,8 @@
     "settings": "Einstellungen",
     "users": "Benutzer",
     "seasons": "Saisons",
-    "bots": "Bot-Galerie"
+    "bots": "Bot-Galerie",
+    "profile": "Profil"
   },
   "pendingSync": "{{count}} Wertung(en) warten auf Synchronisierung",
   "syncFailed": "{{count}} Wertung(en) konnten nicht synchronisiert werden",
@@ -55,7 +56,60 @@
     "title": "Benachrichtigungen",
     "empty": "Keine Benachrichtigungen",
     "markAllRead": "Alle als gelesen markieren",
-    "open": "Benachrichtigungen öffnen ({{count}} ungelesen)"
+    "open": "Benachrichtigungen öffnen ({{count}} ungelesen)",
+    "unread": "ungelesen:"
   },
-  "moduleDisabled": "Dieses Modul ist für dieses Event nicht aktiv."
+  "moduleDisabled": "Dieses Modul ist für dieses Event nicht aktiv.",
+  "restoringSession": "Sitzung wird wiederhergestellt…",
+  "loadingEllipsis": "Laden…",
+  "eventsLoading": "Events werden geladen…",
+  "eventsLoadFailed": "Events konnten nicht geladen werden.",
+  "retry": "Erneut versuchen",
+  "languageName": "Deutsch",
+  "theme": {
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "pendingScores": {
+    "title": "Noch nicht synchronisiert ({{count}})",
+    "score": "Wertung",
+    "status": {
+      "pending": "Wartet auf Synchronisierung",
+      "syncing": "Wird synchronisiert …",
+      "conflict": "Konflikt",
+      "error": "Fehler"
+    },
+    "saveAnyway": "Trotzdem speichern",
+    "confirmDiscard": "Diese Wertung verwerfen?",
+    "discard": "Verwerfen",
+    "conflictExisting": "Für dieses Team und Match wurde inzwischen bereits eine Wertung erfasst."
+  },
+  "scoreConfirm": {
+    "title": "Wertung bestätigen",
+    "field": "Feld",
+    "value": "Wert",
+    "points": "Punkte",
+    "total": "Gesamt",
+    "offline": "Offline: Die Wertung wird auf diesem Gerät gespeichert und automatisch übertragen, sobald wieder eine Verbindung besteht.",
+    "correct": "Korrigieren",
+    "saveLocally": "Lokal speichern",
+    "submit": "Verbindlich absenden"
+  },
+  "export": {
+    "failed": "Export fehlgeschlagen",
+    "downloadTitle": "{{label}} herunterladen",
+    "matchesCsv": "Matches CSV",
+    "seedingPdf": "Seeding PDF",
+    "seedingCsv": "Seeding CSV",
+    "overallPdf": "Gesamt PDF",
+    "overallCsv": "Gesamt CSV",
+    "runsCsv": "Läufe CSV",
+    "teamReportPdf": "Teambericht PDF",
+    "historyCsv": "Historie CSV",
+    "multiYearCsv": "Mehrjahresvergleich CSV"
+  },
+  "add": "Hinzufügen",
+  "actionFailed": "Aktion fehlgeschlagen.",
+  "pleaseChoose": "Bitte wählen"
 }

@@ -1,0 +1,219 @@
+{
+  "status": {
+    "draft": "Draft",
+    "submitted": "Submitted",
+    "under_review": "Under review",
+    "revision_requested": "Revision requested",
+    "resubmitted": "Resubmitted",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "disqualified_ai": "Disqualified (AI)"
+  },
+  "recommendation": {
+    "accept": "Accept",
+    "revision_minor": "Minor revision",
+    "revision_major": "Major revision",
+    "reject": "Reject"
+  },
+  "criterion": {
+    "content": {
+      "label": "Content",
+      "hint": "Concept / design"
+    },
+    "implementation": {
+      "label": "Technical implementation",
+      "hint": "Implementation"
+    },
+    "results": {
+      "label": "Results",
+      "hint": "Results / conclusion"
+    },
+    "language": {
+      "label": "Language",
+      "hint": "Language quality"
+    },
+    "format": {
+      "label": "Formatting",
+      "hint": "IEEE format, max. 5 pages"
+    }
+  },
+  "deadlineType": {
+    "official_submission": "Official submission",
+    "official_final": "Official final submission",
+    "internal_draft": "Internal draft",
+    "internal_review": "Internal review deadline",
+    "internal_revision": "Internal revision",
+    "internal_final": "Internal final submission"
+  },
+  "countdown": {
+    "days": "{{days}} d {{hours}} h",
+    "hours": "{{hours}} h {{mins}} min",
+    "minutes": "{{mins}} min"
+  },
+  "deadlineBanner": {
+    "internalPassed": "Internal deadline passed:",
+    "uploadStillPossible": ". Uploading is still possible.",
+    "deadline": "Submission deadline:",
+    "remaining": "{{remaining}} left",
+    "passedAt": "Submission deadline passed on",
+    "canOverride": "As an organizer you can still upload and submit.",
+    "locked": "Uploading and submitting are locked.",
+    "override": "Admin override",
+    "lockedBadge": "Locked"
+  },
+  "diff": {
+    "from": "From",
+    "to": "to",
+    "compare": "Compare versions",
+    "pickTwo": "Pick two different versions",
+    "comparing": "Comparing...",
+    "pages": "{{count}} p.",
+    "added": "+{{count}} lines",
+    "removed": "−{{count}} lines",
+    "truncated": "(truncated)",
+    "noDifference": "No difference in the text.",
+    "label": "Text differences",
+    "noText": "No text comparison possible: {{reason}}. Only file name, size and upload time are compared."
+  },
+  "autoAssign": {
+    "title": "Assign reviewers automatically",
+    "perPaper": "Reviewers per paper",
+    "preview": "Preview",
+    "previewFirst": "Create a preview first",
+    "assign": "Assign",
+    "previewResult": "Preview: {{count}} assignment(s)",
+    "assignedResult": "Assigned: {{count}} assignment(s)",
+    "unfilled": "Not enough suitable reviewers for: {{papers}}",
+    "missing": "{{title}} ({{count}} missing)"
+  },
+  "deadlines": {
+    "title": "Deadlines",
+    "blocksUploads": "blocks uploads",
+    "passedWarning": "passed (warning only)",
+    "passed": "passed",
+    "deleteLabel": "Delete deadline {{name}}",
+    "empty": "No deadlines set up yet.",
+    "type": "Type",
+    "label": "Label",
+    "blockAfter": "Block uploads afterwards",
+    "create": "Add deadline"
+  },
+  "title": "Paper Review",
+  "reviewsCsv": "Reviews CSV",
+  "deadlinePassed": "Submission deadline passed",
+  "submitNew": "+ Submit paper",
+  "stats": {
+    "title": "Statistics",
+    "total": "Total papers",
+    "acceptanceRate": "Acceptance rate",
+    "avgFinal": "Avg. final result",
+    "avgReview": "Avg. review score",
+    "openReviews": "Open reviews",
+    "decisions": "{{accepted}} accepted · {{rejected}} rejected · {{disqualified}} disqualified ·",
+    "perCriterion": "Avg. per criterion:"
+  },
+  "workload": {
+    "title": "Reviewer workload",
+    "summary": "{{open}} open · {{overdue}} overdue · {{completed}} done"
+  },
+  "col": {
+    "title": "Title",
+    "round": "Round",
+    "version": "Version",
+    "submitted": "Submitted"
+  },
+  "empty": "No papers submitted yet",
+  "create": {
+    "title": "Submit paper",
+    "hint": "There is one paper per team and season. Revisions are uploaded later as a new version.",
+    "team": "Team *",
+    "titleLabel": "Title *",
+    "abstract": "Abstract",
+    "pdf": "PDF (without a PDF the paper stays a draft)",
+    "failed": "The paper could not be created.",
+    "submit": "Submit",
+    "draft": "Create as draft"
+  },
+  "assignment": {
+    "pending": "Pending",
+    "in_progress": "In progress",
+    "completed": "Submitted",
+    "overdue": "Overdue"
+  },
+  "detail": {
+    "total": "Total",
+    "overallComment": "Overall comment",
+    "toRevise": "To revise",
+    "reviewerFallback": "Reviewer {{id}}",
+    "fileUnavailable": "The file is not available.",
+    "back": "Back to paper review",
+    "notFound": "Paper not found.",
+    "team": "Team",
+    "level": "Level",
+    "reviewRound": "Review round",
+    "currentVersion": "Current version",
+    "avgReviewerScore": "Avg. reviewer score",
+    "submittedCount": "({{count}} submitted)",
+    "formatDeduction": "Format deduction",
+    "deductionPoints": "−{{points}} points",
+    "finalResult": "Final result",
+    "rank": "Rank #{{rank}}",
+    "disqualifiedAi": "The paper was disqualified for AI misuse (0 points, no revision possible).",
+    "abstract": "Abstract",
+    "noAbstract": "No abstract available.",
+    "versions": "Versions ({{count}})",
+    "round": "Round {{round}}",
+    "uploadedAt": "uploaded {{date}}",
+    "submittedAt": "submitted {{date}}",
+    "notSubmitted": "not submitted",
+    "downloadVersion": "Download version {{version}}",
+    "noFile": "No file uploaded yet",
+    "newVersionPdf": "New version (PDF)",
+    "uploadVersion": "Upload new version",
+    "uploadFirst": "Upload a PDF first",
+    "resubmit": "Resubmit v{{version}}",
+    "versionsLocked": "New versions are only possible as a draft or after a requested revision.",
+    "feedback": "Reviewer feedback",
+    "reviewNumber": "Review {{number}}",
+    "feedbackPending": "Feedback is released once the review round has been decided.",
+    "admin": "Management (admin)",
+    "changeStatus": "Change status",
+    "choose": "— choose —",
+    "reason": "Reason",
+    "reasonOptional": "Reason (optional)",
+    "confirmDisqualify": "Disqualify the paper for AI misuse? It receives 0 points and can no longer be revised.",
+    "apply": "Apply",
+    "assignReviewer": "Assign reviewer",
+    "chooseReviewer": "— choose reviewer —",
+    "conflictHint": "Members of the team and people from the same school are rejected.",
+    "deductionLabel": "Format deduction (points, 0–100)",
+    "deductionReason": "Reason for the deduction",
+    "deductionReasonPlaceholder": "Reason, e.g. 6 pages",
+    "deductionHint": "Subtracted from the result when finalizing.",
+    "finalize": "Finalize evaluation",
+    "finalizeHint": "Averages the submitted reviews of the current round (five criteria, 0–10), subtracts the format deduction, locks the reviews and updates the ranking.",
+    "lastFinalized": "Last finalized: {{date}}.",
+    "myReview": "My review",
+    "reviewSubmitted": "Submitted",
+    "reviewDraft": "Draft",
+    "lockedSubmitted": "Submitted and locked. Changes only after the organizers reopen it.",
+    "notOpen": "The paper is currently not open for review.",
+    "commentFor": "Comment {{criterion}}",
+    "comment": "Comment",
+    "recommendation": "Recommendation",
+    "feedbackPlaceholder": "Feedback for the team…",
+    "revisionNotes": "Revision notes",
+    "revisionNotesPlaceholder": "What exactly should be changed…",
+    "privateNotes": "Private notes (organizers only)",
+    "saveDraft": "Save draft",
+    "confirmSubmitReview": "Submit the review for good? It is locked afterwards.",
+    "submitReview": "Submit review",
+    "submitReviewHint": "All five criteria and a recommendation are required to submit.",
+    "allReviews": "All reviews ({{count}})",
+    "myReviews": "My reviews ({{count}})",
+    "reopen": "Reopen",
+    "noReviews": "No reviews yet",
+    "assignedReviewers": "Assigned reviewers ({{count}})",
+    "noAssignments": "No assignments"
+  }
+}

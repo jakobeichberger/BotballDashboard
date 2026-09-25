@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { computeSheet, isEither, rawKey, type RawScores, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetResult } from "./calculator";
 
 interface Props {
@@ -14,6 +16,7 @@ interface Props {
  * breakdown (subtotal × multiplier = total) from the shared calculator.
  */
 export default function SheetForm({ definition, values, onChange, disabled }: Props) {
+  const { t } = useTranslation("scoring");
   const sides: (string | null)[] = definition.sides.length ? definition.sides : [null];
   const [activeSide, setActiveSide] = useState<string | null>(sides[0]);
   const result: SheetResult = useMemo(() => computeSheet(values, definition), [values, definition]);
@@ -23,12 +26,12 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
   return (
     <div className="space-y-4">
       {definition.sides.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Seite">
+        <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label={t("sheet.side")}>
           {definition.sides.map((item) => {
             const total = result.sides.find((s) => s.side === item)?.total ?? 0;
-            return <button key={item} type="button" role="tab" aria-selected={side === item} className={side === item ? "btn-primary" : "btn-secondary"} onClick={() => setActiveSide(item)}>Seite {item} · {total}</button>;
+            return <button key={item} type="button" role="tab" aria-selected={side === item} className={side === item ? "btn-primary" : "btn-secondary"} onClick={() => setActiveSide(item)}>{t("sheet.sideTotal", { side: item, total })}</button>;
           })}
-          <span className="text-sm text-gray-500">Total {definition.sides.join(" + ")} = <strong>{result.total}</strong></span>
+          <span className="text-sm text-gray-500">{t("sheet.total", { sides: definition.sides.join(" + ") })} <strong>{result.total}</strong></span>
         </div>
       )}
       {definition.sections.map((section, index) => {
@@ -43,10 +46,10 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
               <div className="mt-3 grid gap-3 border-t pt-3 dark:border-gray-800 sm:grid-cols-2">
                 {section.multipliers.map((multiplier) => isEither(multiplier) ? (
                   <div key={multiplier.key} className="rounded border border-dashed p-2 dark:border-gray-700 sm:col-span-2">
-                    <p className="mb-2 text-xs font-medium text-gray-500">{multiplier.label} – es zählt die bessere Alternative</p>
-                    <div className="grid gap-3 sm:grid-cols-2">{multiplier.either.map((option) => <Input key={option.key} spec={option} rawKey={rawKey(side, option.key)} hint={multiplierHint(option)} values={values} onChange={onChange} />)}</div>
+                    <p className="mb-2 text-xs font-medium text-gray-500">{t("sheet.eitherHint", { name: multiplier.label })}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">{multiplier.either.map((option) => <Input key={option.key} spec={option} rawKey={rawKey(side, option.key)} hint={multiplierHint(option, t)} values={values} onChange={onChange} />)}</div>
                   </div>
-                ) : <Input key={multiplier.key} spec={multiplier} rawKey={rawKey(side, multiplier.key)} hint={multiplierHint(multiplier)} values={values} onChange={onChange} />)}
+                ) : <Input key={multiplier.key} spec={multiplier} rawKey={rawKey(side, multiplier.key)} hint={multiplierHint(multiplier, t)} values={values} onChange={onChange} />)}
               </div>
             )}
             {breakdown && <p className="mt-3 text-right text-sm text-gray-500" aria-live="polite">{breakdown.subtotal}{breakdown.multiplier !== 1 ? ` × ${breakdown.multiplier}` : ""} = <strong className="text-gray-900 dark:text-white">{breakdown.total}</strong></p>}
@@ -58,11 +61,12 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
   );
 }
 
-function multiplierHint(spec: SheetMultiplier): string {
-  if ((spec.type ?? "boolean") === "boolean") return `Bereich × ${spec.factor ?? 1}`;
+function multiplierHint(spec: SheetMultiplier, t: TFunction): string {
+  const area = t("scoring:sheet.area");
+  if ((spec.type ?? "boolean") === "boolean") return `${area} × ${spec.factor ?? 1}`;
   const factor = spec.factor ?? 1;
   const offset = spec.offset ?? 0;
-  return `Bereich × (n${factor !== 1 ? ` × ${factor}` : ""}${offset ? ` + ${offset}` : ""})`;
+  return `${area} × (n${factor !== 1 ? ` × ${factor}` : ""}${offset ? ` + ${offset}` : ""})`;
 }
 
 function Input({ spec, rawKey: key, hint, values, onChange }: { spec: SheetField | SheetMultiplier; rawKey: string; hint: string; values: RawScores; onChange: Props["onChange"] }) {

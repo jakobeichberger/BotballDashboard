@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FolderOpen, Trash2, Upload } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { formatDate } from "@/i18n/format";
 import { api } from "@/lib/api";
 import { apiErrorMessage } from "@/modules/papers/paperMeta";
 import {
@@ -17,7 +19,7 @@ interface SeasonOption {
 }
 
 function fmt(value: string) {
-  return new Date(value).toLocaleDateString("de-DE");
+  return formatDate(value);
 }
 
 /**
@@ -34,6 +36,7 @@ export function TeamDocuments({
   seasons?: SeasonOption[];
   canUpload: boolean;
 }) {
+  const { t } = useTranslation("teams");
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("project_plan");
@@ -89,7 +92,7 @@ export function TeamDocuments({
   return (
     <section className="card overflow-hidden">
       <h2 className="px-4 py-3 border-b font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-        <FolderOpen className="w-4 h-4" /> Dokumente ({documents?.length ?? 0})
+        <FolderOpen className="w-4 h-4" /> {t("documents.title", { count: documents?.length ?? 0 })}
       </h2>
       <ul className="divide-y dark:divide-gray-800">
         {documents?.map((doc) => (
@@ -99,19 +102,19 @@ export function TeamDocuments({
                 {doc.title}
               </button>
               <span className="badge-gray">{DOCUMENT_CATEGORY_LABEL[doc.category] ?? doc.category}</span>
-              <span className="text-xs text-gray-500">Saison: {seasonName(doc.season_id)} · v{doc.current_version} · {fmt(doc.updated_at)}</span>
+              <span className="text-xs text-gray-500">{t("documents.season", { season: seasonName(doc.season_id) })} · v{doc.current_version} · {fmt(doc.updated_at)}</span>
               <div className="ml-auto flex items-center gap-2">
                 <button className="text-xs text-gray-500 hover:underline" onClick={() => setExpanded(expanded === doc.id ? null : doc.id)}>
-                  {expanded === doc.id ? "Archiv ausblenden" : `Versionen (${doc.versions.length})`}
+                  {expanded === doc.id ? t("documents.hideArchive") : t("documents.versions", { count: doc.versions.length })}
                 </button>
                 {canUpload && (
                   <label className="btn-secondary text-xs cursor-pointer">
-                    <Upload className="h-3.5 w-3.5" /> Neue Version
+                    <Upload className="h-3.5 w-3.5" /> {t("documents.newVersion")}
                     <input
                       type="file"
                       className="sr-only"
                       accept={DOCUMENT_ACCEPT}
-                      aria-label={`Neue Version von ${doc.title}`}
+                      aria-label={t("documents.newVersionOf", { title: doc.title })}
                       onChange={(e) => {
                         const upload = e.target.files?.[0];
                         if (upload) versionM.mutate({ documentId: doc.id, upload });
@@ -123,9 +126,9 @@ export function TeamDocuments({
                 {canUpload && (
                   <button
                     className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-                    title="Löschen"
-                    aria-label={`${doc.title} löschen`}
-                    onClick={() => { if (confirm(`Dokument "${doc.title}" mit allen Versionen löschen?`)) deleteM.mutate(doc.id); }}
+                    title={t("common:delete")}
+                    aria-label={t("documents.deleteLabel", { title: doc.title })}
+                    onClick={() => { if (confirm(t("documents.confirmDelete", { title: doc.title }))) deleteM.mutate(doc.id); }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -142,7 +145,7 @@ export function TeamDocuments({
                     <span>{fmt(version.uploaded_at)}</span>
                     {version.comment && <span className="italic">„{version.comment}“</span>}
                     <button className="ml-auto inline-flex items-center gap-1 hover:underline" onClick={() => download(doc, version.version_number)}>
-                      <Download className="h-3 w-3" /> Herunterladen
+                      <Download className="h-3 w-3" /> {t("common:download")}
                     </button>
                   </li>
                 ))}
@@ -150,7 +153,7 @@ export function TeamDocuments({
             )}
           </li>
         ))}
-        {documents?.length === 0 && <li className="px-4 py-8 text-center text-gray-400">Noch keine Dokumente</li>}
+        {documents?.length === 0 && <li className="px-4 py-8 text-center text-gray-400">{t("documents.empty")}</li>}
       </ul>
       {canUpload && (
         <form
@@ -158,28 +161,28 @@ export function TeamDocuments({
           onSubmit={(e) => { e.preventDefault(); createM.mutate(); }}
         >
           <div className="flex-1 min-w-[10rem]">
-            <label className="label" htmlFor="doc-title">Titel</label>
+            <label className="label" htmlFor="doc-title">{t("documents.titleLabel")}</label>
             <input id="doc-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
-            <label className="label" htmlFor="doc-category">Art</label>
+            <label className="label" htmlFor="doc-category">{t("documents.category")}</label>
             <select id="doc-category" className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
               {Object.entries(DOCUMENT_CATEGORY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </div>
           <div>
-            <label className="label" htmlFor="doc-season">Saison</label>
+            <label className="label" htmlFor="doc-season">{t("season")}</label>
             <select id="doc-season" className="input" value={seasonId} onChange={(e) => setSeasonId(e.target.value)}>
               <option value="">—</option>
               {seasons?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="label" htmlFor="doc-file">Datei (PDF/Bild)</label>
+            <label className="label" htmlFor="doc-file">{t("documents.file")}</label>
             <input id="doc-file" className="input" type="file" accept={DOCUMENT_ACCEPT} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </div>
           <button className="btn-primary text-sm" disabled={!title.trim() || !file || createM.isPending}>
-            <Upload className="h-4 w-4" /> Hochladen
+            <Upload className="h-4 w-4" /> {t("common:upload")}
           </button>
         </form>
       )}

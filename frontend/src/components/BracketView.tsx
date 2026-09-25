@@ -107,7 +107,7 @@ function MatchCard({
     >
       <header className="flex justify-between px-3 pt-2 text-xs opacity-60">
         <span className="font-mono">{match.code}</span>
-        <span>{match.status === "cancelled" ? t("bracket.notNeeded") : match.status}</span>
+        <span>{match.status === "cancelled" ? t("bracket.notNeeded") : t(`matchStatus.${match.status}`, { defaultValue: match.status })}</span>
       </header>
       <ul className="p-2">
         {slots.map((participant, index) => {

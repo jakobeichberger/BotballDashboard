@@ -1,6 +1,13 @@
 import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
+import i18n from "@/i18n/config";
+
+// Components render in German by default so assertions match the German UI
+// texts; tests covering English switch the language explicitly.
+beforeEach(async () => {
+  if (i18n.language !== "de") await i18n.changeLanguage("de");
+});
 
 // Cleanup after each test
 afterEach(() => {

@@ -1,18 +1,23 @@
 // Mirrors backend/modules/auth/password_policy.py so forms can explain a
 // rejected password before submitting. The backend check stays authoritative.
+import i18n from "@/i18n/config";
+
 export const PASSWORD_MIN_LENGTH = 10;
 
-export const PASSWORD_HINT = `Mindestens ${PASSWORD_MIN_LENGTH} Zeichen, nicht nur ein wiederholtes Zeichen und nicht die E-Mail-Adresse.`;
+/** The password rules in the active language. */
+export function passwordHint(): string {
+  return i18n.t("auth:password.hint", { min: PASSWORD_MIN_LENGTH });
+}
 
 export function passwordProblem(password: string, email?: string | null): string | null {
   if (password.length < PASSWORD_MIN_LENGTH) {
-    return `Das Passwort muss mindestens ${PASSWORD_MIN_LENGTH} Zeichen lang sein.`;
+    return i18n.t("auth:password.tooShort", { min: PASSWORD_MIN_LENGTH });
   }
   if (new Set(password).size === 1) {
-    return "Das Passwort darf nicht aus einem einzigen wiederholten Zeichen bestehen.";
+    return i18n.t("auth:password.repeated");
   }
   if (email && password.trim().toLowerCase() === email.trim().toLowerCase()) {
-    return "Das Passwort darf nicht der E-Mail-Adresse entsprechen.";
+    return i18n.t("auth:password.isEmail");
   }
   return null;
 }

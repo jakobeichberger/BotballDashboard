@@ -12,17 +12,6 @@ vi.mock("@/lib/api", () => ({
   isQueuedResponse: (data: { queued?: boolean } | null) => !!data?.queued,
 }));
 
-vi.mock("react-i18next", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-i18next")>();
-  return {
-    ...actual,
-    useTranslation: () => ({
-      t: (key: string, options?: Record<string, unknown>) =>
-        options ? `${key} ${Object.values(options).join("/")}` : key,
-    }),
-  };
-});
-
 const EVENT = "ev-1";
 const registrations = [
   { id: "r1", team_id: "t1", team_name: "Alpha", team_number: "A-1", seed_number: 1 },
@@ -75,19 +64,19 @@ describe("EventScoringPage (mobile scoring)", () => {
 
   it("steps through the scheduled matches in play order and preselects the team", async () => {
     renderPage();
-    const next = await screen.findByRole("button", { name: "nextMatch" });
+    const next = await screen.findByRole("button", { name: "Nächstes Match" });
     await waitFor(() => expect(screen.getAllByRole("option", { name: /S-1/ }).length).toBeGreaterThan(0));
     fireEvent.click(next);
     expect(within(screen.getByRole("navigation")).getByText(/^S-1 ·/)).toBeInTheDocument();
-    expect(screen.getByText("matchPosition 1/2")).toBeInTheDocument();
-    expect((screen.getByLabelText("team") as HTMLSelectElement).value).toBe("t1");
+    expect(screen.getByText("Match 1 von 2")).toBeInTheDocument();
+    expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("t1");
 
     fireEvent.click(next);
     expect(within(screen.getByRole("navigation")).getByText(/^S-2 ·/)).toBeInTheDocument();
-    expect((screen.getByLabelText("team") as HTMLSelectElement).value).toBe("t2");
-    expect(screen.getByRole("button", { name: "nextMatch" })).toBeDisabled();
+    expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("t2");
+    expect(screen.getByRole("button", { name: "Nächstes Match" })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("button", { name: "previousMatch" }));
+    fireEvent.click(screen.getByRole("button", { name: "Vorheriges Match" }));
     expect(within(screen.getByRole("navigation")).getByText(/^S-1 ·/)).toBeInTheDocument();
   });
 
@@ -110,19 +99,19 @@ describe("EventScoringPage (mobile scoring)", () => {
   it("asks for confirmation with a summary before the official submit", async () => {
     (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { id: "m1" } });
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "nextMatch" }));
-    await waitFor(() => expect((screen.getByLabelText("team") as HTMLSelectElement).value).toBe("t1"));
+    fireEvent.click(await screen.findByRole("button", { name: "Nächstes Match" }));
+    await waitFor(() => expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("t1"));
     fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "4" } });
     // The first checkbox is the sheet field "Geparkt"; the special-rule flags follow it.
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
-    fireEvent.click(screen.getByRole("button", { name: /reviewScore/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Prüfen & absenden/ }));
 
     const dialog = await screen.findByRole("dialog");
     expect(api.post).not.toHaveBeenCalled();
     expect(within(dialog).getByText("Alpha (A-1)")).toBeInTheDocument();
     expect(within(dialog).getByText("Würfel")).toBeInTheDocument();
     expect(within(dialog).getByText("Ja")).toBeInTheDocument();
-    expect(within(dialog).getByTestId("confirm-total")).toHaveTextContent("13.00");
+    expect(within(dialog).getByTestId("confirm-total")).toHaveTextContent("13,00");
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Verbindlich absenden" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
@@ -131,14 +120,14 @@ describe("EventScoringPage (mobile scoring)", () => {
     expect(body).toMatchObject({ team_id: "t1", scheduled_match_id: "sm1", raw_scores: { cubes: 4, parked: true } });
     expect(body.idempotency_key).toEqual(expect.any(String));
     expect(config.offlineLabel).toContain("Alpha");
-    expect(await screen.findByText("scoreSaved")).toBeInTheDocument();
+    expect(await screen.findByText("Wertung wurde offiziell gespeichert.")).toBeInTheDocument();
   });
 
   it("lets the juror go back and correct instead of submitting", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "nextMatch" }));
-    await waitFor(() => expect((screen.getByLabelText("team") as HTMLSelectElement).value).toBe("t1"));
-    fireEvent.click(screen.getByRole("button", { name: /reviewScore/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Nächstes Match" }));
+    await waitFor(() => expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("t1"));
+    fireEvent.click(screen.getByRole("button", { name: /Prüfen & absenden/ }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Korrigieren" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(api.post).not.toHaveBeenCalled();
@@ -148,12 +137,12 @@ describe("EventScoringPage (mobile scoring)", () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 202, data: { queued: true, idempotency_key: "k" } });
     renderPage();
-    expect(await screen.findByText("offlineScoring")).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: "nextMatch" }));
-    await waitFor(() => expect((screen.getByLabelText("team") as HTMLSelectElement).value).toBe("t1"));
+    expect(await screen.findByText("Offline: Wertungen werden auf diesem Gerät gespeichert und automatisch synchronisiert, sobald wieder eine Verbindung besteht.")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Nächstes Match" }));
+    await waitFor(() => expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("t1"));
     expect(screen.getByRole("spinbutton")).not.toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: /reviewScore/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Prüfen & absenden/ }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Lokal speichern" }));
-    expect(await screen.findByText("scoreQueued")).toBeInTheDocument();
+    expect(await screen.findByText("Offline gespeichert – wird synchronisiert, sobald eine Verbindung besteht.")).toBeInTheDocument();
   });
 });

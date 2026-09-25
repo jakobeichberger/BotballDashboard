@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import { Trophy, Plane, Medal, BarChart3 } from "lucide-react";
@@ -8,6 +9,8 @@ import { EventRankingExportButtons, RankingExportButtons } from "@/components/Ex
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import DEPlacementPanel from "@/modules/scoring/extras/DEPlacementPanel";
+import { formatNumber } from "@/i18n/format";
+import { CATEGORY_LABEL as CATEGORY_LABELS } from "@/lib/teams";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -74,17 +77,11 @@ interface OverallEntry {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const CATEGORY_LABELS: Record<string, string> = {
-  botball: "Botball",
-  open: "Open",
-  aerial: "Aerial",
-  jbc: "JBC",
-};
-
 function RankCell({ rank }: { rank: number | null }) {
+  const { t } = useTranslation("scoring");
   if (rank == null) {
     return (
-      <td className="px-4 py-3 font-bold text-red-600" title="Disqualifiziert (rote Karte)">
+      <td className="px-4 py-3 font-bold text-red-600" title={t("scoreboard.disqualified")}>
         DQ
       </td>
     );
@@ -97,7 +94,7 @@ const RANK_COLOR = (r: number) =>
 
 function fmt(v: number | null | undefined, decimals = 4) {
   if (v == null) return "–";
-  return v.toFixed(decimals);
+  return formatNumber(v, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 // ── Category Filter ───────────────────────────────────────────────────────────
@@ -111,6 +108,7 @@ function CategoryFilter({
   active: string | null;
   onChange: (c: string | null) => void;
 }) {
+  const { t } = useTranslation("scoring");
   if (categories.length <= 1) return null;
   return (
     <div className="flex gap-2">
@@ -122,7 +120,7 @@ function CategoryFilter({
             : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
         }`}
       >
-        Alle
+        {t("scoreboard.all")}
       </button>
       {categories.map((c) => (
         <button
@@ -144,6 +142,7 @@ function CategoryFilter({
 // ── Seeding Tab ───────────────────────────────────────────────────────────────
 
 function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: string; categories: string[] }) {
+  const { t } = useTranslation("scoring");
   const [category, setCategory] = useState<string | null>(null);
   const { eventId } = useParams();
 
@@ -170,20 +169,20 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
           <RankingExportButtons seasonId={seasonId} seasonYear={new Date().getFullYear()} />
         )}
       </div>
-      {isLoading && <p className="text-gray-500 text-sm">Laden…</p>}
+      {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">#</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
               {categories.length > 1 && (
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Kategorie</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.category")}</th>
               )}
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Seed-Score</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Best</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.seedScore")}</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scouting.best")}</th>
               <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">⌀</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Runden</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.rounds")}</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -203,7 +202,7 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
                 )}
                 <td className="px-4 py-3 text-right font-bold">
                   {fmt(e.seed_score)}
-                  {e.tiebreaker && <div className="text-xs font-normal text-gray-500" title="Tie-Breaker">{e.tiebreaker}</div>}
+                  {e.tiebreaker && <div className="text-xs font-normal text-gray-500" title={t("rules.tiebreaker")}>{e.tiebreaker}</div>}
                 </td>
                 <td className="px-4 py-3 text-right">{fmt(e.best_score)}</td>
                 <td className="px-4 py-3 text-right">{fmt(e.average_score)}</td>
@@ -212,7 +211,7 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
             ))}
             {data?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">Noch keine Wertungen</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t("entry.noScores")}</td>
               </tr>
             )}
           </tbody>
@@ -225,6 +224,7 @@ function SeedingTab({ base, seasonId, categories }: { base: string; seasonId: st
 // ── DE Tab ────────────────────────────────────────────────────────────────────
 
 function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
+  const { t } = useTranslation("scoring");
   const { eventId } = useParams();
   const { data: deData, isLoading } = useQuery<DEEntry[]>({
     queryKey: ["de-results", base],
@@ -253,28 +253,28 @@ function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
       {isAdmin && (
         <div className="flex justify-end gap-2">
           <EventLink to="/scoring/de" className="btn-secondary text-sm">
-            DE-Ergebnisse eingeben
+            {t("scoreboard.enterDe")}
           </EventLink>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">Laden…</p>}
+      {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
       {(["A", "B"] as const).map((bracket) => (
         <div key={bracket}>
-          <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">Bracket {bracket}</h3>
+          <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("scoreboard.bracket", { bracket })}</h3>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">DE-Rang</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Bracket-Score</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">DE-Score</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("de.rank")}</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.bracketScore")}</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.deScore")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y dark:divide-gray-800">
                 {groups[bracket].length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-gray-400">Keine Einträge</td>
+                    <td colSpan={4} className="px-4 py-6 text-center text-gray-400">{t("scoreboard.noEntries")}</td>
                   </tr>
                 ) : (
                   [...groups[bracket]]
@@ -302,6 +302,7 @@ function DETab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
 // ── Aerial Tab ────────────────────────────────────────────────────────────────
 
 function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
+  const { t } = useTranslation("scoring");
   const { data, isLoading } = useQuery<AerialEntry[]>({
     queryKey: ["aerial-ranking", base],
     queryFn: async () => {
@@ -316,22 +317,21 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
       {isAdmin && (
         <div className="flex justify-end mb-3">
           <EventLink to="/scoring/aerial" className="btn-secondary text-sm">
-            Aerial-Ergebnisse eingeben
+            {t("scoreboard.enterAerial")}
           </EventLink>
         </div>
       )}
-      {isLoading && <p className="text-gray-500 text-sm">Laden…</p>}
+      {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">#</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Run 1</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Run 2</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Run 3</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Run 4</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Score (⌀ aller Läufe)</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
+              {[1, 2, 3, 4].map((n) => (
+                <th key={n} className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("aerial.run", { number: n })}</th>
+              ))}
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("aerial.score")}</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -353,7 +353,7 @@ function AerialTab({ base, isAdmin }: { base: string; isAdmin: boolean }) {
             ))}
             {data?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">Noch keine Aerial-Ergebnisse</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t("scoreboard.noAerial")}</td>
               </tr>
             )}
           </tbody>
@@ -374,6 +374,7 @@ function OverallTab({
   season: Season;
   categories: string[];
 }) {
+  const { t } = useTranslation("scoring");
   const [category, setCategory] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<OverallEntry[]>({
@@ -398,21 +399,21 @@ function OverallTab({
       <div className="mb-3">
         <CategoryFilter categories={categories} active={category} onChange={setCategory} />
       </div>
-      {isLoading && <p className="text-gray-500 text-sm">Laden…</p>}
+      {isLoading && <p className="text-gray-500 text-sm">{t("common:loadingEllipsis")}</p>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">#</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Team</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scouting.team")}</th>
               {categories.length > 1 && (
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Kategorie</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.category")}</th>
               )}
-              {showSeeding && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Seeding</th>}
-              {showDE && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">DE</th>}
-              {showPaper && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Paper</th>}
-              {showDoc && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Doku</th>}
-              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Gesamt</th>
+              {showSeeding && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.seeding")}</th>}
+              {showDE && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.de")}</th>}
+              {showPaper && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.paper")}</th>}
+              {showDoc && <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.doc")}</th>}
+              <th className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-400">{t("scoreboard.total")}</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -439,7 +440,7 @@ function OverallTab({
             ))}
             {data?.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">Noch keine Gesamtergebnisse</td>
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">{t("scoreboard.noOverall")}</td>
               </tr>
             )}
           </tbody>
@@ -452,13 +453,14 @@ function OverallTab({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "seeding", label: "Seeding", icon: BarChart3, flag: "use_seeding" },
-  { id: "de", label: "Double Elim.", icon: Medal, flag: "use_double_elimination" },
-  { id: "aerial", label: "Aerial", icon: Plane, flag: "use_aerial" },
-  { id: "overall", label: "Gesamtranking", icon: Trophy, flag: null },
+  { id: "seeding", icon: BarChart3, flag: "use_seeding" },
+  { id: "de", icon: Medal, flag: "use_double_elimination" },
+  { id: "aerial", icon: Plane, flag: "use_aerial" },
+  { id: "overall", icon: Trophy, flag: null },
 ] as const;
 
 export default function ScoreboardPage() {
+  const { t } = useTranslation("scoring");
   const { data: currentUser } = useCurrentUser();
   const isAdmin = currentUser?.roles?.some((r: any) => r.name === "admin") ?? false;
   const canEnterScores =
@@ -473,7 +475,7 @@ export default function ScoreboardPage() {
   const entryQuery = scope.eventId || !sid ? "" : `?season_id=${sid}`;
 
   const visibleTabs = TABS.filter(
-    (t) => t.flag === null || (season as any)?.[t.flag] === true
+    (tab) => tab.flag === null || (season as any)?.[tab.flag] === true
   );
 
   const [activeTab, setActiveTab] = useState<string>("seeding");
@@ -486,32 +488,32 @@ export default function ScoreboardPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Trophy className="w-6 h-6 text-yellow-500" />
-          Rangliste
+          {t("scoreboard.title")}
         </h1>
         <div className="flex items-center gap-3">
           {canEnterScores && (
             <EventLink to="/scoring/entry" className="btn-primary text-sm">
-              Wertung erfassen
+              {t("entry.title")}
             </EventLink>
           )}
           {isAdmin && (
             <EventLink to="/scoring/score-sheets" className="btn-secondary text-sm">
-              Score-Sheets
+              {t("scoreboard.scoreSheets")}
             </EventLink>
           )}
           {isAdmin && season?.use_double_elimination && (
             <EventLink to={`/scoring/de${entryQuery}`} className="btn-secondary text-sm">
-              DE eingeben
+              {t("scoreboard.enterDeShort")}
             </EventLink>
           )}
           {isAdmin && season?.use_aerial && (
             <EventLink to={`/scoring/aerial${entryQuery}`} className="btn-secondary text-sm">
-              Aerial eingeben
+              {t("scoreboard.enterAerialShort")}
             </EventLink>
           )}
           {isAdmin && (season?.use_documentation_scoring || season?.use_paper_scoring) && (
             <EventLink to={`/scoring/doc${entryQuery}`} className="btn-secondary text-sm">
-              Doku eingeben
+              {t("scoreboard.enterDocShort")}
             </EventLink>
           )}
         </div>
@@ -533,7 +535,7 @@ export default function ScoreboardPage() {
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                {tab.label}
+                {t(`scoreboard.tab.${tab.id}`)}
               </button>
             );
           })}
@@ -554,7 +556,7 @@ export default function ScoreboardPage() {
 
       {!sid && (
         <div className="card p-8 text-center text-gray-400">
-          Keine aktive Saison gefunden
+          {t("scoreboard.noSeason")}
         </div>
       )}
     </div>

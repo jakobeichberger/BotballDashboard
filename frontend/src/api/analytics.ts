@@ -3,6 +3,8 @@
  * under /dashboard. Local interfaces until generated.ts is regenerated.
  */
 import { useQuery } from "@tanstack/react-query";
+import i18n from "@/i18n/config";
+import { formatNumber } from "@/i18n/format";
 import { api } from "@/lib/api";
 
 export interface BoxSummary {
@@ -367,19 +369,19 @@ export function useSeasonTimeline(seasonId?: string) {
 
 // ── Formatting helpers shared by the analytics views ─────────────────────────
 
+/** Fixed number of decimals, formatted for the active language. */
 export function fmtNum(value: number | null | undefined, digits = 1): string {
-  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
+  return typeof value === "number" && Number.isFinite(value)
+    ? formatNumber(value, { minimumFractionDigits: digits, maximumFractionDigits: digits })
+    : "—";
 }
 
-export const PHASE_LABELS: Record<string, string> = {
-  practice: "Übung",
-  seeding: "Seeding",
-  double_seeding: "Double Seeding",
-  elimination: "Double Elimination",
-  double_elimination: "Double Elimination",
-  alliance: "Alliance",
-  final: "Finale",
-};
+const PHASES = ["practice", "seeding", "double_seeding", "elimination", "double_elimination", "alliance", "final", "other"];
+
+/** Display name of a scoring phase in the active language (unknown phases as-is). */
+export function phaseLabel(phase: string): string {
+  return PHASES.includes(phase) ? i18n.t(`scoring:phase.${phase}`) : phase;
+}
 
 /** Whole days from today until `iso` (negative = past). */
 export function daysUntil(iso: string, now: Date = new Date()): number {

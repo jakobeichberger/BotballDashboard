@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText } from "lucide-react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import Modal from "@/components/Modal";
 import { EventLink } from "@/components/EventLink";
 import { ExportButton, PaperExportButtons } from "@/components/ExportButtons";
 import { useEvent } from "@/hooks/useEvents";
 import { useAuthStore } from "@/store/authStore";
+import { formatDate, formatNumber } from "@/i18n/format";
 import type { EventRegistration } from "@/api/types";
 import { DeadlineBanner } from "@/modules/papers/DeadlineBanner";
 import { AutoAssignPanel } from "@/modules/papers/AutoAssignPanel";
@@ -35,17 +37,20 @@ function pct(value: number | null | undefined) {
   return value == null ? "—" : `${Math.round(value * 100)} %`;
 }
 
+const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+
 function PaperStatsPanel({ stats }: { stats: PaperStats }) {
+  const { t } = useTranslation("papers");
   const tiles = [
-    ["Paper gesamt", String(stats.total)],
-    ["Annahmequote", pct(stats.acceptance_rate)],
-    ["Ø Endergebnis", pct(stats.average_final_score)],
-    ["Ø Review-Score", stats.average_review_score == null ? "—" : `${stats.average_review_score.toFixed(1)} / 10`],
-    ["Offene Reviews", String(stats.reviews_open)],
+    [t("stats.total"), String(stats.total)],
+    [t("stats.acceptanceRate"), pct(stats.acceptance_rate)],
+    [t("stats.avgFinal"), pct(stats.average_final_score)],
+    [t("stats.avgReview"), stats.average_review_score == null ? "—" : `${formatNumber(stats.average_review_score, oneDecimal)} / 10`],
+    [t("stats.openReviews"), String(stats.reviews_open)],
   ];
   return (
     <section className="mb-6" aria-labelledby="paper-stats-heading">
-      <h2 id="paper-stats-heading" className="mb-2 text-lg font-semibold">Statistik</h2>
+      <h2 id="paper-stats-heading" className="mb-2 text-lg font-semibold">{t("stats.title")}</h2>
       <dl className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {tiles.map(([label, value]) => (
           <div key={label} className="card p-3">
@@ -55,15 +60,16 @@ function PaperStatsPanel({ stats }: { stats: PaperStats }) {
         ))}
       </dl>
       <p className="mt-2 text-xs text-gray-500">
-        {stats.accepted} angenommen · {stats.rejected} abgelehnt · {stats.disqualified} disqualifiziert ·
-        Ø je Kriterium:{" "}
-        {REVIEW_CRITERIA.map((c) => `${c.label} ${stats.criterion_averages?.[c.key]?.toFixed(1) ?? "—"}`).join(" · ")}
+        {t("stats.decisions", { accepted: stats.accepted, rejected: stats.rejected, disqualified: stats.disqualified })}{" "}
+        {t("stats.perCriterion")}{" "}
+        {REVIEW_CRITERIA.map((c) => `${c.label} ${formatNumber(stats.criterion_averages?.[c.key], oneDecimal)}`).join(" · ")}
       </p>
     </section>
   );
 }
 
 export default function PapersPage() {
+  const { t } = useTranslation("papers");
   const { eventId = "" } = useParams();
   const { data: event } = useEvent(eventId);
   const canWrite = useAuthStore((state) => state.hasPermission("papers:write"));
@@ -129,18 +135,18 @@ export default function PapersPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <FileText className="w-6 h-6" />
-          Paper Review
+          {t("title")}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           {canAdmin && seasonId && (
             <>
-              <ExportButton url={`/exports/seasons/${seasonId}/reviews.csv`} filename="paper-reviews.csv" label="Reviews CSV" variant="csv" />
+              <ExportButton url={`/exports/seasons/${seasonId}/reviews.csv`} filename="paper-reviews.csv" label={t("reviewsCsv")} variant="csv" />
               <PaperExportButtons seasonId={seasonId} seasonYear={event?.slug} />
             </>
           )}
           {canWrite && (
-            <button onClick={() => setOpen(true)} className="btn-primary" disabled={locked} title={locked ? "Einreichungsfrist abgelaufen" : undefined}>
-              + Paper einreichen
+            <button onClick={() => setOpen(true)} className="btn-primary" disabled={locked} title={locked ? t("deadlinePassed") : undefined}>
+              {t("submitNew")}
             </button>
           )}
         </div>
@@ -148,7 +154,7 @@ export default function PapersPage() {
 
       {deadline && <div className="mb-6"><DeadlineBanner deadline={deadline} /></div>}
 
-      {isLoading && <p className="text-gray-500">Laden...</p>}
+      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
 
       {seasonId && <PaperDeadlinesPanel seasonId={seasonId} canAdmin={canAdmin} />}
 
@@ -156,17 +162,17 @@ export default function PapersPage() {
 
       {canAdmin && seasonId && <AutoAssignPanel seasonId={seasonId} eventId={eventId} />}
 
-      {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">Reviewer-Auslastung</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-gray-500">{item.open} offen · {item.overdue} überfällig · {item.completed} erledigt</p></div>)}</div></section>}
+      {canAdmin && workload && <section className="mb-6"><h2 className="mb-2 text-lg font-semibold">{t("workload.title")}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workload.map((item) => <div key={item.reviewer_id} className="card p-3 text-sm"><p className="font-semibold">{users?.find((user) => user.id === item.reviewer_id)?.display_name ?? item.reviewer_id}</p><p className="text-gray-500">{t("workload.summary", { open: item.open, overdue: item.overdue, completed: item.completed })}</p></div>)}</div></section>}
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Titel</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Runde</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Version</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Eingereicht</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.title")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("common:status")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.round")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.version")}</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{t("col.submitted")}</th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -183,46 +189,44 @@ export default function PapersPage() {
                 <td className="px-4 py-3 text-gray-500">#{paper.revision_number}</td>
                 <td className="px-4 py-3 text-gray-500">{paper.current_version ? `v${paper.current_version}` : "—"}</td>
                 <td className="px-4 py-3 text-gray-500">
-                  {paper.submitted_at
-                    ? new Date(paper.submitted_at).toLocaleDateString("de-DE")
-                    : "—"}
+                  {formatDate(paper.submitted_at)}
                 </td>
               </tr>
             ))}
             {papers?.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                  Noch keine Paper eingereicht
+                  {t("empty")}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      <Modal open={open} title="Paper einreichen" onClose={() => setOpen(false)}>
+      <Modal open={open} title={t("create.title")} onClose={() => setOpen(false)}>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); createPaper.mutate(); }}>
-          <p className="text-xs text-gray-500">Pro Team und Saison gibt es ein Paper. Überarbeitungen werden später als neue Version hochgeladen.</p>
-          <label className="block text-sm font-medium">Team *
+          <p className="text-xs text-gray-500">{t("create.hint")}</p>
+          <label className="block text-sm font-medium">{t("create.team")}
             <select className="input mt-1 w-full" required value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
-              <option value="">Bitte wählen</option>
+              <option value="">{t("common:pleaseChoose")}</option>
               {registrations
                 ?.filter((registration) => canAdmin || myTeams?.some((team) => team.id === registration.team_id))
                 .map((registration) => <option key={registration.id} value={registration.team_id}>{registration.team_name}</option>)}
             </select>
           </label>
-          <label className="block text-sm font-medium">Titel *
+          <label className="block text-sm font-medium">{t("create.titleLabel")}
             <input className="input mt-1 w-full" required value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
           </label>
-          <label className="block text-sm font-medium">Kurzfassung
+          <label className="block text-sm font-medium">{t("create.abstract")}
             <textarea className="input mt-1 min-h-24 w-full" value={form.abstract} onChange={(event) => setForm((current) => ({ ...current, abstract: event.target.value }))} />
           </label>
-          <label className="block text-sm font-medium">PDF (ohne PDF bleibt das Paper ein Entwurf)
+          <label className="block text-sm font-medium">{t("create.pdf")}
             <input className="mt-1 block w-full text-sm" type="file" accept="application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
           </label>
-          {createPaper.isError && <p className="text-sm text-red-600">{apiErrorMessage(createPaper.error, "Paper konnte nicht angelegt werden.")}</p>}
+          {createPaper.isError && <p className="text-sm text-red-600">{apiErrorMessage(createPaper.error, t("create.failed"))}</p>}
           <div className="flex justify-end gap-3">
-            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Abbrechen</button>
-            <button type="submit" className="btn-primary" disabled={!event || !form.team_id || !form.title || createPaper.isPending}>{file ? "Einreichen" : "Als Entwurf anlegen"}</button>
+            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>{t("common:cancel")}</button>
+            <button type="submit" className="btn-primary" disabled={!event || !form.team_id || !form.title || createPaper.isPending}>{file ? t("create.submit") : t("create.draft")}</button>
           </div>
         </form>
       </Modal>

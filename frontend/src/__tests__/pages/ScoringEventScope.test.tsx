@@ -72,7 +72,7 @@ describe("scoring pages under /events/:eventId", () => {
     });
     renderAt("/scoring/aerial", <AerialPage />);
     // (20 + 100 + 80 + 0) / 4 = 50 — not the best-two average of 90.
-    expect(await screen.findByText("50.0")).toBeInTheDocument();
+    expect(await screen.findByText("50,0")).toBeInTheDocument();
     expect(calledUrls()).toContain("/scoring/events/e2/aerial-results");
   });
 
@@ -83,8 +83,8 @@ describe("scoring pages under /events/:eventId", () => {
     });
     renderAt("/scoring/doc", <DocScoringPage />);
     // 0.2 + 0.2 + 0.2 + 0.4 * 0
-    expect(await screen.findByText("0.6000")).toBeInTheDocument();
-    expect(await screen.findByText("1.0000")).toBeInTheDocument();
+    expect(await screen.findByText("0,6000")).toBeInTheDocument();
+    expect(await screen.findByText("1,0000")).toBeInTheDocument();
     expect(calledUrls()).toContain("/scoring/events/e2/doc-scores");
   });
 });

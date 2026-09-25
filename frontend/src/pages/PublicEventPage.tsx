@@ -13,6 +13,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatScore, formatTime } from "@/i18n/format";
 import BracketView from "@/components/BracketView";
 import type {
   BracketPhase,
@@ -179,14 +180,14 @@ export default function PublicEventPage() {
           <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-yellow-400" />{t("ranking")}</h2>
           <div className="overflow-hidden rounded-2xl border border-slate-800">
             <table className="w-full text-lg md:text-2xl">
-              <thead className="bg-slate-900 text-slate-400"><tr><th className="p-4 text-left">{t("rank")}</th><th className="p-4 text-left">{t("team")}</th><th className="p-4 text-right">Seed</th><th className="p-4 text-right">Best</th><th className="p-4 text-right">{t("rounds")}</th></tr></thead>
+              <thead className="bg-slate-900 text-slate-400"><tr><th className="p-4 text-left">{t("rank")}</th><th className="p-4 text-left">{t("team")}</th><th className="p-4 text-right">{t("seed")}</th><th className="p-4 text-right">{t("best")}</th><th className="p-4 text-right">{t("rounds")}</th></tr></thead>
               <tbody className="divide-y divide-slate-800">
                 {ranking.data?.map((item) => (
                   <tr key={item.team_id} className={item.rank <= 3 ? "bg-cyan-950/20" : ""}>
                     <td className="p-4 font-black text-cyan-300">{item.rank}</td>
                     <td className="p-4"><span className="font-bold">{item.team_name}</span>{item.team_number && <span className="ml-2 text-slate-400">#{item.team_number}</span>}</td>
-                    <td className="p-4 text-right font-bold">{item.seed_score.toFixed(2)}</td>
-                    <td className="p-4 text-right">{item.best_score.toFixed(2)}</td>
+                    <td className="p-4 text-right font-bold">{formatScore(item.seed_score)}</td>
+                    <td className="p-4 text-right">{formatScore(item.best_score)}</td>
                     <td className="p-4 text-right">{item.rounds_played}</td>
                   </tr>
                 ))}
@@ -204,7 +205,7 @@ export default function PublicEventPage() {
               <article key={match.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
                 <div className="flex justify-between text-slate-400"><span>{match.code}</span><span>{t("table", { number: match.table_number ?? "–" })}</span></div>
                 <p className="my-4 text-2xl font-black">{match.participants.map((item) => item.team_name ?? t("tbd")).join(" vs. ") || t("tbd")}</p>
-                <p className="text-cyan-300">{match.scheduled_at ? new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(new Date(match.scheduled_at)) : t("open")}</p>
+                <p className="text-cyan-300">{match.scheduled_at ? formatTime(match.scheduled_at, { timeStyle: "short" }) : t("open")}</p>
               </article>
             ))}
           </div>
@@ -228,7 +229,7 @@ export default function PublicEventPage() {
       {current === "results" && (
         <section>
           <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold"><Trophy className="text-cyan-400" />{t("results")}</h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.data?.slice(-12).reverse().map((result) => <article key={result.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between text-slate-400"><span>{t("round", { number: result.round_number })}</span><span>{t("table", { number: result.table_number ?? "–" })}</span></div><p className="mt-2 text-lg font-bold">{result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</p><p className="mt-3 text-3xl font-black text-cyan-300">{result.is_disqualified ? "DQ" : result.total_score.toFixed(2)}</p><dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-slate-400">{Object.entries(result.raw_scores).map(([key, value]) => <div key={key} className="contents"><dt>{key}</dt><dd className="text-right text-slate-200">{String(value)}</dd></div>)}</dl></article>)}</div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.data?.slice(-12).reverse().map((result) => <article key={result.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between text-slate-400"><span>{t("round", { number: result.round_number })}</span><span>{t("table", { number: result.table_number ?? "–" })}</span></div><p className="mt-2 text-lg font-bold">{result.team_name}{result.team_number ? ` #${result.team_number}` : ""}</p><p className="mt-3 text-3xl font-black text-cyan-300">{result.is_disqualified ? "DQ" : formatScore(result.total_score)}</p><dl className="mt-3 grid grid-cols-2 gap-x-4 text-sm text-slate-400">{Object.entries(result.raw_scores).map(([key, value]) => <div key={key} className="contents"><dt>{key}</dt><dd className="text-right text-slate-200">{String(value)}</dd></div>)}</dl></article>)}</div>
         </section>
       )}
 

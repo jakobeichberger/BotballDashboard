@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ModalProps {
   open: boolean;
@@ -9,6 +10,7 @@ interface ModalProps {
 }
 
 export default function Modal({ open, title, onClose, children }: ModalProps) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) return;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -33,7 +35,7 @@ export default function Modal({ open, title, onClose, children }: ModalProps) {
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Schließen" className="p-1 text-gray-400 hover:text-gray-700">
+          <button type="button" onClick={onClose} aria-label={t("close")} className="p-1 text-gray-400 hover:text-gray-700">
             <X className="h-5 w-5" />
           </button>
         </div>

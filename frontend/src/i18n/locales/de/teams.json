@@ -1,0 +1,166 @@
+{
+  "season": "Saison",
+  "category": {
+    "botball": "Botball",
+    "open": "Open",
+    "aerial": "Aerial",
+    "jbc": "JBC"
+  },
+  "fee": {
+    "pending": "offen",
+    "paid": "bezahlt",
+    "waived": "erlassen"
+  },
+  "kit": {
+    "not_sent": "nicht versandt",
+    "sent": "versandt",
+    "received": "erhalten"
+  },
+  "documentCategory": {
+    "project_plan": "Projektplan",
+    "presentation": "Präsentation",
+    "code_documentation": "Code-Dokumentation",
+    "other": "Sonstiges"
+  },
+  "compliance": {
+    "incompleteHint": "Die 3D-Druck-Checkliste des Teams ist unvollständig ({{open}} von {{total}} Punkten offen). Der Auftrag wird trotzdem angenommen.",
+    "loading": "Checkliste wird geladen...",
+    "progress": "{{checked}} von {{total}} Punkten bestätigt",
+    "verified": "von Organisation geprüft",
+    "completePending": "vollständig, Prüfung offen",
+    "incomplete": "unvollständig",
+    "unverify": "Prüfung zurücknehmen",
+    "verify": "Als geprüft markieren",
+    "none": "Für diese Saison ist noch keine 3D-Druck-Checkliste hinterlegt.",
+    "useDefaults": "Standardregeln übernehmen",
+    "itemVerified": "geprüft",
+    "newItemPlaceholder": "Weiteren Punkt ergänzen, z. B. „Max. 6 Teile (2026)“",
+    "newItem": "Neuer Checklistenpunkt"
+  },
+  "documents": {
+    "title": "Dokumente ({{count}})",
+    "season": "Saison: {{season}}",
+    "hideArchive": "Archiv ausblenden",
+    "versions": "Versionen ({{count}})",
+    "newVersion": "Neue Version",
+    "newVersionOf": "Neue Version von {{title}}",
+    "deleteLabel": "{{title}} löschen",
+    "confirmDelete": "Dokument \"{{title}}\" mit allen Versionen löschen?",
+    "empty": "Noch keine Dokumente",
+    "titleLabel": "Titel",
+    "category": "Art",
+    "file": "Datei (PDF/Bild)"
+  },
+  "roster": {
+    "label": "Kader:",
+    "edit": "Kader bearbeiten",
+    "inSeason": "{{name}} in dieser Saison",
+    "rolePlaceholder": "Rolle, z. B. Programmierer",
+    "roleOf": "Rolle von {{name}}",
+    "save": "Kader speichern"
+  },
+  "registrations": {
+    "title": "Saison-Teilnahmen ({{count}})",
+    "confirmed": "Bestätigt",
+    "open": "Offen",
+    "feeBadge": "Gebühr {{status}}",
+    "kitBadge": "Kit {{status}}",
+    "teamType": "Team-Typ",
+    "fee": "Teilnahmegebühr",
+    "kit": "Kit-Versand",
+    "contact": "Kontaktperson",
+    "phone": "Telefon",
+    "address": "Adresse (Kit-Versand, Rechnung)",
+    "internalNotes": "Notizen (intern)",
+    "empty": "Keine Registrierungen"
+  },
+  "title": "Teams",
+  "matrix": {
+    "title": "Team-Saison-Matrix",
+    "team": "Team",
+    "heading": "Saison-Zuweisung",
+    "readOnly": "Nur-Lese-Ansicht (Admin zum Bearbeiten)",
+    "registeredUnconfirmed": "Registriert, nicht bestätigt",
+    "notAssigned": "Nicht zugewiesen",
+    "active": "aktiv",
+    "confirmedCount": "{{confirmed}}/{{total}} bestätigt",
+    "registerLabel": "{{team}} für {{season}} registrieren",
+    "assign": "Zuweisen",
+    "confirm": "Bestätigen",
+    "removeAssignment": "Zuweisung entfernen"
+  },
+  "add": "+ Team hinzufügen",
+  "filter": {
+    "search": "Suche",
+    "searchPlaceholder": "Name, Nummer, Schule oder Ort",
+    "country": "Land",
+    "all": "Alle",
+    "archived": "Archiviert",
+    "reset": "Filter zurücksetzen"
+  },
+  "editLabel": "{{name}} bearbeiten",
+  "levelLabel": "Kategorie: {{level}}",
+  "noneFound": "Keine Teams gefunden",
+  "empty": "Noch keine Teams angelegt",
+  "form": {
+    "editTitle": "Team bearbeiten",
+    "addTitle": "Team hinzufügen",
+    "loadingDetails": "Teamdetails werden geladen...",
+    "field": {
+      "name": "Name *",
+      "team_number": "Teamnummer",
+      "school": "Schule",
+      "city": "Ort",
+      "country": "Land *"
+    },
+    "level": "Kategorie",
+    "noLevel": "Keine Kategorie",
+    "isActive": "Team ist aktiv",
+    "saveFailed": "Team konnte nicht gespeichert werden.",
+    "saveChanges": "Änderungen speichern",
+    "create": "Anlegen"
+  },
+  "members": {
+    "title": "Teammitglieder",
+    "role": {
+      "member": "Mitglied",
+      "student": "Schüler/in",
+      "mentor": "Mentor/in",
+      "coach": "Coach"
+    },
+    "remove": "{{name}} entfernen",
+    "empty": "Noch keine Mitglieder hinterlegt.",
+    "roleLabel": "Rolle",
+    "addFailed": "Mitglied konnte nicht hinzugefügt werden.",
+    "add": "Mitglied hinzufügen"
+  },
+  "detail": {
+    "accountLinked": "Konto verknüpft",
+    "accountFor": "Benutzerkonto für {{name}}",
+    "noAccount": "— kein Konto —",
+    "linkedAccount": "Verknüpftes Konto",
+    "back": "Zurück zu Teams",
+    "notFound": "Team nicht gefunden.",
+    "confirmDelete": "Team \"{{name}}\" wirklich löschen?",
+    "teamNumber": "Team-Nr.",
+    "school": "Schule",
+    "city": "Ort",
+    "level": "Wettbewerbsstufe",
+    "performance": "Performance-Dashboard",
+    "members": "Mitglieder ({{count}})",
+    "account": "Benutzerkonto",
+    "mentor": "Mentor",
+    "remove": "Entfernen",
+    "noMembers": "Keine Mitglieder",
+    "newMember": "Neues Mitglied",
+    "checklist": "3D-Druck-Checkliste {{season}}",
+    "papers": "Papers ({{count}})",
+    "noPapers": "Keine Papers",
+    "printJobs": "Druckaufträge ({{count}})",
+    "quota": "Kontingent: {{used}}/{{max}} Teile · {{grams}} g verbraucht",
+    "editQuota": "bearbeiten",
+    "maxParts": "max. Teile",
+    "maxGrams": "max. g",
+    "noPrintJobs": "Keine Druckaufträge"
+  }
+}

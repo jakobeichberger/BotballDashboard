@@ -13,7 +13,6 @@ import { AdminStatusPanel, JurorPanel, MentorPanel } from "@/pages/dashboard/rol
 import type { AdminSection, EventStatistics, JurorSection, MentorTeam, TeamPerformance } from "@/api/analytics";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() } }));
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 
 beforeAll(() => {
   globalThis.ResizeObserver ??= class {
@@ -230,7 +229,7 @@ describe("PerformancePage", () => {
   it("shows the ranking preview, strengths and phase comparison of the selected team", async () => {
     renderAt("/events/e1/performance", "/events/:eventId/performance", <PerformancePage />);
     expect(await screen.findByTestId("team-performance")).toBeInTheDocument();
-    expect(screen.getByText("+12.5")).toBeInTheDocument();
+    expect(screen.getByText("+12,5")).toBeInTheDocument();
     expect(screen.getByText("Stärke")).toBeInTheDocument();
     expect(screen.getByText("Schwäche")).toBeInTheDocument();
     expect(screen.getByTestId("score-trend-chart")).toBeInTheDocument();

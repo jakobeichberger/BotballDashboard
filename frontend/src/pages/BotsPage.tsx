@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
+import { useTranslation } from "react-i18next";
 import { Bot as BotIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
@@ -10,6 +10,7 @@ import BotImage from "@/components/BotImage";
 type Owner = "team" | "external";
 
 export default function BotsPage() {
+  const { t } = useTranslation("bots");
   const qc = useQueryClient();
   const isAdmin = useAuthStore((s) => s.hasRole("admin"));
   const isMentor = useAuthStore((s) => s.hasRole("mentor"));
@@ -43,7 +44,7 @@ export default function BotsPage() {
     enabled: canCreate && !isAdmin,
   });
 
-  const teamName = (tid: string | null) => teams?.find((t: any) => t.id === tid)?.name ?? tid;
+  const teamName = (tid: string | null) => teams?.find((team: any) => team.id === tid)?.name ?? tid;
   const seasonName = (sid: string | null) => seasons?.find((s: any) => s.id === sid)?.name;
   const createTeams = isAdmin ? teams : myTeams;
 
@@ -72,7 +73,7 @@ export default function BotsPage() {
       setForm({ name: "", team_id: "", external_team_name: "", season_id: "", description: "", functionality: "", drive_type: "", sensors: "" });
       qc.invalidateQueries({ queryKey: ["bots"] });
     },
-    onError: (e: any) => alert(e?.response?.data?.detail ?? "Anlegen fehlgeschlagen."),
+    onError: (e: any) => alert(e?.response?.data?.detail ?? t("createFailed")),
   });
 
   const ownerValid = owner === "team" ? !!form.team_id : !!form.external_team_name;
@@ -81,20 +82,20 @@ export default function BotsPage() {
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <BotIcon className="w-6 h-6" /> Bot-Galerie
+          <BotIcon className="w-6 h-6" /> {t("title")}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Saison filtern" className="input text-sm w-44" value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}>
-            <option value="">Alle Saisons</option>
+          <select aria-label={t("filter.season")} className="input text-sm w-44" value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}>
+            <option value="">{t("filter.allSeasons")}</option>
             {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name}</option>))}
           </select>
-          <select aria-label="Teams filtern" className="input text-sm w-40" value={scope} onChange={(e) => setScope(e.target.value as any)}>
-            <option value="">Alle Teams</option>
-            <option value="own">Eigene Teams</option>
-            <option value="external">Externe Teams</option>
+          <select aria-label={t("filter.teams")} className="input text-sm w-40" value={scope} onChange={(e) => setScope(e.target.value as any)}>
+            <option value="">{t("filter.allTeams")}</option>
+            <option value="own">{t("filter.ownTeams")}</option>
+            <option value="external">{t("filter.externalTeams")}</option>
           </select>
           {canCreate && (
-            <button className="btn-primary" onClick={() => setShow((v) => !v)}>{show ? "Abbrechen" : "+ Bot anlegen"}</button>
+            <button className="btn-primary" onClick={() => setShow((v) => !v)}>{show ? t("common:cancel") : t("add")}</button>
           )}
         </div>
       </div>
@@ -103,67 +104,67 @@ export default function BotsPage() {
         <div className="card p-5 mb-6 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className="label">Name</label>
-              <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="z. B. RoboLion X1" />
+              <label className="label">{t("common:name")}</label>
+              <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("form.namePlaceholder")} />
             </div>
             {isAdmin && (
               <div>
-                <label className="label">Zugehörigkeit</label>
+                <label className="label">{t("form.owner")}</label>
                 <select className="input" value={owner} onChange={(e) => setOwner(e.target.value as Owner)}>
-                  <option value="team">Eigenes Team</option>
-                  <option value="external">Externes Team</option>
+                  <option value="team">{t("form.ownTeam")}</option>
+                  <option value="external">{t("form.externalTeam")}</option>
                 </select>
               </div>
             )}
             {owner === "team" ? (
               <div>
-                <label className="label">Team</label>
+                <label className="label">{t("form.team")}</label>
                 <select className="input" value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })}>
-                  <option value="">— Team wählen —</option>
-                  {createTeams?.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                  <option value="">{t("form.chooseTeam")}</option>
+                  {createTeams?.map((team: any) => (<option key={team.id} value={team.id}>{team.name}</option>))}
                 </select>
               </div>
             ) : (
               <div>
-                <label className="label">Externes Team</label>
-                <input className="input" value={form.external_team_name} onChange={(e) => setForm({ ...form, external_team_name: e.target.value })} placeholder="z. B. Team Zürich" />
+                <label className="label">{t("form.externalTeam")}</label>
+                <input className="input" value={form.external_team_name} onChange={(e) => setForm({ ...form, external_team_name: e.target.value })} placeholder={t("form.externalPlaceholder")} />
               </div>
             )}
             <div>
-              <label className="label">Saison</label>
+              <label className="label">{t("form.season")}</label>
               <select className="input" value={form.season_id} onChange={(e) => setForm({ ...form, season_id: e.target.value })}>
-                <option value="">— keine —</option>
+                <option value="">{t("form.noSeason")}</option>
                 {seasons?.map((s: any) => (<option key={s.id} value={s.id}>{s.name}</option>))}
               </select>
             </div>
             <div>
-              <label className="label">Antrieb</label>
-              <input className="input" value={form.drive_type} onChange={(e) => setForm({ ...form, drive_type: e.target.value })} placeholder="z. B. Differential" />
+              <label className="label">{t("form.drive")}</label>
+              <input className="input" value={form.drive_type} onChange={(e) => setForm({ ...form, drive_type: e.target.value })} placeholder={t("form.drivePlaceholder")} />
             </div>
             <div>
-              <label className="label">Sensorik</label>
-              <input className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} placeholder="z. B. 2x IR, Kamera" />
+              <label className="label">{t("form.sensors")}</label>
+              <input className="input" value={form.sensors} onChange={(e) => setForm({ ...form, sensors: e.target.value })} placeholder={t("form.sensorsPlaceholder")} />
             </div>
           </div>
           <div>
-            <label className="label">Kurzbeschreibung</label>
+            <label className="label">{t("form.description")}</label>
             <input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div>
-            <label className="label">Funktionsweise</label>
+            <label className="label">{t("form.functionality")}</label>
             <textarea className="input min-h-[6rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })}
-                      placeholder="Wie funktioniert der Roboter? Aufbau, Antrieb, Strategie …" />
+                      placeholder={t("form.functionalityPlaceholder")} />
           </div>
           <div className="flex justify-end">
             <button className="btn-primary disabled:opacity-40" disabled={!form.name || !ownerValid || createM.isPending} onClick={() => createM.mutate()}>
-              Bot anlegen
+              {t("form.create")}
             </button>
           </div>
-          <p className="text-xs text-gray-400">Bild kann nach dem Anlegen auf der Detailseite hochgeladen werden.</p>
+          <p className="text-xs text-gray-400">{t("form.imageHint")}</p>
         </div>
       )}
 
-      {isLoading && <p className="text-gray-500">Laden...</p>}
+      {isLoading && <p className="text-gray-500">{t("common:loading")}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {bots?.map((bot: any) => (
@@ -173,7 +174,7 @@ export default function BotsPage() {
             <div className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-semibold text-gray-900 dark:text-white">{bot.name}</h3>
-                <span className={bot.team_id ? "badge-blue" : "badge-gray"}>{bot.team_id ? "Eigenes" : "Extern"}</span>
+                <span className={bot.team_id ? "badge-blue" : "badge-gray"}>{bot.team_id ? t("own") : t("external")}</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 {bot.team_id ? teamName(bot.team_id) : bot.external_team_name}
@@ -186,7 +187,7 @@ export default function BotsPage() {
           </EventLink>
         ))}
         {bots?.length === 0 && (
-          <div className="col-span-3 text-center py-12 text-gray-400">Noch keine Bots in der Galerie</div>
+          <div className="col-span-3 text-center py-12 text-gray-400">{t("empty")}</div>
         )}
       </div>
     </div>

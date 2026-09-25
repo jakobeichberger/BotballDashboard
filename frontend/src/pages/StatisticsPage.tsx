@@ -3,31 +3,27 @@ import { useParams } from "react-router-dom";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, BarChart3, CheckCircle2, ClipboardCheck, ListChecks, Users } from "lucide-react";
 import clsx from "clsx";
+import { useTranslation } from "react-i18next";
 import { fmtNum, useEventStatistics, type Anomaly, type EventStatistics } from "@/api/analytics";
 import { BoxPlotList } from "@/components/analytics/BoxPlot";
 import MatchReviewModal from "@/components/analytics/MatchReviewModal";
 import { AXIS_TICK, GRID, SERIES, heatColor, heatTextClass } from "@/components/analytics/chartTheme";
 import { ExportButton } from "@/components/ExportButtons";
 import { StatGrid, SectionCard } from "./dashboard/widgets";
+import { labelMap } from "@/i18n/labels";
 
-const REASON_LABELS: Record<string, string> = {
-  out_of_range: "Unmöglicher Wert",
-  invalid_value: "Ungültiger Wert",
-  total_mismatch: "Summe passt nicht",
-  team_outlier: "Ausreißer (Team)",
-  field_outlier: "Ausreißer (Feld)",
-  jump: "Sprung",
-};
+const REASON_LABELS = labelMap("analytics:reason", ["out_of_range", "invalid_value", "total_mismatch", "team_outlier", "field_outlier", "jump"]);
 
 export function Heatmap({ heatmap }: { heatmap: EventStatistics["heatmap"] }) {
-  if (!heatmap.teams.length || !heatmap.fields.length) return <p className="text-sm text-gray-500">Keine Daten.</p>;
+  const { t } = useTranslation("analytics");
+  if (!heatmap.teams.length || !heatmap.fields.length) return <p className="text-sm text-gray-500">{t("noData")}</p>;
   return (
     <div className="overflow-x-auto">
       <table className="text-sm">
-        <caption className="sr-only">Durchschnittliche Punkte je Team und Aufgabe; Farbe relativ zum besten Team der Aufgabe</caption>
+        <caption className="sr-only">{t("heatmap.caption")}</caption>
         <thead>
           <tr>
-            <th scope="col" className="px-2 py-1 text-left font-medium text-gray-500">Team</th>
+            <th scope="col" className="px-2 py-1 text-left font-medium text-gray-500">{t("history.col.team")}</th>
             {heatmap.fields.map((f) => <th key={f.key} scope="col" className="px-2 py-1 text-center font-medium text-gray-500">{f.label}</th>)}
           </tr>
         </thead>
@@ -40,7 +36,7 @@ export function Heatmap({ heatmap }: { heatmap: EventStatistics["heatmap"] }) {
                   key={cell.key}
                   className={clsx("min-w-[4.5rem] border border-white px-2 py-1 text-center tabular-nums dark:border-gray-900", heatTextClass(cell.ratio))}
                   style={{ backgroundColor: heatColor(cell.ratio) }}
-                  title={cell.ratio != null ? `${Math.round(cell.ratio * 100)} % des besten Teams` : undefined}
+                  title={cell.ratio != null ? t("heatmap.ofBest", { percent: Math.round(cell.ratio * 100) }) : undefined}
                 >
                   {fmtNum(cell.avg)}
                 </td>
@@ -49,32 +45,33 @@ export function Heatmap({ heatmap }: { heatmap: EventStatistics["heatmap"] }) {
           ))}
         </tbody>
       </table>
-      <p className="mt-2 text-xs text-gray-500">Dunkler = näher am besten Team dieser Aufgabe. Helle Zeilen zeigen schwache Aufgabenbereiche.</p>
+      <p className="mt-2 text-xs text-gray-500">{t("heatmap.hint")}</p>
     </div>
   );
 }
 
 export function AnomalyList({ anomalies, onSelect }: { anomalies: Anomaly[]; onSelect: (a: Anomaly) => void }) {
+  const { t } = useTranslation("analytics");
   if (!anomalies.length) {
-    return <p className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400"><CheckCircle2 className="h-4 w-4" /> Keine auffälligen Läufe.</p>;
+    return <p className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400"><CheckCircle2 className="h-4 w-4" /> {t("anomalies.none")}</p>;
   }
   return (
-    <ul className="space-y-2" aria-label="Auffällige Läufe">
+    <ul className="space-y-2" aria-label={t("anomalies.label")}>
       {anomalies.map((a) => (
         <li key={a.match_id} className="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-          <AlertTriangle className={clsx("h-4 w-4 shrink-0", a.severity === "error" ? "text-red-600" : "text-yellow-600")} aria-label={a.severity === "error" ? "Fehler" : "Warnung"} />
+          <AlertTriangle className={clsx("h-4 w-4 shrink-0", a.severity === "error" ? "text-red-600" : "text-yellow-600")} aria-label={a.severity === "error" ? t("anomalies.error") : t("anomalies.warning")} />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {a.team_name} · Runde {a.round_number} · {fmtNum(a.total_score)} Punkte
-              {a.is_practice && <span className="badge-yellow ml-2 text-xs">Übung</span>}
-              {a.confirmed && <span className="badge-green ml-2 text-xs">bestätigt</span>}
+              {t("anomalies.summary", { team: a.team_name, round: a.round_number, points: fmtNum(a.total_score) })}
+              {a.is_practice && <span className="badge-yellow ml-2 text-xs">{t("practice")}</span>}
+              {a.confirmed && <span className="badge-green ml-2 text-xs">{t("anomalies.confirmed")}</span>}
             </p>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               {a.reasons.map((r) => `${REASON_LABELS[r.kind] ?? r.kind}: ${r.message}`).join(" · ")}
             </p>
           </div>
           <button type="button" className="btn-secondary text-xs" onClick={() => onSelect(a)}>
-            <ClipboardCheck className="h-3.5 w-3.5" /> Prüfen
+            <ClipboardCheck className="h-3.5 w-3.5" /> {t("anomalies.check")}
           </button>
         </li>
       ))}
@@ -84,6 +81,7 @@ export function AnomalyList({ anomalies, onSelect }: { anomalies: Anomaly[]; onS
 
 /** Event statistics & anomaly detection for jurors (auftrag 4.2). */
 export default function StatisticsPage() {
+  const { t } = useTranslation("analytics");
   const { eventId = "" } = useParams();
   const [includePractice, setIncludePractice] = useState(false);
   const { data: stats, isLoading, isError } = useEventStatistics(eventId, includePractice);
@@ -93,83 +91,83 @@ export default function StatisticsPage() {
     <div className="p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <BarChart3 className="w-6 h-6" /> Statistik & Anomalien
+          <BarChart3 className="w-6 h-6" /> {t("statistics.title")}
         </h1>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <input type="checkbox" checked={includePractice} onChange={(e) => setIncludePractice(e.target.checked)} />
-            Übungsläufe einbeziehen
+            {t("statistics.includePractice")}
           </label>
-          {eventId && <ExportButton url={`/exports/events/${eventId}/matches.csv`} filename="laeufe.csv" label="Läufe CSV" variant="csv" />}
+          {eventId && <ExportButton url={`/exports/events/${eventId}/matches.csv`} filename="laeufe.csv" label={t("common:export.runsCsv")} variant="csv" />}
         </div>
       </div>
-      {isLoading && <p className="text-gray-500">Laden…</p>}
-      {isError && <p className="card p-6 text-sm text-red-600">Statistiken konnten nicht geladen werden.</p>}
+      {isLoading && <p className="text-gray-500">{t("common:loadingEllipsis")}</p>}
+      {isError && <p className="card p-6 text-sm text-red-600">{t("statistics.loadFailed")}</p>}
       {stats && (
         <>
           <StatGrid
-            ariaLabel="Überblick"
+            ariaLabel={t("statistics.overview")}
             items={[
-              { label: "Läufe", value: stats.overview.runs, icon: ListChecks },
-              { label: "Teams", value: stats.overview.teams, icon: Users },
-              { label: "Unbestätigt", value: stats.overview.unconfirmed, icon: ClipboardCheck },
-              { label: "Auffällig", value: stats.anomalies.length, icon: AlertTriangle },
+              { label: t("history.col.runs"), value: stats.overview.runs, icon: ListChecks },
+              { label: t("statistics.teams"), value: stats.overview.teams, icon: Users },
+              { label: t("statistics.unconfirmed"), value: stats.overview.unconfirmed, icon: ClipboardCheck },
+              { label: t("statistics.anomalous"), value: stats.anomalies.length, icon: AlertTriangle },
             ]}
           />
 
-          <SectionCard title={`Zu prüfende Läufe (${stats.anomalies.length})`} id="stats-anomalies">
+          <SectionCard title={t("statistics.toCheck", { count: stats.anomalies.length })} id="stats-anomalies">
             <AnomalyList anomalies={stats.anomalies} onSelect={setSelected} />
             <p className="mt-3 text-xs text-gray-500">
-              Geprüft werden unmögliche Werte, Summen, die nicht zu den Einzelwerten passen, Ausreißer gegenüber den übrigen Läufen des Teams (robuster z-Wert) und gegenüber allen Läufen (3×IQR) sowie unplausible Sprünge.
+              {t("statistics.checksHint")}
             </p>
           </SectionCard>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <SectionCard title="Verteilung je Runde" id="stats-rounds">
-              <BoxPlotList ariaLabel="Boxplots je Runde" rows={stats.rounds.map((r) => ({ label: `Runde ${r.round_number}`, box: r }))} />
+            <SectionCard title={t("statistics.perRound")} id="stats-rounds">
+              <BoxPlotList ariaLabel={t("statistics.perRoundLabel")} rows={stats.rounds.map((r) => ({ label: t("round", { round: r.round_number }), box: r }))} />
             </SectionCard>
-            <SectionCard title="Verteilung je Aufgabe (Punkte)" id="stats-fields">
-              <BoxPlotList ariaLabel="Boxplots je Aufgabe" rows={stats.fields.map((f) => ({ label: f.label, box: f }))} />
+            <SectionCard title={t("statistics.perField")} id="stats-fields">
+              <BoxPlotList ariaLabel={t("statistics.perFieldLabel")} rows={stats.fields.map((f) => ({ label: f.label, box: f }))} />
             </SectionCard>
           </div>
 
-          <SectionCard title="Heatmap: Punkte je Team und Aufgabe" id="stats-heatmap">
+          <SectionCard title={t("statistics.heatmap")} id="stats-heatmap">
             <Heatmap heatmap={stats.heatmap} />
           </SectionCard>
 
-          <SectionCard title="Trend über die Runden" id="stats-trend">
+          <SectionCard title={t("statistics.trend")} id="stats-trend">
             {stats.trend.rounds.length > 0 ? (
               <div className="h-64" data-testid="round-trend-chart">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={stats.trend.rounds} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
                     <CartesianGrid stroke={GRID} vertical={false} />
-                    <XAxis dataKey="round_number" tick={AXIS_TICK} tickFormatter={(v) => `R${v}`} />
+                    <XAxis dataKey="round_number" tick={AXIS_TICK} tickFormatter={(v) => t("roundShort", { round: v })} />
                     <YAxis tick={AXIS_TICK} width={40} />
-                    <Tooltip labelFormatter={(v) => `Runde ${v}`} />
+                    <Tooltip labelFormatter={(v) => t("round", { round: v })} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Line type="monotone" dataKey="mean" name="Mittelwert" stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="median" name="Median" stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="mean" name={t("statistics.mean")} stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="median" name={t("statistics.median")} stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-            ) : <p className="text-sm text-gray-500">Keine Daten.</p>}
+            ) : <p className="text-sm text-gray-500">{t("noData")}</p>}
             {stats.trend.teams.length > 0 && (
               <table className="mt-4 w-full text-sm">
-                <caption className="sr-only">Trend je Team</caption>
+                <caption className="sr-only">{t("statistics.trendPerTeam")}</caption>
                 <thead><tr className="text-left text-gray-500">
-                  <th scope="col" className="py-1 font-medium">Team</th>
-                  <th scope="col" className="py-1 font-medium">Läufe</th>
-                  <th scope="col" className="py-1 font-medium">Scores</th>
-                  <th scope="col" className="py-1 text-right font-medium">Trend / Lauf</th>
+                  <th scope="col" className="py-1 font-medium">{t("history.col.team")}</th>
+                  <th scope="col" className="py-1 font-medium">{t("history.col.runs")}</th>
+                  <th scope="col" className="py-1 font-medium">{t("statistics.scores")}</th>
+                  <th scope="col" className="py-1 text-right font-medium">{t("statistics.trendPerRun")}</th>
                 </tr></thead>
                 <tbody>
-                  {stats.trend.teams.map((t) => (
-                    <tr key={t.team_id} className="border-t border-gray-100 dark:border-gray-800">
-                      <td className="py-1">{t.team_name}</td>
-                      <td className="py-1 tabular-nums">{t.points.length}</td>
-                      <td className="py-1 tabular-nums text-gray-500">{t.points.map((p) => fmtNum(p.total_score, 0)).join(" → ")}</td>
-                      <td className={clsx("py-1 text-right tabular-nums", (t.slope ?? 0) > 0 ? "text-green-700 dark:text-green-400" : (t.slope ?? 0) < 0 ? "text-red-700 dark:text-red-400" : "")}>
-                        {t.slope != null && t.slope > 0 ? "+" : ""}{fmtNum(t.slope)}
+                  {stats.trend.teams.map((row) => (
+                    <tr key={row.team_id} className="border-t border-gray-100 dark:border-gray-800">
+                      <td className="py-1">{row.team_name}</td>
+                      <td className="py-1 tabular-nums">{row.points.length}</td>
+                      <td className="py-1 tabular-nums text-gray-500">{row.points.map((p) => fmtNum(p.total_score, 0)).join(" → ")}</td>
+                      <td className={clsx("py-1 text-right tabular-nums", (row.slope ?? 0) > 0 ? "text-green-700 dark:text-green-400" : (row.slope ?? 0) < 0 ? "text-red-700 dark:text-red-400" : "")}>
+                        {row.slope != null && row.slope > 0 ? "+" : ""}{fmtNum(row.slope)}
                       </td>
                     </tr>
                   ))}

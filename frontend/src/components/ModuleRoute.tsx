@@ -21,7 +21,7 @@ export default function ModuleRoute({ module, children }: Props) {
       <div role="alert" className="card mx-auto max-w-lg p-8 text-center">
         <PackageX className="mx-auto mb-3 h-10 w-10 text-gray-400" aria-hidden="true" />
         <p className="mb-4">{t("moduleDisabled")}</p>
-        <EventLink to="/dashboard" className="btn-secondary">Dashboard</EventLink>
+        <EventLink to="/dashboard" className="btn-secondary">{t("nav.dashboard")}</EventLink>
       </div>
     </div>
   );
