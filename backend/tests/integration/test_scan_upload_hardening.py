@@ -204,6 +204,23 @@ async def test_valid_upload_is_stored_and_queued_after_commit(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("kind", "suffix"), [("JPEG", ".jpg"), ("WEBP", ".webp"), ("PDF", ".pdf")])
+async def test_every_accepted_type_is_stored_under_its_own_suffix(
+    client, db, event, team, template, queued, kind, suffix
+):
+    mentor = await _mentor(db, f"m-scan-{kind.lower()}@test.com", team)
+    if kind == "PDF":
+        content = b"%PDF-1.4\n%%EOF\n"
+    else:
+        buf = io.BytesIO()
+        Image.new("RGB", (40, 30), "white").save(buf, kind)
+        content = buf.getvalue()
+    resp = await _upload(client, mentor, event, team, template.id, content, "upload.bin")
+    assert resp.status_code == 202, resp.text
+    assert [path.suffix for path in _stored(event.id)] == [suffix]
+
+
+@pytest.mark.asyncio
 async def test_rolled_back_upload_is_neither_kept_nor_queued(
     client, db, event, team, template, queued
 ):

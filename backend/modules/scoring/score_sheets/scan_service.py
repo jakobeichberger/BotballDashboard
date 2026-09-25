@@ -41,7 +41,8 @@ PDF_RASTER_MAX_SIDE = 3000
 
 _PDF_MAGIC = b"%PDF-"
 # Detected image format -> stored extension. GIF and anything else is refused.
-SCAN_TYPES = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}
+# Pillow reports many phone-camera JPEGs as "MPO" (JPEG with a preview image).
+SCAN_TYPES = {"PNG": ".png", "JPEG": ".jpg", "MPO": ".jpg", "WEBP": ".webp"}
 
 
 class ScanImageTooLarge(ValueError):
