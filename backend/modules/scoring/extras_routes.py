@@ -4,9 +4,10 @@ scouting and GCER qualification."""
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_permission
+from core.auth import has_elevated_access, require_permission
 from core.database import get_db
 from core.live import publish_after_commit
+from modules.events.draft_access import DRAFT_READERS
 from modules.scoring import extras_service as svc
 from modules.scoring import sheet_templates
 from modules.scoring.extras_schemas import (
@@ -88,11 +89,12 @@ async def list_schema_templates(_=Depends(require_permission("scoring:read"))):
 @router.get("/schemas", response_model=list[SchemaListEntry])
 async def list_schemas(
     season_id: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     """Active schema versions of every event/level — sources for "clone from"."""
-    return await svc.list_schemas(db, season_id)
+    include_drafts = await has_elevated_access(db, current_user, DRAFT_READERS)
+    return await svc.list_schemas(db, season_id, include_drafts=include_drafts)
 
 
 @router.post(

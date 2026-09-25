@@ -190,6 +190,10 @@ class ScoreRevision(Base):
     # Plain copies (no FK), so they survive the match being deleted.
     match_ref: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     team_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Copy of Match.is_practice: practice history is only for the team itself
+    # and organizers (modules.scoring.visibility). NULL for rows written before
+    # migration 0031 whose match no longer exists.
+    is_practice: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     event_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
     )

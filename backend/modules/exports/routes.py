@@ -25,6 +25,7 @@ from modules.paper_review.service import list_papers
 from modules.printing.service import list_print_jobs, list_printers
 from modules.scoring.formula_service import compute_overall_ranking
 from modules.scoring.service import get_ranking, list_matches
+from modules.scoring.visibility import team_scope
 from modules.seasons.service import get_season
 from modules.teams.models import Team
 from modules.teams.service import get_team, list_teams
@@ -180,11 +181,13 @@ async def export_event_overall_ranking_pdf(
 @router.get("/events/{event_id}/matches.csv")
 async def export_event_matches_csv(
     event_id: str,
-    _=Depends(require_any_permission("scoring:read")),
+    current_user=Depends(require_any_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     event = await get_event(db, event_id)
-    matches = await list_matches(db, event_id=event.id)
+    # Practice runs of other teams stay with those teams (organizers get all).
+    scope = await team_scope(db, current_user)
+    matches = await list_matches(db, event_id=event.id, team_scope=scope)
     teams = await _event_teams_map(db, event.id)
     buf = io.StringIO()
     writer = _SafeWriter(buf)
@@ -314,11 +317,12 @@ async def export_ranking_csv(
 @router.get("/seasons/{season_id}/matches.csv")
 async def export_matches_csv(
     season_id: str,
-    _=Depends(require_any_permission("scoring:read")),
+    current_user=Depends(require_any_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     season = await get_season(db, season_id)
-    matches = await list_matches(db, season_id)
+    scope = await team_scope(db, current_user)
+    matches = await list_matches(db, season_id, team_scope=scope)
     teams = await _teams_map(db, season_id)
 
     buf = io.StringIO()
@@ -348,7 +352,8 @@ async def export_matches_csv(
                 "Ja" if m.is_disqualified else "Nein",
                 "Ja" if m.yellow_card else "Nein",
                 "Ja" if m.red_card else "Nein",
-                m.notes or "",
+                # Notes are the jurors' or the team's own: not for other teams.
+                (m.notes or "") if scope is None or m.team_id in scope else "",
                 m.created_at.strftime("%d.%m.%Y %H:%M"),
             ]
         )

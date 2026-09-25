@@ -11,9 +11,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from core.exceptions import ConflictError, NotFoundError, ValidationError
-from modules.events.models import Event, EventPhase, EventRegistration, ScheduledMatch
+from modules.events.models import (
+    Event,
+    EventPhase,
+    EventRegistration,
+    MatchParticipant,
+    ScheduledMatch,
+)
 from modules.scoring import rules_service, sheet, tiebreak
 from modules.scoring.models import Match, Ranking, ScoreRevision, ScoringSchema
+from modules.scoring.visibility import visible_matches_clause, visible_revisions_clause
 from modules.seasons.lifecycle import ensure_writable
 from modules.seasons.models import SeasonPhase
 from modules.teams.models import TeamSeasonRegistration
@@ -288,8 +295,14 @@ async def list_matches(
     phase_id: str | None = None,
     event_id: str | None = None,
     is_practice: bool | None = None,
+    team_scope: set[str] | None = None,
 ) -> list[Match]:
+    """Matches, filtered. With `team_scope`, practice runs of other teams are
+    left out (see modules.scoring.visibility)."""
     query = select(Match).order_by(Match.round_number, Match.created_at)
+    visible = visible_matches_clause(team_scope)
+    if visible is not None:
+        query = query.where(visible)
     if season_id:
         query = query.where(Match.season_id == season_id)
     if event_id:
@@ -339,6 +352,7 @@ def _revision(
         match_id=match.id,
         match_ref=match.id,
         team_id=match.team_id,
+        is_practice=match.is_practice,
         event_id=match.event_id,
         revision=match.version,
         previous_raw_scores=previous and previous["raw_scores"],
@@ -350,6 +364,23 @@ def _revision(
         reason=reason,
         changed_by=changed_by,
     )
+
+
+async def assert_match_participant(db: AsyncSession, scheduled_match_id: str, team_id: str) -> None:
+    """422 unless `team_id` plays in the scheduled (head-to-head) match.
+
+    A score attached to a scheduled match decides its outcome, the opponent's
+    contact bonus and bracket advancement; a team that is not placed in the
+    match must not be able to take part in that (nor its mentor through it).
+    """
+    result = await db.execute(
+        select(MatchParticipant.id).where(
+            MatchParticipant.scheduled_match_id == scheduled_match_id,
+            MatchParticipant.team_id == team_id,
+        )
+    )
+    if result.first() is None:
+        raise ValidationError("The team does not play in this scheduled match")
 
 
 async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
@@ -373,6 +404,7 @@ async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
         scheduled_match = await db.get(ScheduledMatch, scheduled_match_id)
         if not scheduled_match or scheduled_match.event_id != event.id:
             raise ValidationError("Scheduled match does not belong to this event")
+        await assert_match_participant(db, scheduled_match_id, match_data["team_id"])
         match_data.setdefault("event_phase_id", scheduled_match.phase_id)
         match_data.setdefault("round_number", scheduled_match.round_number)
         match_data.setdefault("table_number", scheduled_match.table_number)
@@ -516,10 +548,20 @@ async def list_revisions(db: AsyncSession, match_id: str) -> list[ScoreRevision]
 
 
 async def list_event_revisions(
-    db: AsyncSession, event_id: str, team_id: str | None = None, limit: int = 500
+    db: AsyncSession,
+    event_id: str,
+    team_id: str | None = None,
+    limit: int = 500,
+    team_scope: set[str] | None = None,
 ) -> list[ScoreRevision]:
-    """Score audit trail of a whole event, newest first, including deletions."""
+    """Score audit trail of a whole event, newest first, including deletions.
+
+    With `team_scope`, the history of other teams' practice runs is left out.
+    """
     query = select(ScoreRevision).where(ScoreRevision.event_id == event_id)
+    visible = visible_revisions_clause(team_scope)
+    if visible is not None:
+        query = query.where(visible)
     if team_id:
         query = query.where(ScoreRevision.team_id == team_id)
     result = await db.execute(query.order_by(ScoreRevision.created_at.desc()).limit(limit))
@@ -589,6 +631,7 @@ async def delete_match(
             match_id=None,
             match_ref=match.id,
             team_id=match.team_id,
+            is_practice=match.is_practice,
             event_id=match.event_id,
             revision=match.version + 1,
             previous_raw_scores=previous["raw_scores"],

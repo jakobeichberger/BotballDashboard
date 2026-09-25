@@ -24,6 +24,7 @@ from core.logging import configure_logging
 from core.metrics import observe_request, render_metrics
 from core.modules import MODULES
 from core.request_limits import BodySizeLimitMiddleware, body_limit_bytes
+from modules.events.draft_access import hide_draft_events
 from modules.events.module_access import require_module
 
 settings = get_settings()
@@ -198,8 +199,12 @@ app.add_middleware(
 # Register all modules from one explicit, static registry.
 # Feature modules carry a per-event switch; their guard answers 404 for events
 # that have the module disabled.
+# Every router also hides draft events from users without events:write
+# (modules.events.draft_access).
 for module in MODULES:
-    guards = [Depends(require_module(module.event_module))] if module.event_module else []
+    guards = [Depends(hide_draft_events)]
+    if module.event_module:
+        guards.append(Depends(require_module(module.event_module)))
     app.include_router(module.router, prefix="/api", dependencies=guards)
 
 
