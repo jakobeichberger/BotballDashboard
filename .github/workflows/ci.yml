@@ -411,8 +411,14 @@ jobs:
         run: |
           archive="$(docker compose exec -T backup sh -c 'ls -1t /backups/*.tar.gz.age | head -n1' | tr -d '\r')"
           test -n "$archive"
+          # The backup container runs as uid 10001 and cannot read the
+          # runner's 0600 identity; hand it a copy it owns (docs/operations.md).
+          work="$RUNNER_TEMP/restore-work"
+          sudo install -d -m 700 -o 10001 -g 10001 "$work"
+          sudo install -m 400 -o 10001 -g 10001 "$RUNNER_TEMP/backup-identity.txt" "$work/age-identity"
+          trap 'sudo rm -rf "$work"' EXIT
           docker compose run --rm --no-deps \
-            -v "$RUNNER_TEMP/backup-identity.txt:/run/age-identity:ro" -e AGE_IDENTITY=/run/age-identity \
+            -v "$work:/restore-work" -e AGE_IDENTITY=/restore-work/age-identity \
             backup /app/scripts/restore-test.sh "$archive"
       - name: Verify the deployment
         run: scripts/verify-deployment.sh
