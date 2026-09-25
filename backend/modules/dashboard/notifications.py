@@ -131,7 +131,7 @@ async def list_for_user(
     )
     if unread_only:
         query = query.where(_unread_by(user_id))
-    rows = [row for row, _created in (await db.execute(query)).tuples()]
+    rows = [row for row, _created in await db.execute(query)]
     read_ids: set[str] = set()
     if rows and not unread_only:
         read_ids = set(

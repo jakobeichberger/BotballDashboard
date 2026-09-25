@@ -129,4 +129,8 @@ testpaths = ["tests"]
 log_level = "WARNING"
 # The suite signs tokens with a throwaway JWT_SECRET_KEY; production enforces
 # a long secret (core.config), so PyJWT's short-key warning is only noise here.
-filterwarnings = ["ignore:The HMAC key is .* below the minimum recommended length"]
+# SQLAlchemy deprecations fail the suite: they are removed in the next minor.
+filterwarnings = [
+    "ignore:The HMAC key is .* below the minimum recommended length",
+    "error::sqlalchemy.exc.SADeprecationWarning",
+]

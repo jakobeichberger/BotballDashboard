@@ -271,9 +271,7 @@ async def load_event_inputs(db: AsyncSession, event_id: str) -> EventInputs:
                     EventRegistration.event_id == event_id
                 )
             )
-        )
-        .tuples()
-        .all()
+        ).all()
     )
     season_categories: dict[str, str | None] = dict(
         (
@@ -282,9 +280,7 @@ async def load_event_inputs(db: AsyncSession, event_id: str) -> EventInputs:
                     TeamSeasonRegistration.season_id == season_id
                 )
             )
-        )
-        .tuples()
-        .all()
+        ).all()
     )
 
     team_ids: set[str] = set(event_categories)
@@ -343,9 +339,7 @@ async def load_event_inputs(db: AsyncSession, event_id: str) -> EventInputs:
     names: dict[str, str] = {}
     if team_ids:
         names = dict(
-            (await db.execute(select(Team.id, Team.name).where(Team.id.in_(team_ids))))
-            .tuples()
-            .all()
+            (await db.execute(select(Team.id, Team.name).where(Team.id.in_(team_ids)))).all()
         )
 
     # Papers are submitted and judged per season, not per event. final_score is
@@ -357,7 +351,7 @@ async def load_event_inputs(db: AsyncSession, event_id: str) -> EventInputs:
             Paper.season_id == season_id, Paper.final_score.isnot(None)
         )
     )
-    for paper_team, final_score in paper_rows.tuples():
+    for paper_team, final_score in paper_rows:
         if paper_team in team_ids:
             paper_by_team[paper_team] = float(final_score or 0.0) * 100.0
 
