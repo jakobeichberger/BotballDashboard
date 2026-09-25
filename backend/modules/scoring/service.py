@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from core.exceptions import ConflictError, NotFoundError, ValidationError
+from core.live import invalidate_after_commit
 from modules.events.models import Event, EventPhase, EventRegistration, ScheduledMatch
 from modules.scoring import rules_service, sheet, tiebreak
 from modules.scoring.models import Match, Ranking, ScoreRevision, ScoringSchema
@@ -111,6 +112,17 @@ async def team_categories(
         if category and (wanted is None or team_id in wanted):
             categories[team_id] = category
     return categories
+
+
+async def invalidate_season_rankings(db: AsyncSession, season_id: str) -> None:
+    """Drop the cached rankings of every event of the season after the commit.
+
+    For season-wide inputs of the overall ranking (formula sets, bracket
+    weights, paper scores), which no live event announces; see core.cache.
+    """
+    event_ids = await db.execute(select(Event.id).where(Event.season_id == season_id))
+    for event_id in event_ids.scalars():
+        invalidate_after_commit(db, event_id)
 
 
 async def red_carded_teams(db: AsyncSession, event_id: str) -> set[str]:
@@ -288,8 +300,18 @@ async def list_matches(
     phase_id: str | None = None,
     event_id: str | None = None,
     is_practice: bool | None = None,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+    newest_first: bool = False,
 ) -> list[Match]:
-    query = select(Match).order_by(Match.round_number, Match.created_at)
+    """Matches in entry order (round, then time), or the reverse with `newest_first`.
+
+    The id is the last sort key so that pages (`limit`/`offset`) never
+    overlap or skip rows that share round and timestamp.
+    """
+    columns = (Match.round_number, Match.created_at, Match.id)
+    query = select(Match).order_by(*(c.desc() for c in columns) if newest_first else columns)
     if season_id:
         query = query.where(Match.season_id == season_id)
     if event_id:
@@ -300,6 +322,10 @@ async def list_matches(
         query = query.where(Match.event_phase_id == phase_id)
     if is_practice is not None:
         query = query.where(Match.is_practice.is_(is_practice))
+    if offset:
+        query = query.offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -352,7 +378,35 @@ def _revision(
     )
 
 
-async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
+class RankRefresh:
+    """The seeding tables a batch of score writes touched, each re-ranked once.
+
+    Re-ranking a table (_refresh_ranks) reads every row of it plus categories,
+    red cards and tie-breakers. A head-to-head score touches two teams and a
+    bulk entry many; without batching, each of them re-ranked the whole table.
+    Pass one instance to several writes and ``await run(db)`` at the end.
+    """
+
+    def __init__(self) -> None:
+        self.tables: set[tuple[str, str | None]] = set()
+
+    def add(self, event_id: str, competition_level_id: str | None) -> None:
+        self.tables.add((event_id, competition_level_id))
+
+    async def run(self, db: AsyncSession) -> None:
+        for event_id, level_id in sorted(self.tables, key=lambda t: (t[0], t[1] or "")):
+            await _refresh_ranks(db, event_id, level_id)
+        self.tables.clear()
+
+
+async def create_match(
+    db: AsyncSession, data: dict, entered_by: str, *, rank_refresh: RankRefresh | None = None
+) -> Match:
+    """Record a run and update the seeding ranking.
+
+    With `rank_refresh` the re-ranking is left to the caller (bulk entry
+    re-ranks once after all runs); the team rows are rebuilt either way.
+    """
     match_data = data.copy()
     provided_total = match_data.pop("total_score", None)
     season_id = match_data.pop("season_id")
@@ -417,14 +471,18 @@ async def create_match(db: AsyncSession, data: dict, entered_by: str) -> Match:
     await db.flush()
     opponents = await _apply_head_to_head(db, match)
     db.add(_revision(match, entered_by, None))
+    batch = rank_refresh if rank_refresh is not None else RankRefresh()
     await _recompute_ranking(
         db,
         event.id,
         match.team_id,
         match.competition_level_id,
         match.event_phase_id,
+        refresh=batch,
     )
-    await _recompute_opponents(db, opponents)
+    await _recompute_opponents(db, opponents, batch)
+    if rank_refresh is None:
+        await batch.run(db)
     return match
 
 
@@ -450,10 +508,17 @@ async def _apply_head_to_head(db: AsyncSession, match: Match) -> list[Match]:
     return [m for m in others if m.id != match.id]
 
 
-async def _recompute_opponents(db: AsyncSession, opponents: list[Match]) -> None:
+async def _recompute_opponents(
+    db: AsyncSession, opponents: list[Match], refresh: RankRefresh
+) -> None:
     for other in opponents:
         await _recompute_ranking(
-            db, other.event_id, other.team_id, other.competition_level_id, other.event_phase_id
+            db,
+            other.event_id,
+            other.team_id,
+            other.competition_level_id,
+            other.event_phase_id,
+            refresh=refresh,
         )
 
 
@@ -489,16 +554,21 @@ async def update_match(
     match.version += 1
     await db.flush()
     db.add(_revision(match, changed_by, previous, correction_reason))
+    batch = RankRefresh()
     await _recompute_ranking(
         db,
         match.event_id,
         match.team_id,
         match.competition_level_id,
         match.event_phase_id,
+        refresh=batch,
     )
-    await _recompute_opponents(db, opponents)
+    await _recompute_opponents(db, opponents, batch)
     if previous["red_card"] != match.red_card:
+        # Covers every level, including the ones collected above.
         await refresh_all_levels(db, match.event_id)
+    else:
+        await batch.run(db)
     return match
 
 
@@ -604,15 +674,18 @@ async def delete_match(
     await db.flush()
     await db.delete(match)
     await db.flush()
-    await _recompute_ranking(db, event_id, team_id, level_id, phase_id)
+    batch = RankRefresh()
+    await _recompute_ranking(db, event_id, team_id, level_id, phase_id, refresh=batch)
     if scheduled_match_id:
         # The opponent loses any contact bonus this row gave it.
         await rules_service.apply_head_to_head(db, scheduled_match_id, season_id)
         await _recompute_opponents(
-            db, await rules_service.head_to_head_matches(db, scheduled_match_id)
+            db, await rules_service.head_to_head_matches(db, scheduled_match_id), batch
         )
     if previous["red_card"]:
         await refresh_all_levels(db, event_id)
+    else:
+        await batch.run(db)
 
 
 async def refresh_all_levels(db: AsyncSession, event_id: str) -> None:
@@ -634,6 +707,8 @@ async def _recompute_ranking(
     team_id: str,
     competition_level_id: str | None,
     event_phase_id: str | None = None,
+    *,
+    refresh: RankRefresh | None = None,
 ) -> None:
     """Rebuild one team's seeding ranking row at an event.
 
@@ -642,6 +717,9 @@ async def _recompute_ranking(
     double-seeding, alliance and final matches. `event_phase_id` is accepted
     for backwards compatibility; which phase the triggering match belonged to
     does not change what the ranking contains.
+
+    The table is re-ranked right away, or — with `refresh` — once the caller
+    runs that batch.
     """
     del event_phase_id
     event = await db.get(Event, event_id)
@@ -699,27 +777,28 @@ async def _recompute_ranking(
     ]
     if not scores:
         await db.execute(delete(Ranking).where(*ranking_filter))
+    else:
+        result = await db.execute(select(Ranking).where(*ranking_filter))
+        ranking = result.scalar_one_or_none()
+        if not ranking:
+            ranking = Ranking(
+                season_id=event.season_id,
+                event_id=event_id,
+                event_phase_id=None,
+                team_id=team_id,
+                competition_level_id=competition_level_id,
+                rank=None,
+            )
+            db.add(ranking)
+        ranking.seed_score = compute_seed_score(scores)
+        ranking.best_score = max(scores)
+        ranking.average_score = sum(scores) / len(scores)
+        ranking.rounds_played = len(scores)
+        await db.flush()
+    if refresh is not None:
+        refresh.add(event_id, competition_level_id)
+    else:
         await _refresh_ranks(db, event_id, competition_level_id)
-        return
-
-    result = await db.execute(select(Ranking).where(*ranking_filter))
-    ranking = result.scalar_one_or_none()
-    if not ranking:
-        ranking = Ranking(
-            season_id=event.season_id,
-            event_id=event_id,
-            event_phase_id=None,
-            team_id=team_id,
-            competition_level_id=competition_level_id,
-            rank=None,
-        )
-        db.add(ranking)
-    ranking.seed_score = compute_seed_score(scores)
-    ranking.best_score = max(scores)
-    ranking.average_score = sum(scores) / len(scores)
-    ranking.rounds_played = len(scores)
-    await db.flush()
-    await _refresh_ranks(db, event_id, competition_level_id)
 
 
 async def _refresh_ranks(

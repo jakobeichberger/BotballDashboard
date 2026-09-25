@@ -1,9 +1,15 @@
-"""Export routes – PDF and CSV downloads."""
+"""Export routes – PDF and CSV downloads.
+
+reportlab is synchronous and CPU-bound; PDFs are built in the threadpool
+(run_in_threadpool) from plain data, so a large report does not stall every
+other request of this API process while it renders.
+"""
 
 import csv
 import io
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -97,7 +103,8 @@ async def export_event_ranking_pdf(
     event = await get_event(db, event_id)
     ranking = await get_ranking(db, event_id=event.id)
     teams = await _event_teams_map(db, event.id)
-    content = build_ranking_pdf(
+    content = await run_in_threadpool(
+        build_ranking_pdf,
         event.name,
         "",
         [
@@ -169,7 +176,9 @@ async def export_event_overall_ranking_pdf(
 ):
     event = await get_event(db, event_id)
     season = await get_season(db, event.season_id)
-    content = build_overall_ranking_pdf(event.name, season.name, await _overall_entries(db, event))
+    content = await run_in_threadpool(
+        build_overall_ranking_pdf, event.name, season.name, await _overall_entries(db, event)
+    )
     return Response(
         content=content,
         media_type="application/pdf",
@@ -249,7 +258,8 @@ async def export_ranking_pdf(
     ranking = await get_ranking(db, season_id, competition_level_id)
     teams = await _teams_map(db, season_id)
 
-    pdf_bytes = build_ranking_pdf(
+    pdf_bytes = await run_in_threadpool(
+        build_ranking_pdf,
         season_name=season.name,
         competition_level=competition_level_name or "",
         ranking_rows=[
@@ -389,7 +399,8 @@ async def export_papers_pdf(
             }
         )
 
-    pdf_bytes = build_paper_review_pdf(
+    pdf_bytes = await run_in_threadpool(
+        build_paper_review_pdf,
         season_name=season.name,
         papers=papers_data,
         teams_by_id=teams,
@@ -569,7 +580,8 @@ async def export_printing_pdf(
         for j in jobs
     ]
 
-    pdf_bytes = build_print_report_pdf(
+    pdf_bytes = await run_in_threadpool(
+        build_print_report_pdf,
         season_name=season.name,
         jobs=jobs_data,
         teams_by_id=teams,
@@ -606,7 +618,9 @@ async def export_teams_pdf(
         for t in teams
     ]
 
-    pdf_bytes = build_team_list_pdf(season_name=season.name, teams=teams_data)
+    pdf_bytes = await run_in_threadpool(
+        build_team_list_pdf, season_name=season.name, teams=teams_data
+    )
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -721,7 +735,8 @@ async def export_team_report_pdf(
     await assert_team_access(db, current_user, team_id, TEAM_REPORT_ELEVATED)
     team = await get_team(db, team_id)
     history = await team_history(db, team_id, include_practice=True)
-    content = build_team_report_pdf(
+    content = await run_in_threadpool(
+        build_team_report_pdf,
         {
             "name": team.name,
             "team_number": team.team_number,

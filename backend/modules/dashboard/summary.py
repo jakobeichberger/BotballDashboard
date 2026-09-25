@@ -15,6 +15,7 @@ can tell "nothing to do" from "not for you".
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
 
@@ -43,11 +44,14 @@ UPCOMING_MATCH_STATUSES = ("scheduled", "called", "running")
 
 async def build_summary(db: AsyncSession, user, event_id: str) -> dict[str, Any]:
     event = await _get_event(db, event_id)
+    # Looked up once and handed to every section that needs it.
     team_ids = await own_team_ids(db, user)
 
-    season_ids = await calendar.relevant_season_ids(db, user)
+    season_ids = await calendar.relevant_season_ids(db, user, team_ids=team_ids)
     season_ids.add(event.season_id)
-    deadlines = calendar.upcoming(await calendar.collect_deadlines(db, user, season_ids), 5)
+    deadlines = calendar.upcoming(
+        await calendar.collect_deadlines(db, user, season_ids, team_ids=team_ids), 5
+    )
 
     return {
         "event_id": event.id,
@@ -65,11 +69,8 @@ async def build_summary(db: AsyncSession, user, event_id: str) -> dict[str, Any]
     }
 
 
-async def _upcoming_matches(
-    db: AsyncSession, event_id: str, team_ids: set[str] | None = None, limit: int = 5
-) -> list[dict[str, Any]]:
-    """Next scheduled matches of the event (optionally only those of `team_ids`)."""
-    query = (
+def _upcoming_query(event_id: str):
+    return (
         select(ScheduledMatch)
         .options(selectinload(ScheduledMatch.participants).selectinload(MatchParticipant.team))
         .where(
@@ -83,15 +84,12 @@ async def _upcoming_matches(
             ScheduledMatch.sequence_number,
         )
     )
-    if team_ids is not None:
-        query = query.where(
-            ScheduledMatch.id.in_(
-                select(MatchParticipant.scheduled_match_id).where(
-                    MatchParticipant.team_id.in_(team_ids)
-                )
-            )
-        )
-    matches = list((await db.execute(query.limit(limit))).scalars().all())
+
+
+async def _serialize_matches(
+    db: AsyncSession, matches: list[ScheduledMatch]
+) -> dict[str, dict[str, Any]]:
+    """Scheduled matches as summary rows keyed by id (one phase lookup for all)."""
     phase_names: dict[str, str] = {}
     if matches:
         phases = await db.execute(
@@ -100,8 +98,8 @@ async def _upcoming_matches(
             )
         )
         phase_names = {r.id: r.name for r in phases}
-    return [
-        {
+    return {
+        m.id: {
             "id": m.id,
             "code": m.code,
             "round_number": m.round_number,
@@ -115,7 +113,38 @@ async def _upcoming_matches(
             ],
         }
         for m in matches
-    ]
+    }
+
+
+async def _upcoming_matches(
+    db: AsyncSession, event_id: str, limit: int = 5
+) -> list[dict[str, Any]]:
+    """Next scheduled matches of the event."""
+    matches = list((await db.execute(_upcoming_query(event_id).limit(limit))).scalars().all())
+    rows = await _serialize_matches(db, matches)
+    return [rows[m.id] for m in matches]
+
+
+async def _upcoming_by_team(
+    db: AsyncSession, event_id: str, team_ids: set[str], limit: int
+) -> dict[str, list[dict[str, Any]]]:
+    """The next `limit` scheduled matches of each of `team_ids`, in two queries."""
+    query = _upcoming_query(event_id).where(
+        ScheduledMatch.id.in_(
+            select(MatchParticipant.scheduled_match_id).where(
+                MatchParticipant.team_id.in_(team_ids)
+            )
+        )
+    )
+    matches = list((await db.execute(query)).scalars().all())
+    per_team: dict[str, list[ScheduledMatch]] = {tid: [] for tid in team_ids}
+    for match in matches:
+        for tid in {p.team_id for p in match.participants} & team_ids:
+            if len(per_team[tid]) < limit:
+                per_team[tid].append(match)
+    used = {m.id: m for team_matches in per_team.values() for m in team_matches}
+    rows = await _serialize_matches(db, list(used.values()))
+    return {tid: [rows[m.id] for m in team_matches] for tid, team_matches in per_team.items()}
 
 
 async def _juror_section(db: AsyncSession, event_id: str) -> dict[str, Any]:
@@ -195,45 +224,48 @@ async def _juror_section(db: AsyncSession, event_id: str) -> dict[str, Any]:
 
 
 async def _mentor_section(db: AsyncSession, event, team_ids: set[str]) -> dict[str, Any]:
+    """Per own team: seeding, next matches, paper, print jobs and latest scores.
+
+    Each kind of data is loaded for all of the mentor's teams at once and
+    grouped here, instead of four queries per team.
+    """
     names = await _team_names(db, team_ids)
     seeding = {r["team_id"]: r for r in await seeding_table(db, event)}
+    next_matches = await _upcoming_by_team(db, event.id, team_ids, limit=3)
+
+    papers: dict[str, Paper] = {}
+    paper_rows = await db.execute(
+        select(Paper)
+        .where(Paper.team_id.in_(team_ids), Paper.season_id == event.season_id)
+        .order_by(Paper.updated_at.desc())
+    )
+    for paper_row in paper_rows.scalars():
+        papers.setdefault(paper_row.team_id, paper_row)  # the most recently updated
+
+    jobs_by_team: dict[str, list[PrintJob]] = defaultdict(list)
+    job_rows = await db.execute(
+        select(PrintJob)
+        .where(PrintJob.team_id.in_(team_ids), PrintJob.season_id == event.season_id)
+        .order_by(PrintJob.created_at.desc())
+    )
+    for job in job_rows.scalars():
+        jobs_by_team[job.team_id].append(job)
+
+    latest_by_team: dict[str, list[Match]] = defaultdict(list)
+    match_rows = await db.execute(
+        select(Match)
+        .where(Match.team_id.in_(team_ids), Match.event_id == event.id)
+        .order_by(Match.created_at.desc())
+    )
+    for match in match_rows.scalars():
+        if len(latest_by_team[match.team_id]) < 5:
+            latest_by_team[match.team_id].append(match)
+
     teams = []
     for tid in sorted(team_ids, key=lambda t: names.get(t, {}).get("name", t)):
-        papers = (
-            (
-                await db.execute(
-                    select(Paper)
-                    .where(Paper.team_id == tid, Paper.season_id == event.season_id)
-                    .order_by(Paper.updated_at.desc())
-                )
-            )
-            .scalars()
-            .all()
-        )
-        paper = papers[0] if papers else None
-        jobs = list(
-            (
-                await db.execute(
-                    select(PrintJob)
-                    .where(PrintJob.team_id == tid, PrintJob.season_id == event.season_id)
-                    .order_by(PrintJob.created_at.desc())
-                )
-            )
-            .scalars()
-            .all()
-        )
-        latest = list(
-            (
-                await db.execute(
-                    select(Match)
-                    .where(Match.team_id == tid, Match.event_id == event.id)
-                    .order_by(Match.created_at.desc())
-                    .limit(5)
-                )
-            )
-            .scalars()
-            .all()
-        )
+        paper = papers.get(tid)
+        jobs = jobs_by_team.get(tid, [])
+        latest = latest_by_team.get(tid, [])
         seed = seeding.get(tid)
         teams.append(
             {
@@ -242,7 +274,7 @@ async def _mentor_section(db: AsyncSession, event, team_ids: set[str]) -> dict[s
                 "seeding_rank": seed["rank"] if seed else None,
                 "seed_score": seed["seed_score"] if seed else None,
                 "seeding_teams": len(seeding),
-                "next_matches": await _upcoming_matches(db, event.id, {tid}, limit=3),
+                "next_matches": next_matches.get(tid, []),
                 "paper": {
                     "id": paper.id,
                     "title": paper.title,

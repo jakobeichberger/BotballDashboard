@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,9 +8,11 @@ from core.auth import (
     bearer_scheme,
     get_current_user,
     has_elevated_access,
+    own_team_ids,
     permissions_of,
     require_permission,
 )
+from core.cache import cached_payload, conditional_response, dump_json
 from core.database import get_db
 from core.exceptions import ForbiddenError, UnauthorizedError
 from core.live import publish_after_commit
@@ -34,6 +36,7 @@ from modules.scoring.competition_schemas import (
 from modules.scoring.schemas import (
     MatchConfirm,
     MatchCreate,
+    MatchListItem,
     MatchResponse,
     MatchUpdate,
     RankingResponse,
@@ -165,16 +168,23 @@ async def get_scoring_schema(
     return await service.get_active_schema(db, season_id, competition_level_id, event_id)
 
 
-@router.get("/seasons/{season_id}/matches", response_model=list[MatchResponse])
+@router.get("/seasons/{season_id}/matches", response_model=list[MatchListItem])
 async def list_matches(
     season_id: str,
     team_id: str | None = Query(None),
     phase_id: str | None = Query(None),
     is_practice: bool | None = Query(None),
     event_id: str | None = Query(None),
+    limit: int | None = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     _=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Matches of a season in entry order; `limit`/`offset` page through them.
+
+    Without `limit` every match is returned. The schema snapshot of each run
+    is left out (see GET /scoring/matches/{id}).
+    """
     return await service.list_matches(
         db,
         season_id,
@@ -182,6 +192,8 @@ async def list_matches(
         phase_id=phase_id,
         event_id=event_id,
         is_practice=is_practice,
+        limit=limit,
+        offset=offset,
     )
 
 
@@ -211,16 +223,23 @@ async def bulk_create_matches(
     current_user=Depends(require_permission("scoring:write")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Same scoping as the single-match route — otherwise this endpoint would
+    # be a way around it. Checked for all entries before anything is written,
+    # with the caller's permissions and teams looked up once.
+    if not await has_elevated_access(db, current_user, "scoring:admin"):
+        own = await own_team_ids(db, current_user)
+        if any(entry.team_id not in own for entry in body.entries):
+            raise ForbiddenError("You may only access your own team")
+    # The ranking tables are re-ranked once for the whole batch, not per entry.
+    rank_refresh = service.RankRefresh()
     results = []
     for entry in body.entries:
-        # Same scoping as the single-match route — otherwise this endpoint
-        # would be a way around it.
-        await assert_team_access(db, current_user, entry.team_id, "scoring:admin")
         data = entry.model_dump()
         data["season_id"] = season_id
-        match = await service.create_match(db, data, current_user.id)
+        match = await service.create_match(db, data, current_user.id, rank_refresh=rank_refresh)
         _broadcast_schedule_update(db, match.event_id, match.scheduled_match_id)
         results.append(match)
+    await rank_refresh.run(db)
     for event_id in {m.event_id for m in results}:
         await _broadcast_ranking_update(db, event_id)
     return results
@@ -378,8 +397,19 @@ async def _extended_ranking(
     ]
 
 
+async def _cached_extended_ranking(
+    request: Request, db: AsyncSession, event: Event, category: str | None
+):
+    async def compute() -> bytes:
+        return dump_json(list[TeamRankingEntry], await _extended_ranking(db, event, category))
+
+    payload = await cached_payload("ranking-extended", event.id, category or "*", compute)
+    return conditional_response(request, payload, public=False)
+
+
 @router.get("/seasons/{season_id}/ranking/extended", response_model=list[TeamRankingEntry])
 async def get_ranking_extended(
+    request: Request,
     season_id: str,
     category: str | None = Query(None),
     event_id: str | None = Query(None),
@@ -389,14 +419,16 @@ async def get_ranking_extended(
     """Seeding ranking enriched with team name and category.
 
     Ranks are per category (Botball and Open are separate competitions); a
-    red-carded team is listed with `disqualified` and no rank.
+    red-carded team is listed with `disqualified` and no rank. Cached per
+    event and answered with an ETag (304 on If-None-Match).
     """
     event = await _season_ranking_event(db, credentials, season_id, event_id)
-    return await _extended_ranking(db, event, category)
+    return await _cached_extended_ranking(request, db, event, category)
 
 
 @router.get("/events/{event_id}/ranking/extended", response_model=list[TeamRankingEntry])
 async def get_event_ranking_extended(
+    request: Request,
     event_id: str,
     category: str | None = Query(None),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
@@ -404,14 +436,29 @@ async def get_event_ranking_extended(
 ):
     """Seeding ranking of one event, with team names and per-category ranks."""
     event = await _event_for_ranking(db, credentials, event_id)
-    return await _extended_ranking(db, event, category)
+    return await _cached_extended_ranking(request, db, event, category)
 
 
 # ── Overall Ranking ───────────────────────────────────────────────────────────
 
 
+async def _cached_overall_ranking(
+    request: Request, db: AsyncSession, event: Event, category: str | None
+):
+    season = await season_svc.get_season(db, event.season_id)
+    categories = [category] if category else list(season.active_categories or ["botball"])
+
+    async def compute() -> bytes:
+        entries = await formula_svc.compute_overall_ranking(db, event.id, categories)
+        return dump_json(list[OverallRankingEntry], entries)
+
+    payload = await cached_payload("ranking-overall", event.id, ",".join(categories), compute)
+    return conditional_response(request, payload, public=False)
+
+
 @router.get("/seasons/{season_id}/ranking/overall", response_model=list[OverallRankingEntry])
 async def get_overall_ranking(
+    request: Request,
     season_id: str,
     category: str | None = Query(None),
     event_id: str | None = Query(None),
@@ -423,15 +470,15 @@ async def get_overall_ranking(
     Results are recorded per event, so this ranks one event: the one named by
     `event_id`, otherwise the season's default event — the same one the other
     season routes read and write, so a result entered through them shows here.
+    Cached per event and answered with an ETag (304 on If-None-Match).
     """
     event = await _season_ranking_event(db, credentials, season_id, event_id)
-    season = await season_svc.get_season(db, season_id)
-    categories = [category] if category else list(season.active_categories or ["botball"])
-    return await formula_svc.compute_overall_ranking(db, event.id, categories)
+    return await _cached_overall_ranking(request, db, event, category)
 
 
 @router.get("/events/{event_id}/ranking/overall", response_model=list[OverallRankingEntry])
 async def get_event_overall_ranking(
+    request: Request,
     event_id: str,
     category: str | None = Query(None),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
@@ -439,9 +486,7 @@ async def get_event_overall_ranking(
 ):
     """Overall ranking for one event, using its season's formula set."""
     event = await _event_for_ranking(db, credentials, event_id)
-    season = await season_svc.get_season(db, event.season_id)
-    categories = [category] if category else list(season.active_categories or ["botball"])
-    return await formula_svc.compute_overall_ranking(db, event_id, categories)
+    return await _cached_overall_ranking(request, db, event, category)
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────

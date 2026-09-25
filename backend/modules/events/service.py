@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.exceptions import ConflictError, NotFoundError, ValidationError
+from core.live import invalidate_after_commit
 from modules.events import brackets
 from modules.events.models import (
     Event,
@@ -153,6 +154,8 @@ async def add_registration(db: AsyncSession, event_id: str, data: dict) -> Event
         await db.rollback()
         raise ConflictError("Team is already registered for this event") from exc
     await db.refresh(registration, ["team"])
+    # The field and the categories of the rankings changed.
+    invalidate_after_commit(db, event.id)
     return registration
 
 
@@ -239,6 +242,7 @@ async def update_registration(
         setattr(registration, key, value)
     if checked_in is not None:
         registration.checked_in_at = datetime.now(UTC) if checked_in else None
+    invalidate_after_commit(db, event_id)
     return registration
 
 
@@ -299,8 +303,18 @@ async def delete_phase(db: AsyncSession, event_id: str, phase_id: str) -> None:
     await db.delete(phase)
 
 
+#: Scheduled-match statuses that are over; ``upcoming`` listings leave them out.
+FINISHED_MATCH_STATUSES = ("completed", "cancelled")
+
+
 async def list_scheduled_matches(
-    db: AsyncSession, event_id: str, phase_id: str | None = None
+    db: AsyncSession,
+    event_id: str,
+    phase_id: str | None = None,
+    *,
+    upcoming: bool = False,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> list[ScheduledMatch]:
     await get_event(db, event_id)
     query = (
@@ -310,9 +324,16 @@ async def list_scheduled_matches(
     )
     if phase_id:
         query = query.where(ScheduledMatch.phase_id == phase_id)
-    result = await db.execute(
-        query.order_by(ScheduledMatch.scheduled_at.nullslast(), ScheduledMatch.sequence_number)
+    if upcoming:
+        query = query.where(ScheduledMatch.status.not_in(FINISHED_MATCH_STATUSES))
+    query = query.order_by(
+        ScheduledMatch.scheduled_at.nullslast(), ScheduledMatch.sequence_number, ScheduledMatch.id
     )
+    if offset:
+        query = query.offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 
