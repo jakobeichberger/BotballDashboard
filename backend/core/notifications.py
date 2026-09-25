@@ -10,6 +10,7 @@ import aiosmtplib
 
 from core.config import get_settings
 from core.logging import get_logger
+from core.push_endpoints import push_endpoint_problem
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -116,6 +117,12 @@ async def send_push_notification(
     """
     if not settings.vapid_private_key:
         return "disabled"
+    problem = push_endpoint_problem(endpoint)
+    if problem:
+        # Saved before the subscription route checked endpoints (SSRF): never
+        # contacted, and "gone" makes the caller delete the subscription.
+        logger.warning("push_endpoint_refused", reason=problem, endpoint=endpoint[:40])
+        return "gone"
     try:
         from pywebpush import WebPushException, webpush
     except ImportError:  # pragma: no cover - dependency is installed in production

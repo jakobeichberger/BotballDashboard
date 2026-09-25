@@ -1,8 +1,8 @@
 # Datenbankschema
 
-Stand: Migration `0029`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 60 Tabellen.
+Stand: Migration `0031`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 60 Tabellen.
 
-- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0029`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
+- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0031`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
 - **Tests:** SQLite in-memory über `Base.metadata.create_all`. Die Migrationen laufen in der CI zusätzlich gegen PostgreSQL.
 - **IDs:** fast überall `VARCHAR(36)` mit UUID-Text; Ausnahme `audit_logs.id` (Integer, autoincrement).
 - **JSON-Spalten** (`JSON`, auf PostgreSQL als `json` angelegt) halten flexible Strukturen: Score-Sheet-Definitionen, Rohwerte einer Wertung, Modul-Listen, Benachrichtigungs-Payloads.
@@ -78,7 +78,7 @@ erDiagram
 - Eine **Saison** ist das Regelwerk eines Jahres: Module (`use_*`), Kategorien, Formeln, Tie-Breaker, Score-Sheet-Vorlagen und Termine. Sie hat einen Lebenszyklus `status` = `draft` → `active` → `finished` → `archived`. Archivierte Saisons sind schreibgeschützt.
 - Ein **Event** (z. B. ECER, GCER, Regionalturnier) gehört zu genau einer Saison. Es trägt eigene Module (`active_modules`), Freigaben (`public_*`), Zeitzone, Tische und Status (`draft`, `published`, `live`, `completed`, `archived`). Wertungen, Ranglisten, DE-, Aerial- und Doku-Ergebnisse, Druck-Kontingente und Ankündigungen sind **pro Event** gespeichert.
 - **Teams** existieren saisonübergreifend. Die Teilnahme an einer Saison steht in `team_season_registrations` (Kategorie, Gebühr, Kit, Kontakt), die Teilnahme an einem Event in `event_registrations` (Kategorie, Stufe, Seed, Check-in). `team_members.user_id` verknüpft ein Mitglied mit einem Benutzerkonto. Darauf beruhen alle „nur eigenes Team"-Prüfungen.
-- Eine **Wertung** (`matches`) ist ein Lauf eines Teams. Sie speichert die Rohwerte (`raw_scores`), eine Kopie des verwendeten Schemas (`schema_snapshot`) und die berechneten Summen. Jede Änderung erzeugt eine `score_revisions`-Zeile. Revisionen bleiben nach dem Löschen der Wertung erhalten (`match_id` wird `NULL`, `match_ref` bleibt). Übungsläufe (`is_practice`) zählen nie für Ranglisten.
+- Eine **Wertung** (`matches`) ist ein Lauf eines Teams. Sie speichert die Rohwerte (`raw_scores`), eine Kopie des verwendeten Schemas (`schema_snapshot`) und die berechneten Summen. Jede Änderung erzeugt eine `score_revisions`-Zeile. Revisionen bleiben nach dem Löschen der Wertung erhalten (`match_id` wird `NULL`, `match_ref` bleibt). Übungsläufe (`is_practice`, auch als Kopie in `score_revisions`) zählen nie für Ranglisten und sind nur für das eigene Team und Organisatoren sichtbar.
 - Ein **Duell im Bracket** ist ein `scheduled_matches`-Eintrag mit `match_participants`. `next_winner_match_id` und `next_loser_match_id` verdrahten das Double-Elimination-Bracket.
 - **Papers** gibt es genau eines pro Team und Saison (`UNIQUE(season_id, team_id)`). Jeder Upload wird eine neue `paper_versions`-Zeile, nichts wird überschrieben.
 - **Druck-Kontingente** sind eindeutig pro `(event_id, team_id)`.
@@ -556,6 +556,7 @@ Unique: `(event_id, team_id, phase_id, competition_level_id)`
 | `match_id` | VARCHAR(36) |  | → `matches.id` (SET NULL) |
 | `match_ref` | VARCHAR(36) |  |  |
 | `team_id` | VARCHAR(36) |  |  |
+| `is_practice` | BOOLEAN |  |  |
 | `event_id` | VARCHAR(36) | NOT NULL | → `events.id` (CASCADE) |
 | `revision` | INTEGER | NOT NULL |  |
 | `previous_raw_scores` | JSON |  |  |
@@ -1166,6 +1167,8 @@ Unique: `(user_id, notification_id)`
 | `0027` | Benachrichtigungs-Einstellungen, Lesestatus, Modul-Schalter für bestehende Events |
 | `0028` | Strukturierte Score-Sheets, Sonderregeln, Tie-Breaker, Scouting, Qualifikation, Parts Challenges |
 | `0029` | Saison-Details der Teams, Kader, Team-Dokumente, Druck-Checkliste, Paper-Deadlines |
+| `0030` | Check-Constraint des Reviewer-Zuweisungsstatus für vor dem 0023-Fix migrierte Datenbanken |
+| `0031` | Übungslauf-Kennzeichen auf `score_revisions` (Sichtbarkeit des Audit-Trails) |
 
 ```bash
 cd backend

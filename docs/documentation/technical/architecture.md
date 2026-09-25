@@ -79,7 +79,7 @@ Jedes Modul hat in der Regel `models.py`, `schemas.py`, `service.py` und `routes
 
 ### Request-Pipeline (`main.py`)
 
-1. **Request-Kontext:** Eine `X-Request-ID` wird übernommen oder erzeugt. Zu große Bodies werden vorab mit 413 abgelehnt (`MAX_UPLOAD_SIZE_MB`, für Druckdateien `PRINT_UPLOAD_MAX_MB`).
+1. **Request-Kontext:** Eine `X-Request-ID` wird übernommen oder erzeugt. Zu große Bodies werden mit 413 abgelehnt (`MAX_UPLOAD_SIZE_MB`, für Druckdateien `PRINT_UPLOAD_MAX_MB`): vorab anhand von `Content-Length`, und `BodySizeLimitMiddleware` (`core/request_limits.py`) zählt die empfangenen Bytes, sodass auch Anfragen ohne `Content-Length` (chunked) nicht unbegrenzt gepuffert werden.
 2. **Security-Header** auf jeder Antwort: `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`. In Produktion kommen CSP und HSTS dazu.
 3. **Audit:** Jede erfolgreiche `POST`/`PUT`/`PATCH`/`DELETE` unter `/api/` wird als `audit_logs`-Zeile geschrieben, mit Aktion `"<METHOD> <path>"`, Nutzer und IP. Einige Stellen protokollieren zusätzlich fachlich, z. B. Quota-Override oder Druckerabbruch. Fehler beim Audit-Schreiben brechen die Anfrage nicht ab.
 4. **CORS:** in der Entwicklung nur `localhost`/`127.0.0.1`, in Produktion `ALLOWED_ORIGINS`.

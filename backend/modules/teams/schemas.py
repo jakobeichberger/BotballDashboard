@@ -41,6 +41,12 @@ class TeamCreate(BaseModel):
     members: list[TeamMemberCreate] = []
 
 
+# Team fields a mentor may keep up to date for their own team. The team number,
+# the competition level, the active flag and the organizers' notes are the
+# organizers' call (teams:admin).
+MENTOR_TEAM_FIELDS = frozenset({"name", "school", "city", "country"})
+
+
 class TeamUpdate(BaseModel):
     name: str | None = None
     team_number: str | None = None

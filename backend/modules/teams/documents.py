@@ -172,10 +172,16 @@ async def update_document(
     from modules.seasons.models import Season
 
     document = await get_document(db, team_id, document_id)
+    # An archived season is read-only: its documents can neither be edited nor
+    # moved out of it (and then deleted), and nothing can be moved into it.
+    if document.season_id:
+        await ensure_writable(db, season_id=document.season_id)
     if "category" in changes and changes["category"] is not None:
         _validate_category(changes["category"])
-    if changes.get("season_id") and not await db.get(Season, changes["season_id"]):
-        raise ValidationError("Season not found")
+    if changes.get("season_id"):
+        if not await db.get(Season, changes["season_id"]):
+            raise ValidationError("Season not found")
+        await ensure_writable(db, season_id=changes["season_id"])
     for key in ("title", "category"):
         if key in changes and changes[key] is None:
             raise ValidationError(f"{key} must not be empty")

@@ -14,11 +14,15 @@
 | `db` | postgres:16-alpine | – | Datenbank (Volume `pgdata`, optional Bind-Mount `/data/db`) |
 | `redis` | redis:7-alpine | – | Celery-Broker, Rate-Limits, Event-Streams |
 | `backup` | wie backend | `production` | `backup_scheduler.py`: tägliche verschlüsselte Backups, Healthcheck, Metriken auf :9101 |
+| `volume-permissions` | wie backend | – | Einmaliger Init-Container: übergibt `uploads` und `vapid` an UID 10001, beendet sich |
+| `backup-permissions` | wie backend | `production` | Einmaliger Init-Container: dasselbe für Backup-Archive und Off-site-Zugangsdaten |
 | `prometheus` | prom/prometheus:v2.54.1 | `monitoring` | Scrapt API, Readiness-Probe und Backup-Dienst, wertet `monitoring/alerts.yml` aus (127.0.0.1:9090) |
 | `blackbox` | prom/blackbox-exporter:v0.25.0 | `monitoring` | HTTP-Probe auf `/api/system/readiness` |
 | `alertmanager` | prom/alertmanager:v0.27.0 | `monitoring` | Stellt Alarme per Webhook/E-Mail zu (127.0.0.1:9093) |
 
 Profile werden über `COMPOSE_PROFILES` in `.env` aktiviert (z. B. `production,monitoring`). Alle Dienste schreiben Logs als `json-file` mit Rotation (`LOG_MAX_SIZE`, Standard 10 MB × `LOG_MAX_FILE` = 5 Dateien).
+
+`backend`, `worker`, `beat` und `backup` laufen als unprivilegierter Benutzer `app` (UID/GID 10001) ohne Linux-Capabilities (`cap_drop: ALL`), mit `no-new-privileges` und Speicherlimits (`BACKEND_MEM_LIMIT`, `WORKER_MEM_LIMIT`, `BEAT_MEM_LIMIT`, `BACKUP_MEM_LIMIT`). `backend`, `worker` und `beat` haben ein schreibgeschütztes Root-Dateisystem mit `/tmp` als tmpfs. Traefik lehnt API-Anfragen mit mehr als `API_MAX_BODY_BYTES` (Standard 102 MiB) ab; die genauen Grenzen pro Route setzt das Backend beim Einlesen durch. Umstellung bestehender Installationen: [Update-Anleitung](../installation/update.md#versionshinweis-container-ohne-root-rechte-security-update-2026-09).
 
 Volumes: `pgdata`, `redisdata`, `uploads`, `vapid`, `letsencrypt`, `backups` (oder `BACKUP_HOST_DIR`), `prometheusdata`, `alertmanagerdata`.
 
@@ -137,10 +141,16 @@ Wiederherstellung (Test und Produktion) sowie Kopie außer Haus: [Betrieb](../..
 
 ```bash
 docker compose stop backend worker beat backup
+# Die Container laufen als UID 10001 (schreibgeschütztes Root-Dateisystem):
+# Arbeitsverzeichnis und eine für sie lesbare Kopie der Identität bereitstellen.
+install -d -m 700 -o 10001 -g 10001 /data/restore-work
+install -m 400 -o 10001 -g 10001 /pfad/zu/botball-backup-identity.txt /data/restore-work/age-identity
 docker compose run --rm --no-deps \
-  -v /pfad/zu/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
+  -v /data/restore-work:/restore-work -e TMPDIR=/restore-work \
+  -e AGE_IDENTITY=/restore-work/age-identity \
   -v /data/backups:/backups:ro \
   backend /app/scripts/restore.sh --yes /backups/botball-YYYYMMDDTHHMMSSZ.tar.gz.age
+rm -rf /data/restore-work
 docker compose up -d
 ```
 

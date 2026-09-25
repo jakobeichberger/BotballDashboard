@@ -35,12 +35,27 @@ H2 = ParagraphStyle("h2", parent=STYLES["Heading2"], textColor=DARK_GRAY, fontSi
 BODY = ParagraphStyle("body", parent=STYLES["Normal"], fontSize=9, leading=13)
 SMALL = ParagraphStyle("small", parent=STYLES["Normal"], fontSize=8, textColor=colors.gray)
 
+# reportlab parses Paragraph text as markup: an unescaped "<b>" breaks the
+# export (500), and "<img src=…>" makes the server fetch a URL or read a local
+# file into the PDF. Every piece of user text that becomes a Paragraph goes
+# through escape() (xml.sax.saxutils). Plain strings in Table cells are not
+# parsed and need no escaping.
+
+
+def _text(value, limit: int | None = None) -> str:
+    """User text for a Paragraph: shortened first, then escaped."""
+    text = str(value if value is not None else "")
+    if limit is not None and len(text) > limit:
+        text = text[:limit] + "…"
+    return escape(text)
+
 
 def _header(elements: list, title: str, subtitle: str = "") -> None:
+    """Title and subtitle are plain text (season, event and team names)."""
     elements.append(Paragraph("BotballDashboard", SMALL))
-    elements.append(Paragraph(title, H1))
+    elements.append(Paragraph(escape(title), H1))
     if subtitle:
-        elements.append(Paragraph(subtitle, SMALL))
+        elements.append(Paragraph(escape(subtitle), SMALL))
     elements.append(
         Paragraph(
             f"Exportiert am {datetime.now().strftime('%d.%m.%Y %H:%M')} Uhr",
@@ -178,7 +193,7 @@ def build_paper_review_pdf(
         data.append(
             [
                 teams_by_id.get(p["team_id"], p["team_id"][:8]),
-                Paragraph(p["title"][:60] + ("…" if len(p["title"]) > 60 else ""), BODY),
+                Paragraph(_text(p["title"], 60), BODY),
                 status_labels.get(p["status"], p["status"]),
                 str(p.get("revision_number", 1)),
                 str(len(p.get("assignments", []))),
@@ -249,7 +264,7 @@ def build_print_report_pdf(
         data.append(
             [
                 teams_by_id.get(j["team_id"], j["team_id"][:8]),
-                Paragraph(j["file_name"][:35], BODY),
+                Paragraph(escape(str(j["file_name"])[:35]), BODY),
                 j.get("material", "PLA"),
                 j["status"],
                 printers_by_id.get(j.get("printer_id", ""), "—"),
@@ -344,7 +359,7 @@ def build_overall_ranking_pdf(
     for category in categories:
         rows = [e for e in entries if (e.get("category") or "") == category]
         if category:
-            elements.append(Paragraph(category.capitalize(), H2))
+            elements.append(Paragraph(escape(category.capitalize()), H2))
         data = [["#", "Team", "Gesamt", "Seeding", "DE", "Doku", "Paper"]]
         for e in rows:
             data.append(
@@ -400,7 +415,7 @@ def build_team_report_pdf(team: dict, history: list[dict]) -> bytes:
         )
         if part
     )
-    _header(elements, f"Teambericht: {escape(team['name'])}", escape(subtitle))
+    _header(elements, f"Teambericht: {team['name']}", subtitle)
 
     if not history:
         elements.append(Paragraph("Das Team hat noch an keinem Event teilgenommen.", BODY))

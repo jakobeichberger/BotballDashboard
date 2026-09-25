@@ -152,13 +152,20 @@ export default function TeamDetailPage() {
   // ── Edit team ──────────────────────────────────────────────────────────
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>({});
+  // Mentors edit the team profile; team number and organizer notes belong to
+  // teams:admin (the backend refuses them from mentors).
   const startEdit = () => {
     setForm({
-      name: team.name, team_number: team.team_number ?? "", school: team.school ?? "",
-      city: team.city ?? "", country: team.country ?? "", notes: team.notes ?? "",
+      name: team.name, school: team.school ?? "", city: team.city ?? "", country: team.country ?? "",
+      ...(isAdmin ? { team_number: team.team_number ?? "", notes: team.notes ?? "" } : {}),
     });
     setEditing(true);
   };
+  const editFields: [string, string][] = [
+    ["name", t("common:name")],
+    ...(isAdmin ? [["team_number", t("detail.teamNumber")] as [string, string]] : []),
+    ["school", t("detail.school")], ["city", t("detail.city")], ["country", t("filter.country")],
+  ];
   const refresh = () => { qc.invalidateQueries({ queryKey: ["team", id] }); qc.invalidateQueries({ queryKey: ["teams"] }); };
   const onError = (e: unknown) => alert(apiErrorMessage(e));
 
@@ -234,20 +241,19 @@ export default function TeamDetailPage() {
         {editing ? (
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                ["name", t("common:name")], ["team_number", t("detail.teamNumber")], ["school", t("detail.school")],
-                ["city", t("detail.city")], ["country", t("filter.country")],
-              ].map(([key, label]) => (
+              {editFields.map(([key, label]) => (
                 <div key={key}>
                   <label className="label">{label}</label>
                   <input className="input" value={form[key] ?? ""} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
                 </div>
               ))}
             </div>
-            <div>
-              <label className="label">{t("common:notes")}</label>
-              <textarea className="input min-h-[4rem]" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-            </div>
+            {isAdmin && (
+              <div>
+                <label className="label">{t("common:notes")}</label>
+                <textarea className="input min-h-[4rem]" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <button className="btn-primary text-sm disabled:opacity-40" disabled={!form.name || updateM.isPending} onClick={() => updateM.mutate()}>
                 <Save className="w-4 h-4" /> {t("common:save")}

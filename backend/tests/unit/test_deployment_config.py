@@ -134,3 +134,78 @@ def test_monitoring_files_referenced_by_compose_exist(compose):
             source = volume.split(":", 1)[0]
             if source.startswith("./"):
                 assert (REPO / source).exists(), source
+
+
+# ── Container hardening (security review 2026-09) ────────────────────────────
+DOCKERFILE = REPO / "backend" / "Dockerfile"
+APP_SERVICES = ("backend", "worker", "beat", "backup")
+APP_UID = "10001"
+
+
+def test_backend_image_runs_as_a_non_root_user():
+    text = DOCKERFILE.read_text()
+    production = text.split("AS production", 1)[1]
+    users = [line.split()[1] for line in production.splitlines() if line.startswith("USER ")]
+    assert users and users[-1] not in ("root", "0"), "production stage must end as non-root"
+    assert f"--uid {APP_UID}" in text
+
+
+def test_application_containers_drop_privileges(compose):
+    for name in APP_SERVICES:
+        service = compose["services"][name]
+        assert service.get("cap_drop") == ["ALL"], name
+        assert "no-new-privileges:true" in service.get("security_opt", []), name
+        assert service.get("mem_limit"), name
+        assert "user" not in service, f"{name} must use the image's non-root user"
+
+
+def test_stateless_containers_have_a_read_only_root(compose):
+    for name in ("backend", "worker", "beat"):
+        service = compose["services"][name]
+        assert service.get("read_only") is True, name
+        assert any(entry.startswith("/tmp") for entry in service.get("tmpfs", [])), name
+    # beat keeps its schedule file in the writable /tmp.
+    assert "/tmp/" in compose["services"]["beat"]["command"]
+
+
+def test_volume_ownership_is_fixed_before_the_app_starts(compose):
+    services = compose["services"]
+    for name in ("volume-permissions", "backup-permissions"):
+        init = services[name]
+        assert init["user"] == "0:0", name
+        assert init["cap_drop"] == ["ALL"], name
+        assert set(init["cap_add"]) <= {"CHOWN", "DAC_READ_SEARCH"}, name
+        assert init["network_mode"] == "none", name
+        assert APP_UID in " ".join(init["command"]), name
+        assert "fix-volume-ownership.sh" in " ".join(init["entrypoint"]), name
+    assert (REPO / "backend" / "scripts" / "fix-volume-ownership.sh").is_file()
+    assert services["backup-permissions"]["profiles"] == ["production"]
+    for name in APP_SERVICES:
+        depends = services[name]["depends_on"]
+        assert depends["volume-permissions"]["condition"] == "service_completed_successfully"
+    depends = services["backup"]["depends_on"]
+    assert depends["backup-permissions"]["condition"] == "service_completed_successfully"
+    # Every writable mount of the app containers is covered by an init service.
+    fixed = {
+        volume.split(":")[1]
+        for name in ("volume-permissions", "backup-permissions")
+        for volume in services[name]["volumes"]
+    }
+    for name in APP_SERVICES:
+        for volume in services[name].get("volumes", []):
+            target, *mode = volume.split(":")[1:]
+            if mode != ["ro"]:
+                assert target in fixed, (name, target)
+
+
+def test_worker_limits_image_decoding(compose):
+    worker = compose["services"]["worker"]
+    assert "OPENCV_IO_MAX_IMAGE_PIXELS" in worker["environment"]
+
+
+def test_traefik_limits_api_request_bodies(compose):
+    labels = compose["services"]["backend"]["labels"]
+    assert any(".buffering.maxRequestBodyBytes=" in label for label in labels)
+    assert "traefik.http.routers.api.middlewares=api-body-limit" in labels
+    # WebSockets bypass the buffering middleware on their own router.
+    assert any(label.startswith("traefik.http.routers.api-ws.rule=") for label in labels)

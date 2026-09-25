@@ -1,6 +1,8 @@
+import asyncio
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
+from functools import cache
 from typing import Any
 
 import bcrypt
@@ -42,6 +44,25 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
+# bcrypt deliberately costs ~0.25 s of CPU. Called from a coroutine it stalled
+# every other request of the process for that long (a few parallel logins were
+# enough to freeze the API), so request handlers use these thread variants.
+
+
+async def hash_password_async(password: str) -> str:
+    return await asyncio.to_thread(hash_password, password)
+
+
+async def verify_password_async(plain: str, hashed: str) -> bool:
+    return await asyncio.to_thread(verify_password, plain, hashed)
+
+
+@cache
+def _dummy_password_hash() -> str:
+    """A hash no password matches, compared against for unknown accounts."""
+    return hash_password(secrets.token_urlsafe(32))
+
+
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
@@ -79,7 +100,11 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
         .options(selectinload(User.roles).selectinload(Role.permissions))
     )
     user = result.scalar_one_or_none()
-    if not user or not verify_password(password, user.hashed_password):
+    # Unknown (or inactive) accounts are checked against a dummy hash, so the
+    # response time does not reveal whether an address has an account.
+    hashed = user.hashed_password if user else await asyncio.to_thread(_dummy_password_hash)
+    password_ok = await verify_password_async(password, hashed)
+    if not user or not password_ok:
         raise UnauthorizedError("Invalid email or password")
     user.last_login = datetime.now(UTC)
     return user
@@ -179,7 +204,7 @@ async def create_user(
     user = User(
         email=email.lower(),
         display_name=display_name,
-        hashed_password=hash_password(password),
+        hashed_password=await hash_password_async(password),
     )
     db.add(user)
     await db.flush()
@@ -224,7 +249,7 @@ async def change_password(
     db: AsyncSession, user_id: str, current_password: str, new_password: str
 ) -> None:
     user = await get_user(db, user_id)
-    if not verify_password(current_password, user.hashed_password):
+    if not await verify_password_async(current_password, user.hashed_password):
         raise BadRequestError("Current password is incorrect")
     await set_password(db, user, new_password)
 
@@ -250,7 +275,7 @@ async def set_password(db: AsyncSession, user: User, new_password: str) -> None:
     15 minutes) must end.
     """
     ensure_password_policy(user, new_password)
-    user.hashed_password = hash_password(new_password)
+    user.hashed_password = await hash_password_async(new_password)
     await revoke_all_sessions(db, user)
 
 
@@ -258,7 +283,7 @@ async def change_email(
     db: AsyncSession, user_id: str, new_email: str, current_password: str
 ) -> User:
     user = await get_user(db, user_id)
-    if not verify_password(current_password, user.hashed_password):
+    if not await verify_password_async(current_password, user.hashed_password):
         raise BadRequestError("Current password is incorrect")
     new_email = new_email.lower()
     if new_email != user.email:
@@ -372,7 +397,7 @@ async def anonymize_user(db: AsyncSession, user: User) -> None:
     user.email = f"deleted-{user.id}@deleted.invalid"
     user.display_name = "Gelöschter Benutzer"
     # Random, never-disclosed secret: the account can no longer log in.
-    user.hashed_password = hash_password(secrets.token_urlsafe(32))
+    user.hashed_password = await hash_password_async(secrets.token_urlsafe(32))
     user.is_active = False
     user.is_superuser = False
     user.last_login = None
@@ -382,7 +407,7 @@ async def anonymize_user(db: AsyncSession, user: User) -> None:
 
 async def delete_own_account(db: AsyncSession, user_id: str, current_password: str) -> None:
     user = await get_user(db, user_id)
-    if not verify_password(current_password, user.hashed_password):
+    if not await verify_password_async(current_password, user.hashed_password):
         raise BadRequestError("Current password is incorrect")
     await anonymize_user(db, user)
 

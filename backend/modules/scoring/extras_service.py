@@ -25,7 +25,7 @@ from modules.scoring.extras_models import (
     TeamQualification,
 )
 from modules.scoring.models import Ranking, ScoringSchema
-from modules.seasons.lifecycle import ensure_writable
+from modules.seasons.lifecycle import DRAFT, ensure_writable
 from modules.seasons.models import CompetitionLevel, Season
 from modules.teams.models import Team
 
@@ -80,8 +80,14 @@ def tiebreaker_presets() -> list[dict[str, Any]]:
 # ── Schemas: listing and cloning ──────────────────────────────────────────────
 
 
-async def list_schemas(db: AsyncSession, season_id: str | None = None) -> list[dict[str, Any]]:
-    """Active schema versions of all events (or one season) — the clone sources."""
+async def list_schemas(
+    db: AsyncSession, season_id: str | None = None, include_drafts: bool = True
+) -> list[dict[str, Any]]:
+    """Active schema versions of all events (or one season) — the clone sources.
+
+    Without `include_drafts`, schemas of draft events and draft seasons are left
+    out: their names would reveal unpublished events.
+    """
     query = (
         select(ScoringSchema, Event.name, Season.name, CompetitionLevel.name)
         .join(Season, Season.id == ScoringSchema.season_id)
@@ -92,6 +98,8 @@ async def list_schemas(db: AsyncSession, season_id: str | None = None) -> list[d
     )
     if season_id:
         query = query.where(ScoringSchema.season_id == season_id)
+    if not include_drafts:
+        query = query.where(Season.status != DRAFT, Event.id.is_(None) | (Event.status != DRAFT))
     rows = (await db.execute(query)).all()
     return [
         {

@@ -128,9 +128,13 @@ So prüfst du eine Installation auf deinem Proxmox-Host vollständig. Alle Befeh
    ```bash
    cd /opt/botballdashboard
    make backup-now
+   # Die Container laufen als UID 10001: Identität für sie lesbar bereitstellen.
+   install -d -m 700 -o 10001 -g 10001 /data/restore-work
+   install -m 400 -o 10001 -g 10001 /root/botball-backup-identity.txt /data/restore-work/age-identity
    docker compose run --rm --no-deps \
-     -v /root/botball-backup-identity.txt:/run/age-identity:ro -e AGE_IDENTITY=/run/age-identity \
+     -v /data/restore-work:/restore-work -e AGE_IDENTITY=/restore-work/age-identity \
      backup /app/scripts/restore-test.sh /backups/$(ls /data/backups | grep '\.age$' | tail -n1)
+   rm -rf /data/restore-work
    ```
    Erwartet: `Uploads verified: … files match the manifest` und `Restore test succeeded`.
 5. Im Browser `https://<domain>` öffnen und mit dem Admin-Konto anmelden. Dann unter Einstellungen → Saisons eine Saison und unter `/setup` ein Event anlegen.

@@ -20,6 +20,7 @@ from modules.events.module_access import require_season_event_module
 from modules.scoring import competition_service as comp_svc
 from modules.scoring import formula_service as formula_svc
 from modules.scoring import service
+from modules.scoring import visibility as scope_svc
 from modules.scoring.competition_schemas import (
     AerialResultResponse,
     AerialResultUpsert,
@@ -172,17 +173,20 @@ async def list_matches(
     phase_id: str | None = Query(None),
     is_practice: bool | None = Query(None),
     event_id: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.list_matches(
+    scope = await scope_svc.team_scope(db, current_user)
+    matches = await service.list_matches(
         db,
         season_id,
         team_id=team_id,
         phase_id=phase_id,
         event_id=event_id,
         is_practice=is_practice,
+        team_scope=scope,
     )
+    return [scope_svc.match_view(match, scope) for match in matches]
 
 
 @router.post("/seasons/{season_id}/matches", response_model=MatchResponse, status_code=201)
@@ -229,10 +233,13 @@ async def bulk_create_matches(
 @router.get("/matches/{match_id}", response_model=MatchResponse)
 async def get_match(
     match_id: str,
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_match(db, match_id)
+    match = await service.get_match(db, match_id)
+    scope = await scope_svc.team_scope(db, current_user)
+    scope_svc.assert_match_visible(match, scope)
+    return scope_svc.match_view(match, scope)
 
 
 @router.patch("/matches/{match_id}", response_model=MatchResponse)
@@ -269,11 +276,14 @@ async def update_match(
 @router.get("/matches/{match_id}/revisions", response_model=list[ScoreRevisionResponse])
 async def list_score_revisions(
     match_id: str,
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     """A match's score history; still available after the match was deleted."""
-    return await service.list_revisions(db, match_id)
+    revisions = await service.list_revisions(db, match_id)
+    scope = await scope_svc.team_scope(db, current_user)
+    scope_svc.assert_revisions_visible(revisions, scope)
+    return [scope_svc.revision_view(revision, scope) for revision in revisions]
 
 
 @router.put("/matches/{match_id}/confirm", response_model=MatchResponse)
@@ -308,12 +318,14 @@ async def delete_match(
 async def list_event_score_revisions(
     event_id: str,
     team_id: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
     """Score audit trail of an event, newest first, including deleted matches."""
     await event_svc.get_event(db, event_id)
-    return await service.list_event_revisions(db, event_id, team_id)
+    scope = await scope_svc.team_scope(db, current_user)
+    revisions = await service.list_event_revisions(db, event_id, team_id, team_scope=scope)
+    return [scope_svc.revision_view(revision, scope) for revision in revisions]
 
 
 @router.get("/events/{event_id}/result-revisions", response_model=list[ResultRevisionResponse])

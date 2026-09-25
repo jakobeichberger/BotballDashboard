@@ -491,7 +491,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PushSubscriptionCreate"
+                "$ref": "#/components/schemas/PushSubscriptionDelete"
               }
             }
           },
@@ -16091,6 +16091,13 @@
           },
           "audience": {
             "type": "string",
+            "enum": [
+              "all",
+              "teams",
+              "reviewers",
+              "jurors",
+              "internal"
+            ],
             "title": "Audience",
             "default": "all"
           },
@@ -26380,16 +26387,19 @@
           },
           "p256dh": {
             "type": "string",
+            "maxLength": 200,
             "title": "P256Dh"
           },
           "auth": {
             "type": "string",
+            "maxLength": 100,
             "title": "Auth"
           },
           "user_agent": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1000
               },
               {
                 "type": "null"
@@ -26405,6 +26415,21 @@
           "auth"
         ],
         "title": "PushSubscriptionCreate"
+      },
+      "PushSubscriptionDelete": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Endpoint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint"
+        ],
+        "title": "PushSubscriptionDelete",
+        "description": "Unsubscribing is always allowed, also for an endpoint saved before the\npush-service check existed (the other fields a client sends are ignored)."
       },
       "QualificationResponse": {
         "properties": {

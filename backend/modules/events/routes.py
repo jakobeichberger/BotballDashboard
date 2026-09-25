@@ -36,6 +36,7 @@ from modules.events.schemas import (
     SeedAssignmentRequest,
 )
 from modules.scoring import service as scoring_service
+from modules.scoring import visibility as scoring_visibility
 from modules.scoring.schemas import MatchResponse, RankingResponse
 from modules.seasons.models import Season
 from modules.teams.models import Team
@@ -345,12 +346,14 @@ async def list_event_scores(
     event_id: str,
     team_id: str | None = Query(None),
     phase_id: str | None = Query(None),
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await scoring_service.list_matches(
-        db, event_id=event_id, team_id=team_id, phase_id=phase_id
+    scope = await scoring_visibility.team_scope(db, current_user)
+    matches = await scoring_service.list_matches(
+        db, event_id=event_id, team_id=team_id, phase_id=phase_id, team_scope=scope
     )
+    return [scoring_visibility.match_view(match, scope) for match in matches]
 
 
 @router.post("/{event_id}/matches", response_model=MatchResponse, status_code=201)

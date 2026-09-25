@@ -416,7 +416,11 @@ class TestRankingRoutes:
         )
         for path in paths:
             assert (await client.get(path)).status_code == 401, path
-            assert (await client.get(path, headers=limited_headers)).status_code == 403, path
+            # A signed-in user without events:write does not learn that a draft
+            # event exists at all (modules.events.draft_access): 404, not 403.
+            hidden = change.get("status") == "draft" and event.id in path
+            expected = 404 if hidden else 403
+            assert (await client.get(path, headers=limited_headers)).status_code == expected, path
             assert (await client.get(path, headers=auth_headers)).status_code == 200, path
 
     @pytest.mark.asyncio

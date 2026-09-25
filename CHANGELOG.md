@@ -4,7 +4,7 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
-Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0030`.
+Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026-09.md)). Integriert auf `main` nach PR #23, Migrationen `0021`–`0031`.
 
 ### Added
 
@@ -105,8 +105,27 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 - Bambu „FINISH" schloss frisch eingereihte Jobs ab.
 - Saison löschen löschte per CASCADE die ganze Historie. Jetzt 409, Archivieren stattdessen.
 - Score-Revisionen gingen beim Löschen einer Wertung verloren (`0025`).
+- Der OCR-Auftrag eines Scans wurde vor dem Commit eingereiht. Der Worker fand die Zeile manchmal noch nicht, und der Scan blieb auf „queued". Jetzt nach dem Commit, ohne die Event-Loop zu blockieren.
 
 ### Security
+
+Sicherheitsreview 2026-09 (15 Befunde, jeweils mit Regressionstest; Restrisiken in [docs/SECURITY.md](docs/SECURITY.md)):
+
+- **Größenlimit für gestreamte Bodies:** Das Limit prüfte nur `Content-Length`. Anfragen ohne diesen Header (chunked) wurden vor der Anmeldung vollständig gepuffert (200 MB → 516 MB RSS). Eine ASGI-Middleware zählt jetzt die empfangenen Bytes und bricht mit 413 ab; Druckdateien behalten `PRINT_UPLOAD_MAX_MB`. Traefik lehnt API-Bodies über `API_MAX_BODY_BYTES` (102 MiB) ab.
+- **Duell-Wertungen nur für Teilnehmer:** Eine Wertung ließ sich an ein fremdes Head-to-Head-Match hängen und entschied dessen Ausgang. Saison-, Event- und Scan-Routen verlangen jetzt, dass das Team im Match spielt.
+- **OCR-Dekompressionsbomben:** Bilder werden vor dem Dekodieren anhand des Headers auf 40 MP begrenzt (Upload und Worker), `OPENCV_IO_MAX_IMAGE_PIXELS` ist gesetzt, PDFs werden mit 150 dpi und höchstens 3000 px Kantenlänge gerastert, der Worker hat ein Speicherlimit.
+- **SSRF über Push-Abos:** Endpunkte müssen `https`-URLs bekannter Push-Dienste sein (FCM, Mozilla, WNS, Apple), ohne IP-Literale, Zugangsdaten oder fremde Ports. Früher gespeicherte Abos werden nicht mehr kontaktiert, sondern gelöscht.
+- **Ankündigungen nach Zielgruppe:** Die Liste zeigte interne, Juroren-, Reviewer- und Team-Ankündigungen allen. Jetzt nach Rechten (Teams → `teams:write`, Reviewer → `papers:review`, Juroren → `scoring:admin`, intern → Organisatoren), abgelaufene werden ausgeblendet, unbekannte Zielgruppen abgelehnt.
+- **Übungsläufe und Notizen fremder Teams:** Match-Listen, Einzel-Match, Score-Historie, Audit-Trail und beide `matches.csv` zeigen sie nur noch dem eigenen Team und `scoring:admin`. Revisionen tragen dazu eine Kopie von `is_practice` (`0031`).
+- **PDF-Exporte:** Nutzertexte (Paper-Titel, Dateinamen, Saison-/Event-/Level-Namen, Kategorien) werden für reportlab escaped. Ein offener Tag machte den Export zum 500, `<img src>` ließ den Server URLs abrufen oder lokale Dateien einbetten.
+- **Team-Stammdaten:** Mentoren ändern nur noch Name, Schule, Ort und Land. Team-Nummer, Level, Aktiv-Status und Organisator-Notizen brauchen `teams:admin`; das Formular zeigt diese Felder nur Organisatoren.
+- **Container ohne Root:** `backend`, `worker`, `beat` und `backup` laufen als UID 10001, ohne Capabilities, mit `no-new-privileges`, Speicherlimits und (außer `backup`) schreibgeschütztem Root-Dateisystem. Die Init-Dienste `volume-permissions`/`backup-permissions` stellen bestehende Volumes automatisch um, siehe [Update-Anleitung](docs/documentation/installation/update.md#versionshinweis-container-ohne-root-rechte-security-update-2026-09). Wiederherstellung und Restore-Test brauchen geänderte Befehle ([docs/operations.md](docs/operations.md#restore-in-production)).
+- **Entwurfs-Events:** Unterrouten (`/v1/events/{id}/…`, `/scoring/events/{id}/…`, `?event_id=` …) und `/scoring/schemas` lieferten Entwürfe an Gäste und Mentoren. Jetzt 404 ohne `events:write`.
+- **Scan-Uploads:** Vorlage, Team, Match, Saison-Status und Dateityp (Magic Bytes, kein GIF) werden vor dem Schreiben geprüft; abgelehnte oder zurückgerollte Uploads hinterlassen keine Datei mehr. Upload und Wiederholung sind in archivierten Saisons gesperrt.
+- **Team-Dokumente** lassen sich nicht mehr aus einer archivierten Saison heraus- oder in sie hineinverschieben.
+- **Login:** bcrypt läuft in einem Worker-Thread statt auf der Event-Loop; unbekannte E-Mail-Adressen werden gegen einen Dummy-Hash geprüft, die Antwortzeit verrät keine Konten mehr.
+- **`APP_ENV`** akzeptiert nur `development`, `test` und `production`; alles außer `development` verlangt sichere Secrets. Werte wie `prod` oder `Production` übersprangen die Prüfung.
+- **Download-Namen:** Scouting-Bericht und Saison-Export setzen `Content-Disposition` aus bereinigten Namen statt aus dem Pfadparameter.
 
 - python-jose und `ecdsa` durch PyJWT ersetzt. Access-Tokens tragen eine `jti` und landen beim Logout auf einer Redis-Sperrliste. `token_version` beendet alle Sitzungen bei Passwortänderung, Reset, Deaktivierung und Löschung.
 - `ranking_updated`, `schedule_updated` und Ankündigungen werden erst nach dem Commit veröffentlicht.
