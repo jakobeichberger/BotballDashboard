@@ -87,7 +87,7 @@
       "ws": ">=8.21.0",
       "brace-expansion@<2": "^1.1.21",
       "brace-expansion@>=2": ">=5.0.6",
-      "js-yaml": ">=4.2.0",
+      "js-yaml": "^4.3.2",
       "esbuild": "^0.25.0",
       "follow-redirects": ">=1.16.0",
       "postcss": ">=8.5.10",
