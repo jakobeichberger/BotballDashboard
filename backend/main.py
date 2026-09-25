@@ -29,6 +29,7 @@ from core.metrics import observe_request, render_metrics
 from core.modules import MODULES
 from core.redis_client import REDIS_ERRORS
 from core.request_limits import BodySizeLimitMiddleware, body_limit_bytes
+from core.transactions import CommitBeforeResponseMiddleware
 from modules.events.draft_access import hide_draft_events
 from modules.events.module_access import require_module
 
@@ -65,6 +66,7 @@ app = FastAPI(
 #   request_context_and_security   request id, Content-Length limit, security headers
 #   AccessLogMiddleware            binds the request id to every log line, logs the request
 #   BodySizeLimitMiddleware        counts streamed body bytes, 413 past the limit
+#   CommitBeforeResponseMiddleware holds write responses until get_db has committed
 
 
 def _request_id(request: Request) -> str:
@@ -72,8 +74,11 @@ def _request_id(request: Request) -> str:
     return candidate if re.fullmatch(r"[A-Za-z0-9._-]{1,64}", candidate) else str(uuid.uuid4())
 
 
+# Innermost: a write response leaves only after the request's transaction is
+# committed (core.transactions), so the next request already reads the change.
+app.add_middleware(CommitBeforeResponseMiddleware)
 # Counts the body bytes as they arrive (chunked requests carry no
-# Content-Length). Added first, so it is the innermost middleware: its 413 goes
+# Content-Length). Inside everything but the commit guard: its 413 goes
 # through the regular error handler with request id and CORS headers.
 app.add_middleware(BodySizeLimitMiddleware)
 # Inside request_context_and_security, so it sees the request id that

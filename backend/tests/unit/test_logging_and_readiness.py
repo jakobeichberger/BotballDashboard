@@ -184,12 +184,13 @@ async def test_a_streamed_oversize_body_is_logged_with_its_request_id(access_log
 
 
 def test_middleware_order():
-    """Outermost first: CORS, audit, request context, access log, body limit."""
+    """Outermost first: CORS, audit, request context, access log, body limit, commit guard."""
     from fastapi.middleware.cors import CORSMiddleware
     from starlette.middleware.base import BaseHTTPMiddleware
 
     from core.audit import AuditMiddleware
     from core.request_limits import BodySizeLimitMiddleware
+    from core.transactions import CommitBeforeResponseMiddleware
 
     stack = [m.cls for m in main.app.user_middleware]
     assert stack == [
@@ -198,6 +199,7 @@ def test_middleware_order():
         BaseHTTPMiddleware,  # request_context_and_security
         app_logging.AccessLogMiddleware,
         BodySizeLimitMiddleware,
+        CommitBeforeResponseMiddleware,
     ]
 
 

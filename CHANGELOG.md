@@ -115,6 +115,7 @@ Nacharbeit zum Audit vom September 2026 ([docs/audit-2026-09.md](docs/audit-2026
 
 ### Fixed
 
+- **Lesen nach dem Schreiben:** FastAPI führt den Commit in `get_db` erst aus, nachdem die Antwort gesendet ist. Ein Client konnte deshalb 201 bekommen und mit der nächsten Anfrage noch den alten Stand lesen, etwa eine neue Saison, die in der Liste fehlt, oder ein neues Team, das bei der Anmeldung „nicht gefunden“ wurde. `CommitBeforeResponseMiddleware` hält Antworten auf schreibende Anfragen zurück, bis committet ist. Scheitert der Commit, bekommt der Client 409 oder 500 statt eines falschen Erfolgs.
 - Worker und Beat starteten bei der Proxmox-Installation nicht (Readiness 503, keine OCR, keine Pushes).
 - Einrichtungsassistent: Die neue Saison blieb inaktiv, ein doppeltes Haupt-Event wurde angelegt.
 - DQ-Läufe wurden im Seeding weggelassen statt mit 0 gewertet. Negative Scores wurden nicht auf 0 gesetzt.
