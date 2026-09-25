@@ -138,7 +138,15 @@ def upgrade() -> None:
             existing_nullable=False,
             server_default="pending",
         )
+        # 0012 limited the status to the old vocabulary; "assigned" is
+        # "pending" now, and a new assignment failed the check on PostgreSQL.
+        batch.drop_constraint("ck_reviewer_assignment_status", type_="check")
     op.execute("UPDATE reviewer_assignments SET status = 'pending' WHERE status = 'assigned'")
+    with op.batch_alter_table("reviewer_assignments") as batch:
+        batch.create_check_constraint(
+            "ck_reviewer_assignment_status",
+            "status IN ('pending','in_progress','completed','overdue')",
+        )
     op.execute(
         "UPDATE reviewer_assignments SET version_number = "
         "(SELECT current_version FROM papers WHERE papers.id = reviewer_assignments.paper_id)"
@@ -179,9 +187,15 @@ def downgrade() -> None:
             batch.drop_column(f"score_{name}")
         batch.drop_column("version_number")
 
+    with op.batch_alter_table("reviewer_assignments") as batch:
+        batch.drop_constraint("ck_reviewer_assignment_status", type_="check")
     op.execute("UPDATE reviewer_assignments SET status = 'assigned' WHERE status = 'pending'")
     op.execute("UPDATE reviewer_assignments SET status = 'assigned' WHERE status = 'in_progress'")
     with op.batch_alter_table("reviewer_assignments") as batch:
+        batch.create_check_constraint(
+            "ck_reviewer_assignment_status",
+            "status IN ('assigned','in_progress','completed','overdue')",
+        )
         batch.drop_column("version_number")
         batch.alter_column(
             "status",
