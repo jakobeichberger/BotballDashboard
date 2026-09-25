@@ -9,7 +9,8 @@ import { useEvents } from "@/hooks/useEvents";
 import { PRINTER_TYPE_LABEL, apiError, type PrintQuota } from "@/lib/printing";
 import { CATEGORY_LABEL } from "@/lib/teams";
 import { formatDate } from "@/i18n/format";
-import { apiErrorMessage, passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { apiErrorMessage } from "@/lib/errors";
 import i18n from "@/i18n/config";
 import { labelMap } from "@/i18n/labels";
 

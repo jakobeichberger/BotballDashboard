@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
-import { NetworkFirst } from "workbox-strategies";
+import { CacheFirst, NetworkFirst } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 import { API_CACHE_NAME, isOfflineCacheableApiRequest } from "./lib/offlineCache";
 
@@ -27,10 +27,29 @@ registerRoute(
   }),
 );
 
+// Chunks left out of the precache (charts, admin pages; see vite.config.ts)
+// are cached on first use. Their file names carry a content hash, so a cached
+// copy never goes stale.
+registerRoute(
+  ({ url, request }) => url.origin === self.location.origin && url.pathname.startsWith("/assets/") && ["script", "style", "font"].includes(request.destination),
+  new CacheFirst({
+    cacheName: "lazy-assets",
+    plugins: [new ExpirationPlugin({ maxEntries: 80, maxAgeSeconds: 30 * 24 * 60 * 60 })],
+  }),
+);
+
+// A new worker waits until the user accepts the update prompt
+// (components/UpdatePrompt), which sends SKIP_WAITING.
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+});
+
+// Once active, control the open tabs right away so the reload after the
+// update prompt is served by the new worker and its precache.
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener("push", (event) => {

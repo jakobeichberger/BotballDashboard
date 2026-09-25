@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
-import { apiErrorMessage, passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { apiErrorMessage } from "@/lib/errors";
 
 export default function ResetPasswordPage() {
   const { t } = useTranslation("auth");

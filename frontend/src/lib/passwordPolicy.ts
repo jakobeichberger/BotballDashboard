@@ -38,16 +38,5 @@ export function localizePolicyMessage(message: string): string {
   return match ? i18n.t(match[1], { min: PASSWORD_MIN_LENGTH }) : message;
 }
 
-/** Turn an API error into a readable message (FastAPI detail or validation errors). */
-export function apiErrorMessage(error: any, fallback: string): string {
-  const data = error?.response?.data;
-  // Validation errors carry the useful text per field; the generic message
-  // (which the API client also copies into `detail`) says little.
-  if (data?.fieldErrors) {
-    const messages = Object.values(data.fieldErrors as Record<string, string[]>).flat();
-    if (messages.length) return messages.map(localizePolicyMessage).join(" ");
-  }
-  if (typeof data?.detail === "string") return localizePolicyMessage(data.detail);
-  if (typeof data?.message === "string") return localizePolicyMessage(data.message);
-  return fallback;
-}
+// API errors in general: lib/errors (apiErrorMessage), which also localizes
+// these policy messages.

@@ -254,11 +254,5 @@ export function formatCountdown(cutoff: string | Date, now: Date = new Date()): 
   return i18n.t("papers:countdown.minutes", { mins: Math.max(mins, 1) });
 }
 
-/** Axios error → message for the user (the API returns `message`, FastAPI `detail`). */
-export function apiErrorMessage(error: unknown, fallback = i18n.t("common:actionFailed")): string {
-  const data = (error as { response?: { data?: { message?: string; detail?: unknown } } })
-    ?.response?.data;
-  if (typeof data?.message === "string") return data.message;
-  if (typeof data?.detail === "string") return data.detail;
-  return fallback;
-}
+/** Axios error → message for the user in the active language (see lib/errors). */
+export { apiErrorMessage } from "@/lib/errors";

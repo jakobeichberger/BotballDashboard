@@ -8,7 +8,8 @@ import { useAuthStore } from "@/store/authStore";
 import { useThemeStore, type Theme } from "@/store/themeStore";
 import { usePushSubscription } from "@/hooks/usePushNotifications";
 import i18n from "@/i18n/config";
-import { apiErrorMessage, passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { passwordHint, passwordProblem } from "@/lib/passwordPolicy";
+import { apiErrorMessage } from "@/lib/errors";
 
 function downloadJson(data: unknown, filename: string) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));

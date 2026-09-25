@@ -1,32 +1,63 @@
-import i18n, { type Resource } from "i18next";
+import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
+import resourcesToBackend from "i18next-resources-to-backend";
 import { useAuthStore } from "@/store/authStore";
 
 export const SUPPORTED_LANGUAGES = ["de", "en"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
-// Every locales/<lng>/<namespace>.json file is bundled; adding a namespace only
-// needs the two JSON files (see __tests__/i18n for the key-parity checks).
-const files = import.meta.glob<{ default: Record<string, unknown> }>("./locales/*/*.json", { eager: true });
-const resources: Resource = {};
-for (const [path, module] of Object.entries(files)) {
-  const match = /\.\/locales\/(\w+)\/(\w+)\.json$/.exec(path);
-  if (!match) continue;
-  const [, lng, ns] = match;
-  resources[lng] = { ...resources[lng], [ns]: module.default };
+/**
+ * The translation namespaces = the files locales/<lng>/<namespace>.json.
+ * A new namespace needs both JSON files and an entry here; the i18n tests
+ * check that this list matches the files.
+ */
+export const namespaces = [
+  "analytics",
+  "auth",
+  "bots",
+  "common",
+  "dashboard",
+  "events",
+  "papers",
+  "printing",
+  "profile",
+  "scoring",
+  "settings",
+  "teams",
+];
+
+// Each language is one lazy chunk (i18n/bundles), so only the active language
+// — plus English as the fallback — is downloaded.
+type Bundle = Record<string, Record<string, unknown>>;
+const bundleLoaders: Record<Language, () => Promise<{ default: Bundle }>> = {
+  de: () => import("./bundles/de"),
+  en: () => import("./bundles/en"),
+};
+const bundles = new Map<string, Promise<Bundle>>();
+
+function loadBundle(lng: string): Promise<Bundle> {
+  const language: Language = isSupportedLanguage(lng) ? lng : "en";
+  let bundle = bundles.get(language);
+  if (!bundle) {
+    bundle = bundleLoaders[language]().then((module) => module.default);
+    // A failed chunk (offline without cache) may be retried later.
+    bundle.catch(() => bundles.delete(language));
+    bundles.set(language, bundle);
+  }
+  return bundle;
 }
-export const namespaces = Object.keys(resources.en ?? {});
 
 export function isSupportedLanguage(value: unknown): value is Language {
   return typeof value === "string" && (SUPPORTED_LANGUAGES as readonly string[]).includes(value);
 }
 
-i18n
+/** Resolves once the detected language (and the fallback) is loaded. */
+export const i18nReady = i18n
   .use(LanguageDetector)
   .use(initReactI18next)
+  .use(resourcesToBackend((lng: string, ns: string) => loadBundle(lng).then((bundle) => bundle[ns] ?? {})))
   .init({
-    resources,
     // Spec: a missing translation falls back to English.
     fallbackLng: "en",
     supportedLngs: [...SUPPORTED_LANGUAGES],
@@ -44,6 +75,11 @@ i18n
     },
     interpolation: {
       escapeValue: false,
+    },
+    react: {
+      // main.tsx renders after i18nReady; a later language switch keeps the
+      // old texts until the new bundle is loaded instead of suspending.
+      useSuspense: false,
     },
   });
 
