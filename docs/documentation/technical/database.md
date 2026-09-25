@@ -1,8 +1,8 @@
 # Datenbankschema
 
-Stand: Migration `0033`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 61 Tabellen.
+Stand: Migration `0034`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 68 Tabellen.
 
-- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0033`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
+- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0034`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
 - **Tests:** SQLite in-memory über `Base.metadata.create_all`, einmal pro Testprozess; jeder Test wird per SAVEPOINT-Rollback isoliert (`backend/tests/conftest.py`). Die Migrationen laufen in der CI zusätzlich gegen PostgreSQL; dort prüft `tests/postgres/test_schema_drift.py` (wie `alembic check`), dass das migrierte Schema den Modellen entspricht, einschließlich partieller Indizes und `CHECK`-Constraints.
 - **IDs:** fast überall `VARCHAR(36)` mit UUID-Text; Ausnahme `audit_logs.id` (Integer, autoincrement).
 - **JSON-Spalten** (`JSON`, auf PostgreSQL als `json` angelegt; `scoring_schemas.fields`, `matches.raw_scores` und `score_sheet_templates.extracted_fields`/`confirmed_fields` sind dort `jsonb`, im Modell `PortableJSONB`) halten flexible Strukturen: Score-Sheet-Definitionen, Rohwerte einer Wertung, Modul-Listen, Benachrichtigungs-Payloads.
@@ -238,6 +238,24 @@ erDiagram
 | `description` | TEXT |  |  |
 | `created_at` | DATETIME | NOT NULL |  |
 
+
+### `season_categories`
+
+| Spalte | Typ | Eigenschaften | Referenz |
+|---|---|---|---|
+| `id` | VARCHAR(36) | PK |  |
+| `season_id` | VARCHAR(36) | NOT NULL | → `seasons.id` (CASCADE) |
+| `key` | VARCHAR(20) | NOT NULL |  |
+| `label_de` | VARCHAR(100) | NOT NULL |  |
+| `label_en` | VARCHAR(100) | NOT NULL |  |
+| `kind` | VARCHAR(20) | NOT NULL |  |
+| `formula_preset` | VARCHAR(50) |  |  |
+| `run_count` | INTEGER |  |  |
+| `counted_runs` | INTEGER |  |  |
+| `rank_per_bracket` | BOOLEAN | NOT NULL |  |
+| `sort_order` | INTEGER | NOT NULL |  |
+
+Unique: `(season_id, key)`
 
 ## Teams (`modules/teams/models.py`)
 
@@ -631,6 +649,23 @@ Unique: `(event_id, team_id)`
 
 Unique: `(event_id, team_id)`
 
+### `jbc_results`
+
+| Spalte | Typ | Eigenschaften | Referenz |
+|---|---|---|---|
+| `id` | VARCHAR(36) | PK |  |
+| `season_id` | VARCHAR(36) | NOT NULL | → `seasons.id` (CASCADE) |
+| `event_id` | VARCHAR(36) | NOT NULL | → `events.id` (CASCADE) |
+| `team_id` | VARCHAR(36) | NOT NULL | → `teams.id` (CASCADE) |
+| `points` | FLOAT |  |  |
+| `challenges` | JSON | NOT NULL |  |
+| `rank` | INTEGER |  |  |
+| `notes` | TEXT |  |  |
+| `created_at` | DATETIME | NOT NULL |  |
+| `updated_at` | DATETIME | NOT NULL |  |
+
+Unique: `(event_id, team_id)`
+
 ### `result_revisions`
 
 | Spalte | Typ | Eigenschaften | Referenz |
@@ -690,6 +725,8 @@ Unique: `(season_id, category, bracket)`
 | `finals_replay` | BOOLEAN | NOT NULL |  |
 | `end_contact_bonus_percent` | FLOAT | NOT NULL |  |
 | `referee_checklist` | JSON | NOT NULL |  |
+| `seeding_tiebreakers` | BOOLEAN | NOT NULL |  |
+| `doc_max_points` | JSON |  |  |
 | `updated_at` | DATETIME | NOT NULL |  |
 
 ### `parts_challenges`
@@ -769,6 +806,22 @@ Unique: `(season_id, category, bracket)`
 
 Unique: `(season_id, team_id, level_id)`
 
+
+### `timeout_cards`
+
+| Spalte | Typ | Eigenschaften | Referenz |
+|---|---|---|---|
+| `id` | VARCHAR(36) | PK |  |
+| `event_id` | VARCHAR(36) | NOT NULL | → `events.id` (CASCADE) |
+| `team_id` | VARCHAR(36) | NOT NULL | → `teams.id` (CASCADE) |
+| `scheduled_match_id` | VARCHAR(36) |  | → `scheduled_matches.id` (SET NULL) |
+| `round_number` | INTEGER |  |  |
+| `reason` | VARCHAR(20) | NOT NULL |  |
+| `note` | TEXT |  |  |
+| `recorded_by` | VARCHAR(36) |  | → `users.id` (SET NULL) |
+| `used_at` | DATETIME | NOT NULL |  |
+
+Unique: `(event_id, team_id)`
 
 ## Score-Sheets und OCR (`score_sheets/models.py`)
 
@@ -850,6 +903,7 @@ Unique: `(season_id, team_id, level_id)`
 | `paper_rank` | INTEGER |  |  |
 | `format_deduction` | FLOAT | NOT NULL |  |
 | `format_deduction_reason` | TEXT |  |  |
+| `presented_on_stage` | BOOLEAN | NOT NULL |  |
 | `finalized_at` | DATETIME |  |  |
 | `notes` | TEXT |  |  |
 | `created_at` | DATETIME | NOT NULL |  |
@@ -868,6 +922,7 @@ Unique: `(season_id, team_id)`
 | `file_name` | VARCHAR(255) | NOT NULL |  |
 | `storage_path` | TEXT | NOT NULL |  |
 | `file_size_bytes` | INTEGER | NOT NULL |  |
+| `page_count` | INTEGER |  |  |
 | `uploaded_by` | VARCHAR(36) |  | → `users.id` (SET NULL) |
 | `uploaded_at` | DATETIME | NOT NULL |  |
 | `submitted_at` | DATETIME |  |  |
@@ -983,6 +1038,12 @@ Unique: `(paper_id, reviewer_id, revision_number)`
 | `file_size_bytes` | INTEGER |  |  |
 | `material` | VARCHAR(50) | NOT NULL |  |
 | `color` | VARCHAR(100) |  |  |
+| `purpose` | VARCHAR(10) | NOT NULL |  |
+| `part_count` | INTEGER | NOT NULL |  |
+| `bbox_x_mm` | FLOAT |  |  |
+| `bbox_y_mm` | FLOAT |  |  |
+| `bbox_z_mm` | FLOAT |  |  |
+| `stl_submitted` | BOOLEAN | NOT NULL |  |
 | `estimated_grams` | FLOAT |  |  |
 | `actual_grams` | FLOAT |  |  |
 | `estimated_minutes` | INTEGER |  |  |
@@ -1126,6 +1187,64 @@ Empfänger einer Outbox-Zeile (Migration `0032`), geschrieben von `emit_event`. 
 | `created_at` | DATETIME | NOT NULL |  |
 | `updated_at` | DATETIME | NOT NULL |  |
 
+
+## Awards (`modules/awards/models.py`)
+
+### `event_awards`
+
+| Spalte | Typ | Eigenschaften | Referenz |
+|---|---|---|---|
+| `event_id` | VARCHAR(36) | PK | → `events.id` (CASCADE) |
+| `template` | VARCHAR(20) |  |  |
+| `published` | BOOLEAN | NOT NULL |  |
+| `published_at` | DATETIME |  |  |
+
+### `award_categories`
+
+| Spalte | Typ | Eigenschaften | Referenz |
+|---|---|---|---|
+| `id` | VARCHAR(36) | PK |  |
+| `event_id` | VARCHAR(36) | NOT NULL | → `events.id` (CASCADE) |
+| `key` | VARCHAR(50) | NOT NULL |  |
+| `label` | VARCHAR(255) | NOT NULL |  |
+| `description` | TEXT |  |  |
+| `kind` | VARCHAR(10) | NOT NULL |  |
+| `source` | VARCHAR(30) |  |  |
+| `team_category` | VARCHAR(20) |  |  |
+| `places` | INTEGER | NOT NULL |  |
+| `per_course` | BOOLEAN | NOT NULL |  |
+| `sort_order` | INTEGER | NOT NULL |  |
+
+Unique: `(event_id, key)`
+
+### `award_nominations`
+
+| Spalte | Typ | Eigenschaften | Referenz |
+|---|---|---|---|
+| `id` | VARCHAR(36) | PK |  |
+| `award_id` | VARCHAR(36) | NOT NULL | → `award_categories.id` (CASCADE) |
+| `team_id` | VARCHAR(36) | NOT NULL | → `teams.id` (CASCADE) |
+| `note` | TEXT |  |  |
+| `nominated_by` | VARCHAR(36) |  | → `users.id` (SET NULL) |
+| `created_at` | DATETIME | NOT NULL |  |
+
+Unique: `(award_id, team_id)`
+
+### `award_results`
+
+| Spalte | Typ | Eigenschaften | Referenz |
+|---|---|---|---|
+| `id` | VARCHAR(36) | PK |  |
+| `award_id` | VARCHAR(36) | NOT NULL | → `award_categories.id` (CASCADE) |
+| `team_id` | VARCHAR(36) | NOT NULL | → `teams.id` (CASCADE) |
+| `place` | INTEGER | NOT NULL |  |
+| `course` | VARCHAR(8) |  |  |
+| `score` | FLOAT |  |  |
+| `note` | TEXT |  |  |
+| `decided_by` | VARCHAR(36) |  | → `users.id` (SET NULL) |
+| `decided_at` | DATETIME | NOT NULL |  |
+
+Unique: `(award_id, team_id)`
 
 ## Audit (`core/audit.py`)
 
