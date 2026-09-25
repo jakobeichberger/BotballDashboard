@@ -14,6 +14,13 @@ export default function ProtectedRoute({ requireRole, requirePermission, childre
     return <Navigate to="/login" replace />;
   }
 
+  // After a page load the session is back (access token) a moment before the
+  // profile with the permissions: wait for it instead of redirecting a deep
+  // link or a reload to the start page.
+  if ((requireRole || requirePermission) && !user) {
+    return <div className="p-6 text-gray-500" role="status">Laden…</div>;
+  }
+
   if (requireRole && !hasRole(requireRole) && !user?.is_superuser) {
     return <Navigate to="/" replace />;
   }
