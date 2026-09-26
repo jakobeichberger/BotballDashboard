@@ -15728,7 +15728,7 @@
           "awards"
         ],
         "summary": "Decide Award",
-        "description": "The jury's placing; replaces the award's results.",
+        "description": "The jury's placing; replaces the award's results.\n\nChanging or clearing an existing decision needs ``replace: true``.",
         "operationId": "decide_award_api_awards__award_id__results_put",
         "security": [
           {
@@ -17370,6 +17370,11 @@
             "type": "array",
             "maxItems": 50,
             "title": "Placements"
+          },
+          "replace": {
+            "type": "boolean",
+            "title": "Replace",
+            "default": false
           }
         },
         "type": "object",

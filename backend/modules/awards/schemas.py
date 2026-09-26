@@ -60,6 +60,8 @@ class Placement(BaseModel):
 
 class AwardDecision(BaseModel):
     placements: list[Placement] = Field(default_factory=list, max_length=50)
+    #: Confirmed replacement: needed to change or clear an existing decision.
+    replace: bool = False
 
 
 class AwardResultResponse(BaseModel):
