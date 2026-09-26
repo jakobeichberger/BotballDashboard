@@ -18,7 +18,7 @@
   "criterion": {
     "content": {
       "label": "Content",
-      "hint": "Concept / design"
+      "hint": "Concept / Design"
     },
     "implementation": {
       "label": "Technical implementation",
@@ -26,7 +26,7 @@
     },
     "results": {
       "label": "Results",
-      "hint": "Results / conclusion"
+      "hint": "Results / Conclusion"
     },
     "language": {
       "label": "Language",
@@ -82,10 +82,12 @@
     "preview": "Preview",
     "previewFirst": "Create a preview first",
     "assign": "Assign",
-    "previewResult": "Preview: {{count}} assignment(s)",
-    "assignedResult": "Assigned: {{count}} assignment(s)",
     "unfilled": "Not enough suitable reviewers for: {{papers}}",
-    "missing": "{{title}} ({{count}} missing)"
+    "missing": "{{title}} ({{count}} missing)",
+    "previewResult_one": "Preview: {{count}} assignment",
+    "previewResult_other": "Preview: {{count}} assignments",
+    "assignedResult_one": "Assigned: {{count}} assignment",
+    "assignedResult_other": "Assigned: {{count}} assignments"
   },
   "deadlines": {
     "title": "Deadlines",

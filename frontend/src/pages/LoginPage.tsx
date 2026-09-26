@@ -1,22 +1,22 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import { Eye, EyeOff } from "lucide-react";
 import { useLogin } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogoBadge, Wordmark } from "@/components/BrandMark";
 
-const makeSchema = (t: TFunction) =>
-  z.object({
-    email: z.email({ error: t("auth:login.invalidEmail") }),
-    password: z.string().min(1, { error: t("auth:login.passwordRequired") }),
-  });
+// Two fields validated with react-hook-form's own rules: zod was two thirds
+// of the login chunk (the first page every juror loads, often on hall Wi-Fi).
+// The server checks the credentials anyway; this only catches typos early.
+/** local@domain.tld without spaces (the shape zod's email check accepted). */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type FormData = z.infer<ReturnType<typeof makeSchema>>;
+interface FormData {
+  email: string;
+  password: string;
+}
 
 export default function LoginPage() {
   const { t } = useTranslation("auth");
@@ -25,13 +25,12 @@ export default function LoginPage() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const schema = useMemo(() => makeSchema(t), [t]);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = useForm<FormData>();
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -88,11 +87,15 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   className="input"
-                  placeholder="admin@example.com"
+                  placeholder={t("emailPlaceholder")}
                   autoComplete="email"
                   aria-invalid={errors.email ? true : undefined}
                   aria-describedby={errors.email ? "email-error" : undefined}
-                  {...register("email")}
+                  {...register("email", {
+                    setValueAs: (value: string) => value.trim(),
+                    pattern: { value: EMAIL_PATTERN, message: t("login.invalidEmail") },
+                    required: t("login.invalidEmail"),
+                  })}
                 />
                 {errors.email && (
                   <p id="email-error" className="mt-1 text-xs font-medium text-danger">{errors.email.message}</p>
@@ -109,7 +112,7 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     aria-invalid={errors.password ? true : undefined}
                     aria-describedby={errors.password ? "password-error" : undefined}
-                    {...register("password")}
+                    {...register("password", { required: t("login.passwordRequired") })}
                   />
                   <button
                     type="button"

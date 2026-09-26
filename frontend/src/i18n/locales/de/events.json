@@ -253,7 +253,14 @@
       "decided": "Vergeben",
       "open": "Noch offen",
       "nominations": "Nominierungen"
-    }
+    },
+    "templateApplied": "{{template}}-Awards ergänzt (vorhandene bleiben unverändert).",
+    "confirmReplace": "„{{label}}“ ist bereits entschieden. Bestehende Platzierung ersetzen?",
+    "confirmClear": "Keine Plätze gewählt: Entscheidung für „{{label}}“ zurücksetzen? Der Award verschwindet dann auch von der öffentlichen Seite.",
+    "replace": "Ersetzen",
+    "clear": "Zurücksetzen",
+    "confirmWithdraw": "Nominierung von {{team}} für „{{label}}“ zurückziehen?",
+    "withdrawShort": "Zurückziehen"
   },
   "scoreSavedFor": "Offiziell gespeichert: {{team}} · {{points}}",
   "duplicateMatchScore": "Für {{team}} ist in diesem Match schon eine Wertung erfasst ({{points}} P.). Eine zweite würde als zusätzlicher Seeding-Lauf zählen und wird abgelehnt – bitte den vorhandenen Eintrag unter „Punkte eintragen“ korrigieren.",

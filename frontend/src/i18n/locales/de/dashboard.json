@@ -3,7 +3,8 @@
   "role": {
     "admin": "Administrator",
     "reviewer": "Reviewer",
-    "user": "Teilnehmer"
+    "user": "Teilnehmer",
+    "juror": "Jury"
   },
   "roleLabel": "Rolle: {{role}}",
   "welcome": "Willkommen, {{name}}",
@@ -11,7 +12,7 @@
   "activeSeason": "Aktive Saison: {{name}} ({{year}})",
   "shortcut": {
     "teams": "Teams verwalten",
-    "scoring": "Scoring",
+    "scoring": "Wertung",
     "papers": "Paper-Review",
     "printing": "3D-Druck",
     "scans": "Score-Sheets",

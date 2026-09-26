@@ -49,7 +49,7 @@ describe("AerialPage with a run list", () => {
     renderAt("/scoring/aerial", <AerialPage />);
     expect(await screen.findByText("Drone Masters")).toBeInTheDocument();
     // Aerial Junior: six runs, the senior team is not listed in this view.
-    expect(screen.getAllByRole("columnheader", { name: /run \d/i })).toHaveLength(6);
+    expect(screen.getAllByRole("columnheader", { name: /lauf \d/i })).toHaveLength(6);
     expect(screen.queryByText("Senior")).not.toBeInTheDocument();
     // (115 + 105 + 70) / 3, as in the ECER 2026 results; also the best score of the view.
     expect(within(screen.getByRole("table")).getByText("96,67")).toBeInTheDocument();
@@ -62,7 +62,7 @@ describe("AerialPage with a run list", () => {
       "/registrations": [{ team_id: "t1", category: "aerial_junior" }],
     });
     renderAt("/scoring/aerial", <AerialPage />);
-    fireEvent.change(await screen.findByLabelText(/run 2 für drone masters/i), { target: { value: "40" } });
+    fireEvent.change(await screen.findByLabelText(/lauf 2 für drone masters/i), { target: { value: "40" } });
     fireEvent.click(screen.getByRole("button", { name: /speichern/i }));
     await waitFor(() => expect(api.put).toHaveBeenCalled());
     expect((api.put as any).mock.calls[0]).toEqual(["/scoring/events/e2/aerial-results", [{ team_id: "t1", runs: [null, 40] }]]);

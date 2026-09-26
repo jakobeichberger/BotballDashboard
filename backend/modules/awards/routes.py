@@ -1,6 +1,9 @@
 """Awards API.
 
-Reading needs scoring:read. Nominating, templates, award categories,
+Reading needs scoring:read; only the jury (awards:admin or scoring:admin)
+sees unpublished placings, nominations and jury notes, everyone else gets
+the published view (see service.restricted_view). The exports are the
+jury's. Nominating, templates, award categories,
 computing, the jury decision and publishing need awards:admin or
 scoring:admin (the jury; mentors hold scoring:write for their own team and
 must not nominate). The public event page reads published awards without
@@ -10,9 +13,10 @@ login.
 import io
 
 from fastapi import APIRouter, Depends, Response
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import require_any_permission, require_permission
+from core.auth import has_elevated_access, require_any_permission, require_permission
 from core.database import get_db
 from core.files import safe_filename
 from core.live import publish_after_commit
@@ -33,7 +37,8 @@ from modules.events import service as event_service
 router = APIRouter(prefix="/awards", tags=["awards"])
 public_router = APIRouter(prefix="/v1/public/events", tags=["public-events"])
 
-_ADMIN = require_any_permission("awards:admin", "scoring:admin")
+_ADMIN_PERMISSIONS = ("awards:admin", "scoring:admin")
+_ADMIN = require_any_permission(*_ADMIN_PERMISSIONS)
 _NOMINATE = _ADMIN
 
 
@@ -56,10 +61,13 @@ async def list_templates(_=Depends(require_permission("scoring:read"))):
 @router.get("/events/{event_id}", response_model=EventAwardsResponse)
 async def get_event_awards(
     event_id: str,
-    _=Depends(require_permission("scoring:read")),
+    current_user=Depends(require_permission("scoring:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.event_awards(db, event_id)
+    data = await service.event_awards(db, event_id)
+    if await has_elevated_access(db, current_user, _ADMIN_PERMISSIONS):
+        return data
+    return service.restricted_view(data)
 
 
 @router.post("/events/{event_id}/templates/{template_id}", response_model=EventAwardsResponse)
@@ -148,8 +156,16 @@ async def decide_award(
     current_user=Depends(_ADMIN),
     db: AsyncSession = Depends(get_db),
 ):
-    """The jury's placing; replaces the award's results."""
-    await service.decide(db, award_id, [p.model_dump() for p in body.placements], current_user.id)
+    """The jury's placing; replaces the award's results.
+
+    Changing or clearing an existing decision needs ``replace: true``."""
+    await service.decide(
+        db,
+        award_id,
+        [p.model_dump() for p in body.placements],
+        current_user.id,
+        replace=body.replace,
+    )
     award = await service.get_award(db, award_id)
     _changed(db, award.event_id)
     return await _award(db, award_id)
@@ -171,7 +187,7 @@ async def publish_awards(
 @router.get("/events/{event_id}/export.csv")
 async def export_awards_csv(
     event_id: str,
-    _=Depends(require_permission("scoring:read")),
+    _=Depends(_ADMIN),
     db: AsyncSession = Depends(get_db),
 ):
     from modules.exports.routes import _SafeWriter
@@ -193,16 +209,18 @@ async def export_awards_csv(
 @router.get("/events/{event_id}/export.pdf")
 async def export_awards_pdf(
     event_id: str,
-    _=Depends(require_permission("scoring:read")),
+    _=Depends(_ADMIN),
     db: AsyncSession = Depends(get_db),
 ):
-    from modules.exports.pdf_builder import build_awards_pdf
+    from modules.exports import pdf_builder
     from modules.seasons.service import get_season
 
     event = await event_service.get_event(db, event_id)
     season = await get_season(db, event.season_id)
     data = await service.event_awards(db, event_id)
-    content = build_awards_pdf(event.name, season.name, data["awards"])
+    content = await run_in_threadpool(
+        pdf_builder.build_awards_pdf, event.name, season.name, data["awards"]
+    )
     name = safe_filename(f"awards-{event.slug}.pdf", "awards.pdf")
     return Response(
         content=content,

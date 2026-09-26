@@ -56,7 +56,7 @@ export default function DashboardPage() {
     enabled: !!(eventId || seasonId),
   });
 
-  const { data: stats } = useQuery({
+  const statsQuery = useQuery({
     queryKey: ["dashboard", "stats", eventId || seasonId],
     queryFn: async () =>
       (
@@ -64,8 +64,9 @@ export default function DashboardPage() {
           params: eventId ? { event_id: eventId } : { season_id: seasonId },
         })
       ).data,
-    enabled: role === "admin" && !!(eventId || seasonId),
+    enabled: (role === "admin" || role === "juror") && !!(eventId || seasonId),
   });
+  const stats = statsQuery.data;
 
   const { data: papers } = useQuery({
     queryKey: ["papers", eventId || seasonId],
@@ -152,9 +153,10 @@ export default function DashboardPage() {
         </nav>
       )}
 
-      {role === "admin" && (
+      {(role === "admin" || role === "juror") && (
         <AdminDashboard
           stats={stats}
+          statsQuery={statsQuery}
           season={contextWithPhases}
           announcements={announcements}
           summary={summary}

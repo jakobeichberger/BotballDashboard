@@ -19,7 +19,7 @@ export function Heatmap({ heatmap }: { heatmap: EventStatistics["heatmap"] }) {
   const { t } = useTranslation("analytics");
   if (!heatmap.teams.length || !heatmap.fields.length) return <p className="text-sm text-leise">{t("noData")}</p>;
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("heatmap.caption")}>
       <table className="text-sm">
         <caption className="sr-only">{t("heatmap.caption")}</caption>
         <thead>
@@ -156,7 +156,7 @@ export default function StatisticsPage() {
               </div>
             ) : <p className="text-sm text-leise">{t("noData")}</p>}
             {stats.trend.teams.length > 0 && (
-              <div className="table-scroll">
+              <div className="table-scroll" tabIndex={0} role="region" aria-label={t("statistics.trendPerTeam")}>
               <table className="mt-4 w-full text-sm">
                 <caption className="sr-only">{t("statistics.trendPerTeam")}</caption>
                 <thead><tr className="text-left text-fg">

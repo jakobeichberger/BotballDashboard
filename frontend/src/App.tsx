@@ -39,7 +39,8 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route index element={<EventIndexRedirect />} />
           <Route path="setup" element={<ProtectedRoute requirePermission="events:write"><EventSetupPage /></ProtectedRoute>} />
-          <Route path="settings/*" element={<ProtectedRoute requirePermission="users:read"><SettingsPage /></ProtectedRoute>} />
+          {/* Outside the event layout (which has the <main> landmark), so wrap it here. */}
+          <Route path="settings/*" element={<ProtectedRoute requirePermission="users:read"><main><SettingsPage /></main></ProtectedRoute>} />
           <Route path="events/:eventId" element={<Layout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             {eventRoutes.map(({ path, permission, module, component: Component }) => (

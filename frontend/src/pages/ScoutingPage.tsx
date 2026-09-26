@@ -108,7 +108,7 @@ export default function ScoutingPage() {
       <section className="card overflow-x-auto" aria-labelledby="opponent-ranking-title">
         <h2 id="opponent-ranking-title" className="border-b px-4 py-3 font-semibold">{t("scouting.ranking")}</h2>
         <p className="px-4 pt-2 text-xs text-leise">{t("scouting.rankingHint")}</p>
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
         <table className="w-full text-sm">
           <thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("scouting.team")}</th><th className="p-3 text-left">{t("scouting.country")}</th><th className="p-3 text-left">{t("scouting.source")}</th><th className="p-3 text-right">{t("scouting.seed")}</th><th className="p-3 text-right">{t("scouting.best")}</th><th className="p-3 text-right">{t("scouting.runs")}</th></tr></thead>
           <tbody>

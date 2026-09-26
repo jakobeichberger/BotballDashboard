@@ -253,7 +253,14 @@
       "decided": "Awarded",
       "open": "Still open",
       "nominations": "Nominations"
-    }
+    },
+    "templateApplied": "{{template}} awards added (existing ones are kept).",
+    "confirmReplace": "“{{label}}” is already decided. Replace the existing placing?",
+    "confirmClear": "No places chosen: clear the decision for “{{label}}”? The award then also disappears from the public page.",
+    "replace": "Replace",
+    "clear": "Clear",
+    "confirmWithdraw": "Withdraw the nomination of {{team}} for “{{label}}”?",
+    "withdrawShort": "Withdraw"
   },
   "scoreSavedFor": "Saved officially: {{team}} · {{points}}",
   "duplicateMatchScore": "A score for {{team}} is already recorded in this match ({{points}} pts). A second one would count as an extra seeding run and is rejected – please correct the existing entry under “Enter scores”.",

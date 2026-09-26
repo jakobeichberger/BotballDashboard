@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import PapersPage from "@/pages/PapersPage";
@@ -66,6 +66,11 @@ describe("PapersPage", () => {
     expect(screen.getByText("50 %")).toBeInTheDocument();
     expect(screen.getByText("72 %")).toBeInTheDocument();
     expect(screen.getByText("7,2 / 10")).toBeInTheDocument();
+    // Valid structure (axe definition-list / dlitem): the KPIs are a labelled
+    // list like every other KPI row, no dt/dd outside a <dl>.
+    const kpis = screen.getByRole("list", { name: "Statistik" });
+    expect(kpis.querySelectorAll("dt, dd, dl")).toHaveLength(0);
+    expect(within(kpis).getAllByRole("listitem")).toHaveLength(5);
   });
 
   it("renders the new statuses", async () => {

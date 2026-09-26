@@ -4218,6 +4218,8 @@ export interface paths {
         /**
          * Decide Award
          * @description The jury's placing; replaces the award's results.
+         *
+         *     Changing or clearing an existing decision needs ``replace: true``.
          */
         put: operations["decide_award_api_awards__award_id__results_put"];
         post?: never;
@@ -4715,6 +4717,11 @@ export interface components {
         AwardDecision: {
             /** Placements */
             placements?: components["schemas"]["Placement"][];
+            /**
+             * Replace
+             * @default false
+             */
+            replace: boolean;
         };
         /** AwardResponse */
         AwardResponse: {

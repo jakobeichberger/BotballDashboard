@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next";
 import { useSeasonCategories } from "@/lib/categories";
 import { api } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/errors";
+import { confirmAction } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
+import QueryErrorState from "@/components/QueryErrorState";
 import BracketWeightsEditor from "@/modules/scoring/extras/BracketWeightsEditor";
 import {
   Calculator,
@@ -82,11 +85,12 @@ export default function FormulasPage() {
 
   // Formulas are stored per season (that is how the game document is
   // published); results are per event, so the preview needs the event.
-  const { data: event } = useQuery<{ id: string; season_id: string; name: string }>({
+  const eventQuery = useQuery<{ id: string; season_id: string; name: string }>({
     queryKey: ["event", eventId],
     queryFn: async () => (await api.get(`/v1/events/${eventId}`)).data,
     enabled: !!eventId,
   });
+  const event = eventQuery.data;
   const seasonId = event?.season_id ?? "";
   const registry = useSeasonCategories(seasonId || undefined);
 
@@ -98,7 +102,7 @@ export default function FormulasPage() {
     },
   });
 
-  const { data: effective, isLoading } = useQuery<Formula[]>({
+  const effectiveQuery = useQuery<Formula[]>({
     queryKey: ["formulas", seasonId, category],
     queryFn: async () => {
       const { data } = await api.get(
@@ -108,6 +112,7 @@ export default function FormulasPage() {
     },
     enabled: !!seasonId,
   });
+  const { data: effective, isLoading } = effectiveQuery;
 
   // Reload the editor whenever the season or category changes.
   useEffect(() => {
@@ -187,7 +192,11 @@ export default function FormulasPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["formulas", seasonId, category] });
     },
+    onError: (error) => toast.apiError(error),
   });
+  const confirmReset = async () => {
+    if (await confirmAction({ message: t("formulas.confirmReset", { category: registry.label(category) }), tone: "danger", confirmLabel: t("formulas.reset") })) resetMutation.mutate();
+  };
 
   const weightsMutation = useMutation({
     mutationFn: async (weights: Record<string, number>) => {
@@ -249,6 +258,7 @@ export default function FormulasPage() {
   const columns = preview?.order ?? [];
 
   if (!seasonId) {
+    if (eventQuery.isError) return <div className="p-4 sm:p-6"><QueryErrorState queries={[eventQuery]} /></div>;
     return (
       <div className="card p-6">
         <p className="text-leise">{t("events:loading")}</p>
@@ -284,8 +294,8 @@ export default function FormulasPage() {
           )}
           <button
             className="btn-secondary"
-            onClick={() => resetMutation.mutate()}
-            disabled={resetMutation.isPending}
+            onClick={() => void confirmReset()}
+            disabled={resetMutation.isPending || !effective || effectiveQuery.isError}
           >
             <RotateCcw className="w-4 h-4" />
             {t("formulas.reset")}
@@ -316,6 +326,8 @@ export default function FormulasPage() {
           </button>
         ))}
       </div>
+
+      <QueryErrorState queries={[effectiveQuery]} />
 
       {saveError && (
         <div className="card p-4 border-danger/40 bg-danger/[0.07]">
@@ -390,7 +402,7 @@ export default function FormulasPage() {
                     aria-label={t("formulas.expressionLabel", { key: f.key || i + 1 })}
                     rows={2}
                     spellCheck={false}
-                    placeholder="3/4 * ((n - rank(seed_total) + 1) / n) + 1/4 * ..."
+                    placeholder={t("formulas.expressionPlaceholder")}
                     value={f.expression}
                     onChange={(e) => update(i, { expression: e.target.value })}
                   />
@@ -447,7 +459,7 @@ export default function FormulasPage() {
               ))}
 
             {preview && preview.rows.length > 0 && (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("formulas.preview")}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left border-b">

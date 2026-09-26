@@ -287,7 +287,8 @@
     "multiplierMax": "Multiplier maximum",
     "removeMultiplier": "Remove multiplier",
     "triggeredBy": "Triggered by",
-    "triggeredByCheckbox": "Own checkbox"
+    "triggeredByCheckbox": "Own checkbox",
+    "maxPlaceholder": "max"
   },
   "sheet": {
     "side": "Side",
@@ -303,7 +304,8 @@
       "invalid": "The entries are invalid."
     },
     "decrease": "Decrease {{label}} by 1",
-    "increase": "Increase {{label}} by 1"
+    "increase": "Increase {{label}} by 1",
+    "fields": "Inputs"
   },
   "entry": {
     "offlineLabel": "{{team}} · round {{round}} · {{points}} pts",
@@ -414,7 +416,9 @@
     "bracketLabel": "Bracket {{index}}",
     "bracketWeight": "Weight {{index}}",
     "keyLabel": "Key of formula {{number}}",
-    "expressionLabel": "Expression for {{key}}"
+    "expressionLabel": "Expression for {{key}}",
+    "confirmReset": "Reset the formulas of {{category}} to the default? Your own changes are lost.",
+    "expressionPlaceholder": "3/4 * ((n - rank(seed_total) + 1) / n) + 1/4 * …"
   },
   "scoreSheets": {
     "title": "Score Sheets",
@@ -476,7 +480,8 @@
       "confirm": "Confirm {{count}} fields",
       "confirming": "Saving …",
       "confirmError": "Failed to save. Please try again.",
-      "removeRow": "Remove row {{row}} ({{key}})"
+      "removeRow": "Remove row {{row}} ({{key}})",
+      "keyPlaceholder": "snake_case_key"
     },
     "layout": {
       "title": "OCR layout",
