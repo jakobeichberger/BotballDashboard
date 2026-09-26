@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,7 @@ import { DeadlineBanner } from "@/modules/papers/DeadlineBanner";
 import { VersionDiff } from "@/modules/papers/VersionDiff";
 import { confirmAction } from "@/lib/confirm";
 import { toast } from "@/lib/toast";
+import { useChanged } from "@/hooks/useChanged";
 import { downloadFile } from "@/lib/download";
 import {
   ADMIN_STATUS_OPTIONS,
@@ -167,15 +168,16 @@ export default function PaperDetailPage() {
     : null;
 
   // ── Reviewer form state ────────────────────────────────────────────────
-  const [form, setForm] = useState<ReviewForm>(emptyForm);
+  const reviewForm = () => (myReview ? formFromReview(myReview) : emptyForm());
+  const [form, setForm] = useState<ReviewForm>(reviewForm);
   // Re-seed whenever the paper OR the matching review changes. The router
   // reuses this component across /papers/:id, so without the reset branch the
   // previous paper's scores stayed in the form and could be saved onto the
   // next one. The same applies after a revision is requested, which makes
-  // myReview undefined (reviews are per revision_number).
-  useEffect(() => {
-    setForm(myReview ? formFromReview(myReview) : emptyForm());
-  }, [id, myReview?.id, myReview?.is_submitted]); // eslint-disable-line react-hooks/exhaustive-deps
+  // myReview undefined (reviews are per revision_number). A refetch of the
+  // same review keeps the reviewer's unsaved edits.
+  const reviewChanged = useChanged([id, myReview?.id, myReview?.is_submitted]);
+  if (reviewChanged) setForm(reviewForm());
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["paper", id] });
@@ -225,12 +227,16 @@ export default function PaperDetailPage() {
     onError,
   });
 
-  const [deduction, setDeduction] = useState("");
-  const [deductionReason, setDeductionReason] = useState("");
-  useEffect(() => {
-    setDeduction(paper?.format_deduction ? String(paper.format_deduction) : "");
-    setDeductionReason(paper?.format_deduction_reason ?? "");
-  }, [paper?.id, paper?.format_deduction, paper?.format_deduction_reason]);
+  const storedDeduction = paper?.format_deduction ? String(paper.format_deduction) : "";
+  const storedDeductionReason = paper?.format_deduction_reason ?? "";
+  const [deduction, setDeduction] = useState(storedDeduction);
+  const [deductionReason, setDeductionReason] = useState(storedDeductionReason);
+  // Another paper or a changed stored deduction replaces the inputs.
+  const deductionChanged = useChanged([paper?.id, paper?.format_deduction, paper?.format_deduction_reason]);
+  if (deductionChanged) {
+    setDeduction(storedDeduction);
+    setDeductionReason(storedDeductionReason);
+  }
   const deductionM = useMutation({
     mutationFn: () =>
       api.put(`/papers/${id}/score`, {

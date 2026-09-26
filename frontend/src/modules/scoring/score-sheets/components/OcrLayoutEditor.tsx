@@ -34,9 +34,24 @@ import {
 } from '../layout'
 import OcrValidationRulesEditor from './OcrValidationRulesEditor'
 import { apiErrorMessage } from '@/lib/errors'
+import { useChanged } from '@/hooks/useChanged'
 
 const EDGES = ['x', 'y', 'width', 'height'] as const
 type DrawMode = 'fields' | 'anchors'
+
+/** The stored layout of `template` as editor state (regions of confirmed fields only). */
+function storedLayout(template: ScoreSheetTemplate, fields: { key: string }[]) {
+  const width = template.page_width || DEFAULT_PAGE.width
+  const height = template.page_height || DEFAULT_PAGE.height
+  const keys = new Set(fields.map((field) => field.key))
+  return {
+    page: { width, height },
+    regions: normalizeRegions(template.field_regions, width, height).filter((region) => keys.has(region.key)),
+    anchors: normalizeAnchors(template.anchors, width, height),
+    rules: parseRules(template.validation_rules, keys),
+    active: fields[0]?.key ?? '',
+  }
+}
 
 export default function OcrLayoutEditor({
   template,
@@ -47,28 +62,29 @@ export default function OcrLayoutEditor({
 }) {
   const { t } = useTranslation('scoring')
   const fields = useMemo(() => template.confirmed_fields ?? [], [template.confirmed_fields])
-  const [page, setPage] = useState(DEFAULT_PAGE)
-  const [regions, setRegions] = useState<OcrRegion[]>([])
-  const [anchors, setAnchors] = useState<OcrAnchor[]>([])
-  const [rules, setRules] = useState<OcrValidationRules>(() => parseRules(null, new Set()))
+  const [stored] = useState(() => storedLayout(template, fields))
+  const [page, setPage] = useState(stored.page)
+  const [regions, setRegions] = useState<OcrRegion[]>(stored.regions)
+  const [anchors, setAnchors] = useState<OcrAnchor[]>(stored.anchors)
+  const [rules, setRules] = useState<OcrValidationRules>(stored.rules)
   const [mode, setMode] = useState<DrawMode>('fields')
-  const [active, setActive] = useState('')
+  const [active, setActive] = useState(stored.active)
   const [image, setImage] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ start: { x: number; y: number }; current: { x: number; y: number } } | null>(null)
   const [message, setMessage] = useState('')
   const surface = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const width = template.page_width || DEFAULT_PAGE.width
-    const height = template.page_height || DEFAULT_PAGE.height
-    setPage({ width, height })
-    const keys = new Set(fields.map((field) => field.key))
-    setRegions(normalizeRegions(template.field_regions, width, height).filter((region) => keys.has(region.key)))
-    setAnchors(normalizeAnchors(template.anchors, width, height))
-    setRules(parseRules(template.validation_rules, keys))
-    setActive(fields[0]?.key ?? '')
+  // Another template, or a changed stored layout (e.g. after saving), replaces the editor state.
+  const layoutChanged = useChanged([template.id, template.page_width, template.page_height, template.field_regions, template.anchors, template.validation_rules, fields])
+  if (layoutChanged) {
+    const next = storedLayout(template, fields)
+    setPage(next.page)
+    setRegions(next.regions)
+    setAnchors(next.anchors)
+    setRules(next.rules)
+    setActive(next.active)
     setMessage('')
-  }, [template.id, template.page_width, template.page_height, template.field_regions, template.anchors, template.validation_rules, fields])
+  }
 
   useEffect(() => () => { if (image) URL.revokeObjectURL(image) }, [image])
 

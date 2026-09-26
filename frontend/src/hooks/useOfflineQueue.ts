@@ -30,7 +30,8 @@ export function useOfflineQueue(filter?: (entry: QueuedScore) => boolean) {
   }, []);
 
   useEffect(() => {
-    void reload();
+    // IndexedDB is the external store; entries arrive asynchronously.
+    listQueuedScores().then(setEntries, () => setEntries([]));
     window.addEventListener(QUEUE_CHANGED_EVENT, reload);
     return () => window.removeEventListener(QUEUE_CHANGED_EVENT, reload);
   }, [reload]);

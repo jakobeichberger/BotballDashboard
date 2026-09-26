@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,7 @@ import type { CompetitionLevel, SchemaListEntry, SchemaTemplate } from "@/module
 import { definitionProblems } from "./definitionProblems";
 import { fromFlatFields, inputFields, isEither, isStructured, type SectionMultiplier, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetSection } from "./calculator";
 import { apiErrorMessage } from "@/lib/errors";
+import { useChanged } from "@/hooks/useChanged";
 
 type Mode = "structured" | "json";
 
@@ -41,7 +42,9 @@ export default function SchemaEditor({ eventId, schema, onMessage }: Props) {
   const levels = useQuery<CompetitionLevel[]>({ queryKey: ["levels"], queryFn: async () => (await api.get("/seasons/competition-levels/all")).data });
   const cloneSources = useQuery<SchemaListEntry[]>({ queryKey: ["scoring-schemas"], queryFn: async () => (await api.get("/scoring/schemas")).data });
 
-  useEffect(() => { setDraft(toDefinition(schema)); }, [schema]);
+  // A loaded (or newly activated) schema replaces the draft.
+  const schemaChanged = useChanged([schema]);
+  if (schemaChanged) setDraft(toDefinition(schema));
   const problems = useMemo(() => definitionProblems(draft), [draft]);
   const inputs = useMemo(() => (problems.length ? 0 : inputFields(draft).length), [draft, problems]);
 

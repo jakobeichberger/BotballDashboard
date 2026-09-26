@@ -23,10 +23,6 @@ export default defineConfig(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // New in eslint-plugin-react-hooks 7 (React Compiler rules). It flags
-      // the effects that copy loaded server data into form drafts; moving
-      // them to derived state or keyed remounts is a refactor of its own.
-      "react-hooks/set-state-in-effect": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
