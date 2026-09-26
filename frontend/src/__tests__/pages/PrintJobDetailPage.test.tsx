@@ -8,6 +8,8 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn() } }));
+const confirmSpy = vi.hoisted(() => vi.fn(async () => true));
+vi.mock("@/lib/confirm", () => ({ confirmAction: confirmSpy }));
 
 const BASE_JOB = {
   id: "j1", team_id: "t1", season_id: "s1", event_id: "e1", printer_id: "p1", file_name: "arm.3mf",
@@ -103,5 +105,35 @@ describe("PrintJobDetailPage", () => {
     renderPage();
     expect(await screen.findByText(/nozzle clog/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /zurückziehen/i })).not.toBeInTheDocument();
+  });
+
+  it("explains a retry refused by the quota and lets a print admin release it after asking", async () => {
+    const user = userEvent.setup();
+    setUser(["printing:read", "printing:admin"]);
+    mockApi({ status: "failed", error_message: "Nozzle clog" });
+    const quota = { response: { status: 409, data: { code: "http_409", message: "Hard print limit reached (2 parts; 1 printed, 1 open). Cannot submit more jobs." } } };
+    (api.patch as any).mockRejectedValueOnce(quota).mockResolvedValue({ data: {} });
+    confirmSpy.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Einreihen" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Druckkontingent des Teams .* ist ausgeschöpft/);
+    const release = screen.getByRole("button", { name: "Trotz Kontingent freigeben" });
+    // Cancelled confirmation: nothing is sent.
+    await user.click(release);
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(api.patch).toHaveBeenCalledTimes(1);
+    await user.click(release);
+    expect(api.patch).toHaveBeenLastCalledWith("/printing/jobs/j1", { status: "queued", printer_id: "p1", quota_override: true });
+  });
+
+  it("offers no quota release for other conflicts", async () => {
+    const user = userEvent.setup();
+    setUser(["printing:read", "printing:admin"]);
+    mockApi({ status: "failed" });
+    (api.patch as any).mockRejectedValueOnce({ response: { status: 409, data: { message: "Invalid print job transition: failed -> queued" } } });
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Einreihen" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Trotz Kontingent freigeben" })).not.toBeInTheDocument();
   });
 });

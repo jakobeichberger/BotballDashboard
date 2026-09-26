@@ -114,7 +114,10 @@
     "parts_one": "{{count}} Teil",
     "parts_other": "{{count}} Teile",
     "boundingBox": "Abmessungen (STL)",
-    "stlSubmitted": "STL mit Periode 3 eingereicht"
+    "stlSubmitted": "STL mit Periode 3 eingereicht",
+    "retryQuotaBlocked": "Das Druckkontingent des Teams (Teile oder Filament) ist ausgeschöpft: Der Auftrag kann nicht erneut eingereiht werden.",
+    "quotaOverrideRelease": "Trotz Kontingent freigeben",
+    "confirmQuotaOverride": "Auftrag trotz ausgeschöpftem Kontingent erneut einreihen? Die Freigabe wird protokolliert."
   },
   "subtitle": "Druckaufträge prüfen, freigeben und an die Drucker senden.",
   "kpi": {

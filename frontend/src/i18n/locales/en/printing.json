@@ -114,7 +114,10 @@
     "parts_one": "{{count}} part",
     "parts_other": "{{count}} parts",
     "boundingBox": "Size (STL)",
-    "stlSubmitted": "STL submitted with Period 3"
+    "stlSubmitted": "STL submitted with Period 3",
+    "retryQuotaBlocked": "The team's print quota (parts or filament) is used up: the job cannot be queued again.",
+    "quotaOverrideRelease": "Release despite quota",
+    "confirmQuotaOverride": "Queue the job again although the quota is used up? The release is recorded in the audit log."
   },
   "subtitle": "Check, approve and send print jobs to the printers.",
   "kpi": {
