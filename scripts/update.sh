@@ -256,9 +256,15 @@ if [[ "${ROLLBACK}" == "true" ]]; then
     # The downgrade needs the CURRENT release: only its code knows the newer
     # revisions and their downgrade() steps. It runs in a one-off container
     # while the backend is stopped, so no restart can upgrade it again.
+    docker compose up -d db >/dev/null 2>&1 || true
     current_revision="$(docker compose run --rm --no-deps -T backend alembic current 2>/dev/null \
       | awk '/^[0-9a-f]+/ {print $1; exit}' || true)"
-    if [[ "${current_revision}" != "${prev_revision}" ]]; then
+    if [[ -z "${current_revision}" ]]; then
+      # E.g. a PostgreSQL major upgrade failed: the new server refuses the
+      # old files, and no migration has run. If one had run, the old backend
+      # fails its start visibly ("Can't locate revision") – no data is lost.
+      warn "Cannot read the current Alembic revision (database not running?) – no downgrade"
+    elif [[ "${current_revision}" != "${prev_revision}" ]]; then
       info "Migrating the database down: ${current_revision:-?} → ${prev_revision}"
       docker compose run --rm --no-deps -T backend alembic downgrade "${prev_revision}" \
         || die "alembic downgrade failed – the application is stopped. Restore the backup ($(state_value PRE_UPDATE_BACKUP)) or start the current release again: docker compose up -d"

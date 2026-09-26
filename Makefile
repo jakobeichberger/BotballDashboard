@@ -1,4 +1,4 @@
-.PHONY: up down dev migrate logs shell-backend shell-db build test lint update verify backup-now backup-status vapid-keys fernet-key lock-backend
+.PHONY: up down dev migrate logs shell-backend shell-db build test lint update rollback verify backup-now backup-verify backup-status vapid-keys fernet-key lock-backend
 
 # ── Production ────────────────────────────────────────────────
 up:
@@ -79,11 +79,19 @@ fernet-key:
 update:
 	./scripts/update.sh
 
+# Back to the release before the last update (previous images, no rebuild).
+rollback:
+	./scripts/update.sh --rollback
+
 verify:
 	./scripts/verify-deployment.sh
 
 backup-now:
 	docker compose exec backup python scripts/backup_scheduler.py once
+
+# Backup plus restore test of that archive (what update.sh runs first).
+backup-verify:
+	docker compose exec backup python scripts/backup_scheduler.py once --verify
 
 backup-status:
 	docker compose exec backup python scripts/backup_scheduler.py check

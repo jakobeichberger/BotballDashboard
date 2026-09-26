@@ -133,10 +133,10 @@ So prüfst du eine Installation auf deinem Proxmox-Host vollständig. Alle Befeh
    install -m 400 -o 10001 -g 10001 /root/botball-backup-identity.txt /data/restore-work/age-identity
    docker compose run --rm --no-deps \
      -v /data/restore-work:/restore-work -e AGE_IDENTITY=/restore-work/age-identity \
-     backup /app/scripts/restore-test.sh /backups/$(ls /data/backups | grep '\.age$' | tail -n1)
+     backup python scripts/backup_scheduler.py restore-test /backups/$(ls /data/backups | grep '\.age$' | tail -n1)
    rm -rf /data/restore-work
    ```
-   Erwartet: `Uploads verified: … files match the manifest` und `Restore test succeeded`.
+   Erwartet: `Uploads verified: … files match the manifest` und `Restore test succeeded`. Das prüft auch, dass die Identität zu `AGE_RECIPIENT` passt. Danach testet der Backup-Dienst jede Woche selbst (eigener Test-Schlüssel, siehe [Betrieb → Restore test](../../operations.md#restore-test-automatic-weekly)).
 5. Im Browser `https://<domain>` öffnen und mit dem Admin-Konto anmelden. Dann unter Einstellungen → Saisons eine Saison und unter `/setup` ein Event anlegen.
 
 ### B. Update
@@ -160,10 +160,10 @@ Das Skript endet mit `Update complete`, nachdem `verify-deployment.sh` ohne FAIL
 | `/api/system/health`, `/api/system/readiness` über `https://$DOMAIN` | 200, Readiness `{"status":"ready",…}` |
 | `/api/system/metrics` über Traefik | 404 (Metriken nur intern) |
 | Security-Header auf `/` und einem `/assets/*.js` | CSP, HSTS, X-Frame-Options vorhanden |
-| Worker, Beat | Celery-Ping beantwortet, Beat-Prozess läuft |
+| Worker, Beat | Celery-Ping beantwortet, jede Queue (`default`, `periodic`, `ocr`) hat einen Worker, Beat-Heartbeat in Redis < 5 min |
 | Migrationen | `alembic current` = `alembic heads` |
-| Backup | letztes Backup erfolgreich und < 26 h alt; ohne `AGE_RECIPIENT` WARN „backups are DISABLED“ |
+| Backup | letztes Backup erfolgreich und nicht älter als Intervall + 2 h; letzter Restore-Test erfolgreich (WARN, solange noch keiner lief); ohne `AGE_RECIPIENT` WARN „backups are DISABLED“ |
 | VAPID | privater Schlüssel im Worker lesbar |
-| Monitoring (nur mit Profil) | alle Prometheus-Targets `up`, 7 Alarmregeln geladen, Alertmanager gesund |
+| Monitoring (nur mit Profil) | alle Prometheus-Targets `up`, Alarmregeln fehlerfrei geladen, Readiness- und externe Probe, Alertmanager gesund; WARN ohne `ALERT_HEARTBEAT_URL` |
 
 Für den Test ohne echtes Zertifikat (z. B. `DOMAIN=localhost` oder `*.test`) prüft das Skript TLS automatisch ohne Zertifikatsprüfung (`curl -k`). `VERIFY_INSECURE=1` erzwingt das. Mit `VERIFY_LOCAL=1` (Standard) verbindet es sich für `$DOMAIN` mit `127.0.0.1`, prüft also Traefik auf diesem Host unabhängig von DNS/NAT.
