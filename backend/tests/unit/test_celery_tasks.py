@@ -218,7 +218,8 @@ async def test_process_review_deadlines_marks_overdue_and_reminds(
 ):
     from modules.paper_review.models import Paper, ReviewerAssignment
 
-    paper = Paper(season_id=season.id, team_id=team.id, title="Paper")
+    # Reviewers are only assigned to papers under review (a draft has none).
+    paper = Paper(season_id=season.id, team_id=team.id, title="Paper", status="under_review")
     db.add(paper)
     await db.flush()
     now = datetime.now(UTC)
@@ -240,6 +241,79 @@ async def test_process_review_deadlines_marks_overdue_and_reminds(
     await db.refresh(overdue)
     assert overdue.status == "overdue"
     assert reminded == [overdue.id]
+
+
+@pytest.mark.parametrize(
+    "paper_status", ["accepted", "rejected", "revision_requested", "disqualified_ai"]
+)
+async def test_process_review_deadlines_skips_decided_papers(
+    db, run_task, monkeypatch, season, team, admin_user, paper_status
+):
+    from modules.paper_review.models import Paper, ReviewerAssignment
+
+    paper = Paper(season_id=season.id, team_id=team.id, title="Paper", status=paper_status)
+    db.add(paper)
+    await db.flush()
+    open_review = ReviewerAssignment(
+        paper_id=paper.id, reviewer_id=admin_user.id, due_at=datetime.now(UTC) - timedelta(days=3)
+    )
+    db.add(open_review)
+    await db.commit()
+    reminded: list[str] = []
+
+    async def fake_mark(db, paper_id, assignment_id):
+        reminded.append(assignment_id)
+
+    monkeypatch.setattr(paper_tasks, "mark_reminder_sent", fake_mark)
+    await run_task(paper_tasks, paper_tasks.process_review_deadlines)
+
+    await db.refresh(open_review)
+    assert open_review.status != "overdue"
+    assert reminded == []
+
+
+async def test_process_review_deadlines_skips_archived_seasons(
+    db, run_task, monkeypatch, season, team, admin_user
+):
+    from modules.paper_review.models import Paper, ReviewerAssignment
+
+    paper = Paper(season_id=season.id, team_id=team.id, title="Paper", status="under_review")
+    db.add(paper)
+    await db.flush()
+    db.add(
+        ReviewerAssignment(
+            paper_id=paper.id, reviewer_id=admin_user.id, due_at=datetime.now(UTC) - timedelta(1)
+        )
+    )
+    season.status = "archived"
+    await db.commit()
+    reminded: list[str] = []
+
+    async def fake_mark(db, paper_id, assignment_id):
+        reminded.append(assignment_id)
+
+    monkeypatch.setattr(paper_tasks, "mark_reminder_sent", fake_mark)
+    await run_task(paper_tasks, paper_tasks.process_review_deadlines)
+    assert reminded == []
+
+
+@pytest.mark.parametrize(
+    ("paper_status", "reminded"),
+    [("under_review", True), ("submitted", True), ("accepted", False), ("rejected", False)],
+)
+async def test_review_deadline_reminders_only_for_papers_in_review(
+    db, season, team, admin_user, paper_status, reminded
+):
+    from modules.paper_review.deadlines import _reviewers_to_remind
+    from modules.paper_review.models import Paper, ReviewerAssignment
+
+    paper = Paper(season_id=season.id, team_id=team.id, title="Paper", status=paper_status)
+    db.add(paper)
+    await db.flush()
+    db.add(ReviewerAssignment(paper_id=paper.id, reviewer_id=admin_user.id))
+    await db.commit()
+    expected = [admin_user.id] if reminded else []
+    assert await _reviewers_to_remind(db, season.id) == expected
 
 
 async def test_paper_deadline_reminders_queue_and_commit(db, run_task, monkeypatch):

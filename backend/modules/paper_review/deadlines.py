@@ -24,6 +24,7 @@ from core.mail_templates import i18n_payload
 from modules.paper_review.models import (
     DEADLINE_TYPES,
     OFFICIAL_DEADLINE_TYPES,
+    REVIEWABLE_STATUSES,
     Paper,
     PaperDeadline,
     ReviewerAssignment,
@@ -174,10 +175,25 @@ async def _teams_to_remind(db: AsyncSession, season_id: str, deadline_type: str)
 
 
 async def _reviewers_to_remind(db: AsyncSession, season_id: str) -> list[str]:
+    """Reviewers with an open assignment on a paper that is still in review.
+
+    A decided paper (accepted, rejected, sent back for revision) takes no
+    more reviews, so its open assignments are no reason for a reminder; an
+    archived season is history and reminds nobody.
+    """
+    from modules.seasons.lifecycle import ARCHIVED
+    from modules.seasons.models import Season
+
     result = await db.execute(
         select(ReviewerAssignment.reviewer_id)
         .join(Paper, Paper.id == ReviewerAssignment.paper_id)
-        .where(Paper.season_id == season_id, ReviewerAssignment.status != "completed")
+        .join(Season, Season.id == Paper.season_id)
+        .where(
+            Paper.season_id == season_id,
+            ReviewerAssignment.status != "completed",
+            Paper.status.in_(REVIEWABLE_STATUSES),
+            Season.status != ARCHIVED,
+        )
         .distinct()
     )
     return sorted(str(r) for r in result.scalars())
