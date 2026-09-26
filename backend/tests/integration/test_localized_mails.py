@@ -8,6 +8,7 @@ from sqlalchemy import select
 import core.notifications as notifications
 import modules.auth.routes as auth_routes
 import modules.dashboard.tasks as tasks
+from core.task_queue import drain_pending_tasks
 from modules.auth.models import PushSubscription, User
 from modules.dashboard import notifications as notification_center
 from modules.dashboard.models import NotificationEvent
@@ -82,11 +83,15 @@ async def test_password_reset_request_passes_the_profile_language(client, db, mo
     monkeypatch.setattr(auth_routes, "send_password_reset_email", capture)
     response = await client.post("/api/auth/password-reset/request", json={"email": user.email})
     assert response.status_code == 204
+    # The mail leaves after the commit.
+    assert calls == []
+    await db.commit()
+    await drain_pending_tasks()
     assert calls == [("reset@example.org", "en")]
 
 
 @pytest.mark.asyncio
-async def test_account_creation_mail_is_localized(client, auth_headers, monkeypatch, mails):
+async def test_account_creation_mail_is_localized(client, db, auth_headers, monkeypatch, mails):
     monkeypatch.setattr(auth_routes, "_mail_enabled", lambda: True)
     response = await client.post(
         "/api/auth/users",
@@ -94,6 +99,8 @@ async def test_account_creation_mail_is_localized(client, auth_headers, monkeypa
         headers=auth_headers,
     )
     assert response.status_code == 201, response.text
+    await db.commit()
+    await drain_pending_tasks()
     [mail] = mails
     # New accounts start in German (User.preferred_language default).
     assert mail["subject"] == "Dein BotballDashboard-Konto wurde angelegt"

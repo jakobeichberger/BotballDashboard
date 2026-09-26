@@ -15,6 +15,11 @@ from core.push_endpoints import push_endpoint_problem
 settings = get_settings()
 logger = get_logger(__name__)
 
+#: Upper bound for one SMTP delivery (connect + TLS + DATA). aiosmtplib's own
+#: default is 60 s; mails run in the background, but a dead relay should not
+#: pile up minute-long connections.
+SMTP_TIMEOUT_SECONDS = 15.0
+
 
 # ── Email ─────────────────────────────────────────────────────────────────────
 
@@ -25,9 +30,14 @@ async def send_email(
     html_body: str,
     text_body: str | None = None,
 ) -> bool:
-    """Send via primary SMTP; fall back to SendGrid on failure."""
+    """Send via primary SMTP; fall back to SendGrid on failure.
+
+    Without an SMTP host (a SendGrid-only setup) SendGrid is used directly.
+    """
     recipients = [to] if isinstance(to, str) else to
-    success = await _send_smtp(recipients, subject, html_body, text_body)
+    success = False
+    if settings.smtp_host:
+        success = await _send_smtp(recipients, subject, html_body, text_body)
     if not success and settings.sendgrid_api_key:
         success = await _send_sendgrid(recipients, subject, html_body, text_body)
     return success
@@ -52,6 +62,7 @@ async def _send_smtp(
             username=settings.smtp_user or None,
             password=settings.smtp_password or None,
             start_tls=settings.smtp_tls,
+            timeout=SMTP_TIMEOUT_SECONDS,
         )
         logger.info("email_sent", to=recipients, subject=subject, via="smtp")
         return True
@@ -75,7 +86,7 @@ async def _send_sendgrid(
         if text_body:
             payload["content"].insert(0, {"type": "text/plain", "value": text_body})
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=SMTP_TIMEOUT_SECONDS) as client:
             resp = await client.post(
                 "https://api.sendgrid.com/v3/mail/send",
                 headers={"Authorization": f"Bearer {settings.sendgrid_api_key}"},
@@ -96,8 +107,8 @@ PushStatus = Literal["sent", "failed", "gone", "disabled"]
 
 
 def email_enabled() -> bool:
-    """Whether outgoing e-mail is configured (same rule as account-creation mail)."""
-    return bool(settings.smtp_host) and not settings.is_dev
+    """Whether outgoing e-mail is configured: SMTP or SendGrid, never in development."""
+    return bool(settings.smtp_host or settings.sendgrid_api_key) and not settings.is_dev
 
 
 async def send_push_notification(

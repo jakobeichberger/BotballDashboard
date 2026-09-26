@@ -65,6 +65,7 @@ async def test_smtp_sends_html_and_text_alternatives(configure, monkeypatch):
         "username": "bot",
         "password": "secret",
         "start_tls": False,
+        "timeout": notifications.SMTP_TIMEOUT_SECONDS,
     }
 
 
@@ -92,6 +93,9 @@ class _FakeClient:
 
     requests: list[dict] = []
     status = 202
+
+    def __init__(self, **options):
+        self.options = options
 
     async def __aenter__(self):
         return self
@@ -142,7 +146,7 @@ async def test_sendgrid_error_reports_false(sendgrid):
 
 
 def test_email_enabled_needs_smtp_outside_development(configure):
-    configure(smtp_host="", app_env="production")
+    configure(smtp_host="", sendgrid_api_key="", app_env="production")
     assert notifications.email_enabled() is False
     configure(smtp_host="mail.test", app_env="development")
     assert notifications.email_enabled() is False
