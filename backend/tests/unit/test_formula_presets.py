@@ -53,6 +53,8 @@ class TestPresetCatalogue:
         assert set(FORMULA_PRESETS) == {
             "ecer_2026_botball",
             "ecer_2026_open",
+            "ecer_2026_botball_rubric",
+            "ecer_2026_open_results",
             "ecer_2025_botball",
             "ecer_2025_open",
             "regional_2026_botball",

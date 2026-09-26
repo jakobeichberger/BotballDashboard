@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock, Loader, Plus, Printer, Timer } from "lucide-react";
 import clsx from "clsx";
 import { StatGrid } from "@/pages/dashboard/widgets";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
@@ -161,7 +161,7 @@ export default function PrintingPage() {
       </div>
 
       {notice && (
-        <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-warning/45 bg-warning/[0.08] p-3 text-sm text-warning">
+        <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-warning/45 bg-warning/8 p-3 text-sm text-warning">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="flex-1">{notice}</span>
           <button className="text-xs underline" onClick={() => setNotice(null)}>{t("common:close")}</button>
@@ -345,7 +345,7 @@ export default function PrintingPage() {
             </label>
           )}
           {complianceWarning && (
-            <p role="status" className="flex items-start gap-2 rounded border border-warning/45 bg-warning/[0.08] p-2 text-sm text-warning">
+            <p role="status" className="flex items-start gap-2 rounded border border-warning/45 bg-warning/8 p-2 text-sm text-warning">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               {complianceWarning}
             </p>

@@ -31,17 +31,24 @@ from modules.auth.models import (
     User,
     UserRole,
 )
-from modules.auth.password_policy import password_problem
+from modules.auth.password_policy import MAX_BYTES, password_problem
 
 settings = get_settings()
 
 
 def hash_password(password: str) -> str:
+    # bcrypt raises ValueError beyond MAX_BYTES; the password policy
+    # (password_problem) rejects such passwords before they get here.
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt(settings.bcrypt_rounds)).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    # bcrypt 4 silently hashed only the first 72 bytes; bcrypt 5 raises
+    # ValueError instead. Cutting the input the same way keeps accounts whose
+    # longer password was hashed under bcrypt 4 working, and a long password
+    # at login (known account or not) stays a normal failed comparison
+    # instead of an error.
+    return bcrypt.checkpw(plain.encode()[:MAX_BYTES], hashed.encode())
 
 
 # bcrypt deliberately costs ~0.25 s of CPU. Called from a coroutine it stalled

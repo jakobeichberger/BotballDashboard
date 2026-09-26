@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Settings } from "lucide-react";
 import { api } from "@/lib/api";
 import { useEvent } from "@/hooks/useEvents";
 import { MODULE_LABELS, useEventModules, type ModuleKey } from "@/hooks/useEventModules";
 import { useAuthStore } from "@/store/authStore";
-import type { ScoringSchema } from "@/api/types";
+import type { EventSummary, ScoringSchema } from "@/api/types";
 import SchemaEditor from "@/modules/scoring/sheet/SchemaEditor";
 import SeasonRulesEditor from "@/modules/scoring/extras/SeasonRulesEditor";
 import QualificationPanel from "@/modules/scoring/extras/QualificationPanel";
@@ -16,6 +16,7 @@ import PhaseManager from "@/components/events/PhaseManager";
 import RegistrationManager from "@/components/events/RegistrationManager";
 import EventBracketWeights from "@/components/events/EventBracketWeights";
 import { apiErrorMessage } from "@/lib/errors";
+import { useChanged } from "@/hooks/useChanged";
 
 const MODULE_ORDER = Object.keys(MODULE_LABELS) as ModuleKey[];
 const BASE_MODULES: ModuleKey[] = ["seeding", "paper", "printing", "bots"];
@@ -27,6 +28,11 @@ function defaultModules(season?: Record<string, unknown>): string[] {
     const flag = MODULE_LABELS[key].seasonFlag;
     return flag ? !!season[flag] : BASE_MODULES.includes(key);
   });
+}
+
+/** The form with the fields of a loaded event. */
+function withEvent<T extends object>(form: T, event: EventSummary | undefined): T {
+  return event ? { ...form, ...event, venue: event.venue ?? "" } : form;
 }
 
 const EVENT_STATUSES = ["draft", "published", "live", "completed", "archived"];
@@ -44,11 +50,13 @@ export default function EventSetupPage() {
   const seasons = useQuery<any[]>({ queryKey: ["seasons"], queryFn: async () => (await api.get("/seasons")).data });
   const schema = useQuery<ScoringSchema>({ queryKey: ["event-schema", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/scoring-schema`)).data, enabled: !!eventId, retry: false });
   const announcements = useQuery<any[]>({ queryKey: ["announcements", eventId], queryFn: async () => (await api.get("/dashboard/announcements", { params: { season_id: event?.season_id } })).data.filter((item: any) => item.event_id === eventId), enabled: !!eventId && !!event });
-  const [form, setForm] = useState({ season_id: "", name: "", slug: "", timezone: "Europe/Vienna", venue: "", status: "draft", table_count: 1, active_modules: BASE_MODULES as string[], public_scoreboard: false, public_schedule: false, public_results: false, public_announcements: false });
+  const [form, setForm] = useState(() => withEvent({ season_id: "", name: "", slug: "", timezone: "Europe/Vienna", venue: "", status: "draft", table_count: 1, active_modules: BASE_MODULES as string[], public_scoreboard: false, public_schedule: false, public_results: false, public_announcements: false }, event));
   const [newSeason, setNewSeason] = useState({ name: "", year: new Date().getFullYear() });
   const [announcement, setAnnouncement] = useState({ title: "", body: "" });
   const [message, setMessage] = useState("");
-  useEffect(() => { if (event) setForm((current) => ({ ...current, ...event, venue: event.venue ?? "" })); }, [event]);
+  // The loaded (or changed) event is merged into the form.
+  const eventChanged = useChanged([event]);
+  if (eventChanged && event) setForm((current) => withEvent(current, event));
   const saveEvent = useMutation({ mutationFn: async () => eventId ? api.patch(`/v1/events/${eventId}`, form) : api.post("/v1/events", form), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["events"] }); queryClient.invalidateQueries({ queryKey: ["event-modules"] }); setMessage(t("setup.saved")); if (!eventId) navigate(`/events/${data.id}/settings`, { replace: true }); }, onError: (error: any) => setMessage(apiErrorMessage(error, t("setup.saveFailed"))) });
   const createSeason = useMutation({ mutationFn: async () => api.post("/seasons", { ...newSeason, is_active: true, create_default_event: false }), onSuccess: ({ data }) => { queryClient.invalidateQueries({ queryKey: ["seasons"] }); setForm((current) => ({ ...current, season_id: data.id })); setMessage(t("setup.seasonCreated")); } });
   const publishAnnouncement = useMutation({ mutationFn: async () => { const created = await api.post("/dashboard/announcements", { ...announcement, season_id: event?.season_id, event_id: eventId, audience: "all" }); return api.put(`/dashboard/announcements/${created.data.id}/publish`); }, onSuccess: () => { setAnnouncement({ title: "", body: "" }); queryClient.invalidateQueries({ queryKey: ["announcements", eventId] }); } });

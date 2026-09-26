@@ -44,7 +44,7 @@ class EventCreate(BaseModel):
         return None if value is None else _validate_module_names(value)
 
     @model_validator(mode="after")
-    def validate_dates(self) -> "EventCreate":
+    def validate_dates(self) -> EventCreate:
         if self.starts_at and self.ends_at and self.ends_at <= self.starts_at:
             raise ValueError("ends_at must be after starts_at")
         return self
@@ -352,7 +352,7 @@ class ScoringFieldDefinition(BaseModel):
     section: str | None = Field(default=None, max_length=120)
 
     @model_validator(mode="after")
-    def validate_range(self) -> "ScoringFieldDefinition":
+    def validate_range(self) -> ScoringFieldDefinition:
         if (
             self.min_value is not None
             and self.max_value is not None
@@ -371,7 +371,7 @@ class ScoringSchemaVersionCreate(BaseModel):
     activate: bool = True
 
     @model_validator(mode="after")
-    def validate_shape(self) -> "ScoringSchemaVersionCreate":
+    def validate_shape(self) -> ScoringSchemaVersionCreate:
         if self.definition is None and not self.fields:
             raise ValueError("Either fields or a structured definition is required")
         if self.definition is not None and self.fields:

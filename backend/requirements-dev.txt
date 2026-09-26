@@ -27,13 +27,11 @@ anyio==4.15.1
     #   watchfiles
 ast-serialize==0.11.2
     # via mypy
-async-timeout==5.0.1 ; python_full_version < '3.11.3'
-    # via redis
 asyncpg==0.31.0
     # via botball-dashboard-backend (pyproject.toml)
 attrs==26.1.0
     # via aiohttp
-bcrypt==4.3.0
+bcrypt==5.0.0
     # via botball-dashboard-backend (pyproject.toml)
 billiard==4.3.0
     # via celery
@@ -138,11 +136,9 @@ mypy==2.3.1
     # via botball-dashboard-backend (pyproject.toml)
 mypy-extensions==1.1.0
     # via mypy
-numpy==2.4.6 ; python_full_version < '3.12'
+numpy==2.5.3
     # via opencv-python-headless
-numpy==2.5.3 ; python_full_version >= '3.12'
-    # via opencv-python-headless
-opencv-python-headless==4.14.0.94
+opencv-python-headless==5.0.0.93
     # via botball-dashboard-backend (pyproject.toml)
 packaging==26.3
     # via
@@ -223,7 +219,7 @@ qrcode==8.2
     # via botball-dashboard-backend (pyproject.toml)
 redis==8.1.0
     # via botball-dashboard-backend (pyproject.toml)
-reportlab==4.5.1
+reportlab==5.0.1
     # via botball-dashboard-backend (pyproject.toml)
 requests==2.34.2
     # via pywebpush
@@ -241,12 +237,8 @@ starlette==1.7.0
     # via fastapi
 structlog==26.1.0
     # via botball-dashboard-backend (pyproject.toml)
-tomli==2.4.1 ; python_full_version <= '3.11'
-    # via coverage
 typing-extensions==4.16.0
     # via
-    #   aiohttp
-    #   aiosignal
     #   alembic
     #   anyio
     #   click-repl
@@ -254,9 +246,7 @@ typing-extensions==4.16.0
     #   mypy
     #   pydantic
     #   pydantic-core
-    #   pytest-asyncio
     #   sqlalchemy
-    #   starlette
     #   typing-inspection
 typing-inspection==0.4.4
     # via

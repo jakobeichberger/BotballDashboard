@@ -21,7 +21,7 @@ class AwardCategoryBase(BaseModel):
     sort_order: int | None = None
 
     @model_validator(mode="after")
-    def computed_needs_source(self) -> "AwardCategoryBase":
+    def computed_needs_source(self) -> AwardCategoryBase:
         if self.kind == "computed" and (not self.source or self.source == "paper_on_stage"):
             raise ValueError("A computed award needs a ranking source")
         if self.kind == "judged" and self.source not in (None, "paper_on_stage"):

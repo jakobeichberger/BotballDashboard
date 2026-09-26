@@ -13,7 +13,7 @@
 # What this script does:
 #   1.  Checks prerequisites (OS, root, network) and installs git/curl/python3/age
 #   2.  Installs Docker + Docker Compose plugin
-#   3.  Installs Node.js 22 + pnpm (needed to build the frontend on the host)
+#   3.  Installs Node.js 24 + pnpm (needed to build the frontend on the host)
 #   4.  Clones the repository (or updates if already cloned)
 #   5.  Interactively generates .env with all secrets (APP/JWT secrets, DB
 #       password, Fernet key, age backup key pair, compose profiles, alerts)
@@ -58,7 +58,7 @@ REPO_BRANCH="main"
 INSTALL_DIR="/opt/botballdashboard"
 DATA_DIR="/data"
 MIN_DOCKER_VERSION="24"
-NODE_MAJOR="22"
+NODE_MAJOR="24"
 PNPM_VERSION="10.29.3"
 # Private key that decrypts the backups. It must be copied OFF this machine.
 BACKUP_IDENTITY_FILE="/root/botball-backup-identity.txt"
@@ -427,7 +427,10 @@ configure_env() {
       success ".env kept (missing new settings added)"
       return 0
     fi
-  elif [[ -f "${DATA_DIR}/db/PG_VERSION" ]]; then
+  elif compgen -G "${DATA_DIR}/db/PG_VERSION" >/dev/null \
+    || compgen -G "${DATA_DIR}/db/*/docker/PG_VERSION" >/dev/null; then
+    # PostgreSQL <= 17 kept the cluster directly in /data/db, 18+ in
+    # /data/db/<major>/docker.
     # PostgreSQL data directory exists but .env is gone → the new .env will
     # get a freshly generated password that does not match the running DB.
     # The start_services() ALTER USER step will re-synchronise the password,
@@ -786,6 +789,12 @@ start_services() {
   if [[ "$(env_value PGDATA_DRIVER_OPT_TYPE)" == "none" ]]; then
     docker volume rm botballdashboard_pgdata 2>/dev/null || true
   fi
+
+  # Data of an older PostgreSQL major (e.g. 16 from an earlier install) is
+  # migrated to the version in docker-compose.yml first; without old data this
+  # does nothing (see docs/documentation/installation/update.md).
+  "${INSTALL_DIR}/scripts/postgres-upgrade.sh" --yes \
+    || die "PostgreSQL data could not be migrated – see the messages above."
 
   # Start infrastructure first; bypass depends_on so the script controls ordering
   info "Starting infrastructure services (db, redis)..."
@@ -1150,7 +1159,7 @@ main() {
 
   check_prerequisites   # 1
   install_docker        # 2
-  install_node          # 3  ← installs Node.js 22 + pnpm on the host
+  install_node          # 3  ← installs Node.js 24 + pnpm on the host
   setup_repository      # 4
   configure_env         # 5
   create_directories    # 6

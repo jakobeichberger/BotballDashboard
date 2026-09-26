@@ -41,6 +41,8 @@ pg() {
 # PostgreSQL 16). Render the archive to SQL first, drop those lines, then load
 # it with psql, stopping at the first error. Rendering to a file (not a pipe)
 # keeps a pg_restore failure from turning into a silently partial restore.
+# The image ships the client tools of the server major (PG_MAJOR in
+# backend/Dockerfile); the filter stays as a guard for a mismatched setup.
 restore_dump() {
   target_db="$1"
   dump="$2"

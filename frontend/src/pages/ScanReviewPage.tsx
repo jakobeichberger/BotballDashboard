@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Camera, CheckCircle2, RefreshCw, RotateCcw, ScanLine, Upload } from "lucide-react";
 import { api } from "@/lib/api";
@@ -19,14 +19,15 @@ function ProtectedCrop({ url, label }: { url: string; label: string }) {
   // the URL itself broke the image after a remount: the first unmount had
   // already revoked it.)
   const { data: blob } = useQuery({ queryKey: ["scan-crop", url], queryFn: async () => (await api.get<Blob>(url.replace(/^\/api/, ""), { responseType: "blob" })).data, staleTime: Infinity });
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => {
-    if (!blob) return;
+  // The object URL lives as long as the <img> shows this blob (React 19 ref
+  // cleanup), so no state has to mirror it.
+  const showBlob = useCallback((img: HTMLImageElement | null) => {
+    if (!img || !blob) return;
     const objectUrl = URL.createObjectURL(blob);
-    setSrc(objectUrl);
+    img.src = objectUrl;
     return () => URL.revokeObjectURL(objectUrl);
   }, [blob]);
-  return src ? <img src={src} alt={t("scans.cropAlt", { label })} className="h-20 w-full rounded border bg-white object-contain" /> : <div className="h-20 animate-pulse rounded bg-flaeche-2" />;
+  return blob ? <img ref={showBlob} alt={t("scans.cropAlt", { label })} className="h-20 w-full rounded border bg-white object-contain" /> : <div className="h-20 animate-pulse rounded bg-flaeche-2" />;
 }
 
 /** "#3 · Robo Rangers (AT-12)" — seed, name and number instead of the team UUID. */
@@ -42,7 +43,7 @@ function ReviewCard({ scan, teamLabel }: { scan: Scan; teamLabel: string }) {
   const [values, setValues] = useState<Record<string, number | boolean>>(initial);
   const accept = useMutation({ mutationFn: async () => api.post(`/v1/events/${eventId}/score-sheet-scans/${scan.id}/accept`, { values }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["score-sheet-scans", eventId] }) });
   const fieldId = (key: string) => `scan-${scan.id}-${key}`;
-  return <article className="card p-4"><div className="mb-4 flex items-center justify-between"><div><h2 className="font-semibold">{scan.file_name}</h2><p className="text-xs text-leise">{t("scans.team", { team: teamLabel })}</p></div><span className="badge-blue">{t("scans.reviewRequired")}</span></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{scan.extracted_values?.map((item) => <div key={item.key} className={`rounded-lg border p-3 ${item.requiresReview ? "border-warning/45 bg-warning/[0.08]" : ""}`}><label htmlFor={fieldId(item.key)} className="mb-2 block text-sm font-medium">{item.key}</label><ProtectedCrop url={item.cropUrl} label={item.key} /><input id={fieldId(item.key)} aria-describedby={`${fieldId(item.key)}-hint`} className="input mt-2 w-full" type="number" value={Number(values[item.key] ?? 0)} onChange={(e) => setValues((current) => ({ ...current, [item.key]: Number(e.target.value) }))} /><span id={`${fieldId(item.key)}-hint`} className="mt-1 block text-xs text-leise">{t("scans.confidence", { percent: Math.round(item.confidence * 100) })} {item.reasons.map((reason) => t(`scans.reason.${reason}`, { defaultValue: reason })).join(", ")}</span></div>)}</div>{accept.isError && <p role="alert" className="mt-3 text-sm text-danger">{apiErrorMessage(accept.error, t("common:actionFailed"))}</p>}<button type="button" className="btn-primary mt-4 flex min-h-11 items-center gap-2" onClick={() => accept.mutate()} disabled={accept.isPending}><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{t("scans.accept")}</button></article>;
+  return <article className="card p-4"><div className="mb-4 flex items-center justify-between"><div><h2 className="font-semibold">{scan.file_name}</h2><p className="text-xs text-leise">{t("scans.team", { team: teamLabel })}</p></div><span className="badge-blue">{t("scans.reviewRequired")}</span></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{scan.extracted_values?.map((item) => <div key={item.key} className={`rounded-lg border p-3 ${item.requiresReview ? "border-warning/45 bg-warning/8" : ""}`}><label htmlFor={fieldId(item.key)} className="mb-2 block text-sm font-medium">{item.key}</label><ProtectedCrop url={item.cropUrl} label={item.key} /><input id={fieldId(item.key)} aria-describedby={`${fieldId(item.key)}-hint`} className="input mt-2 w-full" type="number" value={Number(values[item.key] ?? 0)} onChange={(e) => setValues((current) => ({ ...current, [item.key]: Number(e.target.value) }))} /><span id={`${fieldId(item.key)}-hint`} className="mt-1 block text-xs text-leise">{t("scans.confidence", { percent: Math.round(item.confidence * 100) })} {item.reasons.map((reason) => t(`scans.reason.${reason}`, { defaultValue: reason })).join(", ")}</span></div>)}</div>{accept.isError && <p role="alert" className="mt-3 text-sm text-danger">{apiErrorMessage(accept.error, t("common:actionFailed"))}</p>}<button type="button" className="btn-primary mt-4 flex min-h-11 items-center gap-2" onClick={() => accept.mutate()} disabled={accept.isPending}><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{t("scans.accept")}</button></article>;
 }
 
 const SCAN_STATUSES = ["queued", "processing", "failed", "review", "accepted"];

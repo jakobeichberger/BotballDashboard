@@ -73,7 +73,31 @@ services:
 
   # ── Database ──────────────────────────────────────────────────
   db:
-    image: postgres:16-alpine
+    # The major version is part of the data format: moving to a new major needs
+    # a dump and restore, which scripts/postgres-upgrade.sh does (update.sh
+    # calls it). Keep backend/Dockerfile's PG_MAJOR (client tools) in step.
+    image: postgres:18-alpine
+    # After a migration the old cluster stays in the volume for a rollback. If
+    # the old release ran on it again, the migrated copy is out of date: then
+    # refuse to start until scripts/postgres-upgrade.sh --redo or --keep-new
+    # has settled which data to use (see the marker it writes).
+    entrypoint:
+      - sh
+      - -c
+      - |
+        marker="/var/lib/postgresql/$${PG_MAJOR}/botball-upgrade.info"
+        if [ -s "$$marker" ]; then
+          read -r old_dir old_major old_mtime stamp < "$$marker"
+          if [ -s "$$old_dir/global/pg_control" ] \
+            && [ "$$(stat -c %Y "$$old_dir/global/pg_control")" != "$$old_mtime" ]; then
+            echo "The PostgreSQL $$old_major data in $$old_dir was used again after the migration to" >&2
+            echo "PostgreSQL $${PG_MAJOR} ($$stamp). Refusing to start on the older copy; run" >&2
+            echo "scripts/postgres-upgrade.sh --redo (or --keep-new), see docs/documentation/installation/update.md." >&2
+            exit 1
+          fi
+        fi
+        exec docker-entrypoint.sh "$$@"
+      - docker-entrypoint.sh
     # Proxmox LXC without nesting cannot create the Unix socket; proxmox-setup.sh
     # sets POSTGRES_UNIX_SOCKET_DIRECTORIES= (empty = TCP only) and creates the
     # role/database itself, because the image's init scripts need the socket.
@@ -88,8 +112,14 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-botball}
       POSTGRES_USER: ${POSTGRES_USER:-botball}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-botball}
+    # PostgreSQL 18+ images keep the cluster in a major-specific subdirectory
+    # (PGDATA=/var/lib/postgresql/18/docker), so the volume is mounted one
+    # level up. Installations from PostgreSQL 16 have their old cluster at the
+    # top of the same volume; the image refuses to start next to it until
+    # scripts/postgres-upgrade.sh has migrated it (the old files stay as they
+    # are, for a rollback).
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     restart: unless-stopped
     logging: *default-logging
     healthcheck:
@@ -100,7 +130,7 @@ services:
 
   # ── Redis ─────────────────────────────────────────────────────
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     volumes:
       - redisdata:/data
     restart: unless-stopped
@@ -377,7 +407,7 @@ services:
   # an SSH tunnel (ssh -L 9090:localhost:9090 -L 9093:localhost:9093 host).
   prometheus:
     profiles: ["monitoring"]
-    image: prom/prometheus:v3.5.5
+    image: prom/prometheus:v3.15.0
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=30d"
@@ -398,7 +428,7 @@ services:
 
   blackbox:
     profiles: ["monitoring"]
-    image: prom/blackbox-exporter:v0.25.0
+    image: prom/blackbox-exporter:v0.28.0
     restart: unless-stopped
     logging: *default-logging
     healthcheck:
@@ -448,7 +478,7 @@ services:
   # the application's SMTP_* settings).
   alertmanager:
     profiles: ["monitoring"]
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.34.1
     entrypoint: ["/bin/sh", "/etc/alertmanager/render-config.sh"]
     environment:
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}

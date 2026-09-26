@@ -43,7 +43,7 @@ It evaluates `monitoring/alerts.yml`:
 | `PostgresDown` | postgres-exporter cannot connect to the database for 1 min |
 | `PostgresConnectionsHigh` | more than 80 % of `max_connections` are in use for 5 min |
 
-`monitoring/alerts.test.yml` holds unit tests for the rules: `docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v3.5.5 test rules /m/alerts.test.yml`.
+`monitoring/alerts.test.yml` holds unit tests for the rules: `docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v3.15.0 test rules /m/alerts.test.yml`.
 
 Alertmanager delivers alerts to `ALERT_WEBHOOK_URL` (Alertmanager webhook JSON, e.g. an ntfy topic) and/or `ALERT_EMAIL_TO`. SMTP comes from `ALERT_SMTP_*` and falls back to `SMTP_*`. `monitoring/alertmanager/render-config.sh` renders the configuration at container start. Without a receiver, alerts are only visible in the UIs, and Alertmanager logs a warning.
 
@@ -57,7 +57,7 @@ ssh -L 9090:localhost:9090 -L 9093:localhost:9093 root@<server>
 Run the rule unit tests after changing `alerts.yml`:
 
 ```sh
-docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool prom/prometheus:v2.54.1 test rules alerts.test.yml
+docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool prom/prometheus:v3.15.0 test rules alerts.test.yml
 ```
 
 ## Encrypted backups
@@ -158,6 +158,37 @@ The restore:
 5. replaces the upload directory.
 
 If the archive is from an older release, the backend applies the newer migrations on start. For an archive from a newer release, first check out and build that release (see the update guide).
+
+Archives made while the server still ran PostgreSQL 16 restore into PostgreSQL 18 without changes: `pg_restore` reads dumps of older servers. The backend image carries the client tools of the server's major version (`PG_MAJOR` in `backend/Dockerfile`, from apt.postgresql.org), because a newer `pg_restore` writes settings an older server rejects and an older `pg_dump` refuses a newer server. Change both together.
+
+## PostgreSQL major upgrade
+
+A new PostgreSQL major version cannot read the data files of the previous one. When `docker-compose.yml` moves to a new major (16 → 18 in September 2026), `scripts/update.sh` calls `scripts/postgres-upgrade.sh`, which moves the data with a dump and restore. It can also be run by hand from the installation directory.
+
+What it does:
+
+1. Finds the old cluster in the `pgdata` volume (or `/data/db` on Proxmox). Images up to 17 keep it at the top of the volume, images from 18 on in `<major>/docker`; the volume is therefore mounted at `/var/lib/postgresql` now.
+2. Stops `backend`, `worker`, `worker-ocr`, `beat`, `backup`, `postgres-exporter` and `db`, and checks that no container uses the volume any more. The application is down from here on (a few seconds for a typical event database).
+3. Starts the old major (`postgres:16-alpine`) on the old files in a temporary container without network, dumps the database with `pg_dump -Fc` of the same major, reads the dump back (`pg_restore --list`) and counts the rows of every table.
+4. Initialises the new major in the staging directory `18/botball-upgrade` of the same volume with the image's own init code (same user, password, locale and `pg_hba.conf` as a fresh install), restores the dump in one transaction that stops at the first error, compares the row counts of every table and the Alembic revision, and runs `ANALYZE`.
+5. Only then renames the staging directory to `18/docker`, where the `db` service finds it.
+
+Dump, row counts, the role list (`pg_dumpall --globals-only`, without passwords) and a log are kept in `pg-upgrade/` of the installation directory (`PG_UPGRADE_DIR`, mode 700). The dump is unencrypted; delete the directory once the new version runs fine. Only the database `POSTGRES_DB` is migrated; other databases in the old cluster (e.g. `botball_restore_test`) are listed and stay behind. Free space needed in the volume: about the size of the old cluster plus 256 MB.
+
+The old cluster's files stay where they are; the old server is only started and cleanly stopped for the dump. If a step fails, the staging directory is removed and the previous release can be started unchanged. Free the space after a few days:
+
+```sh
+scripts/postgres-upgrade.sh --remove-old-data   # asks for DELETE; afterwards a rollback needs a backup
+rm -rf pg-upgrade/
+```
+
+Safety nets:
+
+- The PostgreSQL 18 image refuses to start while old data lies in the volume and no `18/docker` exists (for example when the update is run with an older `update.sh`, or with a plain `docker compose up`). Nothing is changed; run `scripts/update.sh --no-pull` or `scripts/postgres-upgrade.sh`.
+- If the old release runs again on the old cluster after the migration (rollback), the migrated copy is out of date. The `db` service then refuses to start and `postgres-upgrade.sh` asks for a decision: `--redo` migrates the old cluster again (the existing 18 cluster is kept as `18/docker.replaced-<time>`), `--keep-new` continues with the 18 data.
+- `scripts/postgres-upgrade.sh --check` only reports: exit code 0 (nothing to do), 3 (migration needed) or 4 (decision needed).
+
+Before the upgrade take a backup and, on Proxmox, a snapshot (see the update guide). The migration itself was tested with an existing PostgreSQL 16 installation (bind mount, TCP-only as on Proxmox, and a named volume): 69 tables and about 20 000 rows with identical counts, Alembic at head, logins, sequences, backup and restore test on the new server.
 
 ## Event rehearsal
 

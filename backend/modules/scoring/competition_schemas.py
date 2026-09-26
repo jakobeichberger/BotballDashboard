@@ -55,7 +55,7 @@ class AerialResultUpsert(BaseModel):
     notes: str | None = None
 
     @model_validator(mode="after")
-    def normalise_runs(self) -> "AerialResultUpsert":
+    def normalise_runs(self) -> AerialResultUpsert:
         legacy = [self.run1, self.run2, self.run3, self.run4]
         if not self.runs and any(v is not None for v in legacy):
             self.runs = legacy

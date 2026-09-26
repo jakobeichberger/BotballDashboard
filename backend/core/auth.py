@@ -98,7 +98,7 @@ async def authenticate_token(token: str, db: AsyncSession) -> tuple[Any, dict[st
     # that stop working immediately instead of at their expiry.
     try:
         token_version = int(payload.get("tv", 0))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise UnauthorizedError("Invalid or expired token") from None
     if token_version != (user.token_version or 0):
         raise UnauthorizedError("Token has been revoked")

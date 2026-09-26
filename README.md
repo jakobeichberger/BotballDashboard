@@ -51,10 +51,10 @@ Stand: Migration `0034` · Änderungen: [CHANGELOG.md](CHANGELOG.md) · offene A
 
 | Schicht | Technologie |
 |---|---|
-| Backend | Python 3.11 · FastAPI · SQLAlchemy 2.0 async · Alembic · Pydantic v2 |
+| Backend | Python 3.14 · FastAPI · SQLAlchemy 2.0 async · Alembic · Pydantic v2 |
 | Hintergrund | Celery-Worker und -Beat (OCR mit OpenCV/Tesseract, Drucker-Polling, Outbox, Erinnerungen) |
-| Daten | PostgreSQL 16 · Redis 7 (Broker, Live-Stream, Rate-Limits, Token-Sperrliste) |
-| Frontend | React 18 · TypeScript · Vite · Tailwind CSS · TanStack Query · Zustand · Recharts |
+| Daten | PostgreSQL 18 · Redis 8 (Broker, Live-Stream, Rate-Limits, Token-Sperrliste) |
+| Frontend | React 19 · TypeScript 7 · Vite 8 · Tailwind CSS 4 · TanStack Query · Zustand · Recharts |
 | i18n | i18next (Deutsch/Englisch; noch nicht alle Seiten übersetzt) |
 | PWA | vite-plugin-pwa (Workbox) · Web Push (pywebpush/VAPID) · IndexedDB-Offline-Queue |
 | Auth | PyJWT (HS256) · bcrypt · Refresh-Token als HttpOnly-Cookie · rollenbasierte Rechte mit Team-Scoping |
@@ -109,7 +109,7 @@ Eine `.env` ist nicht nötig, `docker-compose.dev.yml` setzt `APP_ENV=developmen
 - API und Swagger UI: http://localhost:8000/api/docs (nur im Dev-Modus)
 - Login: `admin@dev.local` / `admin1234` (wird beim Start angelegt)
 
-Ohne Docker: im Backend `pip install -r requirements-dev.txt` (die gepinnten Versionen aus `make lock-backend`), dann `alembic upgrade head` und `uvicorn main:app --reload`; im Frontend (Node.js 22) `pnpm install` und `pnpm dev`. Tests:
+Ohne Docker: im Backend `pip install -r requirements-dev.txt` (die gepinnten Versionen aus `make lock-backend`), dann `alembic upgrade head` und `uvicorn main:app --reload`; im Frontend (Node.js 24) `pnpm install` und `pnpm dev`. Tests:
 
 ```bash
 cd backend && pytest -q -n auto && ruff check . && ruff format --check . && mypy .

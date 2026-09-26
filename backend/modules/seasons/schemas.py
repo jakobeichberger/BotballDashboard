@@ -192,7 +192,7 @@ class SeasonCategoryEntry(BaseModel):
     sort_order: int | None = None
 
     @model_validator(mode="after")
-    def counted_within_runs(self) -> "SeasonCategoryEntry":
+    def counted_within_runs(self) -> SeasonCategoryEntry:
         if self.run_count and self.counted_runs and self.counted_runs > self.run_count:
             raise ValueError("counted_runs must not exceed run_count")
         return self

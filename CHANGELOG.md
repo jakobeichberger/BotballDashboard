@@ -4,8 +4,47 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### PostgreSQL 18, Redis 8 und Python 3.14
+
+- **PostgreSQL 16 → 18** (`postgres:18-alpine`, 18.6) in Compose, CI und Doku. Das Volume `pgdata` (Proxmox: `/data/db`) hängt jetzt unter `/var/lib/postgresql`, der Cluster liegt wie im offiziellen Image ab 18 in `18/docker`.
+- **Neu: `scripts/postgres-upgrade.sh`**, von `scripts/update.sh` und `scripts/proxmox-setup.sh` aufgerufen. Es stoppt die Anwendung, erstellt mit PostgreSQL 16 in einem Container ohne Netzwerk einen Dump und prüft ihn. Danach spielt es den Dump in einen neuen 18er-Cluster im Zwischenverzeichnis ein, in einer Transaktion. Es vergleicht die Zeilenzahlen jeder Tabelle und die Alembic-Revision und schaltet erst dann um. Die Dateien von PostgreSQL 16 bleiben als Rollback-Kopie liegen (`--remove-old-data` löscht sie später). Schlägt ein Schritt fehl, bleibt alles beim Alten. Läuft nach einem Rollback wieder PostgreSQL 16 auf den alten Dateien, startet der `db`-Dienst nicht mehr auf der veralteten 18er-Kopie. Das Skript fragt dann nach `--redo` oder `--keep-new` ([Update-Anleitung](docs/documentation/installation/update.md#versionshinweis-postgresql-18-redis-8-und-python-314-2026-09), [Betrieb](docs/operations.md#postgresql-major-upgrade)).
+- **`update.sh`** macht nach dem `git pull` mit der neuen Fassung weiter, wenn sich das Skript selbst geändert hat. Läuft das Backend nicht (abgebrochenes Update), überschreibt es den Rollback-Punkt in `.deploy-state` nicht.
+- **Backend-Image:** `postgresql-client-18` aus apt.postgresql.org statt Debians `postgresql-client` (17). So passen `pg_dump`/`pg_restore` für Backup, Restore und Restore-Test zur Server-Version (`PG_MAJOR` im Dockerfile). Der Build bricht ab, wenn die Version nicht stimmt.
+- **Redis 7 → 8** (`redis:8-alpine`, 8.10) in Compose und CI. Redis 8 übernimmt die Daten von Redis 7 unverändert. Pub/Sub, Cache, Rate-Limit-Skript, Token-Sperrliste und Celery-Broker sind gegen Redis 8 getestet. Hinweise zur Lizenz (AGPLv3/RSALv2/SSPLv1) und zum Rollback (Redis 7 liest die Datei von Redis 8 nicht) stehen in der Update-Anleitung.
+- **Python 3.11 → 3.14** (`python:3.14-slim`, CI, `requires-python >=3.14`, Ruff `py314`, mypy `python_version = "3.14"`). Alle festgelegten Pakete haben Wheels für 3.14 auf x86-64 und ARM64. Lockfiles mit `make lock-backend` für 3.14 neu erzeugt (die Marker für ältere Pythons entfallen: numpy nur noch 2.5.3, kein `async-timeout`/`tomli`). Ruff-Umstellungen: PEP-695-Typparameter, `except A, B` ohne Klammern (PEP 758), keine Anführungszeichen mehr um Annotationen. `scripts/create_admin.py` übergibt uvloop per `loop_factory` statt der in 3.14 veralteten Event-Loop-Policy.
+- Alle Backend-Pakete sind auf dem neuesten stabilen Stand. pydantic bleibt auf 2.13.5, weil 2.14 (und damit pydantic-core 2.49) nur als Beta vorliegt.
+- Traefik (v3.7), Prometheus, Alertmanager, Blackbox-, Node- und Postgres-Exporter sind bereits auf dem neuesten Stand. Der postgres-exporter v0.20.1 liest alle Collector-Daten von PostgreSQL 18.
+- Test `test_create_admin_refuses_a_long_password_even_in_development` setzt `PYTHONPATH` und läuft damit auch außerhalb des Images.
+
+### ECER 2026: beide Lesarten wählbar
+
+- Neue Formel-Vorlagen `ecer_2026_open_results` (Open ohne Paper, wie die veröffentlichten Ergebnisse) und `ecer_2026_botball_rubric` (Doku als Anteil am Bewertungsmaximum, wie die Amendments). Damit entscheidet der Veranstalter pro Saison, welche Lesart gilt; die bisherigen Vorlagen bleiben unverändert.
+
+### Node.js 24 und Monitoring-Images
+
+- **Node.js 24 LTS** statt 22 für den Frontend-Build: `frontend/Dockerfile`, `Dockerfile.dev` und `docker-compose.dev.yml` (`node:24-alpine`), alle `setup-node`-Schritte der CI und `scripts/proxmox-setup.sh` (NodeSource `setup_24.x`). `scripts/update.sh` warnt, wenn auf dem Host noch ein älteres Node das Frontend baut ([Update-Anleitung](docs/documentation/installation/update.md#versionshinweis-nodejs-24-und-neue-monitoring-images-2026-09)).
+- **Monitoring** (übernimmt Dependabot #29, Prometheus darüber hinaus): Prometheus v3.5.5 → v3.15.0, Alertmanager v0.27.0 → v0.34.1, Blackbox-Exporter v0.25.0 → v0.28.0. Die Konfiguration bleibt unverändert und ist mit den neuen Images geprüft (`promtool check config`, `promtool test rules`, `amtool check-config` für alle Varianten von `render-config.sh`).
+- Doku: Versionstabelle in `docs/documentation/technical/deployment.md` aktualisiert (Traefik v3.7, node-exporter und postgres-exporter ergänzt), promtool-Aufrufe auf v3.15.0.
+
+### Abhängigkeiten: bcrypt 5, OpenCV 5, reportlab 5
+
+Ersetzt die Dependabot-PRs #31 und #32. #30 (pydantic-core 2.49.0) ist nicht installierbar: pydantic 2.13.5 verlangt genau pydantic-core 2.46.5, und 2.49.0 gehört zu pydantic 2.14 (bisher nur Beta). Beide bleiben deshalb auf dem stabilen Stand.
+
+- **bcrypt 5.0.0:** Neue Passwörter dürfen höchstens 72 Byte (UTF-8) lang sein. Die Passwort-Richtlinie lehnt längere beim Anlegen, Ändern, Zurücksetzen, Admin-Setzen und in `scripts/create_admin.py` ab, dort auch mit `APP_ENV=development`. Beim Prüfen wird das Passwort wie früher unter bcrypt 4 auf 72 Byte gekürzt. Bestehende Konten mit längerem Passwort melden sich also weiter an, und ein überlanges Passwort beim Login ergibt 401 statt eines Fehlers 500 (bcrypt 5 wirft auch in `checkpw`).
+- **opencv-python-headless 5.0.0.93:** keine Codeänderung nötig. Alle verwendeten Funktionen sind vorhanden, `OPENCV_IO_MAX_IMAGE_PIXELS` greift weiter, die OCR-Ausrichtungstests laufen mit dem echten OpenCV.
+- **reportlab 5.0.1:** keine Codeänderung nötig. 5.0 vertraut entfernten Bildquellen nur noch per Whitelist und entfernt renderPM-C-Erweiterung und pyRXP; nichts davon wird genutzt. Alle sieben PDF-Exporte wurden gerendert und mit pypdf geöffnet, Markup bleibt Text.
+- Build-Anforderung `setuptools>=84.0.0`; Lockfiles mit `make lock-backend` neu erzeugt.
+
+### Frontend-Majors nach dem Design-Refresh
+
+- React 19, React Router 8 (`react-router` statt `react-router-dom`), Vite 8 (Rolldown) mit `@vitejs/plugin-react` 6 und `vite-plugin-pwa` 1, Vitest 5, Tailwind CSS 4, Zod 4 mit `@hookform/resolvers` 5, i18next 26 / react-i18next 17, Recharts 3, Zustand 5, lucide-react 1, jsdom 30, jest-axe 11, ESLint 10, `@types/node` 24; `engines.node` ≥ 24. `date-fns` entfällt (ungenutzt).
+- TypeScript 7 prüft die Typen (`tsc`); typescript-eslint und openapi-typescript brauchen die JavaScript-API und laufen mit TypeScript 6 (`typescript` 6 plus Alias `typescript-7`).
+- Tailwind 4 CSS-first: Tokens als `@theme` in `src/index.css`, `tailwind.config.ts` und PostCSS-Konfiguration entfallen. Wo Tailwind 4 anders rendert (Kaskaden-Layer, `space-*`/`divide-*`, Zeilenhöhen, Preflight, Farbpalette), hält `index.css` das bisherige Verhalten; Screenshots und berechnete Styles sind gegenüber vorher unverändert, abgesehen von neu gezeichneten Lucide-Icons und Halbpixel-Verschiebungen in den Diagrammen.
+- Passwörter über 72 Byte (UTF-8) meldet das Formular schon vor dem Absenden (bcrypt-Grenze des Backends).
+
 ### Schulung „Von der Frage zum Auftrag“
 
+- `docs/schulung/schueler-handbuch.md` und `schueler-handbuch.html`: Handbuch für Schülerinnen und Schüler mit LEDVV, Hebeln für bessere Ergebnisse, Prüfregeln, Übungen mit Lösungen und Glossar. Die HTML-Fassung enthält einen Prompt-Baukasten, der Aufträge nach LEDVV zusammensetzt, fehlende Teile anzeigt und vor Passwörtern im Text warnt.
 - `docs/schulung/`: Unterlagen für eine 60-minütige Schulung zum Arbeiten mit KI-Agenten am Beispiel dieses Projekts. Enthalten sind ein Lehrerleitfaden mit Ablauf, LEDVV als Aufbau für Aufträge, ein Spickzettel mit Übung, Kurz-Demos und Fallbeispiele.
 - Drehbuch für die Live-Vorführung „Gamedoc 2027 analysieren und in der App hinterlegen“ (`demo-gamedoc-2027.md`) mit Prompts, Klickweg und Plan B. Dazu kommen der Bogen 2026 als JSON (`demo/botball-2026-sheet.json`) und die erwartete Analyse (`demo/analyse-2026-erwartet.md`). Beide sind aus der Vorlage `botball_2026` erzeugt, alle 13 offiziellen Scoring-Beispiele wurden dabei nachgerechnet.
 

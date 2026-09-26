@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type TouchEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { ChevronLeft, ChevronRight, Save, Trophy } from "lucide-react";
 import { api, isQueuedResponse } from "@/lib/api";
 import { formatScore } from "@/i18n/format";

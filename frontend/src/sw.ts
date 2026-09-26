@@ -53,7 +53,7 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data: { title?: string; body?: string; url?: string } = {};
+  let data: { title?: string; body?: string; url?: string };
   try {
     data = event.data?.json() ?? {};
   } catch {

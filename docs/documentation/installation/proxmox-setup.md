@@ -10,7 +10,7 @@ Proxmox-Host
     ├── backend        FastAPI (führt beim Start die Migrationen aus)
     ├── worker         Celery: OCR, Web Push, Drucker-Polling
     ├── beat           Celery-Zeitplan (Outbox, Drucker, Paper-Fristen)
-    ├── db, redis      PostgreSQL 16 (/data/db), Redis 7
+    ├── db, redis      PostgreSQL 18 (/data/db/18/docker), Redis 8
     ├── backup         verschlüsselte Backups nach /data/backups   (Profil production)
     └── prometheus, blackbox, alertmanager                      (Profil monitoring, optional)
 ```
@@ -50,7 +50,7 @@ Was das Skript macht:
 |---|---|
 | 1 | Prüft root/Netz, installiert `git`, `curl`, `python3`, `age` |
 | 2 | Installiert Docker + Compose-Plugin (get.docker.com) |
-| 3 | Installiert Node.js 22 und pnpm 10.29.3 (Frontend-Build auf dem Host) |
+| 3 | Installiert Node.js 24 und pnpm 10.29.3 (Frontend-Build auf dem Host) |
 | 4 | Klont das Repository nach `/opt/botballdashboard` (bzw. `git pull`) |
 | 5 | Fragt Domain, Let's-Encrypt-Mail, DB-Name/-User, optional SMTP, Backup-Schlüssel, Monitoring und Admin-Konto ab und schreibt `.env` (Rechte 600). Erzeugt automatisch `APP_SECRET_KEY`, `JWT_SECRET_KEY`, ein 43-stelliges `POSTGRES_PASSWORD` (falls keines eingegeben), einen Fernet-Schlüssel für `PRINTER_CREDENTIAL_ENCRYPTION_KEY` und – ohne eigenen Schlüssel – ein age-Schlüsselpaar für Backups (`/root/botball-backup-identity.txt`). Setzt `COMPOSE_PROFILES` (`production`, optional `monitoring`). |
 | 6 | Legt `/data/db` (UID 70) und `/data/backups` an |

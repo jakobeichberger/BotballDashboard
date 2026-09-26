@@ -296,6 +296,37 @@ ECER_2026_OPEN_FORMULA_SET: list[tuple[str, str]] = [
     ("overall", "seed_score + de_score + 0.5 * paper_score"),
 ]
 
+# The two points where the ECER 2026 amendments and the published results
+# disagree; both readings are offered so the organiser decides per season.
+#
+# Botball, amendments read literally: DocScore = 1/3 of each period's
+# percentage of its rubric maximum (2026: P1 /100, P2 /95, P3 /100) instead of
+# relative to the best team.
+ECER_2026_BOTBALL_RUBRIC_FORMULA_SET: list[tuple[str, str]] = [
+    _SEED_TOTAL,
+    _SEED_SCORE_BY_RANK,
+    _DE_BRACKET_SCORE,
+    _DE_SCORE,
+    (
+        "doc_score",
+        "(safe_div(doc_p1, doc_p1_max) + safe_div(doc_p2, doc_p2_max)"
+        " + safe_div(doc_p3, doc_p3_max)) / 3",
+    ),
+    _PAPER_SCORE,
+    ("adapted_doc_score", "0.5 * doc_score + 0.5 * paper_score"),
+    ("overall", "seed_score + de_score + adapted_doc_score"),
+]
+
+# Open, as the published results rank it: Seeding + DE, no paper term.
+ECER_2026_OPEN_RESULTS_FORMULA_SET: list[tuple[str, str]] = [
+    _SEED_TOTAL,
+    _SEED_SCORE_BY_RANK,
+    _DE_BRACKET_SCORE,
+    _DE_SCORE,
+    _PAPER_SCORE,
+    ("overall", "seed_score + de_score"),
+]
+
 AERIAL_2025_FORMULA_SET: list[tuple[str, str]] = [
     ("aerial_score", "avg(aerial_runs)"),
     ("overall", "aerial_score"),
@@ -344,6 +375,23 @@ FORMULA_PRESETS: dict[str, FormulaPreset] = {
             "open",
             "ECER amendments 2026: Seeding + DE + ½ paper score.",
             ECER_2026_OPEN_FORMULA_SET,
+        ),
+        FormulaPreset(
+            "ecer_2026_botball_rubric",
+            "ECER 2026 – Botball (docs vs. rubric maximum)",
+            "botball",
+            "ECER amendments 2026 read literally: P1–P3 as a share of each rubric maximum, "
+            "averaged; paper halves the doc weight. The published 2026 results use the "
+            "best team per period instead (ecer_2026_botball).",
+            ECER_2026_BOTBALL_RUBRIC_FORMULA_SET,
+        ),
+        FormulaPreset(
+            "ecer_2026_open_results",
+            "ECER 2026 – ECER Open (as published)",
+            "open",
+            "Seeding + DE without the paper, as the published ECER 2026 results rank Open. "
+            "The amendments add ½ paper score (ecer_2026_open).",
+            ECER_2026_OPEN_RESULTS_FORMULA_SET,
         ),
         FormulaPreset(
             "ecer_2025_botball",

@@ -3,6 +3,8 @@
 import i18n from "@/i18n/config";
 
 export const PASSWORD_MIN_LENGTH = 10;
+/** bcrypt only hashes the first 72 bytes, so the backend rejects longer passwords. */
+export const PASSWORD_MAX_BYTES = 72;
 
 /** The password rules in the active language. */
 export function passwordHint(): string {
@@ -12,6 +14,9 @@ export function passwordHint(): string {
 export function passwordProblem(password: string, email?: string | null): string | null {
   if (password.length < PASSWORD_MIN_LENGTH) {
     return i18n.t("auth:password.tooShort", { min: PASSWORD_MIN_LENGTH });
+  }
+  if (new TextEncoder().encode(password).length > PASSWORD_MAX_BYTES) {
+    return i18n.t("auth:password.tooLong", { max: PASSWORD_MAX_BYTES });
   }
   if (new Set(password).size === 1) {
     return i18n.t("auth:password.repeated");
@@ -28,6 +33,7 @@ export function passwordProblem(password: string, email?: string | null): string
 const POLICY_MESSAGES: Array<[RegExp, string]> = [
   [/common or leaked passwords/i, "auth:password.common"],
   [/at least \d+ characters/i, "auth:password.tooShort"],
+  [/at most \d+ bytes/i, "auth:password.tooLong"],
   [/single repeated character/i, "auth:password.repeated"],
   [/must not be the e-mail address/i, "auth:password.isEmail"],
 ];
@@ -35,7 +41,7 @@ const POLICY_MESSAGES: Array<[RegExp, string]> = [
 /** A backend password-policy message in the active language; other messages unchanged. */
 export function localizePolicyMessage(message: string): string {
   const match = POLICY_MESSAGES.find(([pattern]) => pattern.test(message));
-  return match ? i18n.t(match[1], { min: PASSWORD_MIN_LENGTH }) : message;
+  return match ? i18n.t(match[1], { min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_BYTES }) : message;
 }
 
 // API errors in general: lib/errors (apiErrorMessage), which also localizes

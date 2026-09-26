@@ -88,10 +88,10 @@ class ScoreSheetTemplate(Base):
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
-    season: Mapped["Season"] = relationship("Season", back_populates="score_sheet_templates")
-    competition_level: Mapped["CompetitionLevel | None"] = relationship("CompetitionLevel")
-    uploader: Mapped["User"] = relationship("User", foreign_keys=[uploaded_by])
-    confirmer: Mapped["User | None"] = relationship("User", foreign_keys=[confirmed_by])
+    season: Mapped[Season] = relationship("Season", back_populates="score_sheet_templates")
+    competition_level: Mapped[CompetitionLevel | None] = relationship("CompetitionLevel")
+    uploader: Mapped[User] = relationship("User", foreign_keys=[uploaded_by])
+    confirmer: Mapped[User | None] = relationship("User", foreign_keys=[confirmed_by])
 
 
 class ScoreSheetScan(Base):

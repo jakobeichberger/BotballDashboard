@@ -60,10 +60,10 @@ class Event(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    registrations: Mapped[list["EventRegistration"]] = relationship(
+    registrations: Mapped[list[EventRegistration]] = relationship(
         "EventRegistration", back_populates="event", cascade="all, delete-orphan"
     )
-    phases: Mapped[list["EventPhase"]] = relationship(
+    phases: Mapped[list[EventPhase]] = relationship(
         "EventPhase",
         back_populates="event",
         cascade="all, delete-orphan",
@@ -96,7 +96,7 @@ class EventRegistration(Base):
     )
 
     event: Mapped[Event] = relationship(Event, back_populates="registrations")
-    team: Mapped["Team"] = relationship("Team")
+    team: Mapped[Team] = relationship("Team")
 
     @property
     def team_name(self) -> str:
@@ -125,7 +125,7 @@ class EventPhase(Base):
     settings: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
     event: Mapped[Event] = relationship(Event, back_populates="phases")
-    scheduled_matches: Mapped[list["ScheduledMatch"]] = relationship(
+    scheduled_matches: Mapped[list[ScheduledMatch]] = relationship(
         "ScheduledMatch", back_populates="phase", cascade="all, delete-orphan"
     )
 
@@ -166,7 +166,7 @@ class ScheduledMatch(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     phase: Mapped[EventPhase] = relationship(EventPhase, back_populates="scheduled_matches")
-    participants: Mapped[list["MatchParticipant"]] = relationship(
+    participants: Mapped[list[MatchParticipant]] = relationship(
         "MatchParticipant", back_populates="scheduled_match", cascade="all, delete-orphan"
     )
 
@@ -207,7 +207,7 @@ class MatchParticipant(Base):
     scheduled_match: Mapped[ScheduledMatch] = relationship(
         ScheduledMatch, back_populates="participants"
     )
-    team: Mapped["Team | None"] = relationship("Team")
+    team: Mapped[Team | None] = relationship("Team")
 
     @property
     def team_name(self) -> str | None:

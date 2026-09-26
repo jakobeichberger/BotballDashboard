@@ -1,15 +1,417 @@
-@import "./fonts.css";
+@layer theme, base, components, utilities;
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "./fonts.css" layer(base);
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+
+/* `.dark` on <html> (themeStore) switches the theme. */
+@custom-variant dark (&:is(.dark *));
+
+/* hover: applies on every device, as in Tailwind 3 (v4 limits it to
+   devices that can hover, so a tap no longer triggers it on phones). */
+@custom-variant hover (&:hover);
+
+/*
+ * Design tokens (WehrFlow design DNA). Every themed value is a CSS variable
+ * in the :root/.dark block further down holding RGB channels, so
+ * `bg-flaeche`, `text-leise`, … switch with the theme (`.dark` on <html>)
+ * without `dark:` variants and still take opacity modifiers (`bg-primary/10`).
+ */
+@theme {
+  /* Signal red scale around #e31823 (--rot); 600 is the brand red. */
+  --color-primary: #e31823;
+  --color-primary-50: #fff1f1;
+  --color-primary-100: #ffe0e1;
+  --color-primary-200: #ffc6c8;
+  --color-primary-300: #ff9ba0;
+  --color-primary-400: #ff5a60; /* rot-auf-dunkel */
+  --color-primary-500: #ff4d57; /* rot-hell */
+  --color-primary-600: #e31823; /* rot / signal */
+  --color-primary-700: #b0121c; /* rot-dunkel */
+  --color-primary-800: #8f1219;
+  --color-primary-900: #76151b;
+  --color-primary-950: #410608;
+
+  --color-rot: #e31823;
+  --color-rot-hell: #ff4d57;
+  --color-rot-dunkel: #b0121c;
+  --color-rot-auf-dunkel: #ff5a60;
+
+  /* Cool neutral scale from the DNA: 50/100 papier, 200 rand, 500 text-leise,
+     700 rand-dunkel, 900 tief-2, 950 tief. Pages that still use gray-*
+     therefore sit on the same palette as the semantic tokens. */
+  --color-gray-50: #f5f6f8;
+  --color-gray-100: #e8eaee;
+  --color-gray-200: #d8dce2;
+  --color-gray-300: #bfc5cd;
+  --color-gray-400: #9aa3ad;
+  --color-gray-500: #666f76;
+  --color-gray-600: #4b535c;
+  --color-gray-700: #2a3038;
+  --color-gray-800: #22262e;
+  --color-gray-900: #1a1d23;
+  --color-gray-950: #0d0f13;
+
+  /* The status palettes the pages use, pinned to the Tailwind 3 values
+     (v4's defaults are OKLCH colours that render differently). */
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  --color-red-900: #7f1d1d;
+  --color-red-950: #450a0a;
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+  --color-orange-800: #9a3412;
+  --color-orange-900: #7c2d12;
+  --color-orange-950: #431407;
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  --color-amber-950: #451a03;
+  --color-yellow-50: #fefce8;
+  --color-yellow-100: #fef9c3;
+  --color-yellow-200: #fef08a;
+  --color-yellow-300: #fde047;
+  --color-yellow-400: #facc15;
+  --color-yellow-500: #eab308;
+  --color-yellow-600: #ca8a04;
+  --color-yellow-700: #a16207;
+  --color-yellow-800: #854d0e;
+  --color-yellow-900: #713f12;
+  --color-yellow-950: #422006;
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-300: #86efac;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+  --color-green-800: #166534;
+  --color-green-900: #14532d;
+  --color-green-950: #052e16;
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-emerald-900: #064e3b;
+  --color-emerald-950: #022c22;
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+  --color-blue-950: #172554;
+  --color-purple-50: #faf5ff;
+  --color-purple-100: #f3e8ff;
+  --color-purple-200: #e9d5ff;
+  --color-purple-300: #d8b4fe;
+  --color-purple-400: #c084fc;
+  --color-purple-500: #a855f7;
+  --color-purple-600: #9333ea;
+  --color-purple-700: #7e22ce;
+  --color-purple-800: #6b21a8;
+  --color-purple-900: #581c87;
+  --color-purple-950: #3b0764;
+
+  --color-papier: rgb(var(--papier));
+  --color-papier-2: rgb(var(--papier-2));
+  --color-flaeche: rgb(var(--flaeche));
+  --color-flaeche-2: rgb(var(--flaeche-2));
+  --color-tief: #0d0f13;
+  --color-tief-2: #1a1d23;
+  --color-tief-3: #16181d;
+  /* The sidebar is dark in both themes (text-invers tokens of the DNA). */
+  --color-sidebar: #1a1d23;
+  --color-sidebar-text: #dfe3e8;
+  --color-sidebar-leise: #9aa3ad;
+  --color-sidebar-rand: #2a3038;
+  --color-fg: rgb(var(--text));
+  --color-leise: rgb(var(--text-leise));
+  --color-rand: rgb(var(--rand));
+  --color-rand-stark: rgb(var(--rand-stark));
+  --color-rand-dunkel: #2a3038;
+  --color-success: rgb(var(--success));
+  --color-warning: rgb(var(--warning));
+  --color-danger: rgb(var(--danger));
+  --color-info: rgb(var(--info));
+
+  /*
+   * Text-colour tokens (text-* and placeholder-* only). The shades below are
+   * the ones the UI uses for secondary and status text; as text they resolve
+   * to CSS variables that meet WCAG AA (4.5:1) on the light and the dark
+   * surfaces. Backgrounds, borders and icons keep the palette. A re-theme only
+   * changes the variables.
+   */
+  --text-color-gray-400: rgb(var(--text-gray-400));
+  --text-color-gray-500: rgb(var(--text-gray-500));
+  --text-color-red-500: rgb(var(--text-red-500));
+  --text-color-red-600: rgb(var(--text-red-600));
+  --text-color-amber-600: rgb(var(--text-amber-600));
+  --text-color-yellow-600: rgb(var(--text-yellow-600));
+  --text-color-green-600: rgb(var(--text-green-600));
+  --text-color-blue-600: rgb(var(--text-blue-600));
+  --text-color-primary-400: rgb(var(--text-primary-600));
+  --text-color-primary-500: rgb(var(--text-primary-600));
+  --text-color-primary-600: rgb(var(--text-primary-600));
+  --text-color-primary-700: rgb(var(--text-primary-600));
+  /* Red text that stays AA on every surface (links, active items, errors). */
+  --text-color-akzent: rgb(var(--text-primary-600));
+  --placeholder-color-gray-400: rgb(var(--text-gray-400));
+  --placeholder-color-gray-500: rgb(var(--text-gray-500));
+
+  /* `rounded` and `rounded-karte` are the card radius, `rounded-eng` the tighter one. */
+  --radius: 10px;
+  --radius-karte: 10px;
+  --radius-eng: 8px;
+
+  --shadow-flach: var(--schatten);
+  --shadow-tief: var(--schatten-tief);
+  --shadow-ember: var(--schatten-ember);
+
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-display: "Exo 2", Inter, system-ui, sans-serif;
+  --font-ui: "Geist Sans", Inter, system-ui, sans-serif;
+  --font-mono: JetBrains Mono, ui-monospace, monospace;
+
+  --tracking-display: -0.035em;
+  --tracking-ui: -0.01em;
+  --tracking-overline: 0.1em;
+
+  --default-transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  --default-transition-duration: 200ms;
+  --ease-wehr: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --container-breite: 68rem;
+
+  /* Font sizes with Tailwind 3's fixed line heights (v4 uses ratios, which
+     change the line height when a later class only swaps the font size). */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 4.5rem;
+  --text-7xl--line-height: 1;
+  --text-8xl: 6rem;
+  --text-8xl--line-height: 1;
+  --text-9xl: 8rem;
+  --text-9xl--line-height: 1;
+}
+
+/*
+ * space-* and divide-* as in Tailwind 3: the gap or line goes on every
+ * child after the first (v4 puts it on every child before the last and
+ * lets the children's own margins win). The html :where() rules take the
+ * v4 declarations back; the second rule is the v3 one.
+ */
+@utility space-y-* {
+  html :where(& > *) {
+    margin-top: revert-layer;
+    margin-bottom: revert-layer;
+  }
+  & > :not([hidden]) ~ :not([hidden]) {
+    margin-top: calc(var(--spacing) * --value(number));
+    margin-bottom: 0;
+  }
+}
+@utility space-x-* {
+  html :where(& > *) {
+    margin-left: revert-layer;
+    margin-right: revert-layer;
+  }
+  & > :not([hidden]) ~ :not([hidden]) {
+    margin-left: calc(var(--spacing) * --value(number));
+    margin-right: 0;
+  }
+}
+@utility divide-y {
+  html :where(& > *) {
+    border-top-width: revert-layer;
+    border-bottom-width: revert-layer;
+    border-top-style: revert-layer;
+    border-bottom-style: revert-layer;
+  }
+  & > :not([hidden]) ~ :not([hidden]) {
+    border-top-width: 1px;
+    border-bottom-width: 0;
+  }
+}
+@utility divide-* {
+  html :where(& > *) {
+    border-color: revert-layer;
+  }
+  & > :not([hidden]) ~ :not([hidden]) {
+    border-color: --value(--color-*, [color]);
+    border-color: --alpha(--value(--color-*, [color]) / calc(--modifier(integer) * 1%));
+    border-color: --alpha(--value(--color-*, [color]) / calc(--modifier([number]) * 100%));
+  }
+}
+
+/*
+ * Tailwind 3 defaults that Tailwind 4's preflight changed, kept so the UI
+ * looks and behaves as before: borders default to the gray-200 hairline
+ * (the `*` rule below sets --rand for elements), placeholders are gray-400,
+ * table cells and options keep the browser's padding, and buttons show the
+ * pointer cursor.
+ */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  /* v4 resets every element's padding; v3 left these with the browser's
+     (1px for table cells is the browser's default cellpadding). */
+  td,
+  th {
+    padding: 1px;
+  }
+  option {
+    padding: revert;
+  }
+
+  /* v4 makes form fields transparent and square; v3 only did that for buttons. */
+  input:where(:not([type="button"], [type="reset"], [type="submit"])),
+  select,
+  optgroup,
+  textarea {
+    background-color: revert-layer;
+    border-radius: revert-layer;
+    opacity: revert-layer;
+  }
+
+  /* v4 lets form controls inherit the whole font (font: inherit, so also
+     tabular-nums from a table cell); v3 inherited these parts only. */
+  button,
+  input,
+  optgroup,
+  select,
+  textarea {
+    font: revert-layer;
+    font-family: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    font-size: 100%;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
+
+  /* The button of <input type="file"> keeps the browser's look (v4 resets it
+     like a Tailwind button). */
+  ::file-selector-button {
+    margin: revert-layer;
+    padding: revert-layer;
+    border: revert-layer;
+    border-radius: revert-layer;
+    background-color: revert-layer;
+    color: revert-layer;
+    opacity: revert-layer;
+    letter-spacing: revert-layer;
+    font-feature-settings: revert-layer;
+    font-variation-settings: revert-layer;
+  }
+
+  /* Search and date fields: v3's preflight styled the search field and left
+     the date/time parts to the browser; v4 restyles the parts. */
+  [type="search"] {
+    appearance: textfield;
+    outline-offset: -2px;
+  }
+  ::-webkit-date-and-time-value {
+    min-height: revert-layer;
+    text-align: revert-layer;
+  }
+  ::-webkit-datetime-edit {
+    display: revert-layer;
+  }
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: revert-layer;
+  }
+  ::-webkit-datetime-edit,
+  ::-webkit-datetime-edit-year-field,
+  ::-webkit-datetime-edit-month-field,
+  ::-webkit-datetime-edit-day-field,
+  ::-webkit-datetime-edit-hour-field,
+  ::-webkit-datetime-edit-minute-field,
+  ::-webkit-datetime-edit-second-field,
+  ::-webkit-datetime-edit-millisecond-field,
+  ::-webkit-datetime-edit-meridiem-field {
+    padding-block: revert-layer;
+  }
+  ::-webkit-calendar-picker-indicator {
+    line-height: revert-layer;
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  :disabled {
+    cursor: default;
+  }
+}
 
 /*
  * Design tokens (WehrFlow design DNA, adapted to Botball Dashboard).
- * Colours are RGB channels so Tailwind's opacity modifiers work
- * (tailwind.config.ts maps them to bg-papier, bg-flaeche, text-fg,
- * text-leise, border-rand, text-success, …). `.dark` on <html> (themeStore)
- * swaps the themed values; everything else follows automatically.
+ * Colours are RGB channels (the @theme block above maps them to bg-papier,
+ * bg-flaeche, text-fg, text-leise, border-rand, text-success, …).
+ * `.dark` on <html> (themeStore) swaps the themed values; everything else
+ * follows automatically.
  */
 @layer base {
   :root {
@@ -34,8 +436,6 @@
     --danger: 200 20 31; /* #c8141f */
     --info: 29 78 216; /* #1d4ed8 */
 
-    --radius: 10px;
-    --radius-eng: 8px;
     --schatten: 0 1px 2px #0d0f130a;
     --schatten-tief: 0 12px 32px #00000047;
     --schatten-ember: 0 0 80px rgb(var(--rot-rgb) / 0.14);
@@ -43,7 +443,7 @@
     --easing: cubic-bezier(0.16, 1, 0.3, 1);
 
     /* Text-colour tokens behind the legacy gray/status text classes
-       (tailwind.config.ts, textColor). Each reaches 4.5:1 on the surfaces. */
+       (@theme, --text-color-*). Each reaches 4.5:1 on the surfaces. */
     --text-gray-400: var(--text-leise);
     --text-gray-500: var(--text-leise);
     --text-red-500: var(--danger);
@@ -131,13 +531,6 @@
     @apply border-b border-rand;
   }
 
-  input[type="checkbox"],
-  input[type="radio"] {
-    accent-color: rgb(var(--rot-rgb));
-    width: 1.1rem;
-    height: 1.1rem;
-  }
-
   .tabular-nums,
   td,
   time {
@@ -172,13 +565,46 @@
   }
 }
 
-@layer components {
+/*
+ * Building blocks of the component classes below (.btn, .card, .badge and
+ * the classes built on them). They are utilities only so the component
+ * classes can @apply them; the markup uses the component classes.
+ */
+@utility btn-shape {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded border-[1.5px] border-transparent px-[1.1rem] py-2
+         font-ui text-[0.95rem] font-semibold tracking-ui transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-wehr
+         hover:-translate-y-px active:translate-y-0;
+}
+@utility btn-disabled {
+  @apply disabled:pointer-events-none disabled:opacity-50;
+}
+@utility card-shape {
+  @apply rounded-karte border border-rand bg-flaeche;
+}
+@utility badge-shape {
+  @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 font-ui text-xs font-semibold;
+}
+
+/*
+ * Component classes, and the few base rules more specific than one class.
+ * Tailwind 3 emitted everything without cascade layers: a utility on the
+ * same element beat a component class (it came later), but a more specific
+ * rule beat the utility (`.data-table thead th` keeps its padding next to a
+ * `px-2`, a `w-4` checkbox stays 1.1rem, a hovered `.btn-primary` keeps its
+ * hover colour next to `bg-*`). Placing them in the utilities layer, before
+ * Tailwind's own utilities, keeps exactly that behaviour.
+ */
+@layer utilities {
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: rgb(var(--rot-rgb));
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
   /* ── Buttons (.knopf) ─────────────────────────────────────────────── */
   .btn {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded border-[1.5px] border-transparent px-[1.1rem] py-2
-           font-ui text-[0.95rem] font-semibold tracking-ui transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-wehr
-           hover:-translate-y-px active:translate-y-0
-           disabled:pointer-events-none disabled:opacity-50;
+    @apply btn-shape btn-disabled;
   }
   .btn-sm {
     @apply min-h-9 px-3 py-1.5 text-sm;
@@ -188,19 +614,30 @@
   }
   .btn-primary {
     /* White on #e31823 is 4.75:1; the hover goes darker (not rot-hell, 3.3:1). */
-    @apply btn bg-primary text-white shadow-flach hover:bg-[#d4161f] hover:shadow-ember active:bg-primary-700;
+    @apply btn-shape btn-disabled;
+    @apply bg-primary text-white shadow-flach hover:bg-[#d4161f] hover:shadow-ember active:bg-primary-700;
   }
   .btn-secondary {
-    @apply btn border-rand-stark/60 bg-flaeche text-fg hover:border-fg/60 hover:bg-flaeche-2;
+    @apply btn-shape btn-disabled;
+    @apply border-rand-stark/60 bg-flaeche text-fg hover:border-fg/60 hover:bg-flaeche-2;
+  }
+  /* The secondary button look for the button of <input type="file">
+     (with file:mr-2 file:text-xs next to it). */
+  .file-btn-secondary::file-selector-button {
+    @apply btn-shape;
+    @apply border-rand-stark/60 bg-flaeche text-fg hover:border-fg/60 hover:bg-flaeche-2;
   }
   .btn-outline {
-    @apply btn border-current bg-transparent text-akzent hover:bg-primary/[0.06];
+    @apply btn-shape btn-disabled;
+    @apply border-current bg-transparent text-akzent hover:bg-primary/[0.06];
   }
   .btn-ghost {
-    @apply btn bg-transparent text-fg hover:bg-fg/[0.06];
+    @apply btn-shape btn-disabled;
+    @apply bg-transparent text-fg hover:bg-fg/[0.06];
   }
   .btn-danger {
-    @apply btn bg-rot-dunkel text-white hover:bg-primary-800;
+    @apply btn-shape btn-disabled;
+    @apply bg-rot-dunkel text-white hover:bg-primary-800;
   }
   /* Square 44px icon button (theme, menu, bell). */
   .btn-icon {
@@ -217,10 +654,11 @@
 
   /* ── Cards (.karte) ───────────────────────────────────────────────── */
   .card {
-    @apply rounded-karte border border-rand bg-flaeche;
+    @apply card-shape;
   }
   .card-interactive {
-    @apply card transition-colors duration-200 hover:border-primary/30;
+    @apply card-shape;
+    @apply transition-colors duration-200 hover:border-primary/30;
   }
 
   /* Page header: Exo 2 title, muted subtitle, primary action on the right. */
@@ -244,7 +682,8 @@
 
   /* Filter bar: one bordered card holding the controls in a row. */
   .filter-bar {
-    @apply card mb-5 flex flex-wrap items-end gap-3 p-3;
+    @apply card-shape;
+    @apply mb-5 flex flex-wrap items-end gap-3 p-3;
   }
 
   /* Shared wrapper for data tables: on narrow screens the table scrolls
@@ -289,29 +728,33 @@
   }
   select.input {
     @apply pr-9;
-  }
-  .label {
+  }  .label {
     @apply mb-1.5 block font-ui text-sm font-semibold tracking-ui text-fg;
   }
 
   /* ── Badges / status chips ────────────────────────────────────────── */
   .badge {
-    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 font-ui text-xs font-semibold;
+    @apply badge-shape;
   }
   .badge-green {
-    @apply badge border-success/35 bg-success/10 text-success;
+    @apply badge-shape;
+    @apply border-success/35 bg-success/10 text-success;
   }
   .badge-yellow {
-    @apply badge border-warning/40 bg-warning/10 text-warning;
+    @apply badge-shape;
+    @apply border-warning/40 bg-warning/10 text-warning;
   }
   .badge-red {
-    @apply badge border-danger/35 bg-danger/10 text-danger;
+    @apply badge-shape;
+    @apply border-danger/35 bg-danger/10 text-danger;
   }
   .badge-blue {
-    @apply badge border-info/35 bg-info/10 text-info;
+    @apply badge-shape;
+    @apply border-info/35 bg-info/10 text-info;
   }
   .badge-gray {
-    @apply badge border-rand bg-flaeche-2 text-leise;
+    @apply badge-shape;
+    @apply border-rand bg-flaeche-2 text-leise;
   }
   /* Red count bubble on the bell / list headers. */
   .count-badge {
@@ -367,6 +810,7 @@
   .reveal {
     animation: reveal var(--dauer) var(--easing) both;
   }
+  @tailwind utilities;
 }
 
 @keyframes reveal {

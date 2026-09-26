@@ -27,7 +27,7 @@ export default function Toaster() {
   const [layer] = useState(toastLayer);
   if (!layer) return null;
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 p-4 sm:items-end">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-60 flex flex-col items-center gap-2 p-4 sm:items-end">
       {toasts.map((item) => {
         const Icon = ICON[item.tone];
         return (
@@ -48,7 +48,7 @@ export default function Toaster() {
               )}
               aria-hidden="true"
             />
-            <p className="min-w-0 flex-1 break-words font-medium">{item.message}</p>
+            <p className="min-w-0 flex-1 wrap-break-word font-medium">{item.message}</p>
             <button
               type="button"
               onClick={() => dismiss(item.id)}

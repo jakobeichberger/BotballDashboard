@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Static checks of the translation files:
  *  - de and en define exactly the same namespaces and keys,

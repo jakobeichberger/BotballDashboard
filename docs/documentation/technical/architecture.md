@@ -38,7 +38,7 @@ Dienste in `docker-compose.yml`: `traefik`, `db`, `redis`, `backend`, `worker`, 
 
 | Bereich | Umsetzung |
 |---|---|
-| Framework | FastAPI (Pydantic v2), Python 3.11 |
+| Framework | FastAPI (Pydantic v2), Python 3.14 |
 | Datenbank | SQLAlchemy 2.0 async (asyncpg), Alembic-Migrationen `0001`–`0029` |
 | Auth | PyJWT (HS256 fest), bcrypt, Refresh-Token als HttpOnly-Cookie, `token_version` und Redis-Sperrliste (`core/token_denylist.py`) |
 | Rechte | `require_permission`, `require_any_permission`, `assert_team_access` (`core/auth.py`) |
@@ -229,12 +229,12 @@ Das Frontend speichert Score-POSTs ohne Verbindung in IndexedDB (`frontend/src/l
 
 | Bereich | Umsetzung |
 |---|---|
-| Framework | React 18, TypeScript, Vite |
-| Routing | React Router 6: `/login`, `/forgot-password`, `/reset-password`, `/public/:eventSlug`, `/setup`, `/settings/*`, `/events/:eventId/<modul-route>` |
+| Framework | React 19, TypeScript 7 (Typprüfung; ESLint nutzt TypeScript 6), Vite 8 |
+| Routing | React Router 8 (`react-router`): `/login`, `/forgot-password`, `/reset-password`, `/public/:eventSlug`, `/setup`, `/settings/*`, `/events/:eventId/<modul-route>` |
 | Registry | `src/core/plugins.ts` (Routen, Navigation, Rechte, Modul-Schalter, i18n-Namensräume) |
 | Daten | TanStack Query, axios (`src/lib/api.ts`, Token-Refresh, Offline-Sperre) |
 | State | Zustand (`authStore`, `themeStore`) |
-| Styles | Tailwind CSS mit Dark Mode; Theme wird im Profil gespeichert |
+| Styles | Tailwind CSS 4, Konfiguration CSS-first in `src/index.css` (`@theme`-Tokens, Komponentenklassen, Tailwind-3-Kompatibilität); Dark Mode über `.dark`, Theme wird im Profil gespeichert |
 | Diagramme | Recharts (Performance, Statistik, Team-Historie) |
 | i18n | i18next mit `de` und `en`; Rückfallsprache ist Deutsch. Viele Seiten enthalten noch fest deutschen Text (siehe [todo.md](../../todo.md)). |
 | PWA | vite-plugin-pwa (`injectManifest`), Web Push, Offline-Queue |

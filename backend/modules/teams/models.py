@@ -41,10 +41,10 @@ class Team(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    members: Mapped[list["TeamMember"]] = relationship(
+    members: Mapped[list[TeamMember]] = relationship(
         "TeamMember", back_populates="team", cascade="all, delete-orphan"
     )
-    season_registrations: Mapped[list["TeamSeasonRegistration"]] = relationship(
+    season_registrations: Mapped[list[TeamSeasonRegistration]] = relationship(
         "TeamSeasonRegistration", back_populates="team", cascade="all, delete-orphan"
     )
 
@@ -108,7 +108,7 @@ class TeamSeasonRegistration(Base):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     team: Mapped[Team] = relationship(Team, back_populates="season_registrations")
-    roster: Mapped[list["TeamSeasonMember"]] = relationship(
+    roster: Mapped[list[TeamSeasonMember]] = relationship(
         "TeamSeasonMember", back_populates="registration", cascade="all, delete-orphan"
     )
 
@@ -180,7 +180,7 @@ class TeamDocument(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    versions: Mapped[list["TeamDocumentVersion"]] = relationship(
+    versions: Mapped[list[TeamDocumentVersion]] = relationship(
         "TeamDocumentVersion",
         back_populates="document",
         cascade="all, delete-orphan",

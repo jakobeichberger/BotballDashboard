@@ -1,6 +1,6 @@
 # Offene Fragen
 
-Protokoll der Fachfragen aus der Planung. Beantwortete Fragen sind abgehakt. Wo die Antwort umgesetzt ist, steht die Stelle im Code dabei (Stand: Commit `aa61752`, Migration `0029`). Neue offene Punkte gehören nach [todo.md](todo.md).
+Protokoll der Fachfragen aus der Planung. Beantwortete Fragen sind abgehakt. Wo die Antwort umgesetzt ist, steht die Stelle im Code dabei (Stand: Migration `0034`). Neue offene Punkte gehören nach [todo.md](todo.md).
 
 ---
 
@@ -17,10 +17,10 @@ Protokoll der Fachfragen aus der Planung. Beantwortete Fragen sind abgehakt. Wo 
 
 ## Scoring
 
-- [x] **Gesamtscore-Formel:** aus den PDFs übernommen. Umgesetzt als konfigurierbare Formel-Sets (`modules/scoring/formula_engine.py`) mit den Presets ECER 2025, Regional 2026, GCER 2026, Aerial und JBC.
+- [x] **Gesamtscore-Formel:** aus den PDFs übernommen. Umgesetzt als konfigurierbare Formel-Sets (`modules/scoring/formula_engine.py`) mit den Presets ECER 2025/2026, Regional 2026, GCER 2026, Aerial und JBC. Wo ECER-Amendments und veröffentlichte Ergebnisse 2026 abweichen, gibt es beide Lesarten als Vorlage.
 - [x] **Scoring-Sheet-Felder 2024/2025:** vollständig. Umgesetzt als strukturierte Vorlagen (`modules/scoring/sheet_templates.py`).
-- [ ] **Scoring-Sheet-Felder 2026:** Die Spielelemente sind bekannt, die exakten Punktwerte nicht. Die Vorlage enthält die Struktur, die Werte trägt die Organisation im Schema-Editor ein. Kein Blocker.
-- [x] **Yellow/Red Card:** in `docs/modules/05-scoring.md` dokumentiert. Die Wirkung ist umgesetzt: DQ-Runde = 0, rote Karte ⇒ Team ohne Rang. Ein Schalter in der Oberfläche fehlt noch (todo.md).
+- [x] **Scoring-Sheet-Felder 2026:** vollständig aus dem offiziellen Score-Sheet und Game Review v1.4. Umgesetzt als Vorlage `botball_2026` (`modules/scoring/sheet_templates.py`); alle 13 offiziellen Scoring Examples sind Testfälle.
+- [x] **Yellow/Red Card:** in `docs/modules/05-scoring.md` dokumentiert. Die Wirkung ist umgesetzt: DQ-Runde = 0, rote Karte ⇒ Team ohne Rang. Gesetzt werden die Karten im Dialog „Strafen und Karten“ der Wertung (`MatchPenaltyDialog`).
 - [x] **3D-Druck-Regeln für Roboterteile:** 2025 max. 4 Teile PLA, 2026 max. 6 Teile PLA/PETG. Umgesetzt über Kontingente pro Event und Team und die Druck-Checkliste pro Saison.
 - [x] **GCER-Qualifikation:** 1–2 Teams, manuelle Freigabe durch Admins. Umgesetzt: `POST /api/scoring/levels/{id}/qualify`, Qualifikationspanel in der Event-Verwaltung, Registrierung der Qualifizierten.
 - [x] **Alliance-Matches bei GCER:** pro Turnierphase aktivierbar. Umgesetzt als Phasentyp `alliance`; Partnerpaare, deren Score die Summe beider Seiten ist.

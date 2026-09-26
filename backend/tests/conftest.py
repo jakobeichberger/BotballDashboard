@@ -72,7 +72,7 @@ async def _ensure_schema() -> None:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def db() -> AsyncGenerator[AsyncSession, None]:
+async def db() -> AsyncGenerator[AsyncSession]:
     """A session whose work is rolled back after the test, commits included."""
     await _ensure_schema()
     async with test_engine.connect() as conn:
@@ -121,7 +121,7 @@ async def engine_in_test_transaction(db: AsyncSession) -> _EngineInTestTransacti
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient]:
     """HTTP test client with overridden DB dependency."""
 
     async def override_get_db():

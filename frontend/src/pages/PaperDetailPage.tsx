@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
   FileText, ArrowLeft, Download, Upload, Users, Award, UserPlus, Send, CheckCircle2,
@@ -16,6 +16,7 @@ import { DeadlineBanner } from "@/modules/papers/DeadlineBanner";
 import { VersionDiff } from "@/modules/papers/VersionDiff";
 import { confirmAction } from "@/lib/confirm";
 import { toast } from "@/lib/toast";
+import { useChanged } from "@/hooks/useChanged";
 import { downloadFile } from "@/lib/download";
 import {
   ADMIN_STATUS_OPTIONS,
@@ -167,15 +168,16 @@ export default function PaperDetailPage() {
     : null;
 
   // ── Reviewer form state ────────────────────────────────────────────────
-  const [form, setForm] = useState<ReviewForm>(emptyForm);
+  const reviewForm = () => (myReview ? formFromReview(myReview) : emptyForm());
+  const [form, setForm] = useState<ReviewForm>(reviewForm);
   // Re-seed whenever the paper OR the matching review changes. The router
   // reuses this component across /papers/:id, so without the reset branch the
   // previous paper's scores stayed in the form and could be saved onto the
   // next one. The same applies after a revision is requested, which makes
-  // myReview undefined (reviews are per revision_number).
-  useEffect(() => {
-    setForm(myReview ? formFromReview(myReview) : emptyForm());
-  }, [id, myReview?.id, myReview?.is_submitted]); // eslint-disable-line react-hooks/exhaustive-deps
+  // myReview undefined (reviews are per revision_number). A refetch of the
+  // same review keeps the reviewer's unsaved edits.
+  const reviewChanged = useChanged([id, myReview?.id, myReview?.is_submitted]);
+  if (reviewChanged) setForm(reviewForm());
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["paper", id] });
@@ -225,12 +227,16 @@ export default function PaperDetailPage() {
     onError,
   });
 
-  const [deduction, setDeduction] = useState("");
-  const [deductionReason, setDeductionReason] = useState("");
-  useEffect(() => {
-    setDeduction(paper?.format_deduction ? String(paper.format_deduction) : "");
-    setDeductionReason(paper?.format_deduction_reason ?? "");
-  }, [paper?.id, paper?.format_deduction, paper?.format_deduction_reason]);
+  const storedDeduction = paper?.format_deduction ? String(paper.format_deduction) : "";
+  const storedDeductionReason = paper?.format_deduction_reason ?? "";
+  const [deduction, setDeduction] = useState(storedDeduction);
+  const [deductionReason, setDeductionReason] = useState(storedDeductionReason);
+  // Another paper or a changed stored deduction replaces the inputs.
+  const deductionChanged = useChanged([paper?.id, paper?.format_deduction, paper?.format_deduction_reason]);
+  if (deductionChanged) {
+    setDeduction(storedDeduction);
+    setDeductionReason(storedDeductionReason);
+  }
   const deductionM = useMutation({
     mutationFn: () =>
       api.put(`/papers/${id}/score`, {
@@ -318,7 +324,7 @@ export default function PaperDetailPage() {
       {/* Header */}
       <div className="card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <h1 className="page-title flex min-w-0 items-start gap-2 break-words">
+          <h1 className="page-title flex min-w-0 items-start gap-2 wrap-break-word">
             <FileText className="h-7 w-7 mt-1 shrink-0 text-akzent" />
             {paper.title}
           </h1>
@@ -425,7 +431,7 @@ export default function PaperDetailPage() {
                   accept="application/pdf"
                   aria-label={t("detail.newVersionPdf")}
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="text-xs text-leise file:mr-2 file:btn file:btn-secondary file:text-xs"
+                  className="text-xs text-leise file-btn-secondary file:mr-2 file:text-xs"
                 />
                 <button
                   disabled={!file || uploadM.isPending || deadlineLocked}
@@ -588,7 +594,7 @@ export default function PaperDetailPage() {
                   onChange={(e) => setForm({ ...form, [`score_${c.key}`]: e.target.value })}
                 />
                 <textarea
-                  className="input min-h-[2.5rem]"
+                  className="input min-h-10"
                   aria-label={t("detail.commentFor", { criterion: c.label })}
                   placeholder={t("detail.comment")}
                   value={form[`comment_${c.key}`]}
@@ -607,15 +613,15 @@ export default function PaperDetailPage() {
 
             <div>
               <label className="label" htmlFor="review-comments">{t("detail.overallComment")}</label>
-              <textarea id="review-comments" className="input min-h-[5rem]" value={form.comments} onChange={(e) => setForm({ ...form, comments: e.target.value })} placeholder={t("detail.feedbackPlaceholder")} />
+              <textarea id="review-comments" className="input min-h-20" value={form.comments} onChange={(e) => setForm({ ...form, comments: e.target.value })} placeholder={t("detail.feedbackPlaceholder")} />
             </div>
             <div>
               <label className="label" htmlFor="review-revision-notes">{t("detail.revisionNotes")}</label>
-              <textarea id="review-revision-notes" className="input min-h-[4rem]" value={form.revision_notes} onChange={(e) => setForm({ ...form, revision_notes: e.target.value })} placeholder={t("detail.revisionNotesPlaceholder")} />
+              <textarea id="review-revision-notes" className="input min-h-16" value={form.revision_notes} onChange={(e) => setForm({ ...form, revision_notes: e.target.value })} placeholder={t("detail.revisionNotesPlaceholder")} />
             </div>
             <div>
               <label className="label" htmlFor="review-private-notes">{t("detail.privateNotes")}</label>
-              <textarea id="review-private-notes" className="input min-h-[3rem]" value={form.private_notes} onChange={(e) => setForm({ ...form, private_notes: e.target.value })} />
+              <textarea id="review-private-notes" className="input min-h-12" value={form.private_notes} onChange={(e) => setForm({ ...form, private_notes: e.target.value })} />
             </div>
 
             <div className="flex items-center gap-2">

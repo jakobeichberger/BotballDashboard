@@ -205,11 +205,11 @@ export function SeasonRegistrations({
                   </label>
                 </div>
                 <label className="block text-sm">{t("registrations.address")}
-                  <textarea className="input mt-1 min-h-[3rem]" value={form.address ?? ""} onChange={(e) => set("address", e.target.value)} />
+                  <textarea className="input mt-1 min-h-12" value={form.address ?? ""} onChange={(e) => set("address", e.target.value)} />
                 </label>
                 {isOrganizer && (
                   <label className="block text-sm">{t("registrations.internalNotes")}
-                    <textarea className="input mt-1 min-h-[3rem]" value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />
+                    <textarea className="input mt-1 min-h-12" value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />
                   </label>
                 )}
                 <div className="flex items-center gap-2">

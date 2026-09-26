@@ -6,20 +6,22 @@
 
 | Dienst | Image | Profil | Aufgabe |
 |---|---|---|---|
-| `traefik` | traefik:v2.11 | – | Reverse Proxy, HTTP→HTTPS, Let's Encrypt (TLS-Challenge) |
+| `traefik` | traefik:v3.7 | – | Reverse Proxy, HTTP→HTTPS, Let's Encrypt (TLS-Challenge) |
 | `frontend` | `botballdashboard-frontend:local` (lokal gebaut) | – | nginx mit dem React-Build; unbekannte `/api/*`-Pfade → 404 |
 | `backend` | lokal aus `backend/` | – | FastAPI; `migrate-then-start.sh` führt `alembic upgrade head` aus und startet Uvicorn |
 | `worker` | wie backend | – | Celery-Worker (Queues `default`, `periodic`): Web-Push-Outbox, Drucker-Polling, Erinnerungen |
 | `worker-ocr` | wie backend | – | Celery-Worker (Queue `ocr`): Score-Sheet-OCR |
 | `beat` | wie backend | – | Celery-Beat: plant Outbox (10 s), Drucker (15 s), Paper-Fristen (1 h), Outbox-Aufräumen (täglich); jeder Auftrag verfällt nach seinem Intervall |
-| `db` | postgres:16-alpine | – | Datenbank (Volume `pgdata`, optional Bind-Mount `/data/db`) |
-| `redis` | redis:7-alpine | – | Celery-Broker, Rate-Limits, Event-Streams |
+| `db` | postgres:18-alpine | – | Datenbank (Volume `pgdata` unter `/var/lib/postgresql`, Cluster in `18/docker`; optional Bind-Mount `/data/db`). Neue Hauptversion: `scripts/postgres-upgrade.sh` |
+| `redis` | redis:8-alpine | – | Celery-Broker, Rate-Limits, Event-Streams, Token-Sperrliste |
 | `backup` | wie backend | `production` | `backup_scheduler.py`: tägliche verschlüsselte Backups, Healthcheck, Metriken auf :9101 |
 | `volume-permissions` | wie backend | – | Einmaliger Init-Container: übergibt `uploads` und `vapid` an UID 10001, beendet sich |
 | `backup-permissions` | wie backend | `production` | Einmaliger Init-Container: dasselbe für Backup-Archive und Off-site-Zugangsdaten |
-| `prometheus` | prom/prometheus:v2.54.1 | `monitoring` | Scrapt API, Readiness-Probe und Backup-Dienst, wertet `monitoring/alerts.yml` aus (127.0.0.1:9090) |
-| `blackbox` | prom/blackbox-exporter:v0.25.0 | `monitoring` | HTTP-Probe auf `/api/system/readiness` |
-| `alertmanager` | prom/alertmanager:v0.27.0 | `monitoring` | Stellt Alarme per Webhook/E-Mail zu (127.0.0.1:9093) |
+| `prometheus` | prom/prometheus:v3.15.0 | `monitoring` | Scrapt API, Readiness-Probe und Backup-Dienst, wertet `monitoring/alerts.yml` aus (127.0.0.1:9090) |
+| `blackbox` | prom/blackbox-exporter:v0.28.0 | `monitoring` | HTTP-Probe auf `/api/system/readiness` |
+| `alertmanager` | prom/alertmanager:v0.34.1 | `monitoring` | Stellt Alarme per Webhook/E-Mail zu (127.0.0.1:9093) |
+| `node-exporter` | prom/node-exporter:v1.12.1 | `monitoring` | Host-Metriken (Plattenplatz, Speicher, Last) |
+| `postgres-exporter` | prometheuscommunity/postgres-exporter:v0.20.1 | `monitoring` | PostgreSQL-Metriken (Verbindungen, Größe, Erreichbarkeit) |
 
 Profile werden über `COMPOSE_PROFILES` in `.env` aktiviert (z. B. `production,monitoring`). Alle Dienste schreiben Logs als `json-file` mit Rotation (`LOG_MAX_SIZE`, Standard 10 MB × `LOG_MAX_FILE` = 5 Dateien).
 
@@ -108,7 +110,7 @@ Zustellung: `monitoring/alertmanager/render-config.sh` erzeugt beim Start die Al
 Die Regeln sind getestet (`promtool test rules monitoring/alerts.test.yml`):
 
 ```bash
-docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool prom/prometheus:v2.54.1 test rules alerts.test.yml
+docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool prom/prometheus:v3.15.0 test rules alerts.test.yml
 ```
 
 Zugriff auf die Oberflächen: `ssh -L 9090:localhost:9090 -L 9093:localhost:9093 <server>`.

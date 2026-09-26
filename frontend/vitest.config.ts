@@ -4,9 +4,9 @@ import path from "path";
 export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
       // Provided by vite-plugin-pwa at build time only.
-      "virtual:pwa-register/react": path.resolve(__dirname, "./src/__tests__/stubs/pwaRegister.ts"),
+      "virtual:pwa-register/react": path.resolve(import.meta.dirname, "./src/__tests__/stubs/pwaRegister.ts"),
     },
   },
   test: {
@@ -29,14 +29,16 @@ export default defineConfig({
         "src/sw.ts",
       ],
       // `pnpm test:coverage` (CI) fails below these. Set about two points
-      // under the measured values (Sept 2026: statements/lines 67.2 %,
-      // branches 75.3 %, functions 49.5 %) — raise them as coverage grows
-      // towards the 70 % of the testing spec (docs/modules/10-testing.md).
+      // under the measured values (Sept 2026, @vitest/coverage-v8 5 with its
+      // AST-based remapping, which counts branches stricter than v3 did:
+      // statements 66.8 %, lines 70.5 %, branches 62.0 %, functions 54.5 %)
+      // — raise them as coverage grows towards the 70 % of the testing spec
+      // (docs/modules/10-testing.md).
       thresholds: {
-        statements: 65,
-        lines: 65,
-        branches: 73,
-        functions: 47,
+        statements: 64,
+        lines: 68,
+        branches: 60,
+        functions: 52,
       },
     },
   },

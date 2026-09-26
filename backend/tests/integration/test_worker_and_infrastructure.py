@@ -153,7 +153,7 @@ async def test_rate_limit_counts_atomically_and_answers_429(monkeypatch):
 
 
 class _FakePubSub:
-    instances: list["_FakePubSub"] = []
+    instances: list[_FakePubSub] = []
 
     def __init__(self) -> None:
         self.messages: asyncio.Queue = asyncio.Queue()

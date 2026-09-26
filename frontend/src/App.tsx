@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { Suspense, lazy } from "react";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/Layout";

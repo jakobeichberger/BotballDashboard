@@ -133,7 +133,7 @@ export default function DEPage() {
               const e = effective(team.id);
               const dirty = !!draft[team.id];
               return (
-                <tr key={team.id} className={dirty ? "bg-warning/[0.08]" : "hover:bg-flaeche-2"}>
+                <tr key={team.id} className={dirty ? "bg-warning/8" : "hover:bg-flaeche-2"}>
                   <td className="px-4 py-2">
                     <div className="font-medium">{team.name}</div>
                     <div className="text-xs text-leise font-mono">{team.team_number ?? team.id}</div>

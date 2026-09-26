@@ -129,8 +129,8 @@ class TestOpen:
 
         The amendments (and the ecer_2026_open preset) add ½ · PaperScore;
         the results sheet ranks on Seeding + DE. Kept as a documented
-        difference: an organiser who wants the published numbers removes the
-        paper term from the category's overall formula.
+        difference: an organiser who wants the published numbers loads the
+        ecer_2026_open_results preset instead.
         """
         published = {}
         for team in OPEN:
@@ -143,6 +143,32 @@ class TestOpen:
         ranks = _ranks(published)
         for team in OPEN:
             assert ranks[team["id"]] == team["expected"]["overall_rank"], team["name"]
+
+
+class TestAlternativeReadings:
+    """Both readings of the two points where amendments and results disagree."""
+
+    def test_open_results_preset_reproduces_the_published_open_ranking(self):
+        results = _run("ecer_2026_open_results", _rows(OPEN, with_docs=False))
+        for team in OPEN:
+            assert results[team["id"]]["overall"] == approx(team["expected"]["overall"])
+        ranks = _ranks({t: r["overall"] for t, r in results.items()})
+        for team in OPEN:
+            assert ranks[team["id"]] == team["expected"]["overall_rank"], team["name"]
+
+    def test_rubric_preset_uses_the_rubric_maximum_per_period(self):
+        rows = [
+            {**row, "doc_p1_max": 100.0, "doc_p2_max": 95.0, "doc_p3_max": 100.0}
+            for row in _rows(BOTBALL, with_docs=True)
+        ]
+        results = _run("ecer_2026_botball_rubric", rows)
+        # ProbablyLast: (4/100 + 85/95 + 60/100) / 3 instead of the best-team reading.
+        team = next(t for t in BOTBALL if t["name"] == "ProbablyLast")
+        assert results[team["id"]]["doc_score"] == approx((4 / 100 + 85 / 95 + 60 / 100) / 3)
+        # Seeding and DE are the same in both readings.
+        published = _run("ecer_2026_botball", _rows(BOTBALL, with_docs=True))
+        for t in BOTBALL:
+            assert results[t["id"]]["seed_score"] == approx(published[t["id"]]["seed_score"])
 
 
 def test_paper_rank_is_one_list_over_botball_and_open():

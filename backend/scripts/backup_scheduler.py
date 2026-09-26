@@ -96,7 +96,7 @@ def load_status(path: Path) -> BackupStatus | None:
         data = json.loads(path.read_text())
     except FileNotFoundError:
         return None
-    except (OSError, ValueError):
+    except OSError, ValueError:
         # A corrupt status file must not crash the scheduler; the next run
         # overwrites it.
         return None

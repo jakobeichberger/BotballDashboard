@@ -9,7 +9,7 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   /** Element to focus first (default: the first form field, else the dialog). */
-  initialFocus?: React.RefObject<HTMLElement>;
+  initialFocus?: React.RefObject<HTMLElement | null>;
   /** Wider dialogs, e.g. for tables. */
   size?: "md" | "lg";
 }
@@ -135,7 +135,7 @@ export default function Modal({ open, title, onClose, children, initialFocus, si
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`card reveal max-h-[90vh] w-full overflow-y-auto p-5 shadow-tief outline-none sm:p-6 ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
+        className={`card reveal max-h-[90vh] w-full overflow-y-auto p-5 shadow-tief outline-hidden sm:p-6 ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
       >
         <div className="mb-5 flex items-center justify-between gap-2 border-b border-rand pb-3">
           <h2 id={titleId} className="font-display text-xl font-bold tracking-display">{title}</h2>

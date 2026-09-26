@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { UserCircle, Save, KeyRound, Mail, Download, Trash2, Bell } from "lucide-react";
 import { api, restoreAccessToken } from "@/lib/api";

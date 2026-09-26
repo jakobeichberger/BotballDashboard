@@ -186,7 +186,7 @@ def _number(key: str, value: Any) -> float:
         return 0.0
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise ValidationError(f"Score for '{key}' must be a number") from None
 
 

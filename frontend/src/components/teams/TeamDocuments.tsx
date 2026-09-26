@@ -161,7 +161,7 @@ export function TeamDocuments({
           className="border-t p-4 flex flex-wrap items-end gap-3 bg-flaeche-2"
           onSubmit={(e) => { e.preventDefault(); createM.mutate(); }}
         >
-          <div className="flex-1 min-w-[10rem]">
+          <div className="flex-1 min-w-40">
             <label className="label" htmlFor="doc-title">{t("documents.titleLabel")}</label>
             <input id="doc-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>

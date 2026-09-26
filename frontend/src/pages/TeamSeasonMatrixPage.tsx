@@ -108,7 +108,7 @@ export default function TeamSeasonMatrixPage() {
                 {t("matrix.team")}
               </th>
               {seasons?.map((s) => (
-                <th key={s.id} className="px-4 py-3 text-center font-semibold min-w-[9rem]">
+                <th key={s.id} className="px-4 py-3 text-center font-semibold min-w-36">
                   <div className="flex items-center justify-center gap-1">
                     {s.name}
                     {s.is_active && <span className="badge-green">{t("matrix.active")}</span>}

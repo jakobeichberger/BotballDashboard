@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,8 +12,8 @@ import { LogoBadge, Wordmark } from "@/components/BrandMark";
 
 const makeSchema = (t: TFunction) =>
   z.object({
-    email: z.string().email(t("auth:login.invalidEmail")),
-    password: z.string().min(1, t("auth:login.passwordRequired")),
+    email: z.email({ error: t("auth:login.invalidEmail") }),
+    password: z.string().min(1, { error: t("auth:login.passwordRequired") }),
   });
 
 type FormData = z.infer<ReturnType<typeof makeSchema>>;
@@ -60,7 +60,7 @@ export default function LoginPage() {
           <Wordmark onDark className="text-2xl" />
         </div>
         <div className="max-w-xl">
-          <p className="eyebrow !text-rot-auf-dunkel">{t("login.heroEyebrow")}</p>
+          <p className="eyebrow text-rot-auf-dunkel!">{t("login.heroEyebrow")}</p>
           <p className="mt-4 font-display text-[clamp(2.4rem,4.4vw,3.6rem)] font-extrabold leading-[1.05] tracking-display">
             {t("login.heroTitle")}
           </p>

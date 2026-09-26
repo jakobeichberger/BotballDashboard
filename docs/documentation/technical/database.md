@@ -2,7 +2,7 @@
 
 Stand: Migration `0034`. Die Spaltenlisten unten sind aus den SQLAlchemy-Modellen erzeugt (`Base.metadata` aller `models.py`-Dateien plus `core/audit.py`). Das sind dieselben Module, die `backend/alembic/env.py` importiert. Insgesamt gibt es 68 Tabellen.
 
-- **Produktion:** PostgreSQL 16. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0034`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
+- **Produktion:** PostgreSQL 18. Das Schema entsteht ausschließlich über Alembic (`backend/alembic/versions/0001`–`0034`). `scripts/migrate-then-start.sh` führt `alembic upgrade head` vor dem Start des Backends aus.
 - **Tests:** SQLite in-memory über `Base.metadata.create_all`, einmal pro Testprozess; jeder Test wird per SAVEPOINT-Rollback isoliert (`backend/tests/conftest.py`). Die Migrationen laufen in der CI zusätzlich gegen PostgreSQL; dort prüft `tests/postgres/test_schema_drift.py` (wie `alembic check`), dass das migrierte Schema den Modellen entspricht, einschließlich partieller Indizes und `CHECK`-Constraints.
 - **IDs:** fast überall `VARCHAR(36)` mit UUID-Text; Ausnahme `audit_logs.id` (Integer, autoincrement).
 - **JSON-Spalten** (`JSON`, auf PostgreSQL als `json` angelegt; `scoring_schemas.fields`, `matches.raw_scores` und `score_sheet_templates.extracted_fields`/`confirmed_fields` sind dort `jsonb`, im Modell `PortableJSONB`) halten flexible Strukturen: Score-Sheet-Definitionen, Rohwerte einer Wertung, Modul-Listen, Benachrichtigungs-Payloads.

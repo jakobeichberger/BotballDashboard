@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import PaperDetailPage from "@/pages/PaperDetailPage";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -226,5 +226,64 @@ describe("PaperDetailPage reviewer reminders and status history", () => {
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent("Reviewer zugewiesen");
     expect(screen.queryByRole("button", { name: /an das Review erinnern/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("PaperDetailPage reviewer form seeding", () => {
+  const reviewer = {
+    id: "rev",
+    email: "r@x",
+    display_name: "Rev",
+    is_superuser: false,
+    preferred_language: "de",
+    theme: "light",
+    roles: [{ id: "r", name: "reviewer", description: null }],
+    permissions: ["papers:read", "papers:review"],
+  };
+  const openPaper = (id: string, format: number) =>
+    makePaper({
+      id,
+      status: "under_review",
+      feedback: [],
+      assignments: [{ id: `a-${id}`, reviewer_id: "rev", assigned_at: "2026-03-02T00:00:00Z", due_at: null, status: "pending", version_number: 2, reminder_sent_at: null, completed_at: null }],
+      reviews: [{ ...feedback, id: `rv-${id}`, revision_number: 2, score_format: format, paper_id: id, reviewer_id: "rev", private_notes: null, is_submitted: false, created_at: "2026-03-02T00:00:00Z" }],
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.setState({ user: reviewer as any });
+  });
+
+  it("keeps unsaved edits on a refetch and refills the form for another paper", async () => {
+    const papers: Record<string, any> = { p1: openPaper("p1", 4), p2: openPaper("p2", 9) };
+    (api.get as any).mockImplementation((url: string) => {
+      const match = /^\/papers\/(p\d)$/.exec(url);
+      return Promise.resolve({ data: match ? structuredClone(papers[match[1]]) : [] });
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/papers/p1"]}>
+          <Link to="/papers/p2">next paper</Link>
+          <Routes>
+            <Route path="/papers/:id" element={<PaperDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const format = () => screen.getByLabelText("Formales (0–10)");
+    await waitFor(() => expect(format()).toHaveValue(4));
+    await userEvent.clear(format());
+    await userEvent.type(format(), "6");
+
+    // A background refetch returns the same draft review with other content
+    // (e.g. saved from another tab); the unsaved edit stays.
+    papers.p1 = { ...papers.p1, title: "Swarm Robotics v2", reviews: [{ ...papers.p1.reviews[0], score_format: 2, comments: "Anderswo gespeichert" }] };
+    await act(() => client.refetchQueries({ queryKey: ["paper", "p1"] }));
+    expect(await screen.findByText("Swarm Robotics v2")).toBeInTheDocument();
+    expect(format()).toHaveValue(6);
+
+    await userEvent.click(screen.getByRole("link", { name: "next paper" }));
+    await waitFor(() => expect(format()).toHaveValue(9));
   });
 });

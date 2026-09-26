@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import { Calculator, CheckCircle2, Clock, Eye, EyeOff, Gavel, Plus, Trash2, Trophy, Users } from "lucide-react";
@@ -213,11 +213,11 @@ function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: 
           )}
           {canNominate && (
             <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (teamId) nominate.mutate(); }}>
-              <select aria-label={t("awards.nominateTeam")} className="input min-w-[10rem] flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+              <select aria-label={t("awards.nominateTeam")} className="input min-w-40 flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">{t("awards.nominateTeam")}</option>
                 {teams.map((team) => <option key={team.team_id} value={team.team_id}>{team.team_name}</option>)}
               </select>
-              <input aria-label={t("awards.reason")} className="input min-w-[10rem] flex-1" placeholder={t("awards.reason")} value={note} onChange={(e) => setNote(e.target.value)} />
+              <input aria-label={t("awards.reason")} className="input min-w-40 flex-1" placeholder={t("awards.reason")} value={note} onChange={(e) => setNote(e.target.value)} />
               <button className="btn-secondary" disabled={!teamId || nominate.isPending}><Plus className="h-4 w-4" aria-hidden="true" />{t("awards.nominate")}</button>
             </form>
           )}

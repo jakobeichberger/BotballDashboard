@@ -1,6 +1,6 @@
 # Offene Punkte – aktueller Stand
 
-Stand: 2026-09-25 · Commit `aa61752` (integrierter Stand nach PR #20, #22, #23 und den Paketen der Audit-Nacharbeit) · Migrationen `0001`–`0029`, eine lineare Kette.
+Stand: 2026-09-26 · nach PR #28 (Verbesserungsrunde, WehrFlow-Design, Botball 2026) und der Aktualisierung aller Abhängigkeiten · Migrationen `0001`–`0034`, eine lineare Kette.
 
 Die Befunde aus [audit-2026-09.md](audit-2026-09.md) sind bis auf die dort als offen markierten Punkte umgesetzt. Die vollständige Liste offener Aufgaben steht in [todo.md](todo.md). Diese Seite fasst den Stand zusammen.
 
@@ -25,21 +25,9 @@ Die Befunde aus [audit-2026-09.md](audit-2026-09.md) sind bis auf die dort als o
 | Doppelte Ränge bei gemischten Wettbewerbsstufen (`_refresh_ranks`) | **Behoben.** Ränge werden pro Event, pro Stufe (`competition_level_id`, `NULL` als eigene Gruppe) und pro Kategorie berechnet, mit geteilten Plätzen. Die Produktfrage „global oder pro Stufe" ist damit zugunsten „pro Stufe und Kategorie" entschieden. |
 | Race beim Quota-Upsert | **Behoben.** `team_season_print_quotas` ist eindeutig pro `(event_id, team_id)`. Constraint seit Migration `0010`. Außerdem löst `printing/service.py::set_quota` Kontingente immer pro Event auf, auch bei Saisons mit mehreren Events. |
 
-## Nur per API, ohne Oberfläche
+## Oberfläche
 
-Siehe [todo.md → Funktionen](todo.md#funktionen). Betroffen sind:
-
-- Karten und DQ;
-- Parts Challenges;
-- Event-Check-in;
-- Bracket-Gewichte pro Event;
-- Event-Audit-Trail;
-- Phasen bearbeiten oder löschen;
-- Alliance-Paare;
-- externe Teams bearbeiten;
-- Paper-Statushistorie;
-- manuelle Reviewer-Erinnerung;
-- OCR-Retry und OCR-Layout.
+Alle Funktionen haben eine Oberfläche, auch die früher nur per API erreichbaren: Karten und DQ, Parts Challenges, Event-Check-in, Bracket-Gewichte, Event-Audit-Trail, Phasen, Alliance-Paare, externe Teams, Paper-Statushistorie, Reviewer-Erinnerung, OCR-Retry und OCR-Layout.
 
 Einige Endpunkte sind bewusst Alternativen zu bereits verdrahteten und werden deshalb vom Frontend nicht aufgerufen:
 

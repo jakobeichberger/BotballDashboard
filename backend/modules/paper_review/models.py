@@ -109,13 +109,13 @@ class Paper(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    reviews: Mapped[list["PaperReview"]] = relationship(
+    reviews: Mapped[list[PaperReview]] = relationship(
         "PaperReview", back_populates="paper", cascade="all, delete-orphan"
     )
-    assignments: Mapped[list["ReviewerAssignment"]] = relationship(
+    assignments: Mapped[list[ReviewerAssignment]] = relationship(
         "ReviewerAssignment", back_populates="paper", cascade="all, delete-orphan"
     )
-    versions: Mapped[list["PaperVersion"]] = relationship(
+    versions: Mapped[list[PaperVersion]] = relationship(
         "PaperVersion",
         back_populates="paper",
         cascade="all, delete-orphan",

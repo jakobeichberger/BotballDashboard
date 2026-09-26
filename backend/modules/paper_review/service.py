@@ -129,7 +129,7 @@ def deadline_cutoff(deadline: date, tz_name: str | None) -> datetime:
     """
     try:
         tz = ZoneInfo(tz_name or DEFAULT_TIMEZONE)
-    except (ZoneInfoNotFoundError, ValueError):
+    except ZoneInfoNotFoundError, ValueError:
         tz = ZoneInfo(DEFAULT_TIMEZONE)
     local_end = datetime.combine(deadline + timedelta(days=1), time.min, tzinfo=tz)
     return local_end.astimezone(UTC)

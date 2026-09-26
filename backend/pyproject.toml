@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=84.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "botball-dashboard-backend"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     # ── Web framework ─────────────────────────────────────────
     "fastapi==0.141.1",
@@ -25,7 +25,7 @@ dependencies = [
 
     # ── Auth ──────────────────────────────────────────────────
     "PyJWT==2.15.0",
-    "bcrypt==4.3.0",
+    "bcrypt==5.0.0",
 
     # ── Redis / task queue ────────────────────────────────────
     "redis[hiredis]==8.1.0",
@@ -47,7 +47,7 @@ dependencies = [
     # ── OCR / file handling ───────────────────────────────────
     "aiofiles==25.1.0",
     "python-magic==0.4.27",
-    "opencv-python-headless==4.14.0.94",
+    "opencv-python-headless==5.0.0.93",
     "pytesseract==0.3.13",
     "Pillow==12.3.0",
     "qrcode==8.2",
@@ -59,7 +59,7 @@ dependencies = [
     "websockets==17.1",
 
     # ── PDF Export ────────────────────────────────────────────
-    "reportlab==4.5.1",
+    "reportlab==5.0.1",
     # Text extraction for the paper version diff.
     "pypdf==6.19.0",
 ]
@@ -82,7 +82,7 @@ where = ["."]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py314"
 
 [tool.ruff.lint]
 # B = bugbear, BLE = blind `except Exception`: a deliberate catch-all needs a
@@ -100,6 +100,7 @@ ignore = [
 "tests/conftest.py" = ["E402"]
 
 [tool.mypy]
+python_version = "3.14"
 explicit_package_bases = true
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]

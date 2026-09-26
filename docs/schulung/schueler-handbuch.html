@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt-Handbuch Robotik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#f3f3f1; --paper:#fbfbfa; --ink:#111418; --ink-2:#3b434b; --ink-3:#5f6770;
+  --line:#d9dcdf; --accent:#c8141f; --accent-soft:#fbe7e8; --accent-ink:#9c0f18;
+  --ok:#1f7a45; --ok-soft:#e3f3e9; --warn:#9a5b00; --warn-soft:#fbf0dc;
+  --code-bg:#15181d; --code-ink:#eef0f2;
+  --display:"Exo 2", "Segoe UI", Arial, sans-serif;
+  --body:"Inter", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e1013; --paper:#171a1f; --ink:#eef0f2; --ink-2:#c3c9cf; --ink-3:#98a1aa;
+    --line:#2b3037; --accent:#ff5a60; --accent-soft:#3a1519; --accent-ink:#ff8a8f;
+    --ok:#5fd08f; --ok-soft:#14301f; --warn:#f0b454; --warn-soft:#33260f;
+    --code-bg:#0a0c0f; --code-ink:#eef0f2;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1013; --paper:#171a1f; --ink:#eef0f2; --ink-2:#c3c9cf; --ink-3:#98a1aa;
+  --line:#2b3037; --accent:#ff5a60; --accent-soft:#3a1519; --accent-ink:#ff8a8f;
+  --ok:#5fd08f; --ok-soft:#14301f; --warn:#f0b454; --warn-soft:#33260f;
+  --code-bg:#0a0c0f; --code-ink:#eef0f2;
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font:16px/1.6 var(--body); padding-inline:16px; padding-block:0 48px}
+.wrap{max-width:1080px; margin:0 auto; display:grid; grid-template-columns:220px minmax(0,1fr); gap:48px}
+@media (max-width:860px){ .wrap{grid-template-columns:1fr; gap:0} nav.toc{display:none} }
+h1,h2,h3{font-family:var(--display); text-wrap:balance; line-height:1.1; margin:0}
+h1{font-size:clamp(40px,7vw,68px); font-weight:800; letter-spacing:-1.5px}
+h2{font-size:clamp(28px,4vw,36px); font-weight:800; letter-spacing:-.5px}
+h3{font-size:21px; font-weight:700}
+p{margin:0}
+a{color:var(--accent-ink)}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.eyebrow{font:600 12px/1 var(--body); letter-spacing:.14em; text-transform:uppercase; color:var(--accent)}
+.muted{color:var(--ink-3)}
+code,kbd{font-family:var(--mono); font-size:.9em; background:var(--accent-soft); color:var(--accent-ink); padding:1px 5px; border-radius:4px}
+
+/* Hero */
+header.hero{max-width:1080px; margin:0 auto; padding-block:48px 32px; display:grid; gap:18px; border-bottom:1px solid var(--line)}
+.hero .lead{font-size:20px; color:var(--ink-2); max-width:62ch}
+.hero .meta{display:flex; flex-wrap:wrap; gap:8px 20px; font-size:14px; color:var(--ink-3)}
+.hero h1 .red{color:var(--accent)}
+
+/* TOC */
+nav.toc{position:sticky; top:env(safe-area-inset-top,0px); align-self:start; padding-top:40px}
+nav.toc ol{list-style:none; margin:0; padding:0; display:grid; gap:2px; counter-reset:toc}
+nav.toc li{counter-increment:toc}
+nav.toc a{display:flex; gap:10px; padding:6px 8px; border-radius:6px; color:var(--ink-2); text-decoration:none; font-size:14px}
+nav.toc a::before{content:counter(toc,decimal-leading-zero); font:600 12px/1.9 var(--mono); color:var(--ink-3)}
+nav.toc a:hover{background:var(--paper); color:var(--ink)}
+
+main{display:grid; gap:64px; padding-top:40px; min-width:0}
+section{display:grid; gap:18px; scroll-margin-top:16px}
+section > p, section > ul, section > ol{max-width:68ch}
+ul,ol{margin:0; padding-left:1.25em; display:grid; gap:6px}
+
+.card{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:20px}
+.grid-2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px}
+.grid-3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+@media (max-width:700px){ .grid-2,.grid-3{grid-template-columns:1fr} }
+.card h3{margin-bottom:6px}
+
+/* Compare */
+.compare{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:700px){ .compare{grid-template-columns:1fr} }
+.say{font-style:italic; font-size:17px}
+.bad{border-color:var(--line)}
+.good{border-color:var(--accent); box-shadow:inset 4px 0 0 var(--accent)}
+.tag{display:inline-block; font:600 11px/1 var(--body); letter-spacing:.1em; text-transform:uppercase; padding:5px 8px; border-radius:99px; margin-bottom:10px}
+.tag.bad{background:var(--line); color:var(--ink-2)}
+.tag.good{background:var(--accent-soft); color:var(--accent-ink)}
+
+/* LEDVV table */
+.ledvv{display:grid; gap:0; background:var(--paper); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.ledvv-row{display:grid; grid-template-columns:72px 1fr 1.3fr; gap:16px; padding:14px 18px; border-top:1px solid var(--line); align-items:start}
+.ledvv-row:first-child{border-top:0}
+.ledvv-row.head{background:var(--bg); font:600 12px/1.4 var(--body); letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.letter{font:800 40px/1 var(--display); color:var(--accent)}
+.ledvv-row b{font-family:var(--display); font-size:18px}
+@media (max-width:640px){ .ledvv-row{grid-template-columns:48px 1fr} .ledvv-row > :nth-child(3){grid-column:2} .ledvv-row.head{display:none} .letter{font-size:32px} }
+
+/* Builder */
+.builder{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px}
+@media (max-width:900px){ .builder{grid-template-columns:1fr} }
+.field{display:grid; gap:6px}
+.field label{font-weight:600; display:flex; gap:8px; align-items:baseline}
+.field label .l{font:800 20px/1 var(--display); color:var(--accent); width:20px}
+.field .hint{font-size:13px; color:var(--ink-3)}
+textarea{width:100%; min-height:74px; resize:vertical; font:15px/1.5 var(--body); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px}
+textarea:focus{border-color:var(--accent); outline:none; box-shadow:0 0 0 3px var(--accent-soft)}
+.btns{display:flex; flex-wrap:wrap; gap:8px}
+button{font:600 14px/1 var(--body); padding:10px 14px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink); cursor:pointer}
+button:hover{border-color:var(--ink-3)}
+button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+:root[data-theme="dark"] button.primary{color:#170507}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) button.primary{color:#170507} }
+.out{display:grid; gap:14px; align-content:start}
+.checks{display:flex; flex-wrap:wrap; gap:6px}
+.chip{font:600 12px/1 var(--body); padding:6px 9px; border-radius:99px; background:var(--line); color:var(--ink-2)}
+.chip.on{background:var(--ok-soft); color:var(--ok)}
+.chip.warn{background:var(--warn-soft); color:var(--warn)}
+.score{font:800 44px/1 var(--display)}
+.score small{font:600 14px var(--body); color:var(--ink-3)}
+pre{margin:0; background:var(--code-bg); color:var(--code-ink); font:13.5px/1.55 var(--mono); padding:16px; border-radius:10px; white-space:pre-wrap; word-break:break-word; min-height:180px; overflow-x:auto}
+.note{font-size:14px; padding:10px 12px; border-radius:8px; background:var(--warn-soft); color:var(--warn)}
+.status{font-size:13px; color:var(--ok); min-height:1.2em}
+
+/* Levers */
+.lever h3{display:flex; gap:10px; align-items:baseline}
+.lever .n{font:800 15px/1 var(--mono); color:var(--accent)}
+
+/* Exercises */
+details{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px 18px}
+details + details{margin-top:0}
+summary{cursor:pointer; font-weight:600}
+details .sol{margin-top:12px; display:grid; gap:8px; color:var(--ink-2)}
+.ex{display:grid; gap:10px}
+.ex .task{font-size:17px}
+
+/* Checklist */
+.check-list{list-style:none; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 24px}
+@media (max-width:640px){ .check-list{grid-template-columns:1fr} }
+.check-list li{display:flex; gap:10px; align-items:flex-start}
+.check-list input{accent-color:var(--accent); width:18px; height:18px; margin-top:3px; flex:none}
+
+/* Glossary */
+dl{display:grid; grid-template-columns:170px 1fr; gap:10px 20px; margin:0}
+dt{font-weight:700}
+dd{margin:0; color:var(--ink-2)}
+@media (max-width:640px){ dl{grid-template-columns:1fr; gap:2px} dd{margin-bottom:10px} }
+
+.rules{display:grid; gap:12px}
+.rule{display:grid; grid-template-columns:28px 1fr; gap:12px; align-items:start}
+.rule svg{width:24px; height:24px; color:var(--accent)}
+
+footer{max-width:1080px; margin:64px auto 0; padding-top:20px; border-top:1px solid var(--line); font-size:14px; color:var(--ink-3)}
+@media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto!important; transition:none!important} }
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="eyebrow">Robotik-Team · Botball · Handbuch</p>
+  <h1>Von der Frage<br><span class="red">zum Auftrag</span></h1>
+  <p class="lead">So arbeitest du mit KI, damit das Ergebnis stimmt: klare Aufträge nach LEDVV, gezielt bessere Antworten, weniger Hin und Her. Und immer selbst prüfen.</p>
+  <div class="meta"><span>Zur Schulung „Von der Frage zum Auftrag“</span><span>Beispielprojekt: BotballDashboard</span><span>Lesezeit ca. 15 Minuten</span></div>
+</header>
+
+<div class="wrap">
+<nav class="toc" aria-label="Inhalt">
+  <ol>
+    <li><a href="#grundlagen">Frage oder Auftrag</a></li>
+    <li><a href="#ledvv">LEDVV</a></li>
+    <li><a href="#baukasten">Prompt-Baukasten</a></li>
+    <li><a href="#hebel">Bessere Ergebnisse</a></li>
+    <li><a href="#kommunikation">Weniger Hin und Her</a></li>
+    <li><a href="#pruefen">Prüfen statt glauben</a></li>
+    <li><a href="#regeln">Spielregeln</a></li>
+    <li><a href="#uebungen">Übungen</a></li>
+    <li><a href="#spickzettel">Spickzettel</a></li>
+    <li><a href="#glossar">Glossar</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="grundlagen">
+  <p class="eyebrow">Kapitel 1</p>
+  <h2>Frage oder Auftrag</h2>
+  <p>Ein <b>Prompt</b> ist alles, was du einer KI schreibst. Die KI kennt nur das, was in diesem Text steht, plus ihr allgemeines Wissen. Sie kennt nicht euren Roboter, euren Code, eure Tischvermessung und nicht die Regeln, die erst diese Saison erschienen sind. Was fehlt, muss sie raten, und dabei klingt sie genauso sicher wie bei Dingen, die sie wirklich weiß.</p>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Chat</h3>
+      <p>Beantwortet eine Frage. Sieht nur, was du einfügst. Du kopierst das Ergebnis, testest es selbst und meldest zurück.</p>
+      <p class="say muted" style="margin-top:10px">„Wie rechnet man den Seeding-Score?“</p>
+    </div>
+    <div class="card good">
+      <h3>Agent</h3>
+      <p>Arbeitet einen Auftrag in vielen Schritten ab: liest Dateien, führt Befehle und Tests aus, ändert Code und berichtet am Ende.</p>
+      <p class="say" style="margin-top:10px">„Übernimm die Regeln 2026. Fertig, wenn die offiziellen Ergebnisse 2026 exakt nachgerechnet werden.“</p>
+    </div>
+  </div>
+  <p>Merksatz: Eine Frage bekommt eine Antwort. Ein <b>Auftrag</b> bekommt ein Ergebnis, das du prüfen kannst.</p>
+</section>
+
+<section id="ledvv">
+  <p class="eyebrow">Kapitel 2</p>
+  <h2>LEDVV: ein Einsatzbefehl für die KI</h2>
+  <p>Bei der Feuerwehr gibt der Gruppenkommandant keinen Befehl „macht mal“. Er sagt nach dem Befehlsschema <b>LEDVV</b>, was los ist, was das Ziel ist, wer was tut, was man dafür braucht und wie man in Verbindung bleibt. Genau so baust du einen guten Auftrag an eine KI.</p>
+  <div class="ledvv" role="table" aria-label="LEDVV im Einsatz und im Prompt">
+    <div class="ledvv-row head" role="row"><span role="columnheader">Schema</span><span role="columnheader">Im Einsatz</span><span role="columnheader">Im Prompt</span></div>
+    <div class="ledvv-row" role="row"><span class="letter" role="cell">L</span><span role="cell"><b>Lage</b><br><span class="muted">Gefahren, eigene Kräfte, Umfeld</span></span><span role="cell">Was ist schon da? Welche Hardware, welcher Code, welche Regeln? Was weiß die KI nicht?</span></div>
+    <div class="ledvv-row" role="row"><span class="letter" role="cell">E</span><span role="cell"><b>Entschluss</b><br><span class="muted">das Gesamtziel</span></span><span role="cell">Das Ziel in einem Satz und <b>„Fertig, wenn …“</b>: woran man merkt, dass es erreicht ist.</span></div>
+    <div class="ledvv-row" role="row"><span class="letter" role="cell">D</span><span role="cell"><b>Durchführung</b><br><span class="muted">wer macht was, wie, sicher</span></span><span role="cell">Aufgaben und Reihenfolge. Grenzen: was nicht verändert werden darf.</span></div>
+    <div class="ledvv-row" role="row"><span class="letter" role="cell">V</span><span role="cell"><b>Versorgung</b><br><span class="muted">Löschmittel, Geräte</span></span><span role="cell">Quellen, Dateien, Beispiele, Messwerte: alles, was die KI zum Arbeiten braucht.</span></div>
+    <div class="ledvv-row" role="row"><span class="letter" role="cell">V</span><span role="cell"><b>Verbindung</b><br><span class="muted">Funk, Meldungen, Doku</span></span><span role="cell">Wann soll sie nachfragen? In welcher Form antworten? Was halten wir schriftlich fest?</span></div>
+  </div>
+  <div class="compare">
+    <div class="card bad"><span class="tag bad">Vorher</span><p class="say">„Mach den Roboter schneller.“</p></div>
+    <div class="card good"><span class="tag good">Nachher</span>
+      <p><b>L:</b> Unser Wombat-Roboter fährt die Strecke Start → Pom-Ecke in 9,5 s, Code in <code>src/drive.c</code>.<br>
+      <b>E:</b> Unter 7 s. Fertig, wenn er 5 von 5 Läufen unter 7 s schafft und die Linie nicht verlässt.<br>
+      <b>D:</b> Nur <code>drive_to_corner()</code> anpassen, Motor-Ports bleiben.<br>
+      <b>V:</b> Messprotokoll der letzten 5 Läufe im Anhang.<br>
+      <b>V:</b> Erklär jede Änderung in einem Satz. Bei Unklarheit: erst fragen.</p></div>
+  </div>
+</section>
+
+<section id="baukasten">
+  <p class="eyebrow">Kapitel 3 · zum Ausprobieren</p>
+  <h2>Prompt-Baukasten</h2>
+  <p>Füll die fünf Felder aus. Rechts entsteht dein fertiger Auftrag. Die Punkte zeigen, was noch fehlt. Dein Entwurf bleibt nur in deinem Browser gespeichert.</p>
+  <div class="btns" aria-label="Beispiele laden">
+    <button type="button" data-example="seeding">Beispiel: Seeding-Score</button>
+    <button type="button" data-example="doku">Beispiel: Doku Period 2</button>
+    <button type="button" data-example="bug">Beispiel: Fehler im Code</button>
+    <button type="button" id="clear">Leeren</button>
+  </div>
+  <div class="builder">
+    <form class="card" id="form" style="display:grid; gap:14px" autocomplete="off">
+      <div class="field"><label for="f-l"><span class="l">L</span>Lage</label><textarea id="f-l" placeholder="Was ist schon da? Was weiß die KI nicht?"></textarea></div>
+      <div class="field"><label for="f-e"><span class="l">E</span>Entschluss</label><textarea id="f-e" placeholder="Ziel in einem Satz. Fertig, wenn …"></textarea><span class="hint">Schreib „Fertig, wenn …“ mit etwas Messbarem.</span></div>
+      <div class="field"><label for="f-d"><span class="l">D</span>Durchführung</label><textarea id="f-d" placeholder="Was genau, in welcher Reihenfolge? Was darf nicht verändert werden?"></textarea></div>
+      <div class="field"><label for="f-v1"><span class="l">V</span>Versorgung</label><textarea id="f-v1" placeholder="Welche Dateien, Quellen, Messwerte bekommt die KI?"></textarea></div>
+      <div class="field"><label for="f-v2"><span class="l">V</span>Verbindung</label><textarea id="f-v2" placeholder="Wann nachfragen? In welcher Form antworten?"></textarea></div>
+    </form>
+    <div class="out">
+      <div style="display:flex; align-items:end; justify-content:space-between; gap:12px; flex-wrap:wrap">
+        <div class="score" id="score">0<small> / 7 Punkte</small></div>
+        <div class="btns"><button type="button" class="primary" id="copy">Auftrag kopieren</button></div>
+      </div>
+      <div class="checks" id="checks" aria-live="polite"></div>
+      <div class="note" id="secret" hidden>Achtung: Das sieht nach einem Passwort oder Schlüssel aus. So etwas gehört nie in einen Prompt.</div>
+      <pre id="out" tabindex="0" aria-label="Fertiger Auftrag"></pre>
+      <p class="status" id="status" role="status"></p>
+    </div>
+  </div>
+</section>
+
+<section id="hebel">
+  <p class="eyebrow">Kapitel 4</p>
+  <h2>Sechs Hebel für bessere Ergebnisse</h2>
+  <div class="grid-3">
+    <div class="card lever"><h3><span class="n">1</span>Quelle mitgeben</h3><p>Das echte Game Review als PDF statt „die Botball-Regeln“. Ohne Quelle erfindet die KI plausible, aber falsche Punktwerte.</p></div>
+    <div class="card lever"><h3><span class="n">2</span>Beispiel zeigen</h3><p>„Im selben Format wie diese Datei“ trifft besser als jede Beschreibung des Formats.</p></div>
+    <div class="card lever"><h3><span class="n">3</span>Belege verlangen</h3><p>Seite, Regelnummer, Datei und Zeile. Dann merkst du Erfundenes in Sekunden.</p></div>
+    <div class="card lever"><h3><span class="n">4</span>In Schritten</h3><p>Erst eine Tabelle, die du prüfst, dann der Code. Eine Tabelle zu kontrollieren ist leichter als 300 Zeilen.</p></div>
+    <div class="card lever"><h3><span class="n">5</span>Gegen Echtes prüfen</h3><p>Offizielle Scoring-Beispiele, echte Messwerte, echte Ergebnisse sind die besten Tests.</p></div>
+    <div class="card lever"><h3><span class="n">6</span>Nachschärfen</h3><p>„Botguy im Bin zählt 150, nicht 100, siehe Seite 12“ statt alles neu verlangen.</p></div>
+  </div>
+  <p>Und noch ein Trick: <b>Erst lesen, dann ändern.</b> Lass die KI zuerst nur analysieren und einen Plan vorschlagen. Einen Plan zu korrigieren kostet einen Satz, falschen Code zu korrigieren eine Stunde.</p>
+</section>
+
+<section id="kommunikation">
+  <p class="eyebrow">Kapitel 5</p>
+  <h2>Weniger Hin und Her</h2>
+  <ol>
+    <li><b>Alles in eine Nachricht.</b> Link, Name, Ziel und Grenzen gemeinsam, nicht in fünf Häppchen.</li>
+    <li><b>Kopieren statt abtippen.</b> Dateinamen, Links, Fehlermeldungen wörtlich einfügen.</li>
+    <li><b>Rückfragen vollständig beantworten.</b> Die KI fragt, weil sie sonst raten müsste.</li>
+    <li><b>Entscheidungen festhalten.</b> „Ab jetzt gilt …“ und in eine Datei im Projekt schreiben, damit es auch die nächste Sitzung weiß.</li>
+    <li><b>Wenn du die Lösung schon kennst, sag sie.</b> „Titel: Von der Frage zum Auftrag“ statt „besserer Titel“.</li>
+  </ol>
+  <div class="compare">
+    <div class="card bad"><span class="tag bad">Drei Nachrichten</span><p class="say">„Fix den Fehler.“ → „Welchen?“ → „Der Roboter bleibt stehen.“ → „Wo?“ → „Nach dem Greifer.“</p></div>
+    <div class="card good"><span class="tag good">Eine Nachricht</span><p class="say">„Nach <code>grab_pom()</code> bleibt der Roboter stehen, ohne Fehlermeldung. Code im Anhang, Zeile 40–75. Vermutung: der Servo erreicht Position 1800 nie. Finde die Ursache, ändere nur diese Funktion.“</p></div>
+  </div>
+</section>
+
+<section id="pruefen">
+  <p class="eyebrow">Kapitel 6</p>
+  <h2>Prüfen statt glauben</h2>
+  <p>KI irrt selbstbewusst. Eine echte Geschichte aus dem Dashboard: Die Paper-Punkte gingen fast gar nicht in die Gesamtwertung ein. Die Formel teilte durch 100, obwohl der Wert schon zwischen 0 und 1 lag. Der zugehörige Test war trotzdem grün, weil er mit dem Wert 80 rechnete, den die App nie speichert.</p>
+  <div class="grid-2">
+    <div class="card"><h3>Frag bei jedem Ergebnis</h3><ul><li>Kann ich eine Stelle selbst nachprüfen?</li><li>Rechnet der Test mit realistischen Werten?</li><li>Kann ich den Code in eigenen Worten erklären?</li><li>Stimmt die Seitenangabe im PDF wirklich?</li></ul></div>
+    <div class="card"><h3>Selbst nachrechnen</h3><p>Seeding: beste 2 von 3 Runden, Werte unter 0 zählen als 0.</p><p style="margin-top:8px">Runden <b>120, −10, 85</b> → −10 wird 0 → beste zwei: 120 und 85 → Schnitt <b>102,5</b>.</p><p class="muted" style="margin-top:8px">Stimmt die Antwort der KI damit überein?</p></div>
+  </div>
+</section>
+
+<section id="regeln">
+  <p class="eyebrow">Kapitel 7</p>
+  <h2>Spielregeln</h2>
+  <div class="rules card">
+    <div class="rule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><p><b>Keine Geheimnisse im Prompt.</b> Passwörter, Zugangsdaten, private Daten von Mitschülern gehören in keinen Chat.</p></div>
+    <div class="rule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg><p><b>Verstehen vor Übernehmen.</b> Was du nicht erklären kannst, gibst du nicht ab. Bei Botball wird die Dokumentation bewertet, und die Jury fragt nach.</p></div>
+    <div class="rule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg><p><b>Die KI trägt keine Verantwortung.</b> Wie beim Einsatzleiter bleibt sie bei dir und deinem Team.</p></div>
+    <div class="rule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/></svg><p><b>Offen sagen, wo KI geholfen hat.</b> Im Team und in der Doku, wenn die Regeln es verlangen. Schaut in die aktuellen Wettbewerbsregeln.</p></div>
+  </div>
+</section>
+
+<section id="uebungen">
+  <p class="eyebrow">Kapitel 8</p>
+  <h2>Übungen</h2>
+  <div class="ex">
+    <details><summary>Übung 1 · Was fehlt? „Schreib unsere Doku für Period 2.“</summary><div class="sol">
+      <p><b>Lage:</b> Welches Team, welcher Roboter, was habt ihr gebaut?</p>
+      <p><b>Entschluss:</b> Welcher Teil der Doku? Fertig, wenn alle Punkte des Bewertungsbogens abgedeckt sind.</p>
+      <p><b>Versorgung:</b> Der offizielle Bewertungsbogen für Period 2 und eure Notizen, Fotos, Messwerte.</p>
+      <p><b>Verbindung:</b> Nur einen Entwurf liefern, den ihr selbst überarbeitet, mit Hinweis, wo Fakten fehlen.</p>
+    </div></details>
+    <details><summary>Übung 2 · Rechne nach: Scoring-Beispiel 2026</summary><div class="sol">
+      <p>Zwei sortierte Kisten auf einer Palette im Interior Dock: 2 × 30 Punkte = 60, × 1 Palette = <b>60</b>.</p>
+      <p>Botguy in der Upper Start Box, 1 Roboter: 200 × (1 + 2) = <b>600</b>.</p>
+      <p>Diese Werte stehen in den offiziellen Scoring Examples und sind im Dashboard als Tests hinterlegt.</p>
+    </div></details>
+    <details><summary>Übung 3 · Finde den Fehler: <code>return final_score / 100</code>, obwohl final_score zwischen 0 und 1 liegt</summary><div class="sol">
+      <p>Der Wert wird doppelt umgerechnet: 0,8 wird zu 0,008. Ein guter Test rechnet mit einem realistischen Wert wie 0,8 und erwartet 0,8.</p>
+      <p>Probier es mit einer KI: einmal mit dem Satz über den Wertebereich, einmal ohne. Findet sie den Fehler beide Male?</p>
+    </div></details>
+    <details><summary>Übung 4 · Welcher Buchstabe fehlt? „Testen auf Zeus.“</summary><div class="sol">
+      <p><b>L – Lage.</b> Niemand außer uns weiß, was „Zeus“ ist. Besser: „Teste auf unserem Testserver Zeus (Zugang über …). Fertig, wenn alle Dienste laufen. Falls du Zeus nicht erreichst: sag es sofort und teste lokal.“</p>
+    </div></details>
+    <details><summary>Übung 5 · Baue selbst: ein Auftrag für euren Greifer</summary><div class="sol">
+      <p>Nutze den Prompt-Baukasten oben. Ziel: 7 von 7 Punkten, dann mit einem KI-Tool testen und die Antwort in der Gruppe prüfen.</p>
+    </div></details>
+  </div>
+</section>
+
+<section id="spickzettel">
+  <p class="eyebrow">Kapitel 9</p>
+  <h2>Spickzettel</h2>
+  <p class="muted">Zum Abhaken vor dem Absenden. Die Häkchen bleiben nur in deinem Browser.</p>
+  <ul class="check-list" id="checklist">
+    <li><input type="checkbox" id="c1"><label for="c1">Ziel in einem Satz</label></li>
+    <li><input type="checkbox" id="c2"><label for="c2">„Fertig, wenn …“ ist messbar</label></li>
+    <li><input type="checkbox" id="c3"><label for="c3">Namen, Links, Ausgangsstand kopiert</label></li>
+    <li><input type="checkbox" id="c4"><label for="c4">Was nicht angefasst wird</label></li>
+    <li><input type="checkbox" id="c5"><label for="c5">Quellen und Beispiele mitgegeben</label></li>
+    <li><input type="checkbox" id="c6"><label for="c6">Antwortformat festgelegt</label></li>
+    <li><input type="checkbox" id="c7"><label for="c7">Belege verlangt: Datei, Zeile, Seite</label></li>
+    <li><input type="checkbox" id="c8"><label for="c8">Plan B, falls etwas nicht geht</label></li>
+    <li><input type="checkbox" id="c9"><label for="c9">Keine Passwörter, keine privaten Daten</label></li>
+    <li><input type="checkbox" id="c10"><label for="c10">Alles in einer Nachricht</label></li>
+  </ul>
+  <div class="btns"><button type="button" id="uncheck">Alle Häkchen entfernen</button></div>
+</section>
+
+<section id="glossar">
+  <p class="eyebrow">Kapitel 10</p>
+  <h2>Glossar</h2>
+  <dl>
+    <dt>Prompt</dt><dd>Der Text, den du der KI schickst.</dd>
+    <dt>Agent</dt><dd>Eine KI, die selbstständig mehrere Schritte ausführt: Dateien lesen, Befehle ausführen, prüfen.</dd>
+    <dt>Kontext</dt><dd>Alles, was die KI in diesem Gespräch sieht. Was nicht drinsteht, kennt sie nicht.</dd>
+    <dt>Halluzination</dt><dd>Eine erfundene Antwort, die überzeugend klingt.</dd>
+    <dt>Fertig-Kriterium</dt><dd>Eine prüfbare Bedingung, woran man merkt, dass der Auftrag erledigt ist.</dd>
+    <dt>Test</dt><dd>Code, der automatisch prüft, ob anderer Code richtig rechnet.</dd>
+    <dt>LEDVV</dt><dd>Befehlsschema der Feuerwehr: Lage, Entschluss, Durchführung, Versorgung, Verbindung.</dd>
+    <dt>Seeding</dt><dd>Die Vorrunden bei Botball; es zählt der Schnitt der besten 2 von 3 Runden.</dd>
+    <dt>Game Review</dt><dd>Das offizielle Regeldokument einer Botball-Saison.</dd>
+  </dl>
+</section>
+</main>
+</div>
+
+<footer>Handbuch zur Schulung „Von der Frage zum Auftrag“. Unterlagen für Lehrkräfte: <code>docs/schulung/</code> im Repository BotballDashboard.</footer>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const ids = ["f-l","f-e","f-d","f-v1","f-v2"];
+  const labels = {"f-l":"LAGE","f-e":"ENTSCHLUSS","f-d":"DURCHFÜHRUNG","f-v1":"VERSORGUNG","f-v2":"VERBINDUNG"};
+  const store = {
+    get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+    set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+  };
+  const examples = {
+    seeding: {
+      "f-l":"Wir sind ein Botball-Team. Laut Game Review 2026 zählt der Schnitt der besten 2 von 3 Seeding-Runden, Werte unter 0 zählen als 0.",
+      "f-e":"Unseren Seed Score ausrechnen. Fertig, wenn das Ergebnis mit Rechenweg dasteht und ich es nachrechnen kann.",
+      "f-d":"Unsere Runden: 120, −10, 85. Rechne Schritt für Schritt. Erfinde keine weiteren Regeln.",
+      "f-v1":"Regel oben aus dem Game Review 2026, Abschnitt Seeding.",
+      "f-v2":"Erkläre jeden Schritt in höchstens 3 Sätzen. Wenn eine Regel unklar ist, sag es statt zu raten."
+    },
+    doku: {
+      "f-l":"Wir sind Team 26-0412. Unser Roboter sortiert Poms mit einem Greifer und einer Farbkamera. Period 2 der Dokumentation ist fällig.",
+      "f-e":"Einen Entwurf für Period 2. Fertig, wenn jeder Punkt des Bewertungsbogens einen Absatz hat.",
+      "f-d":"Nur gliedern und formulieren, keine technischen Fakten erfinden. Stellen ohne Info mit [FEHLT] markieren.",
+      "f-v1":"Offizieller Bewertungsbogen Period 2 (Anhang), unsere Stichpunkte und drei Fotos (Anhang).",
+      "f-v2":"Gliederung als Überschriften, deutsch, max. 2 Seiten. Am Ende eine Liste aller [FEHLT]-Stellen."
+    },
+    bug: {
+      "f-l":"Nach grab_pom() bleibt unser Roboter stehen, ohne Fehlermeldung. Code in src/claw.c, Zeile 40–75 (Anhang).",
+      "f-e":"Ursache finden und beheben. Fertig, wenn der Roboter nach dem Greifen weiterfährt, 5 von 5 Läufen.",
+      "f-d":"Erst die Ursache erklären, dann den Fix vorschlagen. Nur grab_pom() ändern, Ports und andere Funktionen bleiben.",
+      "f-v1":"Vermutung: der Servo erreicht Position 1800 nie. Servo-Werte aus dem Log im Anhang.",
+      "f-v2":"Antwort: Ursache in 2 Sätzen, dann geänderter Code. Wenn du mehr Infos brauchst, frag zuerst."
+    }
+  };
+  function values(){ const v={}; ids.forEach(i=>v[i]=$(i).value.trim()); return v; }
+  function build(v){
+    return ids.filter(i=>v[i]).map(i=>labels[i]+"\n"+v[i]).join("\n\n");
+  }
+  function render(){
+    const v = values();
+    const all = ids.map(i=>v[i]).join(" ");
+    const checks = [
+      ["Lage", !!v["f-l"]],
+      ["Ziel", !!v["f-e"]],
+      ["Fertig, wenn", /fertig,?\s+wenn/i.test(v["f-e"])],
+      ["Grenzen", /nicht|nur|bleib|keine?/i.test(v["f-d"])],
+      ["Quellen", !!v["f-v1"]],
+      ["Antwortformat", !!v["f-v2"]],
+      ["Nachfragen erlaubt", /frag|unklar|rückfrag/i.test(v["f-v2"])]
+    ];
+    const secret = /(passwort|password|kennwort|pin\s*[:=]|token\s*[:=]|api[-_ ]?key|sk-[a-z0-9]{8,})/i.test(all);
+    const score = checks.filter(c=>c[1]).length;
+    $("score").innerHTML = score + "<small> / 7 Punkte</small>";
+    $("checks").innerHTML = checks.map(c=>'<span class="chip'+(c[1]?' on':'')+'">'+(c[1]?'✓ ':'')+c[0]+'</span>').join("");
+    $("secret").hidden = !secret;
+    const text = build(v);
+    $("out").textContent = text || "Hier erscheint dein Auftrag, sobald du ein Feld ausfüllst.";
+    store.set("ledvv-draft", JSON.stringify(v));
+  }
+  ids.forEach(i=>$(i).addEventListener("input", render));
+  document.querySelectorAll("[data-example]").forEach(b=>b.addEventListener("click",()=>{
+    const ex = examples[b.dataset.example]; ids.forEach(i=>$(i).value = ex[i]); render(); $("status").textContent = "Beispiel geladen.";
+  }));
+  $("clear").addEventListener("click",()=>{ ids.forEach(i=>$(i).value=""); render(); $("status").textContent = "Felder geleert."; });
+  $("form").addEventListener("submit",e=>e.preventDefault());
+  $("copy").addEventListener("click",()=>{
+    const text = build(values());
+    if(!text){ $("status").textContent = "Füll zuerst mindestens ein Feld aus."; return; }
+    const fallback = ()=>{ const r=document.createRange(); r.selectNodeContents($("out")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); $("status").textContent = "Text markiert. Mit Strg+C kopieren."; };
+    try {
+      navigator.clipboard.writeText(text).then(()=>{ $("status").textContent = "Auftrag kopiert."; }, fallback);
+    } catch(e){ fallback(); }
+  });
+  // restore draft, else show seeding example so the tool opens in a working state
+  let draft = null; try { draft = JSON.parse(store.get("ledvv-draft") || "null"); } catch(e){}
+  const src = draft && ids.some(i=>draft[i]) ? draft : examples.seeding;
+  ids.forEach(i=>$(i).value = src[i] || "");
+  render();
+  if(src === examples.seeding) $("status").textContent = "Beispiel „Seeding-Score“ geladen. Überschreib es mit deinem eigenen Auftrag.";
+
+  // checklist
+  const boxes = document.querySelectorAll("#checklist input");
+  let saved = {}; try { saved = JSON.parse(store.get("ledvv-checks") || "{}"); } catch(e){}
+  boxes.forEach(b=>{ b.checked = !!saved[b.id]; b.addEventListener("change",()=>{ saved[b.id]=b.checked; store.set("ledvv-checks", JSON.stringify(saved)); }); });
+  $("uncheck").addEventListener("click",()=>{ boxes.forEach(b=>b.checked=false); saved={}; store.set("ledvv-checks","{}"); });
+})();
+</script>
+</body>
+</html>

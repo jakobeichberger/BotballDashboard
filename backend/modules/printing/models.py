@@ -52,7 +52,7 @@ class Printer(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    print_jobs: Mapped[list["PrintJob"]] = relationship(
+    print_jobs: Mapped[list[PrintJob]] = relationship(
         "PrintJob", back_populates="printer", cascade="all, delete-orphan"
     )
 

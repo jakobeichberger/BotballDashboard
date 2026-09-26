@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router";
 import type { ReactNode } from "react";
 import OcrLayoutEditor from "@/modules/scoring/score-sheets/components/OcrLayoutEditor";
 import { compactRules, fitRegion, nextAnchorName, normalizeRegions, parseRules, rectFromPoints, rulesProblem } from "@/modules/scoring/score-sheets/layout";

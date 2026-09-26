@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import type { ChecklistItem, ChecklistPreset, DocMaxPoints, RuleSet, TiebreakerCriterion, TiebreakerPreset } from "./types";
 import { apiErrorMessage } from "@/lib/errors";
+import { useChanged } from "@/hooks/useChanged";
 
 const DOC_MAX_DEFAULT: DocMaxPoints = { p1: 100, p2: 100, p3: 100, onsite: 100 };
 // The 2026 documentation rubrics: Period 1 /100, Period 2 /95, Period 3 /100, Onsite /100.
@@ -17,12 +18,14 @@ export default function SeasonRulesEditor({ seasonId, onMessage }: { seasonId: s
   const queryClient = useQueryClient();
   const rules = useQuery<RuleSet>({ queryKey: ["scoring-rules", seasonId], queryFn: async () => (await api.get(`/scoring/seasons/${seasonId}/rules`)).data, enabled: !!seasonId });
   const presets = useQuery<TiebreakerPreset[]>({ queryKey: ["tiebreaker-presets"], queryFn: async () => (await api.get("/scoring/tiebreaker-presets")).data });
-  const [draft, setDraft] = useState(EMPTY);
+  const [draft, setDraft] = useState(() => (rules.data ? { ...EMPTY, ...rules.data } : EMPTY));
   const [presetId, setPresetId] = useState("");
   const checklistPresets = useQuery<ChecklistPreset[]>({ queryKey: ["checklist-presets"], queryFn: async () => (await api.get("/scoring/referee-checklist-presets")).data });
   const [checklistPresetId, setChecklistPresetId] = useState("");
   const docMax = draft.doc_max_points ?? DOC_MAX_DEFAULT;
-  useEffect(() => { if (rules.data) setDraft({ ...EMPTY, ...rules.data }); }, [rules.data]);
+  // Loaded (or changed) rules replace the draft.
+  const rulesChanged = useChanged([rules.data]);
+  if (rulesChanged && rules.data) setDraft({ ...EMPTY, ...rules.data });
 
   const save = useMutation({
     mutationFn: async () => api.put(`/scoring/seasons/${seasonId}/rules`, draft),

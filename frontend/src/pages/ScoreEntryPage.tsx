@@ -196,7 +196,7 @@ export default function ScoreEntryPage() {
         <ArrowLeft className="w-4 h-4" /> {t("backToScoreboard")}
       </EventLink>
 
-      <div className="page-header !mb-0">
+      <div className="page-header mb-0!">
         <div className="min-w-0">
           <h1 className="page-title flex items-center gap-2">
             <ClipboardList className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" /> {t("entry.title")}

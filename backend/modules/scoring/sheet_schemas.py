@@ -19,7 +19,7 @@ class SheetField(BaseModel):
     required: bool = False
 
     @model_validator(mode="after")
-    def validate_range(self) -> "SheetField":
+    def validate_range(self) -> SheetField:
         if (
             self.min_value is not None
             and self.max_value is not None
@@ -50,7 +50,7 @@ class SheetMultiplier(BaseModel):
     source: str | None = Field(default=None, pattern=_KEY, max_length=100)
 
     @model_validator(mode="after")
-    def validate_source(self) -> "SheetMultiplier":
+    def validate_source(self) -> SheetMultiplier:
         if self.source and self.type != "boolean":
             raise ValueError(f"{self.key}: only a checkbox multiplier can follow a field")
         return self
@@ -82,7 +82,7 @@ class SheetDefinition(BaseModel):
     sections: list[SheetSection] = Field(min_length=1, max_length=100)
 
     @model_validator(mode="after")
-    def validate_keys(self) -> "SheetDefinition":
+    def validate_keys(self) -> SheetDefinition:
         for side in self.sides:
             if not side or len(side) > 8 or not side.isalnum():
                 raise ValueError("sides must be short alphanumeric labels such as 'A'")

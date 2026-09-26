@@ -43,7 +43,7 @@ Initiale Rollen:
 - Token-Revokation bei Logout oder Passwortänderung
 
 ### Sicherheit & Compliance
-- Passwörter mit bcrypt gehasht
+- Passwörter mit bcrypt gehasht; höchstens 72 Byte (UTF-8), weil bcrypt 5 längere ablehnt. Ältere, längere Passwörter (unter bcrypt 4 still auf 72 Byte gekürzt) funktionieren beim Anmelden weiter.
 - DSGVO-konform: Recht auf Auskunft, Löschung, Export der eigenen Daten
 - Audit Trail: Jede Aktion wird mit User-ID und Timestamp geloggt
 - Rate-Limiting auf Login-Endpunkten gegen Brute-Force

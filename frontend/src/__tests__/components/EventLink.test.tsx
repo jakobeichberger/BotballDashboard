@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { EventLink } from "@/components/EventLink";
 import { scopeToEvent } from "@/hooks/useEventPath";
 import { eventRoutes } from "@/core/plugins";

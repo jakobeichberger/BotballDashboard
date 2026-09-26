@@ -24,9 +24,9 @@ export const TONE_ICON: Record<Tone, string> = {
 
 /** Callout box (hint, warning, error) with the tone's border and tint. */
 export const TONE_CALLOUT: Record<Tone, string> = {
-  primary: "border-primary/40 bg-primary/[0.06]",
+  primary: "border-primary/40 bg-primary/6",
   success: "border-success/40 bg-success/[0.07]",
-  warning: "border-warning/45 bg-warning/[0.08]",
+  warning: "border-warning/45 bg-warning/8",
   danger: "border-danger/40 bg-danger/[0.07]",
   info: "border-info/40 bg-info/[0.07]",
   neutral: "border-rand bg-flaeche-2",
