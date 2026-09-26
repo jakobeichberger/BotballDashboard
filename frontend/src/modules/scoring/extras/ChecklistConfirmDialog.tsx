@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useChanged } from "@/hooks/useChanged";
 import { useTranslation } from "react-i18next";
 import Modal from "@/components/Modal";
 import type { ChecklistItem } from "./types";
@@ -16,7 +17,9 @@ interface Props {
 export default function ChecklistConfirmDialog({ open, items, pending, error, onCancel, onConfirm }: Props) {
   const { t } = useTranslation("scoring");
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  useEffect(() => { if (open) setChecked({}); }, [open]);
+  // Every opening starts unticked.
+  const openedChanged = useChanged([open]);
+  if (openedChanged && open) setChecked({});
   const missing = items.filter((item) => item.required && !checked[item.key]);
   return (
     <Modal open={open} title={t("rules.checklist")} onClose={onCancel}>

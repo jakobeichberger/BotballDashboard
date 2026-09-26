@@ -42,10 +42,9 @@ export function useLiveUpdates(eventId: string | undefined): { live: boolean } {
   const [live, setLive] = useState(false);
 
   useEffect(() => {
-    if (!authenticatedId && !publicSlug) {
-      setLive(false);
-      return;
-    }
+    // Without a stream `live` is reported false below; subscribing reports
+    // the current status of the new stream right away.
+    if (!authenticatedId && !publicSlug) return;
     const onMessage = (message: LiveMessage) => {
       const keys = INVALIDATES[message.event];
       if (keys) void queryClient.invalidateQueries({ predicate: (query) => keys.includes(String(query.queryKey[0])) });

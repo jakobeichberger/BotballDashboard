@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -19,14 +19,15 @@ function ProtectedCrop({ url, label }: { url: string; label: string }) {
   // the URL itself broke the image after a remount: the first unmount had
   // already revoked it.)
   const { data: blob } = useQuery({ queryKey: ["scan-crop", url], queryFn: async () => (await api.get<Blob>(url.replace(/^\/api/, ""), { responseType: "blob" })).data, staleTime: Infinity });
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => {
-    if (!blob) return;
+  // The object URL lives as long as the <img> shows this blob (React 19 ref
+  // cleanup), so no state has to mirror it.
+  const showBlob = useCallback((img: HTMLImageElement | null) => {
+    if (!img || !blob) return;
     const objectUrl = URL.createObjectURL(blob);
-    setSrc(objectUrl);
+    img.src = objectUrl;
     return () => URL.revokeObjectURL(objectUrl);
   }, [blob]);
-  return src ? <img src={src} alt={t("scans.cropAlt", { label })} className="h-20 w-full rounded border bg-white object-contain" /> : <div className="h-20 animate-pulse rounded bg-flaeche-2" />;
+  return blob ? <img ref={showBlob} alt={t("scans.cropAlt", { label })} className="h-20 w-full rounded border bg-white object-contain" /> : <div className="h-20 animate-pulse rounded bg-flaeche-2" />;
 }
 
 /** "#3 · Robo Rangers (AT-12)" — seed, name and number instead of the team UUID. */

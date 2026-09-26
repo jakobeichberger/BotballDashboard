@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import Modal from "@/components/Modal";
 import { api } from "@/lib/api";
+import { useChanged } from "@/hooks/useChanged";
 import { apiErrorMessage } from "@/lib/errors";
 
 /** The match fields the penalty dialog reads (a MatchResponse subset). */
@@ -47,16 +48,19 @@ export default function MatchPenaltyDialog({
   onSaved: () => void;
 }) {
   const { t } = useTranslation("scoring");
-  const [values, setValues] = useState<Penalties>({ yellow_card: false, red_card: false, is_disqualified: false });
+  const penaltiesOf = (m: PenaltyMatch | null): Penalties =>
+    m ? { yellow_card: m.yellow_card, red_card: m.red_card, is_disqualified: m.is_disqualified } : { yellow_card: false, red_card: false, is_disqualified: false };
+  const [values, setValues] = useState<Penalties>(() => penaltiesOf(match));
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!match) return;
-    setValues({ yellow_card: match.yellow_card, red_card: match.red_card, is_disqualified: match.is_disqualified });
+  // Another match (or a fresh copy of it) starts from its stored penalties.
+  const matchChanged = useChanged([match]);
+  if (matchChanged && match) {
+    setValues(penaltiesOf(match));
     setReason("");
     setError("");
-  }, [match]);
+  }
 
   const changed = !!match && PENALTIES.some((key) => values[key] !== match[key]);
   const save = useMutation({

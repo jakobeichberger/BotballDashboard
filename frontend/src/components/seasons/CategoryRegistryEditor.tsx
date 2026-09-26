@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useChanged } from "@/hooks/useChanged";
 import { apiErrorMessage } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 import { CATEGORY_KINDS, useSeasonCategories, type CategoryKind, type SeasonCategory } from "@/lib/categories";
@@ -21,9 +22,12 @@ export default function CategoryRegistryEditor({ seasonId }: { seasonId: string 
   const queryClient = useQueryClient();
   const { categories, isLoading } = useSeasonCategories(seasonId);
   const reference = useQuery<{ presets?: PresetOption[] }>({ queryKey: ["formula-reference"], queryFn: async () => (await api.get("/scoring/formulas/reference")).data });
-  const [rows, setRows] = useState<SeasonCategory[]>([]);
-  // Start editing once the stored list (or the defaults) has loaded.
-  useEffect(() => { if (!isLoading) setRows(categories.map((entry) => ({ ...entry }))); }, [seasonId, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Start editing once the stored list (or the defaults) has loaded, and again
+  // for another season; a refetch after saving leaves the rows alone.
+  const copy = () => categories.map((entry) => ({ ...entry }));
+  const [rows, setRows] = useState<SeasonCategory[]>(() => (isLoading ? [] : copy()));
+  const reseed = useChanged([seasonId, isLoading]);
+  if (reseed && !isLoading) setRows(copy());
 
   const save = useMutation({
     mutationFn: async () => (await api.put(`/seasons/${seasonId}/categories`, rows.map((row, index) => ({ ...row, sort_order: index })))).data,

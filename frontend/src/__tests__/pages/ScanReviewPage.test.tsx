@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import ScanReviewPage from "@/pages/ScanReviewPage";
@@ -12,13 +12,14 @@ const registrations = [
   { id: "r1", team_id: "uuid-alpha", team_name: "Alpha", team_number: "AT-1", seed_number: 1 },
 ];
 
-function renderPage(status = "processing") {
+function renderPage(status = "processing", extracted: unknown[] | null = null) {
   (api.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
     if (url.endsWith("/registrations")) return Promise.resolve({ data: registrations });
     if (url.endsWith("/score-sheet-scans")) {
-      return Promise.resolve({ data: [{ id: "s1", template_id: "t", team_id: "uuid-beta", file_name: "sheet.jpg", status, extracted_values: null, error: null, created_at: "" }] });
+      return Promise.resolve({ data: [{ id: "s1", template_id: "t", team_id: "uuid-beta", file_name: "sheet.jpg", status, extracted_values: extracted, error: null, created_at: "" }] });
     }
     if (url === "/v1/events/ev") return Promise.resolve({ data: { id: "ev", season_id: "se" } });
+    if (url === "/crops/c1") return Promise.resolve({ data: new Blob(["png"]) });
     return Promise.resolve({ data: [] });
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -61,6 +62,22 @@ describe("ScanReviewPage upload", () => {
     expect(options).toEqual(["Team wählen", "#1 · Alpha (AT-1)", "#2 · Beta Bots"]);
     expect(screen.queryByText(/uuid-/)).not.toBeInTheDocument();
     expect(await screen.findByText("sheet.jpg · #2 · Beta Bots")).toBeInTheDocument();
+  });
+
+  it("shows a protected crop through an object URL that is revoked on unmount", async () => {
+    const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:crop-1");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    try {
+      const { container, unmount } = renderPage("review", [{ key: "cubes", value: 3, confidence: 0.9, cropUrl: "/api/crops/c1", requiresReview: false, reasons: [] }]);
+      await waitFor(() => expect(container.querySelector("img")).toHaveAttribute("src", "blob:crop-1"));
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(revoke).not.toHaveBeenCalled();
+      unmount();
+      expect(revoke).toHaveBeenCalledWith("blob:crop-1");
+    } finally {
+      create.mockRestore();
+      revoke.mockRestore();
+    }
   });
 
   it("offers a camera capture input for phones", () => {
