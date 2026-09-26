@@ -1,6 +1,8 @@
+import asyncio
 import uuid
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import aiofiles
@@ -10,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from core.concurrency import ProcessSemaphore
 from core.config import get_settings
 from core.domain_events import emit_event
 from core.exceptions import (
@@ -90,14 +93,80 @@ async def save_file(
     return str(file_path), safe_name, size
 
 
-def pdf_page_count(path: str | Path) -> int | None:
-    """Number of pages of a PDF, or None when pypdf cannot read it."""
-    try:
-        from pypdf import PdfReader
+#: Pages are counted exactly up to this number; a longer PDF is "more than".
+PAGE_COUNT_CAP = 1000
+#: Page-tree nodes (pages and /Pages nodes) visited at most per PDF.
+PAGE_TREE_MAX_NODES = 5000
+#: Wall-clock bound for one count (parsing the cross-reference table included).
+PAGE_COUNT_TIMEOUT_SECONDS = 15.0
+#: Concurrent counts per API process (each holds a worker thread).
+_PAGE_COUNT_SLOTS = ProcessSemaphore(2)
 
-        return len(PdfReader(str(path)).pages)
+
+class PageCountError(Exception):
+    """The PDF's pages cannot be counted within the bounds (crafted page tree)."""
+
+
+def pdf_page_count(path: str | Path) -> int | None:
+    """Number of pages of a PDF, or None when pypdf cannot read it.
+
+    Walks the page tree itself instead of letting pypdf flatten all of it:
+    the count stops at ``PAGE_COUNT_CAP + 1`` pages and after
+    ``PAGE_TREE_MAX_NODES`` nodes, so a crafted tree with 100,000 entries
+    costs as much as a short paper. Raises PageCountError when the tree is
+    too large to count (or pypdf hits one of its own limits).
+    """
+    from pypdf import PdfReader
+    from pypdf.errors import LimitReachedError
+
+    try:
+        reader = PdfReader(str(path))
+        catalog: Any = reader.trailer["/Root"].get_object()
+        pages = 0
+        visited = 0
+        seen: set[int] = set()
+        stack: list[Any] = [catalog["/Pages"]]
+        while stack:
+            # Kids are resolved one at a time: resolving a 100,000-entry
+            # /Kids array up front would be the unbounded work again.
+            node = stack.pop().get_object()
+            visited += 1
+            if visited > PAGE_TREE_MAX_NODES:
+                raise PageCountError("page tree too large")
+            if id(node) in seen:
+                continue
+            seen.add(id(node))
+            kids = node.get("/Kids")
+            if kids is None:
+                pages += 1
+                if pages > PAGE_COUNT_CAP:
+                    return pages
+                continue
+            # Reversed keeps document order; order does not matter for a count.
+            stack.extend(reversed(kids.get_object()))
+        return pages
+    except PageCountError:
+        raise
+    except LimitReachedError as exc:
+        raise PageCountError(str(exc)) from exc
     except Exception:  # noqa: BLE001 - pypdf raises many types for broken files
         return None
+
+
+def _page_limit_error(pages: int | None, limit: int) -> ValidationError | None:
+    if pages is None or pages <= limit:
+        return None
+    count = f"more than {PAGE_COUNT_CAP}" if pages > PAGE_COUNT_CAP else str(pages)
+    return ValidationError(
+        f"The paper has {count} pages; at most {limit} are allowed "
+        "(including figures and references)"
+    )
+
+
+_UNCOUNTABLE = (
+    "The PDF's pages could not be counted (page structure too large or too slow "
+    "to read); please export the paper again"
+)
 
 
 def check_page_limit(path: str | Path) -> int | None:
@@ -105,17 +174,43 @@ def check_page_limit(path: str | Path) -> int | None:
 
     The call for papers allows at most ``paper_max_pages`` pages (2026: five,
     figures and references included). A PDF pypdf cannot read passes: the
-    reviewers still see it, and a format deduction remains possible.
+    reviewers still see it, and a format deduction remains possible. A PDF
+    whose page tree is too large to count is refused, so it cannot slip past
+    the limit.
     """
-    pages = pdf_page_count(path)
     limit = settings.paper_max_pages
-    if limit and pages is not None and pages > limit:
+    try:
+        pages = pdf_page_count(path)
+    except PageCountError:
+        if not limit:
+            return None
         Path(path).unlink(missing_ok=True)
-        raise ValidationError(
-            f"The paper has {pages} pages; at most {limit} are allowed "
-            "(including figures and references)"
-        )
+        raise ValidationError(_UNCOUNTABLE) from None
+    error = _page_limit_error(pages, limit) if limit else None
+    if error is not None:
+        Path(path).unlink(missing_ok=True)
+        raise error
     return pages
+
+
+async def check_page_limit_off_loop(path: str | Path) -> int | None:
+    """``check_page_limit`` in a worker thread, bounded in time and concurrency.
+
+    pypdf is pure Python: on the event loop a large PDF stalled every other
+    request (scoring, live sockets, health checks) of the single API process.
+    """
+    async with _PAGE_COUNT_SLOTS:
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(check_page_limit, path), PAGE_COUNT_TIMEOUT_SECONDS
+            )
+        except TimeoutError:
+            # The thread's work is bounded (PAGE_TREE_MAX_NODES) and finishes
+            # on its own; the upload is refused now.
+            if not settings.paper_max_pages:
+                return None
+            Path(path).unlink(missing_ok=True)
+            raise ValidationError(_UNCOUNTABLE) from None
 
 
 # ── Deadline ──────────────────────────────────────────────────────────────────
@@ -361,7 +456,7 @@ async def add_version(
 
     number = (paper.current_version or 0) + 1
     file_path, file_name, size = await save_file(file, paper_id, number)
-    page_count = check_page_limit(file_path)
+    page_count = await check_page_limit_off_loop(file_path)
     storage_path = Path(file_path).relative_to(Path(settings.upload_dir).resolve()).as_posix()
     db.add(
         PaperVersion(
