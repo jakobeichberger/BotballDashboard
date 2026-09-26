@@ -5,8 +5,9 @@ import { MemoryRouter } from "react-router";
 import LoginPage from "@/pages/LoginPage";
 
 // Mock useLogin hook
+const mockLogin = vi.hoisted(() => vi.fn());
 vi.mock("@/hooks/useAuth", () => ({
-  useLogin: () => vi.fn().mockResolvedValue({ access_token: "tok" }),
+  useLogin: () => mockLogin,
   useCurrentUser: () => ({ data: null }),
   useLogout: () => vi.fn(),
 }));
@@ -32,11 +33,12 @@ function renderLoginPage() {
 describe("LoginPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogin.mockResolvedValue({ access_token: "tok" });
   });
 
   it("renders email and password fields", () => {
     renderLoginPage();
-    expect(screen.getByPlaceholderText("admin@example.com")).toBeInTheDocument();
+    expect(screen.getByLabelText("E-Mail")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("••••••••")).toBeInTheDocument();
   });
 
@@ -55,12 +57,30 @@ describe("LoginPage", () => {
 
   it("shows validation error for empty password", async () => {
     renderLoginPage();
-    fireEvent.change(screen.getByPlaceholderText("admin@example.com"), {
+    fireEvent.change(screen.getByLabelText("E-Mail"), {
       target: { value: "test@test.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: /anmelden/i }));
     await waitFor(() => {
       expect(screen.getByText(/passwort erforderlich/i)).toBeInTheDocument();
     });
+  });
+
+  it("rejects an address without a domain and does not log in", async () => {
+    renderLoginPage();
+    fireEvent.change(screen.getByLabelText("E-Mail"), { target: { value: "admin@localhost" } });
+    fireEvent.change(screen.getByLabelText("Passwort"), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: /anmelden/i }));
+    expect(await screen.findByText(/ungültige e-mail/i)).toBeInTheDocument();
+    expect(mockLogin).not.toHaveBeenCalled();
+  });
+
+  it("logs in with the trimmed address", async () => {
+    renderLoginPage();
+    fireEvent.change(screen.getByLabelText("E-Mail"), { target: { value: "  juror@test.local " } });
+    fireEvent.change(screen.getByLabelText("Passwort"), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: /anmelden/i }));
+    await waitFor(() => expect(mockLogin).toHaveBeenCalledWith("juror@test.local", "secret"));
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/"));
   });
 });
