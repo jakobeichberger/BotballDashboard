@@ -21,6 +21,9 @@ services:
       - "6379:6379"
 
   backend:
+    # Own image name: the development target must not replace the production
+    # image that worker, beat and backup run (docker-compose.yml).
+    image: ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-backend-dev:local
     build:
       context: ./backend
       dockerfile: Dockerfile

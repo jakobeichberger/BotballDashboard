@@ -49,8 +49,10 @@ restore_dump() {
   sql="${work_dir}/restore.sql"
   pg_restore --no-owner --file="$sql" "$dump" || return 1
   sed -i '/^SET transaction_timeout = /d' "$sql" || return 1
+  # One transaction: an error anywhere leaves the target database empty
+  # instead of half restored.
   pg psql --dbname="$target_db" --quiet --no-psqlrc --set=ON_ERROR_STOP=1 \
-    --file="$sql" >/dev/null || return 1
+    --single-transaction --file="$sql" >/dev/null || return 1
   rm -f "$sql"
 }
 
@@ -71,18 +73,40 @@ fi
 restored_uploads="${work_dir}/data/${upload_dir#/}"
 [ -d "$restored_uploads" ] || { echo "ERROR: archive has no ${upload_dir#/} directory" >&2; exit 1; }
 
+# Sessions of the read-only monitoring role (postgres-exporter, pg_monitor)
+# do not count; the database is dropped with --force, which ends them.
+monitor_user="${POSTGRES_MONITOR_USER:-botball_monitor}"
+case "$monitor_user" in
+  *[!a-z0-9_]*|"") monitor_user=botball_monitor ;;
+esac
 active="$(pg psql --dbname=postgres -tAc \
-  "SELECT count(*) FROM pg_stat_activity WHERE datname = '${POSTGRES_DB}' AND pid <> pg_backend_pid();")"
+  "SELECT count(*) FROM pg_stat_activity WHERE datname = '${POSTGRES_DB}' AND pid <> pg_backend_pid() AND usename <> '${monitor_user}';")"
 if [ "$active" != "0" ]; then
   echo "ERROR: ${active} open connection(s) to ${POSTGRES_DB}." >&2
-  echo "Stop backend, worker, beat and backup first: docker compose stop backend worker beat backup" >&2
+  echo "Stop everything that uses the database first: docker compose stop backend worker worker-ocr beat backup" >&2
+  echo "(and postgres-exporter on installations from before the pg_monitor role)." >&2
   exit 1
 fi
 
-echo "==> Recreating database ${POSTGRES_DB}"
-pg dropdb --maintenance-db=postgres "$POSTGRES_DB"
-pg createdb --maintenance-db=postgres --owner="$POSTGRES_USER" "$POSTGRES_DB"
-restore_dump "$POSTGRES_DB" "${work_dir}/data/database.dump"
+# The dump goes into a staging database in one transaction first; only when
+# it is complete is the production database dropped and the staging copy
+# renamed. A failing restore leaves the current database untouched.
+staging_db="${POSTGRES_DB}_restoring"
+echo "==> Restoring into staging database ${staging_db} (one transaction)"
+pg dropdb --maintenance-db=postgres --if-exists "$staging_db"
+pg createdb --maintenance-db=postgres --owner="$POSTGRES_USER" "$staging_db"
+if ! restore_dump "$staging_db" "${work_dir}/data/database.dump"; then
+  pg dropdb --maintenance-db=postgres --if-exists "$staging_db" || true
+  echo "ERROR: the dump could not be restored; ${POSTGRES_DB} was not changed." >&2
+  exit 1
+fi
+
+echo "==> Replacing database ${POSTGRES_DB}"
+pg dropdb --maintenance-db=postgres --force "$POSTGRES_DB"
+# psql interpolates :"name" (quoted identifier) only in input, not in -c.
+echo 'ALTER DATABASE :"staging" RENAME TO :"target";' \
+  | pg psql --dbname=postgres --no-psqlrc --quiet --set=ON_ERROR_STOP=1 \
+    --set=staging="$staging_db" --set=target="$POSTGRES_DB" >/dev/null
 
 echo "==> Replacing uploads in ${upload_dir}"
 mkdir -p "$upload_dir"

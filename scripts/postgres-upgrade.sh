@@ -39,8 +39,15 @@
 #                                           # <major>/docker.replaced-<time>
 #   scripts/postgres-upgrade.sh --keep-new  # continue with the new cluster, ignore
 #                                           # later changes in the old one
-#   scripts/postgres-upgrade.sh --remove-old-data   # delete the old cluster
-#                                           # after the new one has proven itself
+#   scripts/postgres-upgrade.sh --remove-old-data   # delete the old cluster and
+#                                           # the dumps in PG_UPGRADE_DIR after the new
+#                                           # one has proven itself
+#
+# The dump in PG_UPGRADE_DIR holds the whole database (e-mail addresses,
+# password hashes). After a successful migration it is encrypted with age to
+# AGE_RECIPIENT (the backup key from .env) and the plain file is deleted;
+# without AGE_RECIPIENT it stays unencrypted (mode 600 in a 700 directory)
+# until --remove-old-data deletes it.
 #
 # Environment:
 #   PG_UPGRADE_DIR   where the dump, the row counts and a log are kept
@@ -92,6 +99,8 @@ if key == "image":
     print(db["image"])
 elif key == "volume":
     print(c["volumes"]["pgdata"]["name"])
+elif key == "backend_image":
+    print((c["services"].get("backend") or {}).get("image") or "")
 else:
     print(env.get(key) or "")
 ' "$1" <<<"${compose_json}"
@@ -110,6 +119,9 @@ POSTGRES_INITDB_ARGS="$(compose_value POSTGRES_INITDB_ARGS)"
 POSTGRES_HOST_AUTH_METHOD="$(compose_value POSTGRES_HOST_AUTH_METHOD)"
 export POSTGRES_PASSWORD POSTGRES_INITDB_ARGS POSTGRES_HOST_AUTH_METHOD
 export PGPASSWORD="${POSTGRES_PASSWORD}"
+# The db service reads .env as well, so the backup key is in its environment.
+AGE_RECIPIENT="$(compose_value AGE_RECIPIENT)"
+BACKEND_IMAGE="$(compose_value backend_image)"
 
 ensure_image() {
   docker image inspect "$1" >/dev/null 2>&1 && return 0
@@ -169,9 +181,25 @@ while read -r dir version; do
   fi
 done <<<"${clusters}"
 
+# Dumps of earlier migrations (plain or age-encrypted) in PG_UPGRADE_DIR.
+remove_dumps() {
+  local files
+  [[ -d "${UPGRADE_DIR}" ]] || return 0
+  files="$(find "${UPGRADE_DIR}" -maxdepth 1 -type f \( -name '*.dump' -o -name '*.dump.age' \
+    -o -name 'globals-*.sql' -o -name 'globals-*.sql.age' \) -print)"
+  [[ -n "${files}" ]] || return 0
+  find "${UPGRADE_DIR}" -maxdepth 1 -type f \( -name '*.dump' -o -name '*.dump.age' \
+    -o -name 'globals-*.sql' -o -name 'globals-*.sql.age' \) -delete
+  success "Removed the migration dumps in ${UPGRADE_DIR} (logs and row counts stay)"
+}
+
 if [[ "${MODE}" == "remove-old" ]]; then
   [[ "${new_present}" == "true" ]] || die "no PostgreSQL ${NEW_MAJOR} cluster in ${NEW_DIR} – refusing to delete anything"
-  [[ -n "${old_dir}" ]] || { success "No old cluster left in volume ${VOLUME}"; exit 0; }
+  if [[ -z "${old_dir}" ]]; then
+    success "No old cluster left in volume ${VOLUME}"
+    remove_dumps
+    exit 0
+  fi
   warn "This permanently deletes the PostgreSQL ${old_major} cluster in ${old_dir} (volume ${VOLUME})."
   warn "After this a rollback to a release with PostgreSQL ${old_major} needs a backup."
   if [[ "${ASSUME_YES}" != "true" ]]; then
@@ -187,6 +215,7 @@ if [[ "${MODE}" == "remove-old" ]]; then
     in_volume "rm -rf '${old_dir%/docker}'"
   fi
   success "Old PostgreSQL ${old_major} data removed"
+  remove_dumps
   exit 0
 fi
 
@@ -352,6 +381,14 @@ if [[ "${old_kb}" =~ ^[0-9]+$ && "${free_kb}" =~ ^[0-9]+$ ]] && (( free_kb < old
   die "not enough space in volume ${VOLUME}: $((free_kb / 1024)) MB free, the new cluster needs about $((old_kb / 1024 + 256)) MB"
 fi
 
+# The dump lands in PG_UPGRADE_DIR, usually on the host's root disk: a
+# custom-format dump is smaller than the cluster, so the cluster size is a
+# safe upper bound.
+dump_free_kb="$(df -Pk "${UPGRADE_DIR}" | awk 'NR==2 {print $4}')"
+if [[ "${old_kb}" =~ ^[0-9]+$ && "${dump_free_kb}" =~ ^[0-9]+$ ]] && (( dump_free_kb < old_kb )); then
+  die "not enough space for the dump in ${UPGRADE_DIR}: $((dump_free_kb / 1024)) MB free, up to $((old_kb / 1024)) MB needed – set PG_UPGRADE_DIR to a larger disk"
+fi
+
 # ── 3. Dump with the old major ───────────────────────────────────────────────
 info "Starting PostgreSQL ${old_major} on the old files (temporary, no network)..."
 if [[ "${old_dir}" == "${VOLUME_ROOT}" ]]; then
@@ -446,15 +483,47 @@ in_volume "if [ -d '${NEW_DIR}' ]; then rmdir '${NEW_DIR}' || exit 1; fi
   mv '${STAGING_DIR}' '${NEW_DIR}'" \
   || die "cannot move ${STAGING_DIR} to ${NEW_DIR}"
 committed=true
+
+# The dump is a full copy of the data: encrypt it to the backup key and drop
+# the plain file. age from the host or from the backend image (no network).
+encrypt_file() {
+  local file="$1"
+  [[ -s "${file}" ]] || return 0
+  if command -v age >/dev/null 2>&1; then
+    age --recipient "${AGE_RECIPIENT}" --output "${file}.age" "${file}" || return 1
+  elif [[ -n "${BACKEND_IMAGE}" ]] && docker image inspect "${BACKEND_IMAGE}" >/dev/null 2>&1; then
+    ( umask 077
+      docker run --rm -i --network none --entrypoint age "${BACKEND_IMAGE}" \
+        --recipient "${AGE_RECIPIENT}" < "${file}" > "${file}.age" ) || return 1
+  else
+    return 1
+  fi
+  [[ -s "${file}.age" ]] || return 1
+  chmod 600 "${file}.age"
+  rm -f "${file}"
+}
+dump_note="unencrypted; deleted by --remove-old-data"
+if [[ -n "${AGE_RECIPIENT}" ]]; then
+  if encrypt_file "${dump_file}" && encrypt_file "${globals_file}"; then
+    dump_file="${dump_file}.age"
+    dump_note="age-encrypted to AGE_RECIPIENT; deleted by --remove-old-data"
+    success "Dump encrypted with age: ${dump_file}"
+  else
+    rm -f "${dump_file}.age" "${globals_file}.age"
+    warn "Could not encrypt the dump (no age on the host or in ${BACKEND_IMAGE:-the backend image}); it stays unencrypted"
+  fi
+else
+  warn "AGE_RECIPIENT is empty – the dump ${dump_file} stays unencrypted (mode 600)"
+fi
 {
   echo "PostgreSQL ${old_major} → ${NEW_MAJOR} migration ${stamp}"
   echo "volume:        ${VOLUME}"
   echo "old cluster:   ${old_dir} (unchanged; delete with scripts/postgres-upgrade.sh --remove-old-data)"
   echo "new cluster:   ${NEW_DIR}"
-  echo "dump:          ${dump_file}"
+  echo "dump:          ${dump_file} (${dump_note})"
   echo "tables/rows:   ${tables}/${rows}"
 } > "${UPGRADE_DIR}/upgrade-${stamp}.log"
 success "PostgreSQL ${NEW_MAJOR} is ready in ${NEW_DIR}"
 info "The old PostgreSQL ${old_major} files stay in ${old_dir} for a rollback; the dump is"
-info "${dump_file}. Once the new version runs fine, free the space with"
-info "  scripts/postgres-upgrade.sh --remove-old-data   and delete ${UPGRADE_DIR}."
+info "${dump_file} (${dump_note}). Once the new version runs fine, free the space with"
+info "  scripts/postgres-upgrade.sh --remove-old-data   (old cluster and dumps)."

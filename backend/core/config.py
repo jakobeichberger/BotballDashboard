@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     app_secret_key: str = "change-me"
     app_base_url: str = "http://localhost:8000"
     allowed_origins: str = "http://localhost:5173"
+    # Which part of the application this process runs. "ocr" is the
+    # worker-ocr container (docker-compose.yml): it only gets the database,
+    # Redis and upload settings, never the JWT/app/printer/SMTP secrets, so
+    # the production check below does not ask for them there.
+    service_scope: Literal["full", "ocr"] = "full"
     # Log level for the API, worker and beat (DEBUG, INFO, WARNING, ...).
     # Empty means DEBUG in development and INFO otherwise.
     log_level: str = ""
@@ -99,6 +104,14 @@ class Settings(BaseSettings):
             return self
 
         invalid: list[str] = []
+        if self.service_scope == "ocr":
+            # OCR tasks use only the database, Redis and the uploads.
+            if len(self.postgres_password) < 24 or "change-me" in self.postgres_password.lower():
+                raise ValueError(
+                    "Unsafe production configuration: replace POSTGRES_PASSWORD "
+                    "(at least 24 random characters)."
+                )
+            return self
         secrets = {
             "APP_SECRET_KEY": self.app_secret_key,
             "JWT_SECRET_KEY": self.jwt_secret_key,

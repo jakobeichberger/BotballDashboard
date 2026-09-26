@@ -1,7 +1,16 @@
 # Manual production deploy: SSH to the Docker host and run scripts/update.sh
-# there (git checkout → build images locally → docker compose up -d → verify).
+# there (git checkout → build images locally → verified backup → migrations
+# on start → docker compose up -d → verify).
 # Images are built on the host because docker-compose.yml builds them from the
-# checkout; there is no registry push/pull step.
+# checkout; there is no registry push/pull step. update.sh tags every release
+# with its commit, so `scripts/update.sh --rollback` on the host returns to
+# the previous release without a rebuild.
+#
+# Only a commit with a green CI run is deployed: the first job resolves the
+# ref to a commit and requires a successful run of the CI workflow (ci.yml,
+# started by hand under Actions → CI) for exactly that commit. The host then
+# checks out that commit, not the ref, so a branch that moved in between
+# cannot slip untested code in.
 #
 # Required secrets (Settings → Environments → production):
 #   DEPLOY_HOST              host name or IP of the Docker host / LXC
@@ -21,7 +30,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch, tag or commit to deploy"
+        description: "Branch, tag or commit to deploy (needs a green CI run for its commit)"
         required: true
         default: main
 
@@ -30,8 +39,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ci-gate:
+    name: Require a green CI run
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Resolve the ref to a commit
+        id: resolve
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Successful CI run for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.resolve.outputs.sha }}
+          REF: ${{ inputs.ref }}
+        run: |
+          run="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml \
+            --commit "$SHA" --status success --limit 1 --json url --jq '.[0].url // empty')"
+          if [ -z "$run" ]; then
+            echo "::error::No successful CI run for ${SHA}. Start Actions → CI → Run workflow on '${REF}', wait for it to pass, then deploy again."
+            exit 1
+          fi
+          echo "CI passed for ${SHA}: ${run}"
+
   deploy:
     name: Deploy to production
+    needs: ci-gate
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 45
@@ -40,7 +80,7 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         env:
-          DEPLOY_REF: ${{ inputs.ref }}
+          DEPLOY_SHA: ${{ needs.ci-gate.outputs.sha }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/botballdashboard' }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -49,11 +89,13 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
           command_timeout: 40m
-          envs: DEPLOY_REF,DEPLOY_PATH
+          envs: DEPLOY_SHA,DEPLOY_PATH
           script: |
             set -euo pipefail
             cd "$DEPLOY_PATH"
-            # update.sh records the previous commit/migration in .deploy-state,
-            # rebuilds all local images, restarts and runs verify-deployment.sh.
-            ./scripts/update.sh --ref "$DEPLOY_REF"
+            # update.sh records the previous commit/migration/images in
+            # .deploy-state, rebuilds the images, takes a verified backup
+            # before the migrations, restarts and runs verify-deployment.sh.
+            # The host ends on a detached HEAD at the tested commit.
+            ./scripts/update.sh --ref "$DEPLOY_SHA"
             echo "Deployed $(git rev-parse --short HEAD) at $(date -u +%FT%TZ)"
