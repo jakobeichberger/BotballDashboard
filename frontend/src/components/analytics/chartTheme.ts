@@ -14,6 +14,14 @@ export const SERIES = {
 export const GRID = "rgb(var(--rand))";
 export const AXIS_TICK = { fontSize: 11, fill: "rgb(var(--text-leise))" } as const;
 
+/**
+ * Legend order = the order of the series (dataKeys) as drawn; Recharts 3
+ * sorts legend items alphabetically by default.
+ */
+export function legendOrder(...dataKeys: string[]) {
+  return (item: { dataKey?: unknown }) => dataKeys.indexOf(String(item.dataKey));
+}
+
 /** Sequential single-hue scale (signal red) for heatmap cells, 0..1 → CSS colour. */
 export function heatColor(ratio: number | null | undefined): string {
   if (ratio == null || !Number.isFinite(ratio)) return "transparent";

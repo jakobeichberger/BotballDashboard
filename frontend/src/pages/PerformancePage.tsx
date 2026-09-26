@@ -23,7 +23,7 @@ import {
   useTeamPerformance,
   type TeamPerformance,
 } from "@/api/analytics";
-import { AXIS_TICK, GRID, SERIES } from "@/components/analytics/chartTheme";
+import { AXIS_TICK, GRID, SERIES, legendOrder } from "@/components/analytics/chartTheme";
 import { StatGrid, SectionCard } from "./dashboard/widgets";
 
 function TrendIcon({ slope }: { slope: number | null }) {
@@ -54,7 +54,7 @@ export function ScoreTrendChart({ runs }: { runs: TeamPerformance["runs"] }) {
           <XAxis dataKey="name" tick={AXIS_TICK} label={{ value: t("performance.run"), position: "insideBottomRight", offset: -4, fontSize: 11 }} />
           <YAxis tick={AXIS_TICK} width={40} />
           <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.label ?? ""} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Legend wrapperStyle={{ fontSize: 12 }} itemSorter={legendOrder("official", "practice")} />
           <Line type="monotone" dataKey="official" name={t("performance.official")} stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} connectNulls />
           <Line type="monotone" dataKey="practice" name={t("performance.practiceInternal")} stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4, fill: "rgb(var(--flaeche))" }} connectNulls />
         </LineChart>
@@ -77,7 +77,7 @@ function FieldComparison({ perf }: { perf: TeamPerformance }) {
             <XAxis type="number" tick={AXIS_TICK} />
             <YAxis type="category" dataKey="label" width={110} tick={AXIS_TICK} />
             <Tooltip />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} itemSorter={legendOrder("team", "field")} />
             <Bar dataKey="team" name={perf.team_name} fill={SERIES.primary} radius={[0, 4, 4, 0]} barSize={10} />
             <Bar dataKey="field" name={t("performance.fieldAvg")} fill={SERIES.muted} radius={[0, 4, 4, 0]} barSize={10} />
           </BarChart>

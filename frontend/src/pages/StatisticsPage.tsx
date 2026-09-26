@@ -8,7 +8,7 @@ import { fmtNum, useEventStatistics, type Anomaly, type EventStatistics } from "
 import { BoxPlotList } from "@/components/analytics/BoxPlot";
 import MatchReviewModal from "@/components/analytics/MatchReviewModal";
 import EventAuditTrail from "@/components/analytics/EventAuditTrail";
-import { AXIS_TICK, GRID, SERIES, heatColor, heatTextClass } from "@/components/analytics/chartTheme";
+import { AXIS_TICK, GRID, SERIES, heatColor, heatTextClass, legendOrder } from "@/components/analytics/chartTheme";
 import { ExportButton } from "@/components/ExportButtons";
 import { StatGrid, SectionCard } from "./dashboard/widgets";
 import { labelMap } from "@/i18n/labels";
@@ -148,7 +148,7 @@ export default function StatisticsPage() {
                     <XAxis dataKey="round_number" tick={AXIS_TICK} tickFormatter={(v) => t("roundShort", { round: v })} />
                     <YAxis tick={AXIS_TICK} width={40} />
                     <Tooltip labelFormatter={(v) => t("round", { round: v })} />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} itemSorter={legendOrder("mean", "median")} />
                     <Line type="monotone" dataKey="mean" name={t("statistics.mean")} stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} />
                     <Line type="monotone" dataKey="median" name={t("statistics.median")} stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4 }} />
                   </LineChart>
