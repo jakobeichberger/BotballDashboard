@@ -32952,7 +32952,8 @@
             "enum": [
               "boolean",
               "count",
-              "number"
+              "number",
+              "sum"
             ],
             "title": "Type",
             "default": "boolean"
@@ -33001,6 +33002,45 @@
               }
             ],
             "title": "Source"
+          },
+          "inputs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SheetSumInput"
+                },
+                "type": "array",
+                "maxItems": 10,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputs"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "sum",
+              "product"
+            ],
+            "title": "Mode",
+            "default": "sum"
+          },
+          "allow_below_one": {
+            "type": "boolean",
+            "title": "Allow Below One",
+            "default": false
+          },
+          "zero_means": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "zero"
+            ],
+            "title": "Zero Means",
+            "default": "neutral"
           }
         },
         "additionalProperties": false,
@@ -33010,7 +33050,7 @@
           "label"
         ],
         "title": "SheetMultiplier",
-        "description": "A value applied to a section subtotal.\n\nboolean: checked \u2192 \u00d7 factor. count/number: \u00d7 (value \u00d7 factor + offset).\nA result below 1 leaves the subtotal unchanged. With ``source`` (boolean\nonly) the multiplier has no input: it is on when that field of the same\nsection is at least 1, e.g. 2026 \"Drum \u00d72\" in the Lower Start Box."
+        "description": "A value applied to a section subtotal.\n\nboolean: checked \u2192 \u00d7 factor. count/number: \u00d7 (value \u00d7 factor + offset).\nsum: \u00d7 ((\u03a3 inputs, or \u03a0 inputs with ``mode: \"product\"``) \u00d7 factor + offset),\ne.g. AIRCER \"Max Stack Height + # of Stacks\".\n\nA result below 1 leaves the subtotal unchanged, unless ``allow_below_one``\n(a penalty such as the AIRCER Restricted Area rule, checked \u2192 \u00d7 0.5).\n``zero_means: \"zero\"`` (count/number/sum) makes an entered 0 zero the area\ninstead of the neutral \u00d7 1. With ``source`` (boolean only) the multiplier has\nno input: it is on when that field of the same section is at least 1, e.g.\n2026 \"Drum \u00d72\" in the Lower Start Box."
       },
       "SheetSection": {
         "properties": {
@@ -33058,6 +33098,53 @@
           "fields"
         ],
         "title": "SheetSection"
+      },
+      "SheetSumInput": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "min_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Value",
+            "default": 0
+          },
+          "max_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "SheetSumInput",
+        "description": "One counted value of a ``sum`` multiplier, e.g. \"Max Stack Height\"."
       },
       "StatsOverview": {
         "properties": {

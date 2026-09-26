@@ -80,9 +80,41 @@ async def test_templates_endpoint_lists_2024_to_2026(client, auth_headers):
     resp = await client.get("/api/scoring/schema-templates", headers=auth_headers)
     assert resp.status_code == 200
     templates = {t["id"]: t for t in resp.json()}
-    assert set(templates) == {"botball_2024", "botball_2025", "botball_2026"}
+    assert set(templates) == {"botball_2024", "botball_2025", "botball_2026", "aircer_2026"}
     assert templates["botball_2026"]["complete"] is True
     assert templates["botball_2025"]["definition"]["sides"] == ["A", "B"]
+    assert templates["aircer_2026"]["complete"] is True
+    assert templates["aircer_2026"]["definition"]["sides"] == []
+
+
+@pytest.mark.asyncio
+async def test_aircer_schema_scores_sum_and_penalty_multipliers(client, auth_headers, event, team):
+    schema = await _structured_schema(client, auth_headers, event.id, template="aircer_2026")
+    sections = {s["key"]: s for s in schema["definition"]["sections"]}
+    stacks = sections["upper_storage_deck"]["multipliers"][0]
+    assert (stacks["type"], stacks["mode"], stacks["zero_means"]) == ("sum", "sum", "neutral")
+    assert sections["incineration_plant"]["multipliers"][1]["allow_below_one"] is True
+    keys = {f["key"] for f in schema["fields"]}
+    assert {"upper_deck_max_stack_height", "safety_lever", "waste_rocks"} <= keys
+    assert "upper_deck_stacks" not in keys
+
+    match = await _score(
+        client,
+        auth_headers,
+        event.id,
+        team.id,
+        {
+            "upper_deck_sorted_cubes": 4,
+            "upper_deck_unsorted_cubes": 2,
+            "upper_deck_other_pieces": 1,
+            "upper_deck_max_stack_height": 3,
+            "upper_deck_stack_count": 2,
+            "incineration_drums": 1,
+            "incineration_variety": 1,
+            "incineration_restricted_area": True,
+        },
+    )
+    assert match["total_score"] == 505 + 7.5
 
 
 @pytest.mark.asyncio

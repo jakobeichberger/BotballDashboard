@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Minus, Plus } from "lucide-react";
-import { computeSheet, isDerived, isEither, rawKey, type RawScores, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetResult } from "./calculator";
+import { computeSheet, isDerived, isEither, isSum, rawKey, type RawScores, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetResult } from "./calculator";
 import { sheetMessages } from "./issues";
 
 interface Props {
@@ -52,6 +52,11 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
                     <p className="mb-2 text-xs font-medium text-leise">{t("sheet.eitherHint", { name: multiplier.label })}</p>
                     <div className="grid gap-3 sm:grid-cols-2">{multiplier.either.map((option) => <Input key={option.key} spec={option} rawKey={rawKey(side, option.key)} hint={multiplierHint(option, t)} values={values} onChange={onChange} />)}</div>
                   </div>
+                ) : isSum(multiplier) ? (
+                  <div key={multiplier.key} className="rounded border border-dashed p-2 sm:col-span-2">
+                    <p className="mb-2 text-xs font-medium text-leise">{sumHint(multiplier, t)}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">{(multiplier.inputs ?? []).map((item) => <Input key={item.key} spec={{ ...item, type: "count" }} rawKey={rawKey(side, item.key)} hint="" values={values} onChange={onChange} />)}</div>
+                  </div>
                 ) : isDerived(multiplier) ? (
                   <p key={multiplier.key} className="text-sm text-leise">
                     {multiplier.label} <span className="text-xs">{t("sheet.derivedHint", { field: section.fields.find((f) => f.key === multiplier.source)?.label ?? multiplier.source })}</span>
@@ -70,11 +75,26 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
 
 function multiplierHint(spec: SheetMultiplier, t: TFunction): string {
   const area = t("scoring:sheet.area");
-  if ((spec.type ?? "boolean") === "boolean") return `${area} × ${spec.factor ?? 1}`;
+  const factor = spec.factor ?? 1;
+  // A factor below 1 that applies is a penalty (AIRCER Restricted Area × 0.5).
+  const penalty = spec.allow_below_one && factor < 1 ? ` (${t("scoring:sheet.penalty")})` : "";
+  if ((spec.type ?? "boolean") === "boolean") return `${area} × ${factor}${penalty}`;
+  const offset = spec.offset ?? 0;
+  const zero = spec.zero_means === "zero" ? ` · ${t("scoring:sheet.zeroHint")}` : "";
+  return `${area} × (n${factor !== 1 ? ` × ${factor}` : ""}${offset ? ` + ${offset}` : ""})${penalty}${zero}`;
+}
+
+/** "Max Stack Height + # of Stacks: area × (Max Stack Height + # of Stacks)". */
+function sumHint(spec: SheetMultiplier, t: TFunction): string {
+  const joined = (spec.inputs ?? []).map((item) => item.label).join(spec.mode === "product" ? " × " : " + ");
   const factor = spec.factor ?? 1;
   const offset = spec.offset ?? 0;
-  return `${area} × (n${factor !== 1 ? ` × ${factor}` : ""}${offset ? ` + ${offset}` : ""})`;
+  const terms = factor !== 1 || offset ? `(${joined})${factor !== 1 ? ` × ${factor}` : ""}${offset ? ` + ${offset}` : ""}` : joined;
+  const zero = spec.zero_means === "zero" ? ` · ${t("scoring:sheet.zeroHint")}` : "";
+  return `${t("scoring:sheet.sumHint", { name: spec.label, terms })}${zero}`;
 }
+
+const isPenalty = (spec: SheetField | SheetMultiplier) => "allow_below_one" in spec && !!spec.allow_below_one && (spec.factor ?? 1) < 1;
 
 function Input({ spec, rawKey: key, hint, values, onChange }: { spec: SheetField | SheetMultiplier; rawKey: string; hint: string; values: RawScores; onChange: Props["onChange"] }) {
   const { t } = useTranslation("scoring");
@@ -84,7 +104,7 @@ function Input({ spec, rawKey: key, hint, values, onChange }: { spec: SheetField
   if (type === "boolean") {
     // The whole row is the tap target (≥ 44 px), not just the 24 px box.
     return (
-      <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium">
+      <label className={`flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium${isPenalty(spec) ? " rounded border border-danger/40 px-2 text-danger" : ""}`}>
         <input className="h-6 w-6 shrink-0" type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(key, event.target.checked)} />
         <span>{spec.label} <span className="text-xs text-leise">{hint}</span></span>
       </label>

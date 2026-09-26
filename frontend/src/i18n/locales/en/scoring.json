@@ -215,7 +215,9 @@
       "eitherTooFew": "“{{name}}” needs at least two alternatives.",
       "keyInvalid": "Key “{{key}}” is invalid (a–z, 0–9, _).",
       "keyDuplicate": "Key “{{key}}” is duplicated.",
-      "sourceUnknown": "{{name}}: there is no field “{{key}}” in this section."
+      "sourceUnknown": "{{name}}: there is no field “{{key}}” in this section.",
+      "sumInEither": "{{name}}: a sum cannot be an either-or alternative.",
+      "sumNoInputs": "{{name}}: a sum needs at least one value."
     },
     "sectionNumber": "Section {{number}}",
     "pieces": "Game pieces",
@@ -288,7 +290,20 @@
     "removeMultiplier": "Remove multiplier",
     "triggeredBy": "Triggered by",
     "triggeredByCheckbox": "Own checkbox",
-    "maxPlaceholder": "max"
+    "maxPlaceholder": "max",
+    "sumTimesFactor": "Sum of several values × factor",
+    "sumMode": "Combine the values",
+    "modeSum": "Sum (a + b)",
+    "modeProduct": "Product (a × b)",
+    "sumInputs": "Values",
+    "sumInputName": "Value name",
+    "sumInputKey": "Value key",
+    "removeSumInput": "Remove value",
+    "sumInput": "Value",
+    "allowBelowOne": "Apply a factor below 1 (penalty, e.g. × 0.5)",
+    "zeroMeans": "Empty box (0)",
+    "zeroNeutral": "neutral (× 1)",
+    "zeroZero": "area scores 0"
   },
   "sheet": {
     "side": "Side",
@@ -305,7 +320,10 @@
     },
     "decrease": "Decrease {{label}} by 1",
     "increase": "Increase {{label}} by 1",
-    "fields": "Inputs"
+    "fields": "Inputs",
+    "penalty": "penalty",
+    "zeroHint": "0 → area 0",
+    "sumHint": "{{name}}: area × ({{terms}})"
   },
   "entry": {
     "offlineLabel": "{{team}} · round {{round}} · {{points}} pts",

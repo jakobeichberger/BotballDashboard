@@ -215,7 +215,9 @@
       "eitherTooFew": "„{{name}}“ braucht mindestens zwei Alternativen.",
       "keyInvalid": "Schlüssel „{{key}}“ ist ungültig (a–z, 0–9, _).",
       "keyDuplicate": "Schlüssel „{{key}}“ ist doppelt.",
-      "sourceUnknown": "{{name}}: Feld „{{key}}“ gibt es in diesem Bereich nicht."
+      "sourceUnknown": "{{name}}: Feld „{{key}}“ gibt es in diesem Bereich nicht.",
+      "sumInEither": "{{name}}: eine Summe kann keine Entweder-oder-Alternative sein.",
+      "sumNoInputs": "{{name}}: eine Summe braucht mindestens einen Wert."
     },
     "sectionNumber": "Bereich {{number}}",
     "pieces": "Spielteile",
@@ -288,7 +290,20 @@
     "removeMultiplier": "Multiplikator entfernen",
     "triggeredBy": "Ausgelöst durch",
     "triggeredByCheckbox": "Eigenes Kästchen",
-    "maxPlaceholder": "max."
+    "maxPlaceholder": "max.",
+    "sumTimesFactor": "Summe mehrerer Werte × Faktor",
+    "sumMode": "Verknüpfung der Werte",
+    "modeSum": "Summe (a + b)",
+    "modeProduct": "Produkt (a × b)",
+    "sumInputs": "Werte",
+    "sumInputName": "Name des Werts",
+    "sumInputKey": "Schlüssel des Werts",
+    "removeSumInput": "Wert entfernen",
+    "sumInput": "Wert",
+    "allowBelowOne": "Faktor unter 1 anwenden (Abzug, z. B. × 0,5)",
+    "zeroMeans": "Leeres Kästchen (0)",
+    "zeroNeutral": "neutral (× 1)",
+    "zeroZero": "Bereich zählt 0"
   },
   "sheet": {
     "side": "Seite",
@@ -305,7 +320,10 @@
     },
     "decrease": "{{label}} um 1 verringern",
     "increase": "{{label}} um 1 erhöhen",
-    "fields": "Eingaben"
+    "fields": "Eingaben",
+    "penalty": "Abzug",
+    "zeroHint": "0 → Bereich 0",
+    "sumHint": "{{name}}: Bereich × ({{terms}})"
   },
   "entry": {
     "offlineLabel": "{{team}} · Runde {{round}} · {{points}} P.",

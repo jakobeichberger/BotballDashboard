@@ -10,7 +10,11 @@
  * by its area multipliers (checkbox → factor, count → value × factor + offset,
  * either-or → the best alternative; anything below 1 counts as ×1). A derived
  * multiplier (`source`) has no input: it is on when that field of the section
- * is at least 1 (2026 Lower Start Box "Drum ×2"). The total
+ * is at least 1 (2026 Lower Start Box "Drum ×2"). A sum multiplier
+ * (`type: "sum"`) multiplies by the sum — or with `mode: "product"` the
+ * product — of its `inputs` (AIRCER "Max Stack Height + # of Stacks").
+ * `allow_below_one` lets a factor below 1 apply (AIRCER Restricted Area ×0.5);
+ * `zero_means: "zero"` makes an entered 0 zero the area. The total
  * is the sum over sides ("Total A + B"). A flat field list is the special case
  * of sections without multipliers.
  */
@@ -30,16 +34,31 @@ export interface SheetField {
   role?: "field" | "multiplier";
 }
 
+/** One counted value of a sum multiplier ("Max Stack Height"). */
+export interface SheetSumInput {
+  key: string;
+  label: string;
+  min_value?: number | null;
+  max_value?: number | null;
+}
+
 export interface SheetMultiplier {
   key: string;
   label: string;
-  type?: "boolean" | "count" | "number";
+  type?: "boolean" | "count" | "number" | "sum";
   factor?: number;
   offset?: number;
   min_value?: number | null;
   max_value?: number | null;
   /** Field of the same section that switches this checkbox multiplier on (≥ 1). */
   source?: string | null;
+  /** type "sum": the values that are added (or multiplied, mode "product"). */
+  inputs?: SheetSumInput[] | null;
+  mode?: "sum" | "product";
+  /** A factor below 1 applies (a penalty such as ×0.5) instead of counting as ×1. */
+  allow_below_one?: boolean;
+  /** count/number/sum: an entered 0 is neutral (×1, default) or zeroes the area. */
+  zero_means?: "neutral" | "zero";
 }
 
 export interface SheetEitherMultiplier {
@@ -140,7 +159,13 @@ export function normalize(fields: SheetField[] | null | undefined, definition: u
 
 export const isDerived = (multiplier: SheetMultiplier): boolean => !!multiplier.source;
 
-const multiplierInputs = (multiplier: SectionMultiplier): SheetMultiplier[] => (isEither(multiplier) ? multiplier.either : [multiplier]).filter((option) => !isDerived(option));
+export const isSum = (multiplier: SectionMultiplier): boolean => !isEither(multiplier) && multiplier.type === "sum";
+
+const multiplierInputs = (multiplier: SectionMultiplier): SheetMultiplier[] => {
+  if (isEither(multiplier)) return multiplier.either.filter((option) => !isDerived(option));
+  if (multiplier.type === "sum") return (multiplier.inputs ?? []).map((item) => ({ ...item, type: "count", factor: 1 }));
+  return isDerived(multiplier) ? [] : [multiplier];
+};
 
 /** Every value the sheet asks for, keyed like the raw scores the API expects. */
 export function inputFields(definition: SheetDefinition): InputSpec[] {
@@ -154,7 +179,7 @@ export function inputFields(definition: SheetDefinition): InputSpec[] {
       }
       for (const multiplier of section.multipliers) {
         for (const option of multiplierInputs(multiplier)) {
-          out.push({ key: rawKey(side, option.key), fieldKey: option.key, label: option.label, side, section: sectionLabel, sectionKey: section.key, role: "multiplier", group: isEither(multiplier) ? multiplier.key : null, type: option.type ?? "boolean", multiplier: option.factor ?? 1, min_value: option.min_value ?? null, max_value: option.max_value ?? null });
+          out.push({ key: rawKey(side, option.key), fieldKey: option.key, label: option.label, side, section: sectionLabel, sectionKey: section.key, role: "multiplier", group: isEither(multiplier) || isSum(multiplier) ? multiplier.key : null, type: (option.type ?? "boolean") as SheetField["type"], multiplier: option.factor ?? 1, min_value: option.min_value ?? null, max_value: option.max_value ?? null });
         }
       }
     }
@@ -185,19 +210,33 @@ function readValue(raw: RawScores, key: string, spec: { max_value?: number | nul
   return number;
 }
 
+/** Below 1 counts as neutral (×1) unless the multiplier allows a penalty. */
+const applied = (factor: number, spec: SheetMultiplier) => (factor >= 1 ? factor : spec.allow_below_one ? Math.max(factor, 0) : 1);
+
 function effective(raw: RawScores, side: string | null, spec: SheetMultiplier): number {
   if (spec.source) {
     const trigger = rawKey(side, spec.source);
-    return toNumber(trigger, raw[trigger]) >= 1 ? spec.factor ?? 1 : 1;
+    return toNumber(trigger, raw[trigger]) >= 1 ? applied(spec.factor ?? 1, spec) : 1;
   }
-  const value = readValue(raw, rawKey(side, spec.key), spec);
-  const factor = (spec.type ?? "boolean") === "boolean" ? (value ? spec.factor ?? 1 : 1) : value * (spec.factor ?? 1) + (spec.offset ?? 0);
-  return factor >= 1 ? factor : 1;
+  const kind = spec.type ?? "boolean";
+  if (kind === "boolean") return readValue(raw, rawKey(side, spec.key), spec) ? applied(spec.factor ?? 1, spec) : 1;
+  let value: number;
+  if (kind === "sum") {
+    const values = (spec.inputs ?? []).map((item) => readValue(raw, rawKey(side, item.key), item));
+    value = (spec.mode ?? "sum") === "product" ? values.reduce((product, item) => product * item, 1) : values.reduce((sum, item) => sum + item, 0);
+  } else {
+    value = readValue(raw, rawKey(side, spec.key), spec);
+  }
+  const factor = value * (spec.factor ?? 1) + (spec.offset ?? 0);
+  // An empty box zeroes the area only when the definition says so, and never works as a penalty.
+  if (value === 0) return (spec.zero_means ?? "neutral") === "zero" ? 0 : factor >= 1 ? factor : 1;
+  return applied(factor, spec);
 }
 
 export function multiplierFactor(raw: RawScores, side: string | null, multiplier: SectionMultiplier): number {
   if (isEither(multiplier)) {
-    return multiplier.either.reduce((best, option) => Math.max(best, effective(raw, side, option)), 1);
+    // Like Python's max(..., default=1): the best alternative, ×1 without any.
+    return multiplier.either.length ? Math.max(...multiplier.either.map((option) => effective(raw, side, option))) : 1;
   }
   return effective(raw, side, multiplier);
 }

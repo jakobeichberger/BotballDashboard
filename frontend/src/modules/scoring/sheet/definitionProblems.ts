@@ -14,12 +14,14 @@ export function definitionProblems(definition: SheetDefinition): string[] {
     if (sectionKeys.has(section.key)) problems.push(i18n.t("scoring:schema.problem.sectionDuplicate", { key: section.key }));
     sectionKeys.add(section.key);
     if (!section.fields.length) problems.push(i18n.t("scoring:schema.problem.sectionEmpty", { name: section.label || section.key }));
-    const keys = [...section.fields.map((field) => field.key), ...section.multipliers.flatMap((m) => (isEither(m) ? m.either.map((o) => o.key) : [m.key]))];
+    const keys = [...section.fields.map((field) => field.key), ...section.multipliers.flatMap((m) => (isEither(m) ? m.either.map((o) => o.key) : [m.key, ...(m.inputs ?? []).map((item) => item.key)]))];
     for (const multiplier of section.multipliers) if (isEither(multiplier) && multiplier.either.length < 2) problems.push(i18n.t("scoring:schema.problem.eitherTooFew", { name: multiplier.label }));
     const fieldKeys = new Set(section.fields.map((field) => field.key));
     for (const multiplier of section.multipliers) {
       for (const option of isEither(multiplier) ? multiplier.either : [multiplier]) {
         if (option.source && !fieldKeys.has(option.source)) problems.push(i18n.t("scoring:schema.problem.sourceUnknown", { name: option.label, key: option.source }));
+        if (option.type === "sum" && isEither(multiplier)) problems.push(i18n.t("scoring:schema.problem.sumInEither", { name: option.label }));
+        else if (option.type === "sum" && !option.inputs?.length) problems.push(i18n.t("scoring:schema.problem.sumNoInputs", { name: option.label }));
       }
     }
     for (const key of keys) {

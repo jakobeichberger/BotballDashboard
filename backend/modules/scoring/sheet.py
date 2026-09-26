@@ -18,6 +18,7 @@ Two schema shapes are supported:
              │                  × derived (a field of the section ≥ 1 → factor)
              │                  × count   (value × factor + offset)
              │                  × either  (max of the alternatives)
+             │                  × sum     ((Σ or Π of inputs) × factor + offset)
              │                                                   = section total
              └─ …                                   Σ sections  = side total
      side B ─── (same sections, own values)                      = side total
@@ -34,7 +35,20 @@ subtotal × (sorted baskets + 1) × returned baskets).
 
 A multiplier whose value is below 1 (e.g. "# of sorted stations" = 0, or an
 unchecked box) leaves the subtotal unchanged: on the paper sheets an empty
-multiplier box means "no bonus", never "the area scores nothing".
+multiplier box means "no bonus", never "the area scores nothing". Two per-
+multiplier switches change that where a game needs it:
+
+* ``allow_below_one: true`` — a result below 1 applies (never below 0). The
+  AIRCER Restricted Area rule is a checkbox with factor 0.5: checked halves the
+  Incineration Plant. An unchecked box, or a count of 0, is still neutral.
+* ``zero_means: "zero"`` (count/number/sum) — a value of 0 (an empty box; for
+  a sum multiplier the sum or product of its inputs) makes the area score 0
+  instead of the neutral × 1 (default ``"neutral"``).
+
+A *sum* multiplier (``type: "sum"``) has several counted ``inputs`` and no input
+of its own; its value is their sum (``mode: "sum"``, default) or product
+(``mode: "product"``), then × factor + offset like a count. AIRCER "Max Stack
+Height + # of Stacks" is one.
 
 Raw values of a two-sided sheet are keyed ``"<side>.<field key>"`` (``"A.potato"``),
 single-sided sheets use the plain field key.
@@ -99,9 +113,16 @@ def is_derived(multiplier: dict) -> bool:
     return bool(multiplier.get("source"))
 
 
+def is_sum(multiplier: dict) -> bool:
+    """A multiplier whose value is the sum (or product) of several inputs."""
+    return multiplier.get("type") == "sum"
+
+
 def _multiplier_inputs(multiplier: dict) -> list[dict]:
     if "either" in multiplier:
         return [o for o in multiplier.get("either") or [] if not is_derived(o)]
+    if is_sum(multiplier):
+        return [{**item, "type": "count", "factor": 1} for item in multiplier.get("inputs") or []]
     return [] if is_derived(multiplier) else [multiplier]
 
 
@@ -149,7 +170,11 @@ def input_fields(definition: dict) -> list[dict]:
                             "max_value": option.get("max_value"),
                             "required": False,
                             "role": "multiplier",
-                            "group": multiplier.get("key") if "either" in multiplier else None,
+                            "group": (
+                                multiplier.get("key")
+                                if "either" in multiplier or is_sum(multiplier)
+                                else None
+                            ),
                         }
                     )
     return out
@@ -198,18 +223,43 @@ def _value(raw: dict, key: str, spec: dict) -> float:
     return number
 
 
+def _applied(factor: float, spec: dict) -> float:
+    """Below 1 counts as neutral (×1) unless the multiplier allows a penalty."""
+    if factor >= 1:
+        return factor
+    return max(factor, 0.0) if spec.get("allow_below_one") else 1.0
+
+
 def _effective(raw: dict, side: str | None, spec: dict) -> float:
-    """Factor one multiplier input contributes; below 1 counts as neutral (×1)."""
+    """Factor one multiplier (or either-or alternative) contributes."""
     if is_derived(spec):
         source = raw_key(side, spec["source"])
-        return float(spec.get("factor", 1)) if _number(source, raw.get(source)) >= 1 else 1.0
-    key = raw_key(side, spec["key"])
-    value = _value(raw, key, spec)
-    if spec.get("type", "boolean") == "boolean":
-        factor = float(spec.get("factor", 1)) if value else 1.0
+        on = _number(source, raw.get(source)) >= 1
+        return _applied(float(spec.get("factor", 1)), spec) if on else 1.0
+    kind = spec.get("type", "boolean")
+    if kind == "boolean":
+        value = _value(raw, raw_key(side, spec["key"]), spec)
+        return _applied(float(spec.get("factor", 1)), spec) if value else 1.0
+    if kind == "sum":
+        values = [
+            _value(raw, raw_key(side, item["key"]), item) for item in spec.get("inputs") or []
+        ]
+        if spec.get("mode", "sum") == "product":
+            value = 1.0
+            for item in values:
+                value *= item
+        else:
+            value = sum(values)
     else:
-        factor = value * float(spec.get("factor", 1)) + float(spec.get("offset", 0))
-    return factor if factor >= 1 else 1.0
+        value = _value(raw, raw_key(side, spec["key"]), spec)
+    factor = value * float(spec.get("factor", 1)) + float(spec.get("offset", 0))
+    if value == 0:
+        # An empty box: zeroes the area only when the definition says so, and
+        # never works as a penalty (allow_below_one needs an entered value).
+        if spec.get("zero_means", "neutral") == "zero":
+            return 0.0
+        return factor if factor >= 1 else 1.0
+    return _applied(factor, spec)
 
 
 def multiplier_factor(raw: dict, side: str | None, multiplier: dict) -> float:

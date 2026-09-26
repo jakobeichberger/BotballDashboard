@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import type { ScoringSchema } from "@/api/types";
 import type { CompetitionLevel, SchemaListEntry, SchemaTemplate } from "@/modules/scoring/extras/types";
 import { definitionProblems } from "./definitionProblems";
-import { fromFlatFields, inputFields, isEither, isStructured, type SectionMultiplier, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetSection } from "./calculator";
+import { fromFlatFields, inputFields, isEither, isStructured, type SectionMultiplier, type SheetDefinition, type SheetField, type SheetMultiplier, type SheetSection, type SheetSumInput } from "./calculator";
 import { apiErrorMessage } from "@/lib/errors";
 import { useChanged } from "@/hooks/useChanged";
 
@@ -192,7 +192,7 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
                 <button type="button" className="btn-secondary text-xs" onClick={() => updateMultiplier(i, { ...multiplier, either: [...multiplier.either, { key: newKey(`option_${multiplier.either.length + 1}`), label: t("schema.alternative"), type: "count", factor: 1, offset: 0, max_value: null }] })}><Plus className="h-3 w-3" />{t("schema.alternative")}</button>
               </div>
             ) : (
-              <MultiplierRow value={multiplier} fields={section.fields} onChange={(next) => updateMultiplier(i, next)} onRemove={() => onChange({ multipliers: section.multipliers.filter((_, j) => j !== i) })} />
+              <MultiplierRow value={multiplier} fields={section.fields} allowSum onChange={(next) => updateMultiplier(i, next)} onRemove={() => onChange({ multipliers: section.multipliers.filter((_, j) => j !== i) })} />
             )}
           </div>
         ))}
@@ -205,19 +205,69 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
   );
 }
 
-function MultiplierRow({ value, fields, onChange, onRemove }: { value: SheetMultiplier; fields?: SheetField[]; onChange: (next: SheetMultiplier) => void; onRemove: () => void }) {
+function MultiplierRow({ value, fields, allowSum = false, onChange, onRemove }: { value: SheetMultiplier; fields?: SheetField[]; allowSum?: boolean; onChange: (next: SheetMultiplier) => void; onRemove: () => void }) {
   const { t } = useTranslation("scoring");
-  const counted = (value.type ?? "boolean") !== "boolean";
+  const kind = value.type ?? "boolean";
+  const counted = kind !== "boolean";
+  const sum = kind === "sum";
+  const inputs = value.inputs ?? [];
+  const changeType = (type: NonNullable<SheetMultiplier["type"]>) => {
+    const next: SheetMultiplier = { ...value, type, max_value: type === "boolean" ? 1 : type === "sum" ? null : value.max_value ?? null };
+    if (type === "sum") {
+      delete next.source;
+      next.mode = value.mode ?? "sum";
+      next.inputs = inputs.length ? inputs : [{ key: `${value.key}_a`, label: t("schema.sumInput") + " A", min_value: 0, max_value: null }, { key: `${value.key}_b`, label: t("schema.sumInput") + " B", min_value: 0, max_value: null }];
+    } else {
+      delete next.inputs;
+      delete next.mode;
+    }
+    if (type === "boolean") delete next.zero_means;
+    onChange(next);
+  };
+  const updateInput = (k: number, change: Partial<SheetSumInput>) => onChange({ ...value, inputs: inputs.map((item, j) => (j === k ? { ...item, ...change } : item)) });
   return (
     <div className="space-y-2">
     <div className="grid gap-2 sm:grid-cols-[1.4fr_1fr_8rem_4.5rem_4.5rem_4.5rem_auto]">
       <input aria-label={t("schema.multiplierName")} className="input" value={value.label} onChange={(e) => onChange({ ...value, label: e.target.value })} />
       <input aria-label={t("schema.multiplierKey")} className="input font-mono text-xs" value={value.key} onChange={(e) => onChange({ ...value, key: e.target.value })} />
-      <select aria-label={t("schema.multiplierType")} className="input" value={value.type ?? "boolean"} onChange={(e) => onChange({ ...value, type: e.target.value as SheetMultiplier["type"], max_value: e.target.value === "boolean" ? 1 : value.max_value ?? null })}><option value="boolean">{t("schema.checkTimesFactor")}</option><option value="count">{t("schema.countTimesFactor")}</option></select>
+      <select aria-label={t("schema.multiplierType")} className="input" value={kind} onChange={(e) => changeType(e.target.value as NonNullable<SheetMultiplier["type"]>)}><option value="boolean">{t("schema.checkTimesFactor")}</option><option value="count">{t("schema.countTimesFactor")}</option>{(allowSum || sum) && <option value="sum">{t("schema.sumTimesFactor")}</option>}</select>
       <input aria-label={t("schema.factor")} title={t("schema.factor")} type="number" step="any" className="input" value={value.factor ?? 1} onChange={(e) => onChange({ ...value, factor: Number(e.target.value) })} />
       <input aria-label={t("schema.offset")} title={t("schema.offsetHint")} type="number" step="any" className="input" disabled={!counted} value={counted ? value.offset ?? 0 : ""} onChange={(e) => onChange({ ...value, offset: Number(e.target.value) })} />
-      <input aria-label={t("schema.multiplierMax")} title={t("schema.maximum")} type="number" min={0} className="input" disabled={!counted} value={counted ? value.max_value ?? "" : ""} placeholder={t("schema.maxPlaceholder")} onChange={(e) => onChange({ ...value, max_value: e.target.value === "" ? null : Number(e.target.value) })} />
+      <input aria-label={t("schema.multiplierMax")} title={t("schema.maximum")} type="number" min={0} className="input" disabled={!counted || sum} value={counted && !sum ? value.max_value ?? "" : ""} placeholder={t("schema.maxPlaceholder")} onChange={(e) => onChange({ ...value, max_value: e.target.value === "" ? null : Number(e.target.value) })} />
       <button type="button" className="btn-secondary px-2" aria-label={t("schema.removeMultiplier")} onClick={onRemove}><Trash2 className="h-4 w-4" /></button>
+    </div>
+    {sum && (
+      <div className="space-y-2 rounded border-l-2 pl-2">
+        <label className="flex flex-wrap items-center gap-2 text-xs text-leise">
+          {t("schema.sumMode")}
+          <select aria-label={t("schema.sumMode")} className="input w-auto text-xs" value={value.mode ?? "sum"} onChange={(e) => onChange({ ...value, mode: e.target.value as "sum" | "product" })}>
+            <option value="sum">{t("schema.modeSum")}</option>
+            <option value="product">{t("schema.modeProduct")}</option>
+          </select>
+        </label>
+        <p className="text-xs font-medium text-leise">{t("schema.sumInputs")}</p>
+        {inputs.map((item, k) => (
+          <div key={k} className="grid gap-2 sm:grid-cols-[1.4fr_1fr_4.5rem_auto]">
+            <input aria-label={t("schema.sumInputName")} className="input" value={item.label} onChange={(e) => updateInput(k, { label: e.target.value })} />
+            <input aria-label={t("schema.sumInputKey")} className="input font-mono text-xs" value={item.key} onChange={(e) => updateInput(k, { key: e.target.value })} />
+            <input aria-label={t("schema.maximum")} title={t("schema.maximum")} type="number" min={0} className="input" value={item.max_value ?? ""} placeholder={t("schema.maxPlaceholder")} onChange={(e) => updateInput(k, { max_value: e.target.value === "" ? null : Number(e.target.value) })} />
+            <button type="button" className="btn-secondary px-2" aria-label={t("schema.removeSumInput")} disabled={inputs.length <= 1} onClick={() => onChange({ ...value, inputs: inputs.filter((_, j) => j !== k) })}><Trash2 className="h-4 w-4" /></button>
+          </div>
+        ))}
+        <button type="button" className="btn-secondary text-xs" onClick={() => onChange({ ...value, inputs: [...inputs, { key: `${value.key}_${inputs.length + 1}`, label: `${t("schema.sumInput")} ${inputs.length + 1}`, min_value: 0, max_value: null }] })}><Plus className="h-3 w-3" />{t("schema.sumInput")}</button>
+      </div>
+    )}
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-leise">
+      <label className="flex items-center gap-2"><input type="checkbox" checked={!!value.allow_below_one} onChange={(e) => { const next = { ...value }; if (e.target.checked) next.allow_below_one = true; else delete next.allow_below_one; onChange(next); }} />{t("schema.allowBelowOne")}</label>
+      {counted && (
+        <label className="flex flex-wrap items-center gap-2">
+          {t("schema.zeroMeans")}
+          <select aria-label={t("schema.zeroMeans")} className="input w-auto text-xs" value={value.zero_means ?? "neutral"} onChange={(e) => onChange({ ...value, zero_means: e.target.value as "neutral" | "zero" })}>
+            <option value="neutral">{t("schema.zeroNeutral")}</option>
+            <option value="zero">{t("schema.zeroZero")}</option>
+          </select>
+        </label>
+      )}
     </div>
     {!counted && fields && (
       <label className="flex flex-wrap items-center gap-2 text-xs text-leise">

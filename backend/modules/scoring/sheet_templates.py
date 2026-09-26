@@ -10,6 +10,8 @@ Offered in the schema editor as a starting point for a new schema version
   area (the module spec had these swapped, see audit section E).
 * 2026 – "2026 Botball Seeding Score Sheet.pdf" (Stack Attack / Warehouse),
   with the scoring rules of "2026 Botball Game Review v1.4".
+* AIRCER 2026 – "2026-AIRCER-Scoring-Sheet-1.0.pdf" (Laboratory Lockdown,
+  robo4you), with the scoring rules of "2026-AIRCER-Game-Manual-1.0.pdf".
 """
 
 from __future__ import annotations
@@ -364,6 +366,181 @@ BOTBALL_2026: dict[str, Any] = {
 }
 
 
+# ── AIRCER 2026 – Laboratory Lockdown (robo4you) ─────────────────────────────
+#
+# Transcribed from "2026-AIRCER-Scoring-Sheet-1.0.pdf"; scoring rules from
+# "2026-AIRCER-Game-Manual-1.0.pdf" (pp. 11-14). One sheet per team and side
+# ("Side Total"): each team plays its own mirrored half, so the definition has
+# no sides A/B — a Double Seeding round records one sheet per team.
+#
+# Game pieces (manual p. 9): 16 poms per colour (48), 4 + 4 + 2 big cubes (10),
+# 6 × 3 small cubes (18), 8 × 3 drums (24), 6 trays, 6 pallets, 10 researchers,
+# 10 rocks, 4 safety cones (never score, Safety Cone Rule), 1 Botguy. "All
+# other game pieces" is bounded by the scoring pieces (133 = all but cones).
+#
+# Multipliers as printed on the sheet:
+# * "# of equally filled Trays × ___" (Lower Storage Deck): × trays (≤ 6).
+# * "Max Stack Height × ___ + # of Stacks × ___" (Upper Storage Deck and
+#   Research Table): a sum multiplier, × (height + stacks). Switch: set
+#   ``mode`` to "product" for × height × stacks.
+# * "# filled Posts × ___" (Centrifuge): × posts. The table has one rod per drum
+#   colour that can be used (one rod is broken each run), so at most 3.
+# * "Game Piece Variety × ___" (Incineration Plant): × kinds of piece in the
+#   plant (poms, drums, small cubes, big cubes: at most 4).
+# * Restricted Area Rule (manual p. 13, not printed on the sheet): a robot in
+#   the team's restricted area at the end halves the Incineration Plant — a
+#   checkbox with factor 0.5 and ``allow_below_one``.
+# * "Botguy on L.G. ×2" (Research Stations) and "Safety Lever ×2" (Waste
+#   Management): checkboxes.
+# An empty (0) count box is neutral (× 1) as on every Botball sheet; switch a
+# multiplier to ``zero_means: "zero"`` for "0 → the area scores 0".
+
+_A_POMS, _A_BIG, _A_SMALL, _A_DRUMS = 48, 10, 18, 24
+_A_CUBES = _A_BIG + _A_SMALL
+_A_PIECES = 133  # every game piece except the 4 safety cones
+
+
+def _counted(key: str, label: str, max_value: float) -> dict:
+    """A counted AIRCER multiplier; an empty box is neutral (switchable)."""
+    return {**_times(key, label, 1, 0, max_value), "zero_means": "neutral"}
+
+
+def _stacks(prefix: str) -> dict:
+    """ "Max Stack Height + # of Stacks": × (height + stacks), or × height × stacks."""
+    return {
+        "key": f"{prefix}_stacks",
+        "label": "Max Stack Height + # of Stacks",
+        "type": "sum",
+        "mode": "sum",
+        "factor": 1,
+        "offset": 0,
+        "zero_means": "neutral",
+        "inputs": [
+            {
+                "key": f"{prefix}_max_stack_height",
+                "label": "Max Stack Height",
+                "min_value": 0,
+                "max_value": _A_CUBES,
+            },
+            {
+                "key": f"{prefix}_stack_count",
+                "label": "# of Stacks",
+                "min_value": 0,
+                "max_value": _A_CUBES,
+            },
+        ],
+    }
+
+
+AIRCER_2026: dict[str, Any] = {
+    "sides": [],
+    "sections": [
+        _section(
+            "lower_storage_deck",
+            "Lower Storage Deck",
+            [
+                _count("lower_deck_sorted_poms", "Sorted Poms", 20, _A_POMS),
+                _count("lower_deck_unsorted_poms", "Unsorted Poms", 5, _A_POMS),
+                _count("lower_deck_other_pieces", "All Other Game Pieces", 1, _A_PIECES),
+            ],
+            [_counted("lower_deck_filled_trays", "# of Equally Filled Trays", 6)],
+        ),
+        _section(
+            "upper_storage_deck",
+            "Upper Storage Deck",
+            [
+                _count("upper_deck_sorted_cubes", "Sorted Cubes", 20, _A_CUBES),
+                _count("upper_deck_unsorted_cubes", "Unsorted Cubes", 10, _A_CUBES),
+                _count("upper_deck_other_pieces", "All Other Game Pieces", 1, _A_PIECES),
+            ],
+            [_stacks("upper_deck")],
+        ),
+        _section(
+            "centrifuge",
+            "Centrifuge",
+            [
+                _count("centrifuge_sorted_drums", "Sorted Drums", 50, _A_DRUMS),
+                _count("centrifuge_unsorted_drums", "Unsorted Drums", 20, _A_DRUMS),
+                _count("centrifuge_other_pieces", "All Other Game Pieces", 1, _A_PIECES),
+            ],
+            [_counted("centrifuge_filled_posts", "# Filled Posts", 3)],
+        ),
+        _section(
+            "research_table",
+            "Research Table",
+            [
+                _count("research_table_sorted_cubes", "Sorted Cubes", 15, _A_CUBES),
+                _count("research_table_unsorted_cubes", "Unsorted Cubes", 5, _A_CUBES),
+                _count("research_table_other_pieces", "All Other Game Pieces", 1, _A_PIECES),
+            ],
+            [_stacks("research_table")],
+        ),
+        _section(
+            "incineration_plant",
+            "Incineration Plant",
+            [
+                _count("incineration_poms", "Poms", 10, _A_POMS),
+                _count("incineration_drums", "Drums", 15, _A_DRUMS),
+                _count("incineration_small_cubes", "Small Cube", 20, _A_SMALL),
+                _count("incineration_big_cubes", "Big Cube", 50, _A_BIG),
+            ],
+            [
+                _counted("incineration_variety", "Game Piece Variety", 4),
+                {
+                    **_flag(
+                        "incineration_restricted_area",
+                        "Robot in Restricted Area (halved)",
+                        0.5,
+                    ),
+                    "allow_below_one": True,
+                },
+            ],
+        ),
+        _section(
+            "research_stations",
+            "Research Stations",
+            [_count("research_stations_researchers", "Researchers in Station", 100, 10)],
+            [_flag("research_stations_botguy", "Botguy on Laboratory Ground (×2)", 2)],
+        ),
+        _section(
+            "robot_control",
+            "Robot Control",
+            [_count("robot_control_robots", "Robots Back in Start Box", 50, 2)],
+        ),
+        _section(
+            "waste_management",
+            "Waste Management",
+            [
+                _count("waste_rocks", "Only Rocks", 20, 10),
+                _count("waste_other_pieces", "All Other Game Pieces", 1, _A_PIECES),
+            ],
+            [_flag("safety_lever", "Safety Lever (×2)", 2)],
+        ),
+        _section(
+            "laboratory_ground",
+            "Laboratory Ground",
+            [_count("laboratory_ground_pieces", "Game Pieces", 1, _A_PIECES)],
+        ),
+    ],
+}
+
+AIRCER_2026_NOTES = (
+    "AIRCER Double Seeding sheet, one sheet per team (the team's own mirrored half, no "
+    "sides A/B). Open questions of Scoring Sheet 1.0 / Game Manual 1.0 and the defaults "
+    "chosen, each switchable in the schema editor: "
+    "(1) 'Max Stack Height + # of Stacks' (Upper Storage Deck, Research Table) is read "
+    "as × (height + stacks), mode 'sum'; set mode 'product' for × height × stacks. "
+    "(2) An empty or 0 count multiplier (trays, filled posts, variety, stacks) is "
+    "neutral (× 1) as in Botball; set zero_means 'zero' to let 0 zero the area. "
+    "(3) 'Unsorted Drums × 20' in the Centrifuge has no '=' box on the sheet; it is "
+    "scored like every other line. "
+    "(4) The Restricted Area rule (manual, not on the sheet) is a checkbox that halves "
+    "the Incineration Plant (factor 0.5, allow_below_one); halves are kept, not rounded. "
+    "Assumed maxima: 3 filled posts (one usable rod per drum colour), game piece "
+    "variety 4 (poms, drums, small cubes, big cubes). Safety cones never score."
+)
+
+
 TEMPLATES: dict[str, dict[str, Any]] = {
     "botball_2024": {
         "id": "botball_2024",
@@ -394,6 +571,15 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             "Lower Start Box follow the itemised count."
         ),
         "definition": BOTBALL_2026,
+    },
+    "aircer_2026": {
+        "id": "aircer_2026",
+        "name": "AIRCER 2026 – Laboratory Lockdown",
+        "year": 2026,
+        "complete": True,
+        "source": "2026 AIRCER Scoring Sheet 1.0, 2026 AIRCER Game Manual 1.0",
+        "notes": AIRCER_2026_NOTES,
+        "definition": AIRCER_2026,
     },
 }
 

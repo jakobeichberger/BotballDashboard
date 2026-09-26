@@ -1276,6 +1276,1177 @@
           }
         ]
       }
+    },
+    "aircer_2026": {
+      "definition": {
+        "sides": [],
+        "sections": [
+          {
+            "key": "lower_storage_deck",
+            "label": "Lower Storage Deck",
+            "fields": [
+              {
+                "key": "lower_deck_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "lower_deck_unsorted_poms",
+                "label": "Unsorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "lower_deck_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "lower_deck_filled_trays",
+                "label": "# of Equally Filled Trays",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 6,
+                "zero_means": "neutral"
+              }
+            ]
+          },
+          {
+            "key": "upper_storage_deck",
+            "label": "Upper Storage Deck",
+            "fields": [
+              {
+                "key": "upper_deck_sorted_cubes",
+                "label": "Sorted Cubes",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "upper_deck_unsorted_cubes",
+                "label": "Unsorted Cubes",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "upper_deck_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "upper_deck_stacks",
+                "label": "Max Stack Height + # of Stacks",
+                "type": "sum",
+                "mode": "sum",
+                "factor": 1,
+                "offset": 0,
+                "zero_means": "neutral",
+                "inputs": [
+                  {
+                    "key": "upper_deck_max_stack_height",
+                    "label": "Max Stack Height",
+                    "min_value": 0,
+                    "max_value": 28
+                  },
+                  {
+                    "key": "upper_deck_stack_count",
+                    "label": "# of Stacks",
+                    "min_value": 0,
+                    "max_value": 28
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "centrifuge",
+            "label": "Centrifuge",
+            "fields": [
+              {
+                "key": "centrifuge_sorted_drums",
+                "label": "Sorted Drums",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "centrifuge_unsorted_drums",
+                "label": "Unsorted Drums",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "centrifuge_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "centrifuge_filled_posts",
+                "label": "# Filled Posts",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 3,
+                "zero_means": "neutral"
+              }
+            ]
+          },
+          {
+            "key": "research_table",
+            "label": "Research Table",
+            "fields": [
+              {
+                "key": "research_table_sorted_cubes",
+                "label": "Sorted Cubes",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "research_table_unsorted_cubes",
+                "label": "Unsorted Cubes",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "research_table_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "research_table_stacks",
+                "label": "Max Stack Height + # of Stacks",
+                "type": "sum",
+                "mode": "sum",
+                "factor": 1,
+                "offset": 0,
+                "zero_means": "neutral",
+                "inputs": [
+                  {
+                    "key": "research_table_max_stack_height",
+                    "label": "Max Stack Height",
+                    "min_value": 0,
+                    "max_value": 28
+                  },
+                  {
+                    "key": "research_table_stack_count",
+                    "label": "# of Stacks",
+                    "min_value": 0,
+                    "max_value": 28
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "incineration_plant",
+            "label": "Incineration Plant",
+            "fields": [
+              {
+                "key": "incineration_poms",
+                "label": "Poms",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "incineration_drums",
+                "label": "Drums",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "incineration_small_cubes",
+                "label": "Small Cube",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 18,
+                "required": false
+              },
+              {
+                "key": "incineration_big_cubes",
+                "label": "Big Cube",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "incineration_variety",
+                "label": "Game Piece Variety",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 4,
+                "zero_means": "neutral"
+              },
+              {
+                "key": "incineration_restricted_area",
+                "label": "Robot in Restricted Area (halved)",
+                "type": "boolean",
+                "factor": 0.5,
+                "max_value": 1,
+                "allow_below_one": true
+              }
+            ]
+          },
+          {
+            "key": "research_stations",
+            "label": "Research Stations",
+            "fields": [
+              {
+                "key": "research_stations_researchers",
+                "label": "Researchers in Station",
+                "type": "count",
+                "multiplier": 100,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "research_stations_botguy",
+                "label": "Botguy on Laboratory Ground (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "robot_control",
+            "label": "Robot Control",
+            "fields": [
+              {
+                "key": "robot_control_robots",
+                "label": "Robots Back in Start Box",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 2,
+                "required": false
+              }
+            ],
+            "multipliers": []
+          },
+          {
+            "key": "waste_management",
+            "label": "Waste Management",
+            "fields": [
+              {
+                "key": "waste_rocks",
+                "label": "Only Rocks",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              },
+              {
+                "key": "waste_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "safety_lever",
+                "label": "Safety Lever (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "laboratory_ground",
+            "label": "Laboratory Ground",
+            "fields": [
+              {
+                "key": "laboratory_ground_pieces",
+                "label": "Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": []
+          }
+        ]
+      }
+    },
+    "aircer_2026_product": {
+      "definition": {
+        "sides": [],
+        "sections": [
+          {
+            "key": "lower_storage_deck",
+            "label": "Lower Storage Deck",
+            "fields": [
+              {
+                "key": "lower_deck_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "lower_deck_unsorted_poms",
+                "label": "Unsorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "lower_deck_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "lower_deck_filled_trays",
+                "label": "# of Equally Filled Trays",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 6,
+                "zero_means": "neutral"
+              }
+            ]
+          },
+          {
+            "key": "upper_storage_deck",
+            "label": "Upper Storage Deck",
+            "fields": [
+              {
+                "key": "upper_deck_sorted_cubes",
+                "label": "Sorted Cubes",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "upper_deck_unsorted_cubes",
+                "label": "Unsorted Cubes",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "upper_deck_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "upper_deck_stacks",
+                "label": "Max Stack Height + # of Stacks",
+                "type": "sum",
+                "mode": "product",
+                "factor": 1,
+                "offset": 0,
+                "zero_means": "neutral",
+                "inputs": [
+                  {
+                    "key": "upper_deck_max_stack_height",
+                    "label": "Max Stack Height",
+                    "min_value": 0,
+                    "max_value": 28
+                  },
+                  {
+                    "key": "upper_deck_stack_count",
+                    "label": "# of Stacks",
+                    "min_value": 0,
+                    "max_value": 28
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "centrifuge",
+            "label": "Centrifuge",
+            "fields": [
+              {
+                "key": "centrifuge_sorted_drums",
+                "label": "Sorted Drums",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "centrifuge_unsorted_drums",
+                "label": "Unsorted Drums",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "centrifuge_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "centrifuge_filled_posts",
+                "label": "# Filled Posts",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 3,
+                "zero_means": "neutral"
+              }
+            ]
+          },
+          {
+            "key": "research_table",
+            "label": "Research Table",
+            "fields": [
+              {
+                "key": "research_table_sorted_cubes",
+                "label": "Sorted Cubes",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "research_table_unsorted_cubes",
+                "label": "Unsorted Cubes",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "research_table_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "research_table_stacks",
+                "label": "Max Stack Height + # of Stacks",
+                "type": "sum",
+                "mode": "product",
+                "factor": 1,
+                "offset": 0,
+                "zero_means": "neutral",
+                "inputs": [
+                  {
+                    "key": "research_table_max_stack_height",
+                    "label": "Max Stack Height",
+                    "min_value": 0,
+                    "max_value": 28
+                  },
+                  {
+                    "key": "research_table_stack_count",
+                    "label": "# of Stacks",
+                    "min_value": 0,
+                    "max_value": 28
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "incineration_plant",
+            "label": "Incineration Plant",
+            "fields": [
+              {
+                "key": "incineration_poms",
+                "label": "Poms",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "incineration_drums",
+                "label": "Drums",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "incineration_small_cubes",
+                "label": "Small Cube",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 18,
+                "required": false
+              },
+              {
+                "key": "incineration_big_cubes",
+                "label": "Big Cube",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "incineration_variety",
+                "label": "Game Piece Variety",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 4,
+                "zero_means": "neutral"
+              },
+              {
+                "key": "incineration_restricted_area",
+                "label": "Robot in Restricted Area (halved)",
+                "type": "boolean",
+                "factor": 0.5,
+                "max_value": 1,
+                "allow_below_one": true
+              }
+            ]
+          },
+          {
+            "key": "research_stations",
+            "label": "Research Stations",
+            "fields": [
+              {
+                "key": "research_stations_researchers",
+                "label": "Researchers in Station",
+                "type": "count",
+                "multiplier": 100,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "research_stations_botguy",
+                "label": "Botguy on Laboratory Ground (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "robot_control",
+            "label": "Robot Control",
+            "fields": [
+              {
+                "key": "robot_control_robots",
+                "label": "Robots Back in Start Box",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 2,
+                "required": false
+              }
+            ],
+            "multipliers": []
+          },
+          {
+            "key": "waste_management",
+            "label": "Waste Management",
+            "fields": [
+              {
+                "key": "waste_rocks",
+                "label": "Only Rocks",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              },
+              {
+                "key": "waste_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "safety_lever",
+                "label": "Safety Lever (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "laboratory_ground",
+            "label": "Laboratory Ground",
+            "fields": [
+              {
+                "key": "laboratory_ground_pieces",
+                "label": "Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": []
+          }
+        ]
+      }
+    },
+    "aircer_2026_zero": {
+      "definition": {
+        "sides": [],
+        "sections": [
+          {
+            "key": "lower_storage_deck",
+            "label": "Lower Storage Deck",
+            "fields": [
+              {
+                "key": "lower_deck_sorted_poms",
+                "label": "Sorted Poms",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "lower_deck_unsorted_poms",
+                "label": "Unsorted Poms",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "lower_deck_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "lower_deck_filled_trays",
+                "label": "# of Equally Filled Trays",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 6,
+                "zero_means": "zero"
+              }
+            ]
+          },
+          {
+            "key": "upper_storage_deck",
+            "label": "Upper Storage Deck",
+            "fields": [
+              {
+                "key": "upper_deck_sorted_cubes",
+                "label": "Sorted Cubes",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "upper_deck_unsorted_cubes",
+                "label": "Unsorted Cubes",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "upper_deck_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "upper_deck_stacks",
+                "label": "Max Stack Height + # of Stacks",
+                "type": "sum",
+                "mode": "sum",
+                "factor": 1,
+                "offset": 0,
+                "zero_means": "zero",
+                "inputs": [
+                  {
+                    "key": "upper_deck_max_stack_height",
+                    "label": "Max Stack Height",
+                    "min_value": 0,
+                    "max_value": 28
+                  },
+                  {
+                    "key": "upper_deck_stack_count",
+                    "label": "# of Stacks",
+                    "min_value": 0,
+                    "max_value": 28
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "centrifuge",
+            "label": "Centrifuge",
+            "fields": [
+              {
+                "key": "centrifuge_sorted_drums",
+                "label": "Sorted Drums",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "centrifuge_unsorted_drums",
+                "label": "Unsorted Drums",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "centrifuge_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "centrifuge_filled_posts",
+                "label": "# Filled Posts",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 3,
+                "zero_means": "zero"
+              }
+            ]
+          },
+          {
+            "key": "research_table",
+            "label": "Research Table",
+            "fields": [
+              {
+                "key": "research_table_sorted_cubes",
+                "label": "Sorted Cubes",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "research_table_unsorted_cubes",
+                "label": "Unsorted Cubes",
+                "type": "count",
+                "multiplier": 5,
+                "min_value": 0,
+                "max_value": 28,
+                "required": false
+              },
+              {
+                "key": "research_table_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "research_table_stacks",
+                "label": "Max Stack Height + # of Stacks",
+                "type": "sum",
+                "mode": "sum",
+                "factor": 1,
+                "offset": 0,
+                "zero_means": "zero",
+                "inputs": [
+                  {
+                    "key": "research_table_max_stack_height",
+                    "label": "Max Stack Height",
+                    "min_value": 0,
+                    "max_value": 28
+                  },
+                  {
+                    "key": "research_table_stack_count",
+                    "label": "# of Stacks",
+                    "min_value": 0,
+                    "max_value": 28
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "incineration_plant",
+            "label": "Incineration Plant",
+            "fields": [
+              {
+                "key": "incineration_poms",
+                "label": "Poms",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 48,
+                "required": false
+              },
+              {
+                "key": "incineration_drums",
+                "label": "Drums",
+                "type": "count",
+                "multiplier": 15,
+                "min_value": 0,
+                "max_value": 24,
+                "required": false
+              },
+              {
+                "key": "incineration_small_cubes",
+                "label": "Small Cube",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 18,
+                "required": false
+              },
+              {
+                "key": "incineration_big_cubes",
+                "label": "Big Cube",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "incineration_variety",
+                "label": "Game Piece Variety",
+                "type": "count",
+                "factor": 1,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 4,
+                "zero_means": "zero"
+              },
+              {
+                "key": "incineration_restricted_area",
+                "label": "Robot in Restricted Area (halved)",
+                "type": "boolean",
+                "factor": 0.5,
+                "max_value": 1,
+                "allow_below_one": true
+              }
+            ]
+          },
+          {
+            "key": "research_stations",
+            "label": "Research Stations",
+            "fields": [
+              {
+                "key": "research_stations_researchers",
+                "label": "Researchers in Station",
+                "type": "count",
+                "multiplier": 100,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "research_stations_botguy",
+                "label": "Botguy on Laboratory Ground (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "robot_control",
+            "label": "Robot Control",
+            "fields": [
+              {
+                "key": "robot_control_robots",
+                "label": "Robots Back in Start Box",
+                "type": "count",
+                "multiplier": 50,
+                "min_value": 0,
+                "max_value": 2,
+                "required": false
+              }
+            ],
+            "multipliers": []
+          },
+          {
+            "key": "waste_management",
+            "label": "Waste Management",
+            "fields": [
+              {
+                "key": "waste_rocks",
+                "label": "Only Rocks",
+                "type": "count",
+                "multiplier": 20,
+                "min_value": 0,
+                "max_value": 10,
+                "required": false
+              },
+              {
+                "key": "waste_other_pieces",
+                "label": "All Other Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "safety_lever",
+                "label": "Safety Lever (×2)",
+                "type": "boolean",
+                "factor": 2,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "laboratory_ground",
+            "label": "Laboratory Ground",
+            "fields": [
+              {
+                "key": "laboratory_ground_pieces",
+                "label": "Game Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 133,
+                "required": false
+              }
+            ],
+            "multipliers": []
+          }
+        ]
+      }
+    },
+    "multiplier_options": {
+      "definition": {
+        "sides": [],
+        "sections": [
+          {
+            "key": "penalty",
+            "label": "Penalty",
+            "fields": [
+              {
+                "key": "pieces",
+                "label": "Pieces",
+                "type": "count",
+                "multiplier": 10,
+                "min_value": 0,
+                "max_value": 100
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "count_penalty",
+                "label": "Count × 0.5",
+                "type": "count",
+                "factor": 0.5,
+                "offset": 0,
+                "min_value": 0,
+                "max_value": 4,
+                "allow_below_one": true
+              },
+              {
+                "key": "soft_half",
+                "label": "Half without allow_below_one",
+                "type": "boolean",
+                "factor": 0.5,
+                "max_value": 1
+              }
+            ]
+          },
+          {
+            "key": "tower",
+            "label": "Tower",
+            "fields": [
+              {
+                "key": "tower_pieces",
+                "label": "Tower Pieces",
+                "type": "count",
+                "multiplier": 1,
+                "min_value": 0,
+                "max_value": 100
+              }
+            ],
+            "multipliers": [
+              {
+                "key": "tower_size",
+                "label": "Width × Height (× 2 + 1)",
+                "type": "sum",
+                "mode": "product",
+                "factor": 2,
+                "offset": 1,
+                "zero_means": "zero",
+                "inputs": [
+                  {
+                    "key": "tower_width",
+                    "label": "Width",
+                    "min_value": 0,
+                    "max_value": 5
+                  },
+                  {
+                    "key": "tower_height",
+                    "label": "Height",
+                    "min_value": 0,
+                    "max_value": 5
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
     }
   },
   "cases": [
@@ -1781,6 +2952,594 @@
       "raw": {
         "A.drum_pipes_sorted": 2,
         "A.drum_posts": 3
+      },
+      "error": true
+    },
+    {
+      "name": "AIRCER Lower Storage Deck × # of equally filled trays",
+      "schema": "aircer_2026",
+      "raw": {
+        "lower_deck_sorted_poms": 6,
+        "lower_deck_unsorted_poms": 4,
+        "lower_deck_other_pieces": 2,
+        "lower_deck_filled_trays": 3
+      },
+      "total": 426,
+      "sections": {
+        "lower_storage_deck": [
+          142,
+          3,
+          426
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Upper Storage Deck × (max stack height + # of stacks)",
+      "schema": "aircer_2026",
+      "raw": {
+        "upper_deck_sorted_cubes": 4,
+        "upper_deck_unsorted_cubes": 2,
+        "upper_deck_other_pieces": 1,
+        "upper_deck_max_stack_height": 3,
+        "upper_deck_stack_count": 2
+      },
+      "total": 505,
+      "sections": {
+        "upper_storage_deck": [
+          101,
+          5,
+          505
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Upper Storage Deck, product option: × height × stacks",
+      "schema": "aircer_2026_product",
+      "raw": {
+        "upper_deck_sorted_cubes": 4,
+        "upper_deck_unsorted_cubes": 2,
+        "upper_deck_other_pieces": 1,
+        "upper_deck_max_stack_height": 3,
+        "upper_deck_stack_count": 2
+      },
+      "total": 606,
+      "sections": {
+        "upper_storage_deck": [
+          101,
+          6,
+          606
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Centrifuge × filled posts, unsorted drums scored without the = box",
+      "schema": "aircer_2026",
+      "raw": {
+        "centrifuge_sorted_drums": 3,
+        "centrifuge_unsorted_drums": 2,
+        "centrifuge_other_pieces": 1,
+        "centrifuge_filled_posts": 2
+      },
+      "total": 382,
+      "sections": {
+        "centrifuge": [
+          191,
+          2,
+          382
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Research Table × (max stack height + # of stacks)",
+      "schema": "aircer_2026",
+      "raw": {
+        "research_table_sorted_cubes": 4,
+        "research_table_unsorted_cubes": 3,
+        "research_table_max_stack_height": 2,
+        "research_table_stack_count": 1
+      },
+      "total": 225,
+      "sections": {
+        "research_table": [
+          75,
+          3,
+          225
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Research Table, product option with no stacks stays neutral",
+      "schema": "aircer_2026_product",
+      "raw": {
+        "research_table_sorted_cubes": 4,
+        "research_table_unsorted_cubes": 3,
+        "research_table_max_stack_height": 3,
+        "research_table_stack_count": 0
+      },
+      "total": 75,
+      "sections": {
+        "research_table": [
+          75,
+          1,
+          75
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Incineration Plant × game piece variety",
+      "schema": "aircer_2026",
+      "raw": {
+        "incineration_poms": 2,
+        "incineration_drums": 1,
+        "incineration_small_cubes": 1,
+        "incineration_big_cubes": 1,
+        "incineration_variety": 4
+      },
+      "total": 420,
+      "sections": {
+        "incineration_plant": [
+          105,
+          4,
+          420
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Restricted Area rule halves the Incineration Plant",
+      "schema": "aircer_2026",
+      "raw": {
+        "incineration_poms": 2,
+        "incineration_drums": 1,
+        "incineration_small_cubes": 1,
+        "incineration_big_cubes": 1,
+        "incineration_variety": 4,
+        "incineration_restricted_area": true
+      },
+      "total": 210,
+      "sections": {
+        "incineration_plant": [
+          105,
+          2,
+          210
+        ]
+      }
+    },
+    {
+      "name": "AIRCER halving keeps half points",
+      "schema": "aircer_2026",
+      "raw": {
+        "incineration_drums": 1,
+        "incineration_variety": 1,
+        "incineration_restricted_area": true
+      },
+      "total": 7.5,
+      "sections": {
+        "incineration_plant": [
+          15,
+          0.5,
+          7.5
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Research Stations × 2 with Botguy on Laboratory Ground",
+      "schema": "aircer_2026",
+      "raw": {
+        "research_stations_researchers": 3,
+        "research_stations_botguy": true
+      },
+      "total": 600,
+      "sections": {
+        "research_stations": [
+          300,
+          2,
+          600
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Robot Control and Laboratory Ground have no multiplier",
+      "schema": "aircer_2026",
+      "raw": {
+        "robot_control_robots": 2,
+        "laboratory_ground_pieces": 7
+      },
+      "total": 107,
+      "sections": {
+        "robot_control": [
+          100,
+          1,
+          100
+        ],
+        "laboratory_ground": [
+          7,
+          1,
+          7
+        ]
+      }
+    },
+    {
+      "name": "AIRCER Waste Management × 2 with the Safety Lever",
+      "schema": "aircer_2026",
+      "raw": {
+        "waste_rocks": 5,
+        "waste_other_pieces": 2,
+        "safety_lever": true
+      },
+      "total": 204,
+      "sections": {
+        "waste_management": [
+          102,
+          2,
+          204
+        ]
+      }
+    },
+    {
+      "name": "AIRCER empty trays box is neutral by default",
+      "schema": "aircer_2026",
+      "raw": {
+        "lower_deck_sorted_poms": 4,
+        "lower_deck_filled_trays": 0
+      },
+      "total": 80,
+      "sections": {
+        "lower_storage_deck": [
+          80,
+          1,
+          80
+        ]
+      }
+    },
+    {
+      "name": "AIRCER zero option: no filled trays or stacks scores the area 0",
+      "schema": "aircer_2026_zero",
+      "raw": {
+        "lower_deck_sorted_poms": 4,
+        "lower_deck_filled_trays": 0,
+        "upper_deck_unsorted_cubes": 2
+      },
+      "total": 0,
+      "sections": {
+        "lower_storage_deck": [
+          80,
+          0,
+          0
+        ],
+        "upper_storage_deck": [
+          20,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "AIRCER zero option with filled boxes scores like the default",
+      "schema": "aircer_2026_zero",
+      "raw": {
+        "lower_deck_sorted_poms": 4,
+        "lower_deck_filled_trays": 2
+      },
+      "total": 160,
+      "sections": {
+        "lower_storage_deck": [
+          80,
+          2,
+          160
+        ]
+      }
+    },
+    {
+      "name": "AIRCER full sheet",
+      "schema": "aircer_2026",
+      "raw": {
+        "lower_deck_sorted_poms": 8,
+        "lower_deck_unsorted_poms": 3,
+        "lower_deck_other_pieces": 1,
+        "lower_deck_filled_trays": 2,
+        "upper_deck_sorted_cubes": 3,
+        "upper_deck_unsorted_cubes": 1,
+        "upper_deck_max_stack_height": 3,
+        "upper_deck_stack_count": 2,
+        "centrifuge_sorted_drums": 4,
+        "centrifuge_unsorted_drums": 1,
+        "centrifuge_filled_posts": 2,
+        "research_table_sorted_cubes": 2,
+        "research_table_unsorted_cubes": 2,
+        "research_table_other_pieces": 1,
+        "research_table_max_stack_height": 2,
+        "research_table_stack_count": 1,
+        "incineration_poms": 3,
+        "incineration_drums": 2,
+        "incineration_big_cubes": 1,
+        "incineration_variety": 3,
+        "incineration_restricted_area": true,
+        "research_stations_researchers": 4,
+        "research_stations_botguy": true,
+        "robot_control_robots": 1,
+        "waste_rocks": 6,
+        "waste_other_pieces": 1,
+        "safety_lever": true,
+        "laboratory_ground_pieces": 9
+      },
+      "total": 2531,
+      "sections": {
+        "lower_storage_deck": [
+          176,
+          2,
+          352
+        ],
+        "upper_storage_deck": [
+          70,
+          5,
+          350
+        ],
+        "centrifuge": [
+          220,
+          2,
+          440
+        ],
+        "research_table": [
+          41,
+          3,
+          123
+        ],
+        "incineration_plant": [
+          110,
+          1.5,
+          165
+        ],
+        "research_stations": [
+          400,
+          2,
+          800
+        ],
+        "robot_control": [
+          50,
+          1,
+          50
+        ],
+        "waste_management": [
+          121,
+          2,
+          242
+        ],
+        "laboratory_ground": [
+          9,
+          1,
+          9
+        ]
+      }
+    },
+    {
+      "name": "AIRCER full sheet, product option",
+      "schema": "aircer_2026_product",
+      "raw": {
+        "lower_deck_sorted_poms": 8,
+        "lower_deck_unsorted_poms": 3,
+        "lower_deck_other_pieces": 1,
+        "lower_deck_filled_trays": 2,
+        "upper_deck_sorted_cubes": 3,
+        "upper_deck_unsorted_cubes": 1,
+        "upper_deck_max_stack_height": 3,
+        "upper_deck_stack_count": 2,
+        "centrifuge_sorted_drums": 4,
+        "centrifuge_unsorted_drums": 1,
+        "centrifuge_filled_posts": 2,
+        "research_table_sorted_cubes": 2,
+        "research_table_unsorted_cubes": 2,
+        "research_table_other_pieces": 1,
+        "research_table_max_stack_height": 2,
+        "research_table_stack_count": 1,
+        "incineration_poms": 3,
+        "incineration_drums": 2,
+        "incineration_big_cubes": 1,
+        "incineration_variety": 3,
+        "incineration_restricted_area": true,
+        "research_stations_researchers": 4,
+        "research_stations_botguy": true,
+        "robot_control_robots": 1,
+        "waste_rocks": 6,
+        "waste_other_pieces": 1,
+        "safety_lever": true,
+        "laboratory_ground_pieces": 9
+      },
+      "total": 2560,
+      "sections": {
+        "lower_storage_deck": [
+          176,
+          2,
+          352
+        ],
+        "upper_storage_deck": [
+          70,
+          6,
+          420
+        ],
+        "centrifuge": [
+          220,
+          2,
+          440
+        ],
+        "research_table": [
+          41,
+          2,
+          82
+        ],
+        "incineration_plant": [
+          110,
+          1.5,
+          165
+        ],
+        "research_stations": [
+          400,
+          2,
+          800
+        ],
+        "robot_control": [
+          50,
+          1,
+          50
+        ],
+        "waste_management": [
+          121,
+          2,
+          242
+        ],
+        "laboratory_ground": [
+          9,
+          1,
+          9
+        ]
+      }
+    },
+    {
+      "name": "AIRCER full sheet, zero option changes nothing when every box is filled",
+      "schema": "aircer_2026_zero",
+      "raw": {
+        "lower_deck_sorted_poms": 8,
+        "lower_deck_unsorted_poms": 3,
+        "lower_deck_other_pieces": 1,
+        "lower_deck_filled_trays": 2,
+        "upper_deck_sorted_cubes": 3,
+        "upper_deck_unsorted_cubes": 1,
+        "upper_deck_max_stack_height": 3,
+        "upper_deck_stack_count": 2,
+        "centrifuge_sorted_drums": 4,
+        "centrifuge_unsorted_drums": 1,
+        "centrifuge_filled_posts": 2,
+        "research_table_sorted_cubes": 2,
+        "research_table_unsorted_cubes": 2,
+        "research_table_other_pieces": 1,
+        "research_table_max_stack_height": 2,
+        "research_table_stack_count": 1,
+        "incineration_poms": 3,
+        "incineration_drums": 2,
+        "incineration_big_cubes": 1,
+        "incineration_variety": 3,
+        "incineration_restricted_area": true,
+        "research_stations_researchers": 4,
+        "research_stations_botguy": true,
+        "robot_control_robots": 1,
+        "waste_rocks": 6,
+        "waste_other_pieces": 1,
+        "safety_lever": true,
+        "laboratory_ground_pieces": 9
+      },
+      "total": 2531
+    },
+    {
+      "name": "AIRCER empty sheet scores 0",
+      "schema": "aircer_2026",
+      "raw": {},
+      "total": 0
+    },
+    {
+      "name": "AIRCER more filled posts than usable rods is rejected",
+      "schema": "aircer_2026",
+      "raw": {
+        "centrifuge_sorted_drums": 2,
+        "centrifuge_filled_posts": 4
+      },
+      "error": true
+    },
+    {
+      "name": "AIRCER a third robot in the start box is rejected",
+      "schema": "aircer_2026",
+      "raw": {
+        "robot_control_robots": 3
+      },
+      "error": true
+    },
+    {
+      "name": "Multiplier options: allow_below_one applies a count factor below 1",
+      "schema": "multiplier_options",
+      "raw": {
+        "pieces": 3,
+        "count_penalty": 1,
+        "soft_half": true
+      },
+      "total": 15,
+      "sections": {
+        "penalty": [
+          30,
+          0.5,
+          15
+        ]
+      }
+    },
+    {
+      "name": "Multiplier options: an empty penalty box stays neutral",
+      "schema": "multiplier_options",
+      "raw": {
+        "pieces": 3,
+        "count_penalty": 0
+      },
+      "total": 30,
+      "sections": {
+        "penalty": [
+          30,
+          1,
+          30
+        ]
+      }
+    },
+    {
+      "name": "Multiplier options: penalty count of 3 gives × 1.5",
+      "schema": "multiplier_options",
+      "raw": {
+        "pieces": 3,
+        "count_penalty": 3
+      },
+      "total": 45,
+      "sections": {
+        "penalty": [
+          30,
+          1.5,
+          45
+        ]
+      }
+    },
+    {
+      "name": "Multiplier options: product sum multiplier with factor and offset",
+      "schema": "multiplier_options",
+      "raw": {
+        "tower_pieces": 5,
+        "tower_width": 2,
+        "tower_height": 3
+      },
+      "total": 65,
+      "sections": {
+        "tower": [
+          5,
+          13,
+          65
+        ]
+      }
+    },
+    {
+      "name": "Multiplier options: product of 0 with zero_means zero scores 0",
+      "schema": "multiplier_options",
+      "raw": {
+        "tower_pieces": 5,
+        "tower_width": 2,
+        "tower_height": 0
+      },
+      "total": 0,
+      "sections": {
+        "tower": [
+          5,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Multiplier options: a sum input above its maximum is rejected",
+      "schema": "multiplier_options",
+      "raw": {
+        "tower_pieces": 5,
+        "tower_width": 6
       },
       "error": true
     }

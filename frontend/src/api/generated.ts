@@ -9461,9 +9461,15 @@ export interface components {
          * @description A value applied to a section subtotal.
          *
          *     boolean: checked → × factor. count/number: × (value × factor + offset).
-         *     A result below 1 leaves the subtotal unchanged. With ``source`` (boolean
-         *     only) the multiplier has no input: it is on when that field of the same
-         *     section is at least 1, e.g. 2026 "Drum ×2" in the Lower Start Box.
+         *     sum: × ((Σ inputs, or Π inputs with ``mode: "product"``) × factor + offset),
+         *     e.g. AIRCER "Max Stack Height + # of Stacks".
+         *
+         *     A result below 1 leaves the subtotal unchanged, unless ``allow_below_one``
+         *     (a penalty such as the AIRCER Restricted Area rule, checked → × 0.5).
+         *     ``zero_means: "zero"`` (count/number/sum) makes an entered 0 zero the area
+         *     instead of the neutral × 1. With ``source`` (boolean only) the multiplier has
+         *     no input: it is on when that field of the same section is at least 1, e.g.
+         *     2026 "Drum ×2" in the Lower Start Box.
          */
         SheetMultiplier: {
             /** Key */
@@ -9475,7 +9481,7 @@ export interface components {
              * @default boolean
              * @enum {string}
              */
-            type: "boolean" | "count" | "number";
+            type: "boolean" | "count" | "number" | "sum";
             /**
              * Factor
              * @default 1
@@ -9492,6 +9498,25 @@ export interface components {
             max_value?: number | null;
             /** Source */
             source?: string | null;
+            /** Inputs */
+            inputs?: components["schemas"]["SheetSumInput"][] | null;
+            /**
+             * Mode
+             * @default sum
+             * @enum {string}
+             */
+            mode: "sum" | "product";
+            /**
+             * Allow Below One
+             * @default false
+             */
+            allow_below_one: boolean;
+            /**
+             * Zero Means
+             * @default neutral
+             * @enum {string}
+             */
+            zero_means: "neutral" | "zero";
         };
         /** SheetSection */
         SheetSection: {
@@ -9503,6 +9528,23 @@ export interface components {
             fields: components["schemas"]["SheetField"][];
             /** Multipliers */
             multipliers?: (components["schemas"]["SheetMultiplier"] | components["schemas"]["SheetEitherMultiplier"])[];
+        };
+        /**
+         * SheetSumInput
+         * @description One counted value of a ``sum`` multiplier, e.g. "Max Stack Height".
+         */
+        SheetSumInput: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Min Value
+             * @default 0
+             */
+            min_value: number | null;
+            /** Max Value */
+            max_value?: number | null;
         };
         /** StatsOverview */
         StatsOverview: {
