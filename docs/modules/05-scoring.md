@@ -332,6 +332,32 @@ Ein leeres Multiplikator-Feld (0) lässt die Zwischensumme unverändert, wie auf
 - Drum muss physisch durch ADDS automatisch ausgeliefert werden (autonomer Delivery-Mechanismus)
 - Stacks: unterster Piece muss Pallet oder Cube sein; nur Cubes können gestapelt werden
 
+#### AIRCER 2026 – Laboratory Lockdown (robo4you)
+
+Aus dem „2026 AIRCER Scoring Sheet 1.0“ (`docs/assets/2026-AIRCER-Scoring-Sheet-1.0.pdf`), Regeln aus dem Game Manual 1.0 (`docs/assets/2026-AIRCER-Game-Manual-1.0.pdf`). Vorlage `aircer_2026`, vollständig. **Eine Seite**: jedes Team spielt seine eigene gespiegelte Hälfte und bekommt ein eigenes Sheet („Side Total“), die Definition hat daher keine Seiten A/B und die Rohwerte heißen ohne Präfix (`waste_rocks`).
+
+| Bereich | Felder (Punkte) | Bereichs-Multiplikator |
+|---|---|---|
+| Lower Storage Deck | Sorted Poms ×20, Unsorted Poms ×5, All Other ×1 | × # of Equally Filled Trays (≤ 6) |
+| Upper Storage Deck | Sorted Cubes ×20, Unsorted Cubes ×10, All Other ×1 | × (Max Stack Height + # of Stacks) – Summen-Multiplikator |
+| Centrifuge | Sorted Drums ×50, Unsorted Drums ×20, All Other ×1 | × # Filled Posts (≤ 3) |
+| Research Table | Sorted Cubes ×15, Unsorted Cubes ×5, All Other ×1 | × (Max Stack Height + # of Stacks) |
+| Incineration Plant | Poms ×10, Drums ×15, Small Cube ×20, Big Cube ×50 | × Game Piece Variety (≤ 4); Restricted Area Rule: Häkchen × 0,5 |
+| Research Stations | Researchers in Station ×100 | Botguy on Laboratory Ground ×2 |
+| Robot Control | Robots Back in Start Box ×50 (≤ 2) | – |
+| Waste Management | Only Rocks ×20, All Other ×1 | Safety Lever ×2 |
+| Laboratory Ground | Game Pieces ×1 | – |
+
+Maxima aus der Teileliste (Manual S. 9): 48 Poms, 10 große und 18 kleine Cubes, 24 Drums, 10 Researcher, 10 Rocks; Safety Cones zählen nie. Schlüssel für Tie-Breaker: `centrifuge_sorted_drums` + `centrifuge_unsorted_drums` (gültige Drums), `waste_rocks`, `safety_lever`.
+
+**Offene Fragen und gewählte Standards** (alle im Schema-Editor umschaltbar, in den Vorlagen-Notizen genannt):
+
+1. „Max Stack Height X ___ + # of Stacks X ___“: gelesen als × (Höhe + Stapel), `mode: "sum"`. Alternative `mode: "product"`: × Höhe × Stapel.
+2. Leeres Multiplikator-Feld (0) bei Trays, Posts, Variety und Stacks: neutral (× 1) wie bei Botball, `zero_means: "neutral"`. Alternative `zero_means: "zero"`: der Bereich zählt 0.
+3. „Unsorted Drums X 20“ hat auf dem Sheet kein „=“-Kästchen; die Zeile wird wie jede andere gewertet.
+4. Die Restricted Area Rule steht nur im Manual: Häkchen mit Faktor 0,5 und `allow_below_one: true` halbiert die Incineration Plant, halbe Punkte bleiben erhalten (keine Rundung).
+5. Annahmen: höchstens 3 gefüllte Posts (ein nutzbarer Stab je Drum-Farbe, einer ist gebrochen), Game Piece Variety höchstens 4 (Poms, Drums, kleine, große Cubes).
+
 > Alle Felder werden als konfigurierbares YAML/JSON-Schema pro Saison im System hinterlegt.
 
 #### Umsetzung: strukturiertes Score-Sheet
@@ -340,8 +366,21 @@ Ein Schema ist entweder eine flache Feldliste (Σ Wert × Multiplikator) oder ei
 
 - **Bereiche** mit Feldern (Anzahl/Boolean, Punkte, Maximalwert) → Zwischensumme.
 - **Bereichs-Multiplikatoren** auf die Zwischensumme: Häkchen (× Faktor), Anzahl (× (n · Faktor + Offset), z. B. „Robots back ×n+1“), **Entweder-oder** (die bessere Alternative zählt), **abgeleitet** (`source`: das Häkchen folgt einem Feld desselben Bereichs, 2026 „Drum ×2“ – kein eigenes Eingabefeld). Werte unter 1 lassen die Zwischensumme unverändert. Mehrere Multiplikatoren eines Bereichs werden multipliziert.
-- **Seiten A/B**: jeder Bereich pro Seite, Total = A + B. Rohwerte heißen dann `A.<feld>` / `B.<feld>`.
-- Vorlagen 2024, 2025 und 2026 (vollständig, aus den Score-Sheets) sind im Editor wählbar; „Klonen von“ kopiert das aktive Schema eines anderen Events/einer anderen Stufe als neue Version.
+- **Summen-Multiplikator** (`type: "sum"`): mehrere gezählte Werte (`inputs`), deren Summe – oder mit `mode: "product"` deren Produkt – × Faktor + Offset auf die Zwischensumme wirkt (AIRCER „Max Stack Height + # of Stacks“). Der Multiplikator selbst hat kein Eingabefeld; die Eingaben heißen wie ihre `inputs[].key`. Nicht als Entweder-oder-Alternative erlaubt.
+- **Abzug** (`allow_below_one: true`, alle Arten): ein Faktor unter 1 wirkt (nie unter 0), z. B. AIRCER Restricted Area × 0,5. Ohne das Flag bleibt es bei der Botball-Regel (unter 1 → × 1). Ein leeres Häkchen oder eine 0 ist auch mit dem Flag neutral.
+- **Null-Regel** (`zero_means`, Anzahl/Zahl/Summe): `"neutral"` (Standard) – eine 0 im Multiplikator-Feld lässt die Zwischensumme unverändert; `"zero"` – eine 0 (bei Summen: Summe bzw. Produkt 0) setzt den Bereich auf 0.
+- Nicht gesetzte Schalter werden nicht gespeichert, bestehende Definitionen behalten ihre Form; ausdrücklich gesetzte Standards (die AIRCER-Vorlage schreibt `mode` und `zero_means` aus) bleiben erhalten, damit der Schalter im JSON sichtbar ist.
+
+  ```json
+  {"key": "upper_deck_stacks", "label": "Max Stack Height + # of Stacks", "type": "sum",
+   "mode": "sum", "factor": 1, "offset": 0, "zero_means": "neutral",
+   "inputs": [{"key": "upper_deck_max_stack_height", "label": "Max Stack Height", "min_value": 0, "max_value": 28},
+              {"key": "upper_deck_stack_count", "label": "# of Stacks", "min_value": 0, "max_value": 28}]}
+  {"key": "incineration_restricted_area", "label": "Robot in Restricted Area (halved)",
+   "type": "boolean", "factor": 0.5, "max_value": 1, "allow_below_one": true}
+  ```
+- **Seiten A/B**: jeder Bereich pro Seite, Total = A + B. Rohwerte heißen dann `A.<feld>` / `B.<feld>`. Ohne Seiten (AIRCER) gibt es eine Seite und die Rohwerte heißen wie die Felder.
+- Vorlagen 2024, 2025, 2026 und AIRCER 2026 (vollständig, aus den Score-Sheets) sind im Editor wählbar; „Klonen von“ kopiert das aktive Schema eines anderen Events/einer anderen Stufe als neue Version.
 
 ### Tie-Breaker & Sonderregeln (Game Review)
 

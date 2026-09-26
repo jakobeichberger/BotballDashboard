@@ -4,6 +4,12 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### AIRCER 2026: Score-Sheet
+
+- **Vorlage `aircer_2026` („AIRCER 2026 – Laboratory Lockdown“)** aus Scoring Sheet 1.0 und Game Manual 1.0 von robo4you: neun Bereiche, eine Seite pro Team, Tie-Breaker-Felder `centrifuge_sorted_drums`, `centrifuge_unsorted_drums`, `waste_rocks`, `safety_lever`.
+- **Neue Multiplikator-Arten im Score-Sheet:** Summen-Multiplikator (`type: "sum"`, `inputs`, `mode: "sum" | "product"`) für „Max Stack Height + # of Stacks“, Abzug (`allow_below_one`) für die Restricted Area Rule (× 0,5) und die Null-Regel (`zero_means: "neutral" | "zero"`). Backend und Live-Vorschau rechnen identisch (gemeinsame Fixture, 27 neue Fälle); bestehende Vorlagen und gespeicherte Schemas bleiben unverändert.
+- Offene Fragen der AIRCER-Dokumente (Summe oder Produkt, leeres Feld, fehlendes „=“ bei Unsorted Drums) stehen in den Vorlagen-Notizen; die Standards sind im Schema-Editor umschaltbar. Details: `docs/modules/05-scoring.md`.
+
 ### Review 2: Backend-Sicherheit und -Performance
 
 - **Passwort-Reset:** Der Reset-Link steht nur noch in Development im Log. Ohne Mail-Konfiguration schreibt Produktion eine Warnung `password_reset_mail_unavailable` ohne Token. Eine reine SendGrid-Konfiguration gilt als Mail-Konfiguration und versendet direkt über SendGrid.
