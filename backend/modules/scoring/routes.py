@@ -13,7 +13,7 @@ from core.auth import (
 )
 from core.cache import cached_payload, conditional_response, dump_json
 from core.database import get_db
-from core.exceptions import ForbiddenError, NotFoundError, UnauthorizedError
+from core.exceptions import ForbiddenError, NotFoundError, UnauthorizedError, ValidationError
 from core.live import publish_after_commit
 from modules.events import service as event_svc
 from modules.events.draft_access import DRAFT_READERS, is_draft_event
@@ -36,6 +36,7 @@ from modules.scoring.competition_schemas import (
     ResultRevisionResponse,
     TeamRankingEntry,
 )
+from modules.scoring.models import Ranking
 from modules.scoring.schemas import (
     MatchConfirm,
     MatchCreate,
@@ -421,9 +422,44 @@ async def _extended_ranking(
     ]
 
 
+#: Same rule as the category registry keys (modules.seasons.categories).
+_CATEGORY_PATTERN = r"^[a-z][a-z0-9_]{0,19}$"
+
+
+async def _assert_ranking_category(db: AsyncSession, event: Event, category: str | None) -> None:
+    """422 unless ``category`` is one of the event's season categories.
+
+    Checked before the cache is consulted: the key contains the category, so
+    arbitrary values let anyone (the public scoreboard routes need no login)
+    fill the cache with entries nobody reads again. A key no longer in the
+    registry but still carried by stored rankings (older seasons) is valid.
+    """
+    if category is None or category == service.DEFAULT_CATEGORY:
+        return
+    from modules.seasons.categories import category_map
+
+    known = set(await category_map(db, event.season_id))
+    season = await db.get(Season, event.season_id)
+    if season is not None:
+        known.update(season.active_categories or [])
+    if category in known:
+        return
+    stored = await db.execute(
+        select(Ranking.id)
+        .where(Ranking.event_id == event.id, Ranking.category == category)
+        .limit(1)
+    )
+    if stored.first() is None:
+        raise ValidationError(
+            f"Unknown category '{category}' (allowed: {', '.join(sorted(known))})"
+        )
+
+
 async def _cached_extended_ranking(
     request: Request, db: AsyncSession, event: Event, category: str | None
 ):
+    await _assert_ranking_category(db, event, category)
+
     async def compute() -> bytes:
         return dump_json(list[TeamRankingEntry], await _extended_ranking(db, event, category))
 
@@ -435,7 +471,7 @@ async def _cached_extended_ranking(
 async def get_ranking_extended(
     request: Request,
     season_id: str,
-    category: str | None = Query(None),
+    category: str | None = Query(None, pattern=_CATEGORY_PATTERN),
     event_id: str | None = Query(None),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
@@ -454,7 +490,7 @@ async def get_ranking_extended(
 async def get_event_ranking_extended(
     request: Request,
     event_id: str,
-    category: str | None = Query(None),
+    category: str | None = Query(None, pattern=_CATEGORY_PATTERN),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
@@ -469,6 +505,7 @@ async def get_event_ranking_extended(
 async def _cached_overall_ranking(
     request: Request, db: AsyncSession, event: Event, category: str | None
 ):
+    await _assert_ranking_category(db, event, category)
     season = await season_svc.get_season(db, event.season_id)
     categories = [category] if category else list(season.active_categories or ["botball"])
 
@@ -484,7 +521,7 @@ async def _cached_overall_ranking(
 async def get_event_overall_ranking(
     request: Request,
     event_id: str,
-    category: str | None = Query(None),
+    category: str | None = Query(None, pattern=_CATEGORY_PATTERN),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):

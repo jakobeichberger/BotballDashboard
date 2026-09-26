@@ -143,6 +143,9 @@ export interface paths {
         /**
          * Request Password Reset
          * @description Always 204, whether or not the address belongs to an account.
+         *
+         *     The mail leaves after the commit, in the background: the answer never
+         *     waits for the mail server, so its timing does not reveal the account.
          */
         post: operations["request_password_reset_api_auth_password_reset_request_post"];
         delete?: never;
