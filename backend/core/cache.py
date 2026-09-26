@@ -33,7 +33,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Request, Response
 from pydantic import TypeAdapter
@@ -250,11 +250,11 @@ async def _compute_and_store(key: str, compute: Callable[[], Awaitable[bytes]]) 
         await _store(key, payload)
         return payload
     finally:
-        if token:
+        if isinstance(token, str):
             await _release_lock(lock_key, token)
 
 
-async def _acquire_lock(lock_key: str) -> str | bool | None:
+async def _acquire_lock(lock_key: str) -> str | Literal[False] | None:
     """A token when this instance holds the lock, False when another one does,
     None when there is no shared lock (memory backend, Redis unavailable)."""
     if not _redis_usable():
