@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@10.29.3",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "vite",
@@ -25,7 +25,7 @@
     "@fontsource/geist-sans": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
     "@hookform/resolvers": "^5.9.1",
-    "@tanstack/react-query": "^5.103.2",
+    "@tanstack/react-query": "^5.103.3",
     "axios": "^1.20.0",
     "clsx": "^2.1.1",
     "i18next": "^26.4.2",
@@ -35,7 +35,7 @@
     "lucide-react": "^1.48.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-hook-form": "^7.88.0",
+    "react-hook-form": "^7.89.0",
     "react-i18next": "^17.0.15",
     "react-is": "^19.3.0",
     "react-router": "^8.4.0",
@@ -70,7 +70,7 @@
     "globals": "^17.12.0",
     "jest-axe": "^11.0.0",
     "jsdom": "^30.1.1",
-    "openapi-typescript": "7.8.0",
+    "openapi-typescript": "7.13.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "typescript-7": "npm:typescript@^7.0.2",
@@ -95,6 +95,11 @@
       "js-yaml@>=4.0.0 <4.3.2": "^4.3.2",
       "browserslist@<4.28.7": "^4.28.7",
       "minimatch@9": "^10.2.5"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "openapi-typescript>typescript": "6"
+      }
     }
   }
 }
