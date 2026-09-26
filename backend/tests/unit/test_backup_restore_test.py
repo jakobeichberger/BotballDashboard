@@ -253,3 +253,39 @@ def test_restore_test_sh_can_drop_its_database(tmp_path):
     assert "RESTORE_TEST_DROP_DB" in text
     result = subprocess.run(["sh", "-n", str(SCRIPTS / "restore-test.sh")], capture_output=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_restore_test_runs_between_backups_for_an_eligible_archive(env, monkeypatch):
+    """The first test must not wait a whole backup interval (update.sh case)."""
+    monkeypatch.setattr(bs, "ensure_restore_test_key", lambda path: "age1testrecipient")
+    ran: list = []
+    monkeypatch.setattr(
+        bs,
+        "run_restore_test",
+        lambda archive, identity, automatic: (
+            ran.append(archive) or bs.RestoreTestStatus(last_ok=True)
+        ),
+    )
+    archive = env / "botball-1.tar.gz.age"
+    archive.write_text("x")
+    # Encrypted only to AGE_RECIPIENT (e.g. made before the test key existed).
+    old = bs.BackupStatus(last_run_at=1.0, last_run_ok=True, last_archive=str(archive))
+    assert bs.maybe_restore_test(old) is False
+    eligible = bs.BackupStatus(
+        last_run_at=1.0,
+        last_run_ok=True,
+        last_archive=str(archive),
+        restore_test_recipient="age1testrecipient",
+    )
+    assert bs.maybe_restore_test(eligible) is True
+    assert ran == [str(archive)]
+    # A key rotated since then cannot decrypt the archive.
+    monkeypatch.setattr(bs, "ensure_restore_test_key", lambda path: "age1otherkey")
+    assert bs.maybe_restore_test(eligible) is False
+
+
+def test_backup_status_records_the_test_recipient(env, monkeypatch):
+    monkeypatch.setattr(bs, "ensure_restore_test_key", lambda path: "age1testrecipient")
+    status = bs.run_once(bs.status_path())
+    assert status.restore_test_recipient == "age1testrecipient"
+    assert bs.load_status(bs.status_path()).restore_test_recipient == "age1testrecipient"

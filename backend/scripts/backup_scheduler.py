@@ -101,6 +101,9 @@ class BackupStatus:
     offsite_consecutive_failures: int = 0
     # Archive whose copy failed and is retried after BACKUP_RETRY_SECONDS.
     offsite_pending: str | None = None
+    # Public key of the restore-test key the last archive was also encrypted
+    # to (None: only AGE_RECIPIENT can decrypt it, no automatic test).
+    restore_test_recipient: str | None = None
 
 
 @dataclass
@@ -201,6 +204,7 @@ def run_backup(
         status.last_run_ok = True
         status.last_success_at = started
         status.last_archive = archive
+        status.restore_test_recipient = (extra_env or {}).get("BACKUP_EXTRA_RECIPIENTS") or None
         status.last_size_bytes = _file_size(archive)
         status.last_error = None
         status.consecutive_failures = 0
@@ -664,18 +668,8 @@ def run_once(path: Path, scheduled: bool = False) -> BackupStatus:
         _log(f"backup succeeded: {status.last_archive}")
         if offsite_target():
             status = copy_once(path, status.last_archive)
-        if (
-            scheduled
-            and recipient
-            and status.last_archive
-            and restore_test_due(
-                load_restore_status(restore_status_path()),
-                time.time(),
-                interval,
-                _env_int("BACKUP_RETRY_SECONDS", 3600),
-            )
-        ):
-            run_restore_test(status.last_archive, restore_test_identity(), automatic=True)
+        if scheduled:
+            maybe_restore_test(status)
     else:
         _log(
             f"BACKUP FAILED ({status.consecutive_failures} in a row): {status.last_error}. "
@@ -684,12 +678,35 @@ def run_once(path: Path, scheduled: bool = False) -> BackupStatus:
     return status
 
 
+def maybe_restore_test(status: BackupStatus | None) -> bool:
+    """Run the automatic restore test when it is due and the newest archive
+    was encrypted to the test key. Independent of the backup schedule, so the
+    first test does not wait for the next backup. True when a test ran."""
+    interval = restore_test_interval()
+    if interval <= 0 or status is None or not status.last_archive:
+        return False
+    recipient = ensure_restore_test_key(Path(restore_test_identity()))
+    if not recipient or status.restore_test_recipient != recipient:
+        return False  # only AGE_RECIPIENT can decrypt that archive
+    if not Path(status.last_archive).is_file():
+        return False
+    if not restore_test_due(
+        load_restore_status(restore_status_path()),
+        time.time(),
+        interval,
+        _env_int("BACKUP_RETRY_SECONDS", 3600),
+    ):
+        return False
+    run_restore_test(status.last_archive, restore_test_identity(), automatic=True)
+    return True
+
+
 def verify_backup(status: BackupStatus) -> int:
-    """Check the archive just written: a full restore test when the test key
-    exists, otherwise its checksum (backup.sh already read the dump back)."""
-    identity = Path(restore_test_identity())
-    if restore_test_interval() > 0 and identity.is_file() and status.last_archive:
-        result = run_restore_test(status.last_archive, str(identity), automatic=True)
+    """Check the archive just written: a full restore test when it was also
+    encrypted to the test key, otherwise its checksum (backup.sh already read
+    the dump back)."""
+    if restore_test_interval() > 0 and status.restore_test_recipient and status.last_archive:
+        result = run_restore_test(status.last_archive, restore_test_identity(), automatic=True)
         return 0 if result.last_ok else 1
     problem = verify_checksum(status.last_archive)
     if problem:
@@ -758,7 +775,9 @@ def main(argv: list[str]) -> int:
         restore_status.tracking_since = time.time()
         save_restore_status(restore_path, restore_status)
     if restore_test_interval() > 0:
-        _log(f"restore test every {restore_test_interval()}s (after the next due backup)")
+        # Create the key now, so the next backup is already encrypted to it.
+        ensure_restore_test_key(Path(restore_test_identity()))
+        _log(f"restore test every {restore_test_interval()}s")
     announced = None
     while True:
         current = load_status(path)
@@ -770,6 +789,8 @@ def main(argv: list[str]) -> int:
             continue
         if copy_delay is not None:
             delay = min(delay, copy_delay)
+        if delay > 0 and maybe_restore_test(current):
+            continue
         if delay > 0:
             if announced is None or abs(delay - announced) > 600:
                 _log(f"next backup in {int(delay)}s")

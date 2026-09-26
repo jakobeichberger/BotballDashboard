@@ -212,6 +212,10 @@ pre_migration_backup() {
     return 0
   fi
   info "Backup before ${label} (backup + restore test / checksum)..."
+  # A new release may add volumes to the backup service (e.g. the
+  # restore-test key); hand them to the app user first, as `up` would.
+  docker compose run --rm --no-deps -T backup-permissions >/dev/null 2>&1 \
+    || warn "backup-permissions failed – the backup may not reach every volume"
   if ! output="$(docker compose run --rm --no-deps -T backup \
       python scripts/backup_scheduler.py once --verify 2>&1)"; then
     echo "${output}" | tail -n 30 >&2
