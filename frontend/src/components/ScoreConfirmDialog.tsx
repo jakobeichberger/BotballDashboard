@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Modal from "@/components/Modal";
 import { formatNumber } from "@/i18n/format";
@@ -19,12 +20,20 @@ interface Props {
   total: number;
   offline?: boolean;
   pending?: boolean;
+  /**
+   * A problem to point out before sending (e.g. the round is already
+   * recorded); with `blocked` the entry cannot be submitted as it is and
+   * `action` offers the way out (e.g. correct the existing entry).
+   */
+  warning?: string;
+  blocked?: boolean;
+  action?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 /** Last check before an official score is submitted (spec 09 "Bestätigung vor dem Absenden"). */
-export default function ScoreConfirmDialog({ open, title, context, fields, values, total, offline, pending, onConfirm, onCancel }: Props) {
+export default function ScoreConfirmDialog({ open, title, context, fields, values, total, offline, pending, warning, blocked, action, onConfirm, onCancel }: Props) {
   const { t } = useTranslation();
   const two = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
   return (
@@ -68,6 +77,12 @@ export default function ScoreConfirmDialog({ open, title, context, fields, value
         </tfoot>
       </table>
     </div>
+      {warning && (
+        <div role="alert" className={`mb-4 rounded-lg p-2 text-sm ${blocked ? "bg-danger/[0.07] text-danger" : "bg-warning/10 text-warning"}`}>
+          <p>{warning}</p>
+          {action && <div className="mt-2">{action}</div>}
+        </div>
+      )}
       {offline && (
         <p className="mb-4 rounded-lg bg-warning/10 p-2 text-sm text-warning">
           {t("scoreConfirm.offline")}
@@ -75,8 +90,8 @@ export default function ScoreConfirmDialog({ open, title, context, fields, value
       )}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onCancel}>{t("scoreConfirm.correct")}</button>
-        <button type="button" className="btn-primary" disabled={pending} onClick={onConfirm}>
-          {offline ? t("scoreConfirm.saveLocally") : t("scoreConfirm.submit")}
+        <button type="button" className="btn-primary" disabled={pending || blocked} onClick={onConfirm}>
+          {blocked ? t("scoreConfirm.cannotSubmit") : offline ? t("scoreConfirm.saveLocally") : t("scoreConfirm.submit")}
         </button>
       </div>
     </Modal>

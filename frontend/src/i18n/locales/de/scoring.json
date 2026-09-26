@@ -295,7 +295,15 @@
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – es zählt die bessere Alternative",
     "area": "Bereich",
-    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)"
+    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)",
+    "issue": {
+      "notNumeric": "„{{label}}“ muss eine Zahl sein.",
+      "belowMin": "„{{label}}“ muss mindestens {{limit}} sein.",
+      "aboveMax": "„{{label}}“ darf höchstens {{limit}} sein.",
+      "invalid": "Die Eingaben sind ungültig."
+    },
+    "decrease": "{{label}} um 1 verringern",
+    "increase": "{{label}} um 1 erhöhen"
   },
   "entry": {
     "offlineLabel": "{{team}} · Runde {{round}} · {{points}} P.",
@@ -333,7 +341,16 @@
     "confirmFor": "Wertung von {{team}}, Runde {{round}} bestätigen",
     "deleteFor": "Wertung von {{team}}, Runde {{round}} löschen",
     "schemaLoadFailed": "Das Wertungsschema konnte nicht geladen werden.",
-    "subtitle": "Wertungen erfassen, korrigieren und bestätigen."
+    "subtitle": "Wertungen erfassen, korrigieren und bestätigen.",
+    "saved": "Gespeichert: {{team}} · Runde {{round}} · {{points}} P.",
+    "savedPractice": "Übungslauf gespeichert: {{team}} · Lauf {{round}} · {{points}} P.",
+    "updated": "Änderungen gespeichert.",
+    "decreaseRound": "Runde verringern",
+    "increaseRound": "Runde erhöhen",
+    "roundInvalid": "Die Runde muss eine ganze Zahl ab 1 sein.",
+    "duplicateRound": "Runde {{round}} von {{team}} ist schon erfasst ({{points}} P.). Eine zweite Wertung derselben Runde würde als zusätzlicher Lauf zählen und wird abgelehnt – bitte den vorhandenen Eintrag korrigieren oder eine andere Runde wählen.",
+    "correctExisting": "Vorhandenen Eintrag korrigieren",
+    "noEventTeams": "Für dieses Event ist kein Team registriert, das Matches spielt."
   },
   "scoreboard": {
     "disqualified": "Disqualifiziert (rote Karte)",
@@ -601,6 +618,7 @@
     "inspection": "Inspektion (illegales Teil)",
     "record": "Timeout erfassen",
     "revoke": "Timeout von {{team}} zurücknehmen",
-    "none": "Noch kein Team hat seine Timeout-Karte genutzt."
+    "none": "Noch kein Team hat seine Timeout-Karte genutzt.",
+    "loadFailed": "Timeout-Karten konnten nicht geladen werden."
   }
 }

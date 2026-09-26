@@ -58,7 +58,9 @@ describe("SheetForm", () => {
 
   it("reports values above the sheet maximum", () => {
     wrap(<SheetForm definition={DEF_2025} values={{ "A.fry_potato": 3 }} onChange={() => {}} />);
-    expect(screen.getByRole("alert")).toHaveTextContent("A.fry_potato must be at most 2");
+    // Localized, with the field label instead of the internal key.
+    expect(screen.getByRole("alert")).toHaveTextContent(/^„A · .+“ darf höchstens 2 sein\.$/);
+    expect(screen.getByRole("alert")).not.toHaveTextContent("fry_potato");
   });
 });
 

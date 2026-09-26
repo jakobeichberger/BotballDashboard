@@ -254,5 +254,8 @@
       "open": "Still open",
       "nominations": "Nominations"
     }
-  }
+  },
+  "scoreSavedFor": "Saved officially: {{team}} · {{points}}",
+  "duplicateMatchScore": "A score for {{team}} is already recorded in this match ({{points}} pts). A second one would count as an extra seeding run and is rejected – please correct the existing entry under “Enter scores”.",
+  "replayMatchScore": "A score for {{team}} is already recorded in this match ({{points}} pts). The new one counts as a replay and replaces it for the match result."
 }

@@ -254,5 +254,8 @@
       "open": "Noch offen",
       "nominations": "Nominierungen"
     }
-  }
+  },
+  "scoreSavedFor": "Offiziell gespeichert: {{team}} · {{points}}",
+  "duplicateMatchScore": "Für {{team}} ist in diesem Match schon eine Wertung erfasst ({{points}} P.). Eine zweite würde als zusätzlicher Seeding-Lauf zählen und wird abgelehnt – bitte den vorhandenen Eintrag unter „Punkte eintragen“ korrigieren.",
+  "replayMatchScore": "Für {{team}} ist in diesem Match schon eine Wertung erfasst ({{points}} P.). Die neue gilt als Wiederholung (Replay) und ersetzt sie für das Match-Ergebnis."
 }

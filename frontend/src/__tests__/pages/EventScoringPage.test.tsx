@@ -31,8 +31,9 @@ const schema = {
   ],
 };
 
-function renderPage() {
+function renderPage(overrides: Record<string, unknown> = {}) {
   (api.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+    if (url in overrides) return Promise.resolve({ data: overrides[url] });
     if (url.endsWith("/registrations")) return Promise.resolve({ data: registrations });
     if (url.endsWith("/schedule")) return Promise.resolve({ data: schedule });
     if (url.endsWith("/scoring-schema")) return Promise.resolve({ data: schema });
@@ -167,7 +168,9 @@ describe("EventScoringPage (mobile scoring)", () => {
     expect(body).toMatchObject({ team_id: "t1", scheduled_match_id: "sm1", raw_scores: { cubes: 4, parked: true } });
     expect(body.idempotency_key).toEqual(expect.any(String));
     expect(config.offlineLabel).toContain("Alpha");
-    expect(await screen.findByText("Wertung wurde offiziell gespeichert.")).toBeInTheDocument();
+    // The confirmation names team and points and sits in the sticky bar next to the button.
+    const saved = await screen.findByText(/^Offiziell gespeichert: Alpha \(A-1\) · 13/);
+    expect(saved.closest(".sticky")).not.toBeNull();
   });
 
   it("lets the juror go back and correct instead of submitting", async () => {
@@ -191,5 +194,37 @@ describe("EventScoringPage (mobile scoring)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Prüfen & absenden/ }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Lokal speichern" }));
     expect(await screen.findByText("Offline gespeichert – wird synchronisiert, sobald eine Verbindung besteht.")).toBeInTheDocument();
+  });
+
+  it("does not offer Aerial or JBC teams", async () => {
+    renderPage({
+      [`/v1/events/${EVENT}/registrations`]: [
+        ...registrations.map((item) => ({ ...item, category: "botball" })),
+        { id: "r3", team_id: "t3", team_name: "Drone Masters", team_number: null, seed_number: null, category: "aerial_junior" },
+        { id: "r4", team_id: "t4", team_name: "Code Cubs", team_number: null, seed_number: null, category: "jbc" },
+      ],
+    });
+    const select = await screen.findByLabelText("Team");
+    await within(select).findByRole("option", { name: /Alpha/ });
+    expect(within(select).queryByRole("option", { name: /Drone Masters/ })).not.toBeInTheDocument();
+    expect(within(select).queryByRole("option", { name: /Code Cubs/ })).not.toBeInTheDocument();
+  });
+
+  it("blocks a second score for a scheduled seeding match that is already scored", async () => {
+    renderPage({ [`/v1/events/${EVENT}/matches`]: [{ id: "m1", scheduled_match_id: "sm1", is_practice: false, total_score: 42 }] });
+    fireEvent.click(await screen.findByRole("button", { name: "Nächstes Match" }));
+    await waitFor(() => expect((screen.getByLabelText("Team") as HTMLSelectElement).value).toBe("t1"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(`/v1/events/${EVENT}/matches`, { params: { team_id: "t1" } }));
+    fireEvent.click(screen.getByRole("button", { name: /Prüfen & absenden/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText(/Für Alpha \(A-1\) ist in diesem Match schon eine Wertung erfasst \(42[,0]* P\.\)/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "So nicht absendbar" })).toBeDisabled();
+  });
+
+  it("gives the special-rule checkboxes a 44 px tap target", async () => {
+    renderPage();
+    const roundLost = await screen.findByRole("checkbox", { name: /^Runde verloren/ });
+    expect(roundLost.closest("label")).toHaveClass("min-h-11");
+    expect(roundLost).toHaveClass("h-6", "w-6");
   });
 });

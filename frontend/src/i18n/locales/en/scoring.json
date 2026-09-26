@@ -295,7 +295,15 @@
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – the better alternative counts",
     "area": "Section",
-    "derivedHint": "(automatic once “{{field}}” is at least 1)"
+    "derivedHint": "(automatic once “{{field}}” is at least 1)",
+    "issue": {
+      "notNumeric": "“{{label}}” must be a number.",
+      "belowMin": "“{{label}}” must be at least {{limit}}.",
+      "aboveMax": "“{{label}}” must be at most {{limit}}.",
+      "invalid": "The entries are invalid."
+    },
+    "decrease": "Decrease {{label}} by 1",
+    "increase": "Increase {{label}} by 1"
   },
   "entry": {
     "offlineLabel": "{{team}} · round {{round}} · {{points}} pts",
@@ -333,7 +341,16 @@
     "confirmFor": "Confirm score of {{team}}, round {{round}}",
     "deleteFor": "Delete score of {{team}}, round {{round}}",
     "schemaLoadFailed": "The scoring schema could not be loaded.",
-    "subtitle": "Record, correct and confirm scores."
+    "subtitle": "Record, correct and confirm scores.",
+    "saved": "Saved: {{team}} · round {{round}} · {{points}} pts",
+    "savedPractice": "Practice run saved: {{team}} · run {{round}} · {{points}} pts",
+    "updated": "Changes saved.",
+    "decreaseRound": "Previous round",
+    "increaseRound": "Next round",
+    "roundInvalid": "The round must be a whole number from 1.",
+    "duplicateRound": "Round {{round}} of {{team}} is already recorded ({{points}} pts). A second score for the same round would count as an extra run and is rejected – please correct the existing entry or choose another round.",
+    "correctExisting": "Correct the existing entry",
+    "noEventTeams": "No team that plays matches is registered for this event."
   },
   "scoreboard": {
     "disqualified": "Disqualified (red card)",
@@ -601,6 +618,7 @@
     "inspection": "Inspection (illegal part)",
     "record": "Record timeout",
     "revoke": "Revoke the timeout of {{team}}",
-    "none": "No team has used its timeout card yet."
+    "none": "No team has used its timeout card yet.",
+    "loadFailed": "Timeout cards could not be loaded."
   }
 }
