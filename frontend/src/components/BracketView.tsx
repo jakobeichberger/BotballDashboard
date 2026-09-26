@@ -35,7 +35,7 @@ export default function BracketView({ phases, dark, onPickWinner, disabled }: Br
               </h4>
               <div className="flex gap-4 overflow-x-auto pb-2">
                 {group.columns.map((column) => (
-                  <div key={column.round} className="flex min-w-[13rem] flex-col justify-around gap-3">
+                  <div key={column.round} className="flex min-w-52 flex-col justify-around gap-3">
                     <p className="text-xs opacity-60">
                       {group.section === "final"
                         ? t(column.round === 1 ? "bracket.grandFinal" : "bracket.resetFinal")

@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
@@ -240,7 +240,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex min-h-11 items-center gap-2 rounded-eng px-2 font-ui text-[0.95rem] font-semibold text-white hover:bg-white/[0.06]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-eng px-2 font-ui text-[0.95rem] font-semibold text-white hover:bg-white/6"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
             {t("logout")}

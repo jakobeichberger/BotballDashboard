@@ -35,6 +35,13 @@ Ersetzt die Dependabot-PRs #31 und #32. #30 (pydantic-core 2.49.0) ist nicht ins
 - **reportlab 5.0.1:** keine Codeänderung nötig. 5.0 vertraut entfernten Bildquellen nur noch per Whitelist und entfernt renderPM-C-Erweiterung und pyRXP; nichts davon wird genutzt. Alle sieben PDF-Exporte wurden gerendert und mit pypdf geöffnet, Markup bleibt Text.
 - Build-Anforderung `setuptools>=84.0.0`; Lockfiles mit `make lock-backend` neu erzeugt.
 
+### Frontend-Majors nach dem Design-Refresh
+
+- React 19, React Router 8 (`react-router` statt `react-router-dom`), Vite 8 (Rolldown) mit `@vitejs/plugin-react` 6 und `vite-plugin-pwa` 1, Vitest 5, Tailwind CSS 4, Zod 4 mit `@hookform/resolvers` 5, i18next 26 / react-i18next 17, Recharts 3, Zustand 5, lucide-react 1, jsdom 30, jest-axe 11, ESLint 10, `@types/node` 24; `engines.node` ≥ 24. `date-fns` entfällt (ungenutzt).
+- TypeScript 7 prüft die Typen (`tsc`); typescript-eslint und openapi-typescript brauchen die JavaScript-API und laufen mit TypeScript 6 (`typescript` 6 plus Alias `typescript-7`).
+- Tailwind 4 CSS-first: Tokens als `@theme` in `src/index.css`, `tailwind.config.ts` und PostCSS-Konfiguration entfallen. Wo Tailwind 4 anders rendert (Kaskaden-Layer, `space-*`/`divide-*`, Zeilenhöhen, Preflight, Farbpalette), hält `index.css` das bisherige Verhalten; Screenshots und berechnete Styles sind gegenüber vorher unverändert, abgesehen von neu gezeichneten Lucide-Icons und Halbpixel-Verschiebungen in den Diagrammen.
+- Passwörter über 72 Byte (UTF-8) meldet das Formular schon vor dem Absenden (bcrypt-Grenze des Backends).
+
 ### Schulung „Von der Frage zum Auftrag“
 
 - `docs/schulung/schueler-handbuch.md` und `schueler-handbuch.html`: Handbuch für Schülerinnen und Schüler mit LEDVV, Hebeln für bessere Ergebnisse, Prüfregeln, Übungen mit Lösungen und Glossar. Die HTML-Fassung enthält einen Prompt-Baukasten, der Aufträge nach LEDVV zusammensetzt, fehlende Teile anzeigt und vor Passwörtern im Text warnt.

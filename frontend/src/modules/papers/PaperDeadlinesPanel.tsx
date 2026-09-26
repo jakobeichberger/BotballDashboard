@@ -96,7 +96,7 @@ export function PaperDeadlinesPanel({ seasonId, canAdmin }: { seasonId: string; 
           <label className="text-sm">{t("common:date")}
             <input className="input mt-1 block" type="date" required value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
           </label>
-          <label className="flex-1 min-w-[10rem] text-sm">{t("deadlines.label")}
+          <label className="flex-1 min-w-40 text-sm">{t("deadlines.label")}
             <input className="input mt-1 block w-full" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
           </label>
           {OFFICIAL_DEADLINE_TYPES.has(form.deadline_type) && (

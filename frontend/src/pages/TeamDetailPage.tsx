@@ -1,6 +1,6 @@
 import { Suspense, lazy, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Users, ArrowLeft, FileText, Printer, MapPin, Pencil, Trash2, UserPlus, Save, X, Activity, ClipboardCheck } from "lucide-react";
 import { api } from "@/lib/api";
@@ -255,7 +255,7 @@ export default function TeamDetailPage() {
             {isAdmin && (
               <div>
                 <label htmlFor="teamdetailpage-f2" className="label">{t("common:notes")}</label>
-                <textarea id="teamdetailpage-f2" className="input min-h-[4rem]" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                <textarea id="teamdetailpage-f2" className="input min-h-16" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -348,8 +348,8 @@ export default function TeamDetailPage() {
       </div>
         {canManage && (
           <div className="border-t p-4 flex flex-wrap items-end gap-3 bg-flaeche-2">
-            <div className="flex-1 min-w-[8rem]"><label htmlFor="teamdetailpage-f3" className="label">{t("common:name")}</label><input id="teamdetailpage-f3" className="input" value={mName} onChange={(e) => setMName(e.target.value)} placeholder={t("detail.newMember")} /></div>
-            <div className="flex-1 min-w-[8rem]"><label htmlFor="teamdetailpage-f4" className="label">{t("common:email")}</label><input id="teamdetailpage-f4" className="input" value={mEmail} onChange={(e) => setMEmail(e.target.value)} /></div>
+            <div className="flex-1 min-w-32"><label htmlFor="teamdetailpage-f3" className="label">{t("common:name")}</label><input id="teamdetailpage-f3" className="input" value={mName} onChange={(e) => setMName(e.target.value)} placeholder={t("detail.newMember")} /></div>
+            <div className="flex-1 min-w-32"><label htmlFor="teamdetailpage-f4" className="label">{t("common:email")}</label><input id="teamdetailpage-f4" className="input" value={mEmail} onChange={(e) => setMEmail(e.target.value)} /></div>
             <div><label htmlFor="teamdetailpage-f5" className="label">{t("members.roleLabel")}</label>
               <select id="teamdetailpage-f5" className="input" value={mRole} onChange={(e) => setMRole(e.target.value)}>
                 <option value="member">{t("members.role.member")}</option>

@@ -31,7 +31,7 @@ export default function Freshness({ query, live, className }: { query: Freshness
   );
   if (query.isError) {
     return (
-      <div role="alert" className={clsx("flex flex-wrap items-center gap-2 rounded-lg bg-warning/[0.08] px-3 py-2 text-sm text-warning", className)}>
+      <div role="alert" className={clsx("flex flex-wrap items-center gap-2 rounded-lg bg-warning/8 px-3 py-2 text-sm text-warning", className)}>
         <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="flex-1">
           {query.data && updated ? t("live.stale", { time: updated }) : t("live.loadFailed")} {apiErrorMessage(query.error)}

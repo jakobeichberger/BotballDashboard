@@ -16,7 +16,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { useScoringScope } from '@/hooks/useScoringScope'
 import { scoreSheetApi, type ScoreSheetTemplateListItem } from '../api/scoreSheets'
 import ScoreSheetUploadForm from '../components/ScoreSheetUploadForm'
@@ -154,7 +154,7 @@ export default function ScoreSheetsPage() {
                 type="button"
                 onClick={() => setSelectedId(sheet.id)}
                 aria-pressed={selectedId === sheet.id}
-                className="block w-full rounded-t-lg p-3 pb-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                className="block w-full rounded-t-lg p-3 pb-2 text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
               >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

@@ -59,7 +59,7 @@ export default function BracketWeightsEditor({
         {draft.map(([bracket, value], i) => (
           <div key={i} className="flex items-center gap-2">
             <input
-              className="input font-mono max-w-[6rem]"
+              className="input font-mono max-w-24"
               placeholder="A"
               aria-label={t("formulas.bracketLabel", { index: i + 1 })}
               disabled={disabled}
@@ -70,7 +70,7 @@ export default function BracketWeightsEditor({
             />
             <span className="text-leise">×</span>
             <input
-              className="input font-mono max-w-[12rem]"
+              className="input font-mono max-w-48"
               placeholder="1.0"
               aria-label={t("formulas.bracketWeight", { index: i + 1 })}
               disabled={disabled}

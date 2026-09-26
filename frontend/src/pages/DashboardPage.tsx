@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { ClipboardPen } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -113,7 +113,7 @@ export default function DashboardPage() {
     }));
 
   return (
-    <div className="mx-auto max-w-[96rem] p-4 sm:p-6 lg:p-8">
+    <div className="mx-auto max-w-384 p-4 sm:p-6 lg:p-8">
       <PageHeader
         title={t("common:nav.dashboard")}
         subtitle={user?.display_name ? t("welcome", { name: user.display_name }) : undefined}

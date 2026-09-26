@@ -1,4 +1,4 @@
-import { useNavigate, useParams, type NavigateOptions } from "react-router-dom";
+import { useNavigate, useParams, type NavigateOptions } from "react-router";
 
 /**
  * App pages live under /events/:eventId/…, but many pages link with plain

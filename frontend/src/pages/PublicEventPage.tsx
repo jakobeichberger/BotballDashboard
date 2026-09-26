@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import {
   Award,
   CalendarDays,
@@ -254,7 +254,7 @@ export default function PublicEventPage() {
   const lastUpdate = Math.max(ranking.dataUpdatedAt, schedule.dataUpdatedAt, results.dataUpdatedAt, announcements.dataUpdatedAt);
   const panelTitle = "mb-6 flex items-center gap-3 font-display text-3xl font-extrabold tracking-display md:text-4xl";
   const panelIcon = "h-8 w-8 text-rot-auf-dunkel";
-  const tile = "rounded-karte border border-white/10 bg-tief-2/80 p-5 backdrop-blur-sm";
+  const tile = "rounded-karte border border-white/10 bg-tief-2/80 p-5 backdrop-blur-xs";
   const shown = panel % Math.max(panels.length, 1);
 
   // Big-screen board: always dark (tief + grid + red ember), readable from afar.
@@ -262,10 +262,10 @@ export default function PublicEventPage() {
     <main className="buehne min-h-screen p-4 pb-14 text-white md:p-10 md:pb-16">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-6 border-b border-white/10 pb-6">
         <div className="flex min-w-0 items-center gap-5">
-          <LogoBadge size="lg" className="hidden sm:inline-grid" />
+          <LogoBadge size="lg" className="max-sm:hidden" />
           <div className="min-w-0">
-            <p className="eyebrow !text-rot-auf-dunkel">{t("liveTitle")}</p>
-            <h1 className="mt-1 font-display text-4xl font-extrabold leading-[1.05] tracking-display md:text-6xl">{event.data?.name}</h1>
+            <p className="eyebrow text-rot-auf-dunkel!">{t("liveTitle")}</p>
+            <h1 className="mt-1 font-display text-4xl font-extrabold leading-[1.05] tracking-display md:text-6xl md:leading-none">{event.data?.name}</h1>
             <p className="mt-2 text-lg text-sidebar-leise">{event.data?.venue} · {event.data?.timezone}</p>
           </div>
         </div>
@@ -315,7 +315,7 @@ export default function PublicEventPage() {
             <Trophy className={panelIcon} strokeWidth={1.75} aria-hidden="true" />
             {t("ranking")}
           </h2>
-          <div className="table-scroll rounded-karte border border-white/10 bg-tief-2/70 backdrop-blur-sm">
+          <div className="table-scroll rounded-karte border border-white/10 bg-tief-2/70 backdrop-blur-xs">
             <table className="w-full text-xl md:text-[1.7rem]">
               <thead className="border-b border-white/10 font-ui text-sm uppercase tracking-overline text-sidebar-leise md:text-base">
                 <tr>
@@ -328,7 +328,7 @@ export default function PublicEventPage() {
               </thead>
               <tbody className="divide-y divide-white/[0.07]">
                 {ranking.data?.map((item) => (
-                  <tr key={item.team_id} className={item.rank <= 3 ? "bg-primary/[0.08] shadow-[inset_4px_0_0_theme(colors.primary.DEFAULT)]" : ""}>
+                  <tr key={item.team_id} className={item.rank <= 3 ? "bg-primary/8 shadow-[inset_4px_0_0_var(--color-primary)]" : ""}>
                     <td
                       className={clsx(
                         "px-5 py-4 font-display text-3xl font-extrabold tabular-nums md:text-4xl",

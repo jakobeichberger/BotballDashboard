@@ -62,6 +62,6 @@ Vollständige Dokumentation des BotballDashboard-Systems. Enthält Installations
 | Änderungen | [CHANGELOG.md](../../CHANGELOG.md) |
 | Datenbank-Stand | Migration `0029` |
 | Backend | FastAPI (Python 3.14), Celery-Worker und -Beat |
-| Frontend | React 18 + Vite + Tailwind CSS, PWA |
+| Frontend | React 19 + Vite 8 + Tailwind CSS 4, PWA |
 | Datenbank | PostgreSQL 18, Redis 8 |
 | Deployment | Docker Compose auf Proxmox |

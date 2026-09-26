@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useSeasonCategories } from "@/lib/categories";
 import { api } from "@/lib/api";
@@ -258,7 +258,7 @@ export default function FormulasPage() {
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div className="page-header !mb-0">
+      <div className="page-header mb-0!">
         <div className="min-w-0">
           <h1 className="page-title flex items-center gap-2">
             <Calculator className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />
@@ -532,7 +532,7 @@ export default function FormulasPage() {
             <p className="text-xs text-leise mb-2">
               {t("formulas.orderHint")}
             </p>
-            <div className="font-mono text-xs text-leise break-words">
+            <div className="font-mono text-xs text-leise wrap-break-word">
               {columns.length > 0 ? columns.join(" → ") : "—"}
             </div>
           </div>

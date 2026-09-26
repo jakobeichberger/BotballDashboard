@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { CalendarClock, CalendarDays, List } from "lucide-react";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";

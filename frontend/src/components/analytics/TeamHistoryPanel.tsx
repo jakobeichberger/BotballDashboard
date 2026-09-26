@@ -4,7 +4,7 @@ import { History } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { EventLink } from "@/components/EventLink";
 import { fmtNum, type TeamHistoryRow } from "@/api/analytics";
-import { AXIS_TICK, GRID, SERIES } from "./chartTheme";
+import { AXIS_TICK, GRID, SERIES, legendOrder } from "./chartTheme";
 
 function label(row: TeamHistoryRow) {
   return `${row.season_year} · ${row.event_name}`;
@@ -66,7 +66,7 @@ export default function TeamHistoryPanel({ rows, isLoading }: { rows?: TeamHisto
                       <XAxis dataKey="name" tick={AXIS_TICK} interval="preserveStartEnd" />
                       <YAxis reversed allowDecimals={false} domain={[1, maxRank]} tick={AXIS_TICK} width={32} />
                       <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} itemSorter={legendOrder("seedingRank", "overallRank")} />
                       <Line type="monotone" dataKey="seedingRank" name={t("history.seedingRank")} stroke={SERIES.primary} strokeWidth={2} dot={{ r: 4 }} connectNulls />
                       <Line type="monotone" dataKey="overallRank" name={t("history.overallRank")} stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4 }} connectNulls />
                     </LineChart>

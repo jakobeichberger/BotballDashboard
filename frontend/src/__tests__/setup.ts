@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, vi } from "vitest";
 import i18n, { i18nReady } from "@/i18n/config";
@@ -61,10 +61,9 @@ class InertWebSocket {
 }
 Object.defineProperty(globalThis, "WebSocket", { value: InertWebSocket, writable: true, configurable: true });
 
-// jsdom has no object URLs (blob downloads, image previews).
-if (typeof URL.createObjectURL !== "function") {
-  Object.assign(URL, { createObjectURL: () => "blob:test", revokeObjectURL: () => undefined });
-}
+// Object URLs (blob downloads, image previews): jsdom 30 implements them for
+// its own Blob only, while the tests hand in Node's Blob (the global one).
+Object.assign(URL, { createObjectURL: () => "blob:test", revokeObjectURL: () => undefined });
 
 // Mock service worker
 Object.defineProperty(navigator, "serviceWorker", {

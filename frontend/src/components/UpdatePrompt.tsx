@@ -26,7 +26,7 @@ export default function UpdatePrompt() {
   });
   if (!needRefresh) return null;
   return (
-    <div role="status" className="fixed inset-x-0 top-0 z-[55] flex justify-center p-3">
+    <div role="status" className="fixed inset-x-0 top-0 z-55 flex justify-center p-3">
       <div className="flex w-full max-w-md items-center gap-3 rounded-karte border border-primary/40 bg-flaeche p-3 text-sm font-medium shadow-tief reveal">
         <p className="flex-1">{t("update.available")}</p>
         <button type="button" className="btn-primary min-h-11" onClick={() => void updateServiceWorker(true)}>

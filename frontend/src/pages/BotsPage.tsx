@@ -153,7 +153,7 @@ export default function BotsPage() {
           </div>
           <div>
             <label htmlFor="botspage-f9" className="label">{t("form.functionality")}</label>
-            <textarea id="botspage-f9" className="input min-h-[6rem]" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })}
+            <textarea id="botspage-f9" className="input min-h-24" value={form.functionality} onChange={(e) => setForm({ ...form, functionality: e.target.value })}
                       placeholder={t("form.functionalityPlaceholder")} />
           </div>
           <div className="flex justify-end">

@@ -1,6 +1,6 @@
 import axios from "axios";
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { render, renderHook, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { resetSessionRestore, useLogout, useRestoreSession } from "@/hooks/useAuth";
@@ -80,14 +80,9 @@ describe("logout", () => {
   it("signs out locally when offline and revokes the cookie on the next start", async () => {
     useAuthStore.setState({ accessToken: "tok", user: PROFILE });
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
-    let logout: () => Promise<void> = async () => undefined;
-    function Harness() {
-      logout = useLogout();
-      return null;
-    }
-    render(<Harness />);
+    const { result } = renderHook(() => useLogout());
     // No unhandled rejection although the request cannot be sent.
-    await expect(logout()).resolves.toBeUndefined();
+    await expect(result.current()).resolves.toBeUndefined();
     expect(useAuthStore.getState().accessToken).toBeNull();
 
     // Back online: the refresh cookie must not restore the session.

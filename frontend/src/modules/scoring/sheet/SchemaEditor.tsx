@@ -122,7 +122,7 @@ export default function SchemaEditor({ eventId, schema, onMessage }: Props) {
             <SectionEditor key={index} section={section} index={index} count={draft.sections.length} onChange={(change) => updateSection(index, change)} onMove={(delta) => moveSection(index, delta)} onRemove={() => setDraft({ ...draft, sections: draft.sections.filter((_, i) => i !== index) })} />
           ))}
           <button type="button" className="btn-secondary" onClick={addSection}><Plus className="h-4 w-4" />{t("schema.section")}</button>
-          {problems.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-warning/[0.08] p-3 text-sm text-warning">{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
+          {problems.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-warning/8 p-3 text-sm text-warning">{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
           {!problems.length && <p className="text-xs text-leise">{t(draft.sides.length ? "schema.inputsBothSides" : "schema.inputs", { count: inputs })}</p>}
         </div>
       )}
