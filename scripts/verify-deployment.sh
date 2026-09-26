@@ -219,6 +219,33 @@ else
   fail "worker-ocr is not running – score-sheet OCR stops"
 fi
 
+# The API's view (what the alerts use): consumers per Celery queue and the
+# beat heartbeat in Redis.
+if [[ -n "$(docker compose ps -q backend 2>/dev/null)" ]]; then
+  ops="$(in_service backend python -c '
+import re, time, urllib.request
+text = urllib.request.urlopen("http://localhost:8000/api/system/metrics", timeout=10).read().decode()
+queues = dict(re.findall(r"botball_celery_queue_consumers\{queue=\"(\w+)\"\} (\d+)", text))
+beat = re.search(r"^botball_beat_last_heartbeat_timestamp_seconds (\S+)$", text, re.M)
+print(" ".join(f"{q}={n}" for q, n in sorted(queues.items())))
+print(int(time.time() - float(beat.group(1))) if beat else "none")
+' 2>/dev/null)"
+  queue_line="$(head -n1 <<<"${ops}")"
+  beat_age="$(sed -n 2p <<<"${ops}")"
+  if [[ -z "${queue_line}" ]]; then
+    fail "queue consumers not in /api/system/metrics"
+  elif grep -qE '=0( |$)' <<<"${queue_line}"; then
+    fail "Celery queue without a worker: ${queue_line}"
+  else
+    pass "every Celery queue has a worker (${queue_line})"
+  fi
+  if [[ "${beat_age}" =~ ^[0-9]+$ && "${beat_age}" -le 300 ]]; then
+    pass "beat heartbeat in Redis ${beat_age} s old"
+  else
+    fail "no fresh beat heartbeat in Redis (${beat_age:-none}; alert BeatNotRunning)"
+  fi
+fi
+
 if has_service beat && [[ -n "$(docker compose ps -q beat)" ]]; then
   cmdline="$(in_service beat sh -c 'tr "\0" " " < /proc/1/cmdline' 2>/dev/null)"
   if grep -q "celery.* beat" <<<"${cmdline}"; then
@@ -262,6 +289,21 @@ if has_service backup; then
     else
       fail "backup: ${result}"
     fi
+    restore="$(in_service backup python -c '
+import json, time
+try:
+    s = json.load(open("/backups/status/restore-test.json"))
+except (OSError, ValueError):
+    s = {}
+ok, at = s.get("last_ok"), s.get("last_success_at")
+print("never" if ok is None else ("ok" if ok else "failed"), int((time.time() - at) / 86400) if at else "-", (s.get("last_error") or "")[:200])
+' 2>/dev/null)"
+    read -r restore_state restore_days restore_error <<<"${restore}"
+    case "${restore_state}" in
+      ok) pass "last restore test succeeded (${restore_days} days ago)" ;;
+      failed) fail "last restore test FAILED: ${restore_error}" ;;
+      *) warn "no restore test yet (weekly automatic test after a backup, docs/operations.md)" ;;
+    esac
   fi
 else
   warn "backup service not enabled (COMPOSE_PROFILES=production) – NO BACKUPS"
@@ -304,13 +346,28 @@ print(len(rules), ",".join(bad), ",".join(firing), sep="|")
   else
     pass "Prometheus: ${rule_count} alert rules loaded"
   fi
-  [[ -n "${firing:-}" ]] && warn "alerts currently firing: ${firing}"
-  probe="$(prom '/api/v1/query?query=probe_success' | python3 -c '
+  firing="$(tr ',' '\n' <<<"${firing:-}" | grep -vx 'Watchdog' | paste -sd, -)"
+  [[ -n "${firing}" ]] && warn "alerts currently firing: ${firing}"
+  probe_value() {
+    prom "/api/v1/query?query=probe_success%7Bjob%3D%22$1%22%7D" | python3 -c '
 import json, sys
 r = json.load(sys.stdin)["data"]["result"]
-print(r[0]["value"][1] if r else "")
-' 2>/dev/null)"
-  if [[ "${probe}" == "1" ]]; then pass "Blackbox readiness probe succeeds"; else warn "Blackbox readiness probe: ${probe:-no data yet}"; fi
+print(" ".join(x["metric"].get("instance", "?") + "=" + x["value"][1] for x in r))
+' 2>/dev/null
+  }
+  probe="$(probe_value botball-readiness)"
+  if [[ "${probe}" == *=1 ]]; then pass "Blackbox readiness probe succeeds"; else warn "Blackbox readiness probe: ${probe:-no data yet}"; fi
+  external="$(probe_value botball-external)"
+  if [[ -z "${external}" ]]; then
+    warn "external probe through Traefik: no data yet (DOMAIN set? prometheus-entrypoint.sh)"
+  elif grep -q '=0' <<<"${external}"; then
+    warn "external probe through Traefik fails: ${external} (a self-signed certificate on a test host is expected to fail)"
+  else
+    pass "external probe through Traefik: ${external}"
+  fi
+  if [[ -z "$(env_value ALERT_HEARTBEAT_URL)" ]]; then
+    warn "ALERT_HEARTBEAT_URL is empty – nobody notices a dead Prometheus/Alertmanager (dead man's switch, docs/operations.md)"
+  fi
   if has_service alertmanager && in_service alertmanager wget -qO- http://localhost:9093/-/healthy >/dev/null 2>&1; then
     pass "Alertmanager healthy"
     if grep -q "no alert receiver configured" <<<"$(docker compose logs alertmanager 2>/dev/null)"; then
