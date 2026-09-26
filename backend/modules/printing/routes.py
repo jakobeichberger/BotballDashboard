@@ -132,11 +132,13 @@ async def get_print_job(
 async def update_print_job(
     job_id: str,
     body: PrintJobUpdate,
-    _=Depends(require_permission("printing:admin")),
+    current_user=Depends(require_permission("printing:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     await service.ensure_job_writable(db, await service.get_print_job(db, job_id))
-    return await service.update_print_job(db, job_id, **body.model_dump(exclude_none=True))
+    return await service.update_print_job(
+        db, job_id, acting_user_id=current_user.id, **body.model_dump(exclude_none=True)
+    )
 
 
 @router.put("/jobs/{job_id}/approve", response_model=PrintJobResponse)

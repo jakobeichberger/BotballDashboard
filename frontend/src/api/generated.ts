@@ -7907,6 +7907,8 @@ export interface components {
             part_count?: number | null;
             /** Stl Submitted */
             stl_submitted?: boolean | null;
+            /** Quota Override */
+            quota_override?: boolean | null;
         };
         /** PrintQueueStatus */
         PrintQueueStatus: {

@@ -27863,6 +27863,17 @@
               }
             ],
             "title": "Stl Submitted"
+          },
+          "quota_override": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quota Override"
           }
         },
         "type": "object",
