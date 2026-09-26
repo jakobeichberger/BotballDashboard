@@ -126,7 +126,7 @@ describe("ScoreboardPage tabs", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Aerial" }));
     expect(await screen.findByRole("link", { name: "Delta" })).toBeInTheDocument();
     for (let run = 1; run <= 6; run += 1) {
-      expect(screen.getByRole("columnheader", { name: `Run ${run}` })).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: `Lauf ${run}` })).toBeInTheDocument();
     }
     const row = screen.getByRole("link", { name: "Delta" }).closest("tr")!;
     expect(within(row).getByText("14,5")).toBeInTheDocument();

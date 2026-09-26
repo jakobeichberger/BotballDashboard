@@ -142,7 +142,7 @@ describe("SettingsPage flows", () => {
       expect(await screen.findByLabelText("GCER qualifiziert aus")).toBeInTheDocument();
       const add = screen.getByRole("button", { name: "+ Stufe" });
       expect(add).toBeDisabled();
-      fireEvent.change(screen.getByPlaceholderText("Senior"), { target: { value: "Junior" } });
+      fireEvent.change(screen.getByPlaceholderText("z. B. Senior"), { target: { value: "Junior" } });
       fireEvent.change(screen.getByPlaceholderText("SR"), { target: { value: "JR" } });
       fireEvent.click(add);
       await waitFor(() => expect(post).toHaveBeenCalledWith("/seasons/competition-levels", { name: "Junior", code: "JR", description: null }));

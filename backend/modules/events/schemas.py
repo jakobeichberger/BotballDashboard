@@ -1,7 +1,7 @@
-from datetime import datetime
-from typing import Literal
+from datetime import UTC, datetime
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, Field, field_validator, model_validator
 
 from modules.events.module_access import MODULE_KEYS
 from modules.scoring.sheet_schemas import SheetDefinition
@@ -10,6 +10,15 @@ from modules.seasons.categories import CategoryKey
 EventStatus = Literal["draft", "published", "live", "completed", "archived"]
 PhaseType = Literal["seeding", "double_seeding", "double_elimination", "alliance", "final"]
 PhaseStatus = Literal["draft", "scheduled", "live", "completed"]
+
+
+def _assume_utc(value: datetime) -> datetime:
+    # A time without offset is read as UTC: PostgreSQL returns timestamptz
+    # values, and comparing them with a naive datetime raises a TypeError.
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+UtcDatetime = Annotated[datetime, AfterValidator(_assume_utc)]
 
 
 def _validate_module_names(value: list[str]) -> list[str]:
@@ -26,8 +35,8 @@ class EventCreate(BaseModel):
     event_type: str = Field(default="regional", max_length=40)
     timezone: str = Field(default="Europe/Vienna", max_length=80)
     venue: str | None = Field(default=None, max_length=255)
-    starts_at: datetime | None = None
-    ends_at: datetime | None = None
+    starts_at: UtcDatetime | None = None
+    ends_at: UtcDatetime | None = None
     status: EventStatus = "draft"
     # None: derive from the season's module flags (module_access.modules_for_season).
     active_modules: list[str] | None = None
@@ -58,8 +67,8 @@ class EventUpdate(BaseModel):
     event_type: str | None = Field(default=None, max_length=40)
     timezone: str | None = Field(default=None, max_length=80)
     venue: str | None = Field(default=None, max_length=255)
-    starts_at: datetime | None = None
-    ends_at: datetime | None = None
+    starts_at: UtcDatetime | None = None
+    ends_at: UtcDatetime | None = None
     status: EventStatus | None = None
     active_modules: list[str] | None = None
     public_scoreboard: bool | None = None
@@ -168,8 +177,8 @@ class EventPhaseCreate(BaseModel):
     sort_order: int = Field(ge=0)
     status: PhaseStatus = "draft"
     rounds: int = Field(default=3, ge=1, le=100)
-    starts_at: datetime | None = None
-    ends_at: datetime | None = None
+    starts_at: UtcDatetime | None = None
+    ends_at: UtcDatetime | None = None
     settings: dict = Field(default_factory=dict)
 
 
@@ -179,8 +188,8 @@ class EventPhaseUpdate(BaseModel):
     sort_order: int | None = Field(default=None, ge=0)
     status: PhaseStatus | None = None
     rounds: int | None = Field(default=None, ge=1, le=100)
-    starts_at: datetime | None = None
-    ends_at: datetime | None = None
+    starts_at: UtcDatetime | None = None
+    ends_at: UtcDatetime | None = None
     settings: dict | None = None
 
 
@@ -201,7 +210,7 @@ class EventPhaseResponse(BaseModel):
 
 class ScheduleGenerateRequest(BaseModel):
     phase_id: str
-    starts_at: datetime
+    starts_at: UtcDatetime
     slot_minutes: int = Field(default=10, ge=3, le=240)
     table_count: int | None = Field(default=None, ge=1, le=100)
     team_ids: list[str] | None = None
@@ -315,7 +324,7 @@ class BracketWeightsUpdate(BaseModel):
 
 
 class ScheduledMatchUpdate(BaseModel):
-    scheduled_at: datetime | None = None
+    scheduled_at: UtcDatetime | None = None
     table_number: int | None = Field(default=None, ge=1, le=100)
     duration_minutes: int | None = Field(default=None, ge=3, le=240)
     status: Literal["scheduled", "called", "running", "completed", "cancelled"] | None = None

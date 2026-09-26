@@ -103,17 +103,6 @@ async def test_free_slot_with_aware_times(schedule):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    raises=TypeError,
-    strict=True,
-    reason=(
-        "Bug in modules/events/service.py (not package D): a slot without UTC offset "
-        "(the API accepts naive datetimes, e.g. '2026-07-18T08:00:00') is compared with "
-        "the timestamptz values of the other matches -> TypeError -> HTTP 500. The same "
-        "applies to update_phase (ends_at vs. stored starts_at). Normalise naive input "
-        "to UTC (or reject it with 422) in the schemas."
-    ),
-)
 async def test_naive_slot_is_not_a_server_error(schedule):
     db, event, matches = schedule
     match = matches[0]
@@ -125,3 +114,4 @@ async def test_naive_slot_is_not_a_server_error(schedule):
         {"scheduled_at": naive, "table_number": 1, "expected_version": match.version},
     )
     assert moved.scheduled_at is not None
+    assert moved.scheduled_at == START + timedelta(hours=3)

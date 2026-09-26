@@ -477,3 +477,41 @@ async def test_phases_of_disabled_modules_are_refused(client, auth_headers, db, 
         json={"phase_type": "double_elimination"},
     )
     assert switched.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_reschedule_accepts_times_with_and_without_offset(client, auth_headers, db, event):
+    """A slot without UTC offset is read as UTC and still conflict-checked."""
+    event_id = event.id
+    _, matches = await _seeding_schedule(client, auth_headers, db, event)
+    round_one = [m for m in matches if m["round_number"] == 1]
+    round_two = [m for m in matches if m["round_number"] == 2]
+    occupied = round_one[0]
+    mover = next(m for m in round_two if _team_of(m) != _team_of(occupied))
+    naive_occupied = _at(occupied).isoformat()  # no offset
+    clash = await client.patch(
+        f"/api/v1/events/{event_id}/schedule/{mover['id']}",
+        headers=auth_headers,
+        json={
+            "scheduled_at": naive_occupied,
+            "table_number": occupied["table_number"],
+            "expected_version": mover["version"],
+        },
+    )
+    assert clash.status_code == 409, clash.text
+    later = (START + timedelta(hours=5)).replace(tzinfo=None)
+    for value in (later.isoformat(), later.isoformat() + "Z"):
+        current = next(
+            m
+            for m in (
+                await client.get(f"/api/v1/events/{event_id}/schedule", headers=auth_headers)
+            ).json()
+            if m["id"] == mover["id"]
+        )
+        moved = await client.patch(
+            f"/api/v1/events/{event_id}/schedule/{mover['id']}",
+            headers=auth_headers,
+            json={"scheduled_at": value, "expected_version": current["version"]},
+        )
+        assert moved.status_code == 200, moved.text
+        assert _at(moved.json()) == later
