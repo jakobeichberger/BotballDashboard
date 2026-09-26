@@ -327,8 +327,12 @@ services:
   # backup_scheduler.py runs scripts/backup.sh every BACKUP_INTERVAL_SECONDS,
   # retries a failed run after BACKUP_RETRY_SECONDS, turns the container
   # unhealthy when the last run failed or is older than BACKUP_MAX_AGE_HOURS
-  # and exposes botball_backup_* metrics on :9101 for Prometheus. With
-  # BACKUP_OFFSITE_TARGET it copies every new archive off-site as well.
+  # (default: interval + 2 h) and exposes botball_backup_* metrics on :9101
+  # for Prometheus. With BACKUP_OFFSITE_TARGET it copies every new archive
+  # off-site as well. Every BACKUP_RESTORE_TEST_INTERVAL_SECONDS (weekly) it
+  # restores the newest archive into ${POSTGRES_DB}_restore_test with its own
+  # test key (volume backup-restore-test-key; never copied off-site), see
+  # docs/operations.md "Restore test".
   backup:
     <<: *hardening
     profiles: ["production"]
@@ -349,7 +353,9 @@ services:
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
       BACKUP_RETRY_SECONDS: ${BACKUP_RETRY_SECONDS:-3600}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
-      BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-26}
+      BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-}
+      BACKUP_RESTORE_TEST_INTERVAL_SECONDS: ${BACKUP_RESTORE_TEST_INTERVAL_SECONDS:-604800}
+      BACKUP_RESTORE_TEST_IDENTITY: /restore-test-key/identity.txt
       BACKUP_METRICS_PORT: 9101
       # Optional off-site copy of every archive (rsync:…, rclone:… or a
       # directory); SSH key / rclone.conf come from BACKUP_OFFSITE_CONFIG_DIR.
@@ -367,6 +373,7 @@ services:
       # off-site sync); by default they live in the named volume "backups".
       - ${BACKUP_HOST_DIR:-backups}:/backups
       - ${BACKUP_OFFSITE_CONFIG_DIR:-./backup-offsite}:/offsite-config:ro
+      - backup-restore-test-key:/restore-test-key
     depends_on:
       volume-permissions:
         condition: service_completed_successfully
@@ -397,10 +404,11 @@ services:
   backup-permissions:
     <<: *ownership-init
     profiles: ["production"]
-    command: ["10001:10001", "/backups", "/offsite-config"]
+    command: ["10001:10001", "/backups", "/offsite-config", "/restore-test-key"]
     volumes:
       - ${BACKUP_HOST_DIR:-backups}:/backups
       - ${BACKUP_OFFSITE_CONFIG_DIR:-./backup-offsite}:/offsite-config
+      - backup-restore-test-key:/restore-test-key
 
   # ── Monitoring (profile "monitoring") ─────────────────────────
   # Prometheus and Alertmanager listen on 127.0.0.1 only; reach them through
@@ -547,5 +555,8 @@ volumes:
   letsencrypt:
   vapid:
   backups:
+  # Private key of the automatic restore test (backup_scheduler.py); kept
+  # apart from the archives so no backup copy carries it.
+  backup-restore-test-key:
   prometheusdata:
   alertmanagerdata:

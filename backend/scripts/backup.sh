@@ -7,6 +7,10 @@
 #   uploads.sha256        checksum manifest of every upload file
 #   app/uploads/...       the upload directory (path relative to /)
 #
+# BACKUP_EXTRA_RECIPIENTS (space-separated age1... keys) adds recipients: the
+# scheduler passes its restore-test key so the weekly restore test can decrypt
+# the archive (see backup_scheduler.py). AGE_RECIPIENT stays the operator's key.
+#
 # Any failure exits non-zero with a "BACKUP FAILED" line on stderr and removes
 # the partial archive. backup_scheduler.py turns that into an unhealthy
 # container and a Prometheus signal.
@@ -21,7 +25,7 @@ for var in POSTGRES_HOST POSTGRES_USER POSTGRES_DB POSTGRES_PASSWORD UPLOAD_DIR;
   # shellcheck disable=SC2154 # assigned by eval above
   [ -n "$value" ] || fail "$var is not set"
 done
-for tool in pg_dump age tar sha256sum; do
+for tool in pg_dump pg_restore age tar sha256sum; do
   command -v "$tool" >/dev/null 2>&1 || fail "required tool '$tool' is not installed"
 done
 
@@ -52,6 +56,10 @@ PGPASSWORD="${POSTGRES_PASSWORD}" pg_dump --host="${POSTGRES_HOST}" \
   --port="${POSTGRES_PORT:-5432}" --username="${POSTGRES_USER}" \
   --dbname="${POSTGRES_DB}" --format=custom --file="${work_dir}/database.dump" \
   || fail "pg_dump failed"
+# Read the dump back before it is archived: a truncated or corrupt dump fails
+# here, not months later during a restore.
+pg_restore --list "${work_dir}/database.dump" >/dev/null \
+  || fail "the dump cannot be read back (pg_restore --list)"
 
 log "writing upload manifest"
 # Checksums relative to / so restore-test.sh can verify the extracted copy.
@@ -64,7 +72,11 @@ tar -C / -czf "${work_dir}/backup.tar.gz" "$upload_rel" \
   || fail "tar failed"
 
 log "encrypting to $archive"
-age --recipient "$AGE_RECIPIENT" --output "$archive" "${work_dir}/backup.tar.gz" \
+set -- --recipient "$AGE_RECIPIENT"
+for extra in ${BACKUP_EXTRA_RECIPIENTS:-}; do
+  set -- "$@" --recipient "$extra"
+done
+age "$@" --output "$archive" "${work_dir}/backup.tar.gz" \
   || fail "age encryption failed (is AGE_RECIPIENT a valid age1... public key?)"
 [ -s "$archive" ] || fail "encrypted archive is empty"
 (cd "$backup_dir" && sha256sum "$(basename "$archive")") > "${archive}.sha256" \
