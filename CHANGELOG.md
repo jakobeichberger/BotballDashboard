@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### Wertung: Korrektheit und Eingabe am Tisch (Review 2, Paket A)
+
+- **DE-Scores nie negativ, solange ein Bracket läuft:** Jedes Team des Brackets hat ab dem ersten Ergebnis eine `de_results`-Zeile (ohne Platzierung, solange es noch dabei ist). `n_bracket` ist damit die Feldgröße, nicht die Zahl der schon ausgeschiedenen Teams. Ein Platz zählt während des Brackets so viel wie danach (vorher z. B. Platz 7 von 8: −2,0). Teams ohne Platzierung haben DE-Score 0. Die Dashboard-Kennzahl „DE-Ergebnisse“ zählt nur Zeilen mit Platz oder Score.
+- **Aerial- und JBC-Teams bekommen keine Match-Scores:** Die Score-Eingabe (Entry-Seite und mobile Wertung) bietet nur die Teams des Events an, deren Kategorie Matches spielt (Art botball, open oder custom). Die API lehnt einen Match-Score für ein Aerial- oder JBC-Team mit 422 `category_has_no_matches` ab. Die Seeding-Rangliste (auch öffentlich und in Exporten) lässt solche Zeilen weg.
+- **Doppelte Seeding-Runde wird abgelehnt:** Ein zweiter offizieller Lauf derselben Seeding-Runde (gleiche Rundennummer bzw. gleiches geplantes Seeding-Match) ergibt 409 `duplicate_round`, statt als zusätzlicher Lauf in den Seed-Score einzugehen. Korrekturen laufen über „Bearbeiten“ (mit Revision). Unverändert: Übungsläufe und Wiederholungen (Replay) eines Head-to-Head-Matches, bei denen wie bisher der neueste Lauf je Team zählt. Entry-Seite und Bestätigungsdialog nennen den vorhandenen Eintrag und bieten „Vorhandenen Eintrag korrigieren“ an; die mobile Wertung warnt bei einem schon gewerteten Match (Replay-Hinweis bei Head-to-Head).
+- **Rundennummer:** `round_number` ist optional. Ein Lauf zu einem geplanten Match übernimmt dessen Runde und Tisch (vorher wurde wegen des Standardwerts 1 jede Runde als 1 gespeichert), ein freier Lauf die nächste freie Runde des Teams. Die Entry-Seite wählt beim Team die nächste freie Runde vor.
+- **Tie-Breaker:** Der Vergleich ist jetzt total. Ein Team ohne Seeding-Rang kommt nach Teams mit Rang, statt allen gleich zu sein; nicht trennbare Teams stehen nach ID. Beim Seeding-Tiebreak zählen von gleich hohen Läufen die mit den für das Team besseren Tie-Breaker-Werten, dann der frühere, dann nach ID.
+- **Sammel-Speichern von DE, Aerial, Doku und JBC** ohne Abfrage pro Eintrag: vorhandene Zeilen mit einer Abfrage, Regeln einmal, ein Flush, ein Reload (16 Teams kosten so viele Abfragen wie 4).
+- **Eingabe am Handy:** sichtbare Bestätigung nach dem Speichern (Entry-Seite und in der Sticky-Leiste der mobilen Wertung, dazu ein Toast). Das Rundenfeld lässt sich normal überschreiben („1“, Löschen, „2“ ergibt 2) und hat +/−-Tasten, Zählfelder lassen sich leeren und haben 44-px-Stepper. Eingabefehler erscheinen übersetzt mit Feldname statt internem Schlüssel; negative Zählwerte werden schon beim Tippen erkannt, und Speichern ist bei Fehlern gesperrt. „Runde verloren“, „End-Kontakt“, „Wiederholt“ und Ja/Nein-Felder haben 44-px-Tap-Flächen.
+- „Offline gespeichert“ verschwindet, sobald der Eintrag synchronisiert (oder verworfen) ist.
+- Timeout-Karten: Lade- und Fehlerzustand mit „Erneut versuchen“ statt einer leeren Liste.
+
 ### PostgreSQL 18, Redis 8 und Python 3.14
 
 - **PostgreSQL 16 → 18** (`postgres:18-alpine`, 18.6) in Compose, CI und Doku. Das Volume `pgdata` (Proxmox: `/data/db`) hängt jetzt unter `/var/lib/postgresql`, der Cluster liegt wie im offiziellen Image ab 18 in `18/docker`.
