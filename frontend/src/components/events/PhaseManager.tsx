@@ -7,9 +7,8 @@ import { phaseLabel } from "@/api/analytics";
 import type { EventPhase } from "@/api/types";
 import { confirmAction } from "@/lib/confirm";
 import { apiErrorMessage } from "@/lib/errors";
+import { PHASE_STATUSES, PHASE_TYPES } from "./phases";
 
-export const PHASE_TYPES = ["seeding", "double_seeding", "double_elimination", "alliance", "final"] as const;
-export const PHASE_STATUSES = ["draft", "scheduled", "live", "completed"] as const;
 
 /** Live and completed phases carry results: they cannot be deleted or change type. */
 function phaseLocked(phase: Pick<EventPhase, "status">): boolean {

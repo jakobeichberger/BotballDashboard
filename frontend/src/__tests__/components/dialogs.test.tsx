@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import Modal from "@/components/Modal";
 import ConfirmHost from "@/components/ConfirmHost";
 import Toaster from "@/components/Toaster";
-import ErrorBoundary, { isChunkLoadError } from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { isChunkLoadError } from "@/lib/chunkLoadError";
 import { confirmAction } from "@/lib/confirm";
 import { toast, useToastStore } from "@/lib/toast";
 
