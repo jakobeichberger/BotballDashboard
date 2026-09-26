@@ -20568,10 +20568,16 @@
             "title": "Competition Level Id"
           },
           "round_number": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Round Number",
-            "default": 1
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Number"
           },
           "table_number": {
             "anyOf": [
@@ -22386,9 +22392,15 @@
             "title": "Competition Level Id"
           },
           "round_number": {
-            "type": "integer",
-            "title": "Round Number",
-            "default": 1
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Number"
           },
           "table_number": {
             "anyOf": [

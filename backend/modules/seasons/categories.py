@@ -29,6 +29,10 @@ from modules.seasons.models import SeasonCategory
 #: aerial – aerial runs; jbc – points for solved challenges; custom – formulas only.
 CATEGORY_KINDS: tuple[str, ...] = ("botball", "open", "aerial", "jbc", "custom")
 
+#: Kinds whose teams play no seeding or head-to-head matches (their results
+#: are aerial runs or challenge points). A custom category may score matches.
+MATCHLESS_KINDS: frozenset[str] = frozenset({"aerial", "jbc"})
+
 KEY_PATTERN = r"^[a-z][a-z0-9_]{0,19}$"
 CategoryKey = Annotated[str, StringConstraints(pattern=KEY_PATTERN)]
 

@@ -185,13 +185,13 @@ class TestCreateMatch:
     @pytest.mark.asyncio
     async def test_multiple_matches_same_team_aggregate(self, db, season, team):
         await _make_schema(db, season.id, [{"key": "a", "multiplier": 1}])
-        for v in (90, 80, 70):
+        for round_number, v in enumerate((90, 80, 70), start=1):
             await create_match(
                 db,
                 {
                     "season_id": season.id,
                     "team_id": team.id,
-                    "round_number": 1,
+                    "round_number": round_number,
                     "raw_scores": {"a": v},
                 },
                 entered_by="u",
