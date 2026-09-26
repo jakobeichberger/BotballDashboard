@@ -129,9 +129,29 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
-      - name: Upgrade, downgrade and re-upgrade migrations
+      - name: Migrations on an empty database (head → 0011 → head)
         run: |
           alembic upgrade head
+          alembic downgrade 0011
+          alembic upgrade head
+      # The data-moving parts of the migrations (0032 outbox status, 0033
+      # clean-ups, 0034 aerial runs) only run when there are rows: seed the
+      # e2e data plus rows for them, go down to 0030 and back, and compare
+      # every table (only the downgrade losses the migrations document are
+      # accepted) and the transformed values.
+      - name: Migrations with data (seed, head → 0030 → head, compare)
+        run: |
+          python scripts/seed_e2e.py
+          python scripts/migration_roundtrip.py seed
+          python scripts/migration_roundtrip.py snapshot "$RUNNER_TEMP/before.json"
+          alembic downgrade 0030
+          alembic upgrade head
+          python scripts/migration_roundtrip.py snapshot "$RUNNER_TEMP/after.json"
+          python scripts/migration_roundtrip.py compare "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/after.json"
+      # The whole chain with data must run without errors as well (tables
+      # added after 0011 lose their rows on the way down, by design).
+      - name: Migrations with data (head → 0011 → head)
+        run: |
           alembic downgrade 0011
           alembic upgrade head
       # Models and migrations must describe the same schema; tests/postgres/
@@ -336,7 +356,7 @@ jobs:
           mkdir -p "$UPLOAD_DIR"
           (cd backend && uvicorn main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/uvicorn.log" 2>&1) &
           pnpm --dir frontend dev --host 127.0.0.1 > "$RUNNER_TEMP/vite.log" 2>&1 &
-          for attempt in {1..30}; do curl -fsS http://127.0.0.1:8000/api/system/health && curl -fsS http://127.0.0.1:5173 && break; sleep 2; done
+          for _ in {1..30}; do curl -fsS http://127.0.0.1:8000/api/system/health && curl -fsS http://127.0.0.1:5173 && break; sleep 2; done
       # Every spec on desktop Chromium, plus the @mobile-tagged flows
       # (navigation, scoring, offline queue) on a Pixel 7 profile.
       - name: Playwright
@@ -375,29 +395,7 @@ jobs:
       - name: Generate a production .env
         run: |
           age-keygen -o "$RUNNER_TEMP/backup-identity.txt" 2>/dev/null
-          python3 - "$RUNNER_TEMP/backup-identity.txt" <<'PY'
-          import base64, os, re, secrets, sys
-          identity = open(sys.argv[1]).read()
-          recipient = re.search(r"public key: (\S+)", identity).group(1)
-          env = open(".env.example").read()
-          values = {
-              "COMPOSE_PROFILES": "production,monitoring",
-              "APP_BASE_URL": "https://localhost",
-              "ALLOWED_ORIGINS": "https://localhost",
-              "DOMAIN": "localhost",
-              "APP_SECRET_KEY": secrets.token_urlsafe(48),
-              "JWT_SECRET_KEY": secrets.token_urlsafe(48),
-              "POSTGRES_PASSWORD": secrets.token_urlsafe(32),
-              "PRINTER_CREDENTIAL_ENCRYPTION_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode(),
-              "AGE_RECIPIENT": recipient,
-          }
-          for key, value in values.items():
-              env, n = re.subn(rf"^{key}=.*$", f"{key}={value}", env, flags=re.M)
-              if not n:
-                  env += f"\n{key}={value}\n"
-          open(".env", "w").write(env)
-          PY
-          chmod 600 .env
+          python3 scripts/ci-generate-env.py "$RUNNER_TEMP/backup-identity.txt"
       - name: Build and start the stack
         run: scripts/update.sh --no-pull
       - name: Create the VAPID key
@@ -417,11 +415,93 @@ jobs:
           sudo install -d -m 700 -o 10001 -g 10001 "$work"
           sudo install -m 400 -o 10001 -g 10001 "$RUNNER_TEMP/backup-identity.txt" "$work/age-identity"
           trap 'sudo rm -rf "$work"' EXIT
+          # Through the scheduler, so the result is recorded (metrics, alert).
           docker compose run --rm --no-deps \
             -v "$work:/restore-work" -e AGE_IDENTITY=/restore-work/age-identity \
-            backup /app/scripts/restore-test.sh "$archive"
+            backup python scripts/backup_scheduler.py restore-test "$archive"
+      # The same archive with the scheduler's own test key (weekly automatic
+      # restore test, docs/operations.md).
+      - name: Automatic restore test with the server-side test key
+        run: |
+          archive="$(docker compose exec -T backup sh -c 'ls -1t /backups/*.tar.gz.age | head -n1' | tr -d '\r')"
+          docker compose exec -T backup python scripts/backup_scheduler.py restore-test "$archive"
+          docker compose exec -T backup cat /backups/status/restore-test.json
       - name: Verify the deployment
         run: scripts/verify-deployment.sh
+      - name: Container logs
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Tear down
+        if: always()
+        run: docker compose down -v --remove-orphans
+
+  # Updates a running installation of the previous release WITH data to this
+  # commit the way an operator does (scripts/update.sh: verified backup,
+  # migrations, restart, verify-deployment.sh), checks that no row was lost,
+  # then rolls back with scripts/update.sh --rollback (previous images, no
+  # rebuild, migrations down) and checks again. Previous release = the
+  # merge base with main, or the parent commit when this is main itself.
+  deployment-update:
+    name: Deployment – update from the previous release with data, rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      COMPOSE_PROJECT_NAME: bbup
+      FRONTEND_BUILD: docker
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Install age
+        run: sudo apt-get update -q && sudo apt-get install -y -q age
+      - name: Pick the previous release
+        id: previous
+        run: |
+          git fetch --quiet origin main || true
+          base="$(git merge-base HEAD origin/main 2>/dev/null || true)"
+          if [ -z "$base" ] || [ "$base" = "$(git rev-parse HEAD)" ]; then
+            base="$(git rev-parse HEAD^)"
+          fi
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
+          echo "Previous release: $(git log -1 --format='%h %s' "$base")"
+      - name: Generate a production .env
+        run: |
+          age-keygen -o "$RUNNER_TEMP/backup-identity.txt" 2>/dev/null
+          python3 scripts/ci-generate-env.py "$RUNNER_TEMP/backup-identity.txt"
+      - name: Install the previous release
+        run: |
+          git worktree add "$RUNNER_TEMP/previous" "${{ steps.previous.outputs.sha }}"
+          cp .env "$RUNNER_TEMP/previous/.env"
+          cd "$RUNNER_TEMP/previous"
+          scripts/update.sh --no-pull
+      - name: Seed data into the previous release
+        run: |
+          cd "$RUNNER_TEMP/previous"
+          docker compose exec -T -e APP_ENV=development backend python scripts/seed_e2e.py
+          # Snapshot with this commit's helper (the previous image may not have it).
+          docker compose exec -T backend python - snapshot /tmp/before.json \
+            < "$GITHUB_WORKSPACE/backend/scripts/migration_roundtrip.py"
+          docker compose exec -T backend cat /tmp/before.json > "$RUNNER_TEMP/before.json"
+      - name: Update to this commit (scripts/update.sh)
+        run: scripts/update.sh --no-pull
+      - name: No rows lost by the update
+        run: |
+          grep -E '^(PREVIOUS_|CURRENT_IMAGE_TAG|PRE_UPDATE_BACKUP)' .deploy-state
+          docker compose exec -T backend python scripts/migration_roundtrip.py snapshot /tmp/after.json
+          docker compose exec -T backend cat /tmp/after.json > "$RUNNER_TEMP/after.json"
+          python3 backend/scripts/migration_roundtrip.py compare --update "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/after.json"
+      - name: Roll back without rebuilding (scripts/update.sh --rollback)
+        run: |
+          cp backend/scripts/migration_roundtrip.py "$RUNNER_TEMP/migration_roundtrip.py"
+          # Checks out the previous commit, re-tags its images, migrates down.
+          scripts/update.sh --rollback
+          git log -1 --format='now at %h %s'
+      - name: No rows lost by the rollback
+        run: |
+          docker compose exec -T backend python - snapshot /tmp/rolled-back.json \
+            < "$RUNNER_TEMP/migration_roundtrip.py"
+          docker compose exec -T backend cat /tmp/rolled-back.json > "$RUNNER_TEMP/rolled-back.json"
+          python3 "$RUNNER_TEMP/migration_roundtrip.py" compare --update "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/rolled-back.json"
       - name: Container logs
         if: failure()
         run: docker compose logs --no-color --tail 200
