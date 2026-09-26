@@ -397,7 +397,8 @@
     "bracketLabel": "Bracket {{index}}",
     "bracketWeight": "Weight {{index}}",
     "keyLabel": "Key of formula {{number}}",
-    "expressionLabel": "Expression for {{key}}"
+    "expressionLabel": "Expression for {{key}}",
+    "confirmReset": "Reset the formulas of {{category}} to the default? Your own changes are lost."
   },
   "scoreSheets": {
     "title": "Score Sheets",

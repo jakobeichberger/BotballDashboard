@@ -18,15 +18,15 @@
   "criterion": {
     "content": {
       "label": "Inhalt",
-      "hint": "Concept / Design"
+      "hint": "Konzept / Design"
     },
     "implementation": {
       "label": "Technische Umsetzung",
-      "hint": "Implementation"
+      "hint": "Implementierung"
     },
     "results": {
       "label": "Ergebnisse",
-      "hint": "Results / Conclusion"
+      "hint": "Ergebnisse / Fazit"
     },
     "language": {
       "label": "Sprache",
@@ -82,10 +82,12 @@
     "preview": "Vorschau",
     "previewFirst": "Erst eine Vorschau erstellen",
     "assign": "Zuweisen",
-    "previewResult": "Vorschau: {{count}} Zuweisung(en)",
-    "assignedResult": "Zugewiesen: {{count}} Zuweisung(en)",
     "unfilled": "Nicht genug passende Reviewer für: {{papers}}",
-    "missing": "{{title}} ({{count}} fehlen)"
+    "missing": "{{title}} ({{count}} fehlen)",
+    "previewResult_one": "Vorschau: {{count}} Zuweisung",
+    "previewResult_other": "Vorschau: {{count}} Zuweisungen",
+    "assignedResult_one": "Zugewiesen: {{count}} Zuweisung",
+    "assignedResult_other": "Zugewiesen: {{count}} Zuweisungen"
   },
   "deadlines": {
     "title": "Fristen",

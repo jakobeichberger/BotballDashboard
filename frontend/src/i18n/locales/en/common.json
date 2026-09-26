@@ -49,8 +49,6 @@
     "bots": "Bot Gallery",
     "profile": "Profile"
   },
-  "pendingSync": "{{count}} score(s) waiting to sync",
-  "syncFailed": "{{count}} score(s) could not be synced",
   "notifications": {
     "title": "Notifications",
     "empty": "No notifications",
@@ -277,5 +275,9 @@
     "online": "Connected",
     "offline": "Offline"
   },
-  "open": "Open"
+  "open": "Open",
+  "pendingSync_one": "{{count}} score waiting to sync",
+  "pendingSync_other": "{{count}} scores waiting to sync",
+  "syncFailed_one": "{{count}} score could not be synced",
+  "syncFailed_other": "{{count}} scores could not be synced"
 }

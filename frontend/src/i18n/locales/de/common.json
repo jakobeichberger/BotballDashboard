@@ -49,8 +49,6 @@
     "bots": "Bot-Galerie",
     "profile": "Profil"
   },
-  "pendingSync": "{{count}} Wertung(en) warten auf Synchronisierung",
-  "syncFailed": "{{count}} Wertung(en) konnten nicht synchronisiert werden",
   "notifications": {
     "title": "Benachrichtigungen",
     "empty": "Keine Benachrichtigungen",
@@ -277,5 +275,9 @@
     "online": "Verbunden",
     "offline": "Offline"
   },
-  "open": "Öffnen"
+  "open": "Öffnen",
+  "pendingSync_one": "{{count}} Wertung wartet auf Synchronisierung",
+  "pendingSync_other": "{{count}} Wertungen warten auf Synchronisierung",
+  "syncFailed_one": "{{count}} Wertung konnte nicht synchronisiert werden",
+  "syncFailed_other": "{{count}} Wertungen konnten nicht synchronisiert werden"
 }

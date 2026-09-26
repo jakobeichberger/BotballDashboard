@@ -92,9 +92,9 @@
   "aerial": {
     "title": "Aerial – Ergebnisse",
     "hint": "Score = Durchschnitt aller Läufe (sofern die Kategorie nichts anderes festlegt). Leere Felder zählen nicht.",
-    "run": "Run {{number}}",
+    "run": "Lauf {{number}}",
     "score": "Score",
-    "runFor": "Run {{number}} für {{team}}",
+    "runFor": "Lauf {{number}} für {{team}}",
     "hintBest": "Score = Durchschnitt der besten {{count}} Läufe (Aerial Junior Rulebook 2026). Leere Felder zählen nicht.",
     "category": "Kategorie",
     "allTeams": "Alle Teams",
@@ -397,7 +397,8 @@
     "bracketLabel": "Bracket {{index}}",
     "bracketWeight": "Gewichtung {{index}}",
     "keyLabel": "Schlüssel der Formel {{number}}",
-    "expressionLabel": "Ausdruck für {{key}}"
+    "expressionLabel": "Ausdruck für {{key}}",
+    "confirmReset": "Die Formeln für {{category}} auf den Standard zurücksetzen? Eigene Änderungen gehen verloren."
   },
   "scoreSheets": {
     "title": "Scoring-Sheets",

@@ -10,6 +10,8 @@ import { useSeasonCategories } from "@/lib/categories";
 import { EventLink } from "@/components/EventLink";
 import { formatNumber } from "@/i18n/format";
 import { toast } from "@/lib/toast";
+import QueryErrorState from "@/components/QueryErrorState";
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 
 interface JBCResult {
   team_id: string;
@@ -36,18 +38,22 @@ export default function JBCPage() {
   const { base, eventId, seasonId } = useScoringScope();
   const registry = useSeasonCategories(seasonId);
 
-  const { data: results } = useQuery<JBCResult[]>({
+  const resultsQuery = useQuery<JBCResult[]>({
     queryKey: ["jbc-results", base],
     queryFn: async () => (await api.get(`${base}/jbc-results`)).data,
     enabled: !!base,
   });
-  const { data: registrations } = useQuery<Registration[]>({
+  const results = resultsQuery.data;
+  const registrationsQuery = useQuery<Registration[]>({
     queryKey: ["event-registrations", eventId],
     queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data,
     enabled: !!eventId,
   });
+  const registrations = registrationsQuery.data;
+  const failed = resultsQuery.isError || registrationsQuery.isError;
   const teams = (registrations ?? []).filter((r) => registry.kindOf(r.category) === "jbc").sort((a, b) => a.team_name.localeCompare(b.team_name));
   const [draft, setDraft] = useState<Record<string, number | null>>({});
+  useUnsavedChangesWarning(Object.keys(draft).length > 0);
   const saved = (teamId: string) => results?.find((r) => r.team_id === teamId);
 
   const save = useMutation({
@@ -69,8 +75,10 @@ export default function JBCPage() {
           <EventLink to="/scoreboard" aria-label={t("backToScoreboard")} className="btn-icon"><ArrowLeft className="h-5 w-5" aria-hidden="true" /></EventLink>
           <h1 className="page-title flex items-center gap-2"><Puzzle className="h-7 w-7 shrink-0 text-akzent" aria-hidden="true" />{t("jbc.title")}</h1>
         </div>
-        <button className="btn-primary" disabled={save.isPending || Object.keys(draft).length === 0} onClick={() => save.mutate()}><Save className="h-5 w-5" aria-hidden="true" />{t("common:save")}</button>
+        <button className="btn-primary" disabled={save.isPending || failed || Object.keys(draft).length === 0} onClick={() => save.mutate()}><Save className="h-5 w-5" aria-hidden="true" />{t("common:save")}</button>
       </div>
+      <QueryErrorState queries={[resultsQuery, registrationsQuery]} className="mb-4" />
+      {!failed && (<>
       <StatGrid
         ariaLabel={t("jbc.kpi.label")}
         items={[
@@ -110,6 +118,7 @@ export default function JBCPage() {
           </tbody>
         </table>
       </div>
+      </>)}
     </div>
   );
 }

@@ -32,8 +32,8 @@
   "rejectReason": "Reason for the rejection",
   "printerStatus": "Printer status",
   "manual": "manual",
-  "online": "online",
-  "offline": "offline",
+  "online": "Online",
+  "offline": "Offline",
   "col": {
     "file": "File",
     "team": "Team",

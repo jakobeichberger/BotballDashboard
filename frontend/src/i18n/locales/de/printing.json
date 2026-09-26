@@ -32,8 +32,8 @@
   "rejectReason": "Begründung für die Ablehnung",
   "printerStatus": "Druckerstatus",
   "manual": "manuell",
-  "online": "online",
-  "offline": "offline",
+  "online": "Online",
+  "offline": "Offline",
   "col": {
     "file": "Datei",
     "team": "Team",

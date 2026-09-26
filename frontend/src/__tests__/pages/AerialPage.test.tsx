@@ -44,7 +44,7 @@ describe("AerialPage", () => {
   it("renders the run column headers", () => {
     mockApi();
     renderPage();
-    expect(screen.getByRole("columnheader", { name: /run 1/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /lauf 1/i })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /score/i })).toBeInTheDocument();
   });
 
