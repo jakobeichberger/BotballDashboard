@@ -54,7 +54,7 @@ Stand: Migration `0034` · Änderungen: [CHANGELOG.md](CHANGELOG.md) · offene A
 | Backend | Python 3.11 · FastAPI · SQLAlchemy 2.0 async · Alembic · Pydantic v2 |
 | Hintergrund | Celery-Worker und -Beat (OCR mit OpenCV/Tesseract, Drucker-Polling, Outbox, Erinnerungen) |
 | Daten | PostgreSQL 16 · Redis 7 (Broker, Live-Stream, Rate-Limits, Token-Sperrliste) |
-| Frontend | React 18 · TypeScript · Vite · Tailwind CSS · TanStack Query · Zustand · Recharts |
+| Frontend | React 19 · TypeScript 7 · Vite 8 · Tailwind CSS 4 · TanStack Query · Zustand · Recharts |
 | i18n | i18next (Deutsch/Englisch; noch nicht alle Seiten übersetzt) |
 | PWA | vite-plugin-pwa (Workbox) · Web Push (pywebpush/VAPID) · IndexedDB-Offline-Queue |
 | Auth | PyJWT (HS256) · bcrypt · Refresh-Token als HttpOnly-Cookie · rollenbasierte Rechte mit Team-Scoping |

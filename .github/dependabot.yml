@@ -31,29 +31,15 @@ updates:
       frontend-major:
         update-types: [major]
     ignore:
-      # Framework majors wait for the planned design refresh (docs/todo.md).
-      - dependency-name: react
-        update-types: [version-update:semver-major]
-      - dependency-name: react-dom
-        update-types: [version-update:semver-major]
-      - dependency-name: "@types/react"
-        update-types: [version-update:semver-major]
-      - dependency-name: "@types/react-dom"
-        update-types: [version-update:semver-major]
-      - dependency-name: react-router-dom
-        update-types: [version-update:semver-major]
-      - dependency-name: vite
-        update-types: [version-update:semver-major]
-      - dependency-name: vitest
-        update-types: [version-update:semver-major]
-      - dependency-name: "@vitest/*"
-        update-types: [version-update:semver-major]
-      - dependency-name: tailwindcss
-        update-types: [version-update:semver-major]
-      - dependency-name: zod
-        update-types: [version-update:semver-major]
       # generated.ts must not change with the generator; bump it deliberately.
       - dependency-name: openapi-typescript
+      # TypeScript 7 is installed as the alias typescript-7 (the tsc command);
+      # "typescript" stays on 6 until typescript-eslint supports 7.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # The types follow the Node.js runtime (24), not the newest Node.js.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
