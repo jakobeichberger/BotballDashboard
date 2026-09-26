@@ -12,8 +12,8 @@ import { LogoBadge, Wordmark } from "@/components/BrandMark";
 
 const makeSchema = (t: TFunction) =>
   z.object({
-    email: z.string().email(t("auth:login.invalidEmail")),
-    password: z.string().min(1, t("auth:login.passwordRequired")),
+    email: z.email({ error: t("auth:login.invalidEmail") }),
+    password: z.string().min(1, { error: t("auth:login.passwordRequired") }),
   });
 
 type FormData = z.infer<ReturnType<typeof makeSchema>>;
