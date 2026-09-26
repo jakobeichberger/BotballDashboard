@@ -4,6 +4,17 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### Review 2: Backend-Sicherheit und -Performance
+
+- **Passwort-Reset:** Der Reset-Link steht nur noch in Development im Log. Ohne Mail-Konfiguration schreibt Produktion eine Warnung `password_reset_mail_unavailable` ohne Token. Eine reine SendGrid-Konfiguration gilt als Mail-Konfiguration und versendet direkt über SendGrid.
+- **Account-Mails nach dem Commit:** Reset- und Konto-Mails laufen nach dem Commit im Hintergrund (`core.task_queue.run_after_commit`). Die Antwort wartet nicht mehr auf den Mailserver, und ihre Laufzeit verrät nicht mehr, ob ein Konto existiert. SMTP und SendGrid haben ein Timeout von 15 s.
+- **Refresh-Token:** Die Zeile wird mit `FOR UPDATE` gelesen. Wird ein bereits rotierter Token erneut vorgelegt, enden alle Sitzungen des Kontos, Access-Tokens eingeschlossen.
+- **Paper-Upload:** Die Seitenzählung läuft in einem Worker-Thread mit Zeit- und Arbeitsgrenze (höchstens 1000 Seiten, 5000 Knoten, 15 s, zwei gleichzeitig). Ein PDF, dessen Seiten sich so nicht zählen lassen, wird abgelehnt und umgeht die 5-Seiten-Regel nicht mehr.
+- **Review-Mahnungen** gehen nur noch an Reviewer von Papers im Review-Status und nicht mehr für archivierte Saisons.
+- **Ranking-Cache:** `category` muss eine Kategorie der Saison sein (sonst 422, bevor etwas gecacht wird); `offset` der öffentlichen Ergebnisse ist begrenzt. Gleichzeitige Cache-Misses rechnen nur einmal (Single-Flight im Prozess, Redis-Lock über Instanzen). Das Frontend lädt Ranglisten nach `ranking_updated` gebündelt und um 300–1000 ms zufällig verzögert nach.
+- **STL-Upload:** Die Bounding-Box wird blockweise gelesen (100-MB-STL: +6 MB statt +206 MB), höchstens zwei Messungen gleichzeitig.
+- **Druck-Quota:** Ein Retry `failed → queued` prüft das harte Limit und braucht darüber `quota_override` (mit Audit-Eintrag). Einreichung und Retry sperren die Quota-Zeile, gleichzeitige Einreichungen überschreiten das Limit nicht mehr.
+
 ### PostgreSQL 18, Redis 8 und Python 3.14
 
 - **PostgreSQL 16 → 18** (`postgres:18-alpine`, 18.6) in Compose, CI und Doku. Das Volume `pgdata` (Proxmox: `/data/db`) hängt jetzt unter `/var/lib/postgresql`, der Cluster liegt wie im offiziellen Image ab 18 in `18/docker`.
