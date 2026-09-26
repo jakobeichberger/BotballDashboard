@@ -436,11 +436,13 @@ jobs:
         run: docker compose down -v --remove-orphans
 
   # Updates a running installation of the previous release WITH data to this
-  # commit the way an operator does (scripts/update.sh: verified backup,
-  # migrations, restart, verify-deployment.sh), checks that no row was lost,
-  # then rolls back with scripts/update.sh --rollback (previous images, no
-  # rebuild, migrations down) and checks again. Previous release = the
-  # merge base with main, or the parent commit when this is main itself.
+  # commit the way the GitHub deploy does: the installation's own (old)
+  # scripts/update.sh --ref <this commit> checks it out, continues with the
+  # new update.sh (verified backup, migrations, restart, verify), then no row
+  # may be lost; scripts/update.sh --rollback (previous images, no rebuild,
+  # migrations down) must bring the previous release back with all rows.
+  # Previous release = the merge base with main, or the parent commit when
+  # this is main itself. The installation is a git worktree of this clone.
   deployment-update:
     name: Deployment – update from the previous release with data, rollback
     runs-on: ubuntu-latest
@@ -470,41 +472,47 @@ jobs:
           python3 scripts/ci-generate-env.py "$RUNNER_TEMP/backup-identity.txt"
       - name: Install the previous release
         run: |
-          git worktree add "$RUNNER_TEMP/previous" "${{ steps.previous.outputs.sha }}"
-          cp .env "$RUNNER_TEMP/previous/.env"
-          cd "$RUNNER_TEMP/previous"
+          git worktree add "$RUNNER_TEMP/install" "${{ steps.previous.outputs.sha }}"
+          cp .env "$RUNNER_TEMP/install/.env"
+          cp backend/scripts/migration_roundtrip.py "$RUNNER_TEMP/migration_roundtrip.py"
+          cd "$RUNNER_TEMP/install"
           scripts/update.sh --no-pull
       - name: Seed data into the previous release
+        working-directory: ${{ runner.temp }}/install
         run: |
-          cd "$RUNNER_TEMP/previous"
           docker compose exec -T -e APP_ENV=development backend python scripts/seed_e2e.py
-          # Snapshot with this commit's helper (the previous image may not have it).
+          # Snapshots with this commit's helper (the previous image may not have it).
           docker compose exec -T backend python - snapshot /tmp/before.json \
-            < "$GITHUB_WORKSPACE/backend/scripts/migration_roundtrip.py"
+            < "$RUNNER_TEMP/migration_roundtrip.py"
           docker compose exec -T backend cat /tmp/before.json > "$RUNNER_TEMP/before.json"
-      - name: Update to this commit (scripts/update.sh)
-        run: scripts/update.sh --no-pull
+      - name: Update to this commit (the installation's update.sh --ref)
+        working-directory: ${{ runner.temp }}/install
+        run: scripts/update.sh --ref "$GITHUB_SHA"
       - name: No rows lost by the update
+        working-directory: ${{ runner.temp }}/install
         run: |
           grep -E '^(PREVIOUS_|CURRENT_IMAGE_TAG|PRE_UPDATE_BACKUP)' .deploy-state
-          docker compose exec -T backend python scripts/migration_roundtrip.py snapshot /tmp/after.json
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          docker compose exec -T backend python - snapshot /tmp/after.json < "$RUNNER_TEMP/migration_roundtrip.py"
           docker compose exec -T backend cat /tmp/after.json > "$RUNNER_TEMP/after.json"
-          python3 backend/scripts/migration_roundtrip.py compare --update "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/after.json"
+          python3 "$RUNNER_TEMP/migration_roundtrip.py" compare --update "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/after.json"
       - name: Roll back without rebuilding (scripts/update.sh --rollback)
+        working-directory: ${{ runner.temp }}/install
         run: |
-          cp backend/scripts/migration_roundtrip.py "$RUNNER_TEMP/migration_roundtrip.py"
           # Checks out the previous commit, re-tags its images, migrates down.
           scripts/update.sh --rollback
-          git log -1 --format='now at %h %s'
+          test "$(git rev-parse HEAD)" = "${{ steps.previous.outputs.sha }}"
       - name: No rows lost by the rollback
+        working-directory: ${{ runner.temp }}/install
         run: |
-          docker compose exec -T backend python - snapshot /tmp/rolled-back.json \
-            < "$RUNNER_TEMP/migration_roundtrip.py"
+          docker compose exec -T backend python - snapshot /tmp/rolled-back.json < "$RUNNER_TEMP/migration_roundtrip.py"
           docker compose exec -T backend cat /tmp/rolled-back.json > "$RUNNER_TEMP/rolled-back.json"
           python3 "$RUNNER_TEMP/migration_roundtrip.py" compare --update "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/rolled-back.json"
       - name: Container logs
         if: failure()
+        working-directory: ${{ runner.temp }}/install
         run: docker compose logs --no-color --tail 200
       - name: Tear down
         if: always()
+        working-directory: ${{ runner.temp }}/install
         run: docker compose down -v --remove-orphans
