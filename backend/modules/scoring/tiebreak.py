@@ -27,6 +27,7 @@ Special Scoring Conditions":
 from __future__ import annotations
 
 import functools
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -260,25 +261,33 @@ def rank_with_tiebreakers(
     tied item directly before it (for the first of a tie group: after it).
     """
 
+    def fallback(item: RankedItem) -> float:
+        # A team without a fallback (no seeding rank) ranks after those with
+        # one. Treating it as "equal to everyone" made the comparison
+        # non-transitive, so the order depended on the input order.
+        return math.inf if item.fallback is None else item.fallback
+
     def cmp(x: RankedItem, y: RankedItem) -> int:
         if x.score != y.score:
             return -1 if x.score > y.score else 1
         result, _ = compare(x.values, y.values, criteria)
         if result:
             return -result
-        if x.fallback is not None and y.fallback is not None and x.fallback != y.fallback:
-            return -1 if x.fallback < y.fallback else 1
+        if fallback(x) != fallback(y):
+            return -1 if fallback(x) < fallback(y) else 1
         return 0
 
     def separator(x: RankedItem, y: RankedItem) -> str | None:
         _, criterion = compare(x.values, y.values, criteria)
         if criterion:
             return str(criterion.get("label") or criterion["key"])
-        if x.fallback is not None and y.fallback is not None and x.fallback != y.fallback:
+        if fallback(x) != fallback(y):
             return fallback_label
         return None
 
-    ordered = sorted(items, key=functools.cmp_to_key(cmp))
+    # Items nothing separates keep sharing a rank; listing them by id makes the
+    # output independent of the input order.
+    ordered = sorted(sorted(items, key=lambda item: item.id), key=functools.cmp_to_key(cmp))
     for position, item in enumerate(ordered, start=1):
         item.decided_by = None
         previous = ordered[position - 2] if position > 1 else None

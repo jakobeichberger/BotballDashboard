@@ -1,5 +1,7 @@
 """Tie-breakers and special round conditions (game reviews 2024–2026)."""
 
+import itertools
+
 from modules.scoring import tiebreak
 from modules.scoring.extras_schemas import TiebreakerCriterion
 from modules.scoring.sheet_templates import TEMPLATES
@@ -102,6 +104,27 @@ def test_unresolved_ties_share_a_rank_without_fallback():
         ("y", 1, "Seeding rank"),
         ("x", 2, "Seeding rank"),
     ]
+
+
+def test_team_without_fallback_ranks_after_those_with_one_in_any_input_order():
+    """A missing seeding rank sorts last; the comparison stays transitive.
+
+    With a missing fallback comparing equal to everything, seed 3 and seed 1
+    were never separated when the team without a rank sat between them, and
+    the result depended on the input order.
+    """
+    expected = [("c", 1, "Seeding rank"), ("a", 2, "Seeding rank"), ("b", 3, "Seeding rank")]
+    for order in itertools.permutations(["a", "b", "c"]):
+        fallbacks = {"a": 3.0, "b": None, "c": 1.0}
+        items = [RankedItem(key, 7.0, fallback=fallbacks[key]) for key in order]
+        ordered = tiebreak.rank_with_tiebreakers(items, [], fallback_label="Seeding rank")
+        assert [(i.id, i.rank, i.decided_by) for i in ordered] == expected, order
+
+
+def test_unresolved_ties_come_out_in_the_same_order_for_any_input_order():
+    for order in itertools.permutations(["x", "y", "z"]):
+        ordered = tiebreak.rank_with_tiebreakers([RankedItem(k, 1.0) for k in order], CRITERIA)
+        assert [(i.id, i.rank) for i in ordered] == [("x", 1), ("y", 1), ("z", 1)]
 
 
 def _duel(**overrides):

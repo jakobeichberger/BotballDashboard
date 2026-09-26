@@ -1,7 +1,8 @@
 """Event-aware scoring, immutable revisions, and ranking computation."""
 
+import functools
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
@@ -1053,25 +1054,45 @@ async def _seed_tiebreak_values(
             runs[match.team_id].append(match)
     out: dict[str, dict[str, float | None]] = {}
     for team_id, matches in runs.items():
-        counted = sorted(
-            matches,
-            key=lambda m: official_run_score(m.total_score, m.is_disqualified, m.round_lost),
-            reverse=True,
-        )[:2]
-        out[team_id] = tiebreak.sum_values(
-            [
-                tiebreak.match_values(
-                    criteria,
-                    m.raw_scores,
-                    m.tiebreak_values,
-                    rules_service.snapshot_definition(m),
-                )
-                if not (m.is_disqualified or m.round_lost)
-                else {}
-                for m in counted
-            ]
-        )
+        values = {
+            m.id: tiebreak.match_values(
+                criteria, m.raw_scores, m.tiebreak_values, rules_service.snapshot_definition(m)
+            )
+            if not (m.is_disqualified or m.round_lost)
+            else {}
+            for m in matches
+        }
+        counted = sorted(matches, key=functools.cmp_to_key(_counted_run_order(values, criteria)))
+        out[team_id] = tiebreak.sum_values([values[m.id] for m in counted[:2]])
     return out
+
+
+def _counted_run_order(
+    values: dict[str, dict[str, float | None]], criteria: list[dict]
+) -> Callable[[Match, Match], int]:
+    """Order in which a team's seeding runs are counted (best first).
+
+    The game review only says "the best two rounds"; when several runs have
+    the same score, which of them count decides the tie-breaker sums. The
+    order is fixed so a re-ranking never flips: higher official score, then
+    the run that is better for the team on the tie-breakers (in their order),
+    then the earlier run, then the id.
+    """
+
+    def cmp(a: Match, b: Match) -> int:
+        score_a = official_run_score(a.total_score, a.is_disqualified, a.round_lost)
+        score_b = official_run_score(b.total_score, b.is_disqualified, b.round_lost)
+        if score_a != score_b:
+            return -1 if score_a > score_b else 1
+        better, _ = tiebreak.compare(values[a.id], values[b.id], criteria)
+        if better:
+            return -better
+        created_a, created_b = a.created_at, b.created_at
+        if created_a is not None and created_b is not None and created_a != created_b:
+            return -1 if created_a < created_b else 1
+        return (a.id > b.id) - (a.id < b.id)
+
+    return cmp
 
 
 async def get_ranking(
