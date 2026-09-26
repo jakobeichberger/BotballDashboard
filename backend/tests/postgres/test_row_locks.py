@@ -155,9 +155,7 @@ async def test_concurrent_print_submissions_respect_the_hard_limit(factory):
         assert isinstance(a, PrintJob)
         assert isinstance(b, ConflictError), "both submissions passed the hard limit"
         async with factory() as db:
-            jobs = (
-                await db.execute(select(PrintJob).where(PrintJob.team_id == ids["team"]))
-            ).all()
+            jobs = (await db.execute(select(PrintJob).where(PrintJob.team_id == ids["team"]))).all()
             assert len(jobs) == 1
     finally:
         async with factory() as db:
