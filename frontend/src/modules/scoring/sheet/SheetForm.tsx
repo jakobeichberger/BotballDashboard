@@ -38,7 +38,7 @@ export default function SheetForm({ definition, values, onChange, disabled }: Pr
         const breakdown = sideResult?.sections[index];
         return (
           <fieldset disabled={disabled} key={section.key} className="card p-4">
-            <legend className="px-2 font-semibold">{section.label || section.key}</legend>
+            <legend className="px-2 font-semibold">{section.label || t("sheet.fields")}</legend>
             <div className="grid gap-4 sm:grid-cols-2">
               {section.fields.map((field) => <Input key={field.key} spec={field} rawKey={rawKey(side, field.key)} hint={`× ${field.multiplier ?? 1}`} values={values} onChange={onChange} />)}
             </div>

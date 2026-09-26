@@ -315,7 +315,7 @@ export default function PublicEventPage() {
             <Trophy className={panelIcon} strokeWidth={1.75} aria-hidden="true" />
             {t("ranking")}
           </h2>
-          <div className="table-scroll rounded-karte border border-white/10 bg-tief-2/70 backdrop-blur-xs">
+          <div className="table-scroll rounded-karte border border-white/10 bg-tief-2/70 backdrop-blur-xs" tabIndex={0} role="region" aria-label={t("ranking")}>
             <table className="w-full text-xl md:text-[1.7rem]">
               <thead className="border-b border-white/10 font-ui text-sm uppercase tracking-overline text-sidebar-leise md:text-base">
                 <tr>

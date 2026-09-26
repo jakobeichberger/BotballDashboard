@@ -244,7 +244,8 @@ export default function PerformancePage() {
             <table className="w-full text-sm">
               <caption className="sr-only">{t("performance.comparisonCaption")}</caption>
               <thead><tr className="text-left text-fg">
-                {[t("history.col.team"), t("history.col.seeding"), t("performance.officialAvg"), t("performance.best"), t("performance.practiceAvg"), t("performance.trend"), ""].map((h, i) => <th key={h || i} scope="col" className="py-1 pr-3 font-semibold">{h}</th>)}
+                {[t("history.col.team"), t("history.col.seeding"), t("performance.officialAvg"), t("performance.best"), t("performance.practiceAvg"), t("performance.trend")].map((h) => <th key={h} scope="col" className="py-1 pr-3 font-semibold">{h}</th>)}
+                <th scope="col" className="py-1"><span className="sr-only">{t("performance.details")}</span></th>
               </tr></thead>
               <tbody>
                 {sorted.map((row) => (

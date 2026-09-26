@@ -193,7 +193,7 @@ export default function EventSchedulePage() {
         </form>
       )}
 
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0} role="region" aria-label={t("schedulePage.title")}>
         <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-flaeche-2">
             <tr>

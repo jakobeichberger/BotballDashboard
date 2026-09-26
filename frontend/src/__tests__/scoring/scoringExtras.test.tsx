@@ -12,7 +12,7 @@ import SheetForm from "@/modules/scoring/sheet/SheetForm";
 import { definitionProblems } from "@/modules/scoring/sheet/definitionProblems";
 import SeasonRulesEditor from "@/modules/scoring/extras/SeasonRulesEditor";
 import ScoutingPage from "@/pages/ScoutingPage";
-import type { SheetDefinition } from "@/modules/scoring/sheet/calculator";
+import { fromFlatFields, type SheetDefinition } from "@/modules/scoring/sheet/calculator";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
 
@@ -59,6 +59,13 @@ describe("SheetForm", () => {
   it("reports values above the sheet maximum", () => {
     wrap(<SheetForm definition={DEF_2025} values={{ "A.fry_potato": 3 }} onChange={() => {}} />);
     expect(screen.getByRole("alert")).toHaveTextContent("A.fry_potato must be at most 2");
+  });
+
+  it("never shows the internal key of an unnamed section", () => {
+    const flat = fromFlatFields([{ key: "points", label: "Punkte", type: "count" } as any]);
+    wrap(<SheetForm definition={flat} values={{}} onChange={() => {}} />);
+    expect(screen.queryByText("section_1")).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Eingaben" })).toBeInTheDocument();
   });
 });
 

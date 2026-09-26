@@ -402,7 +402,7 @@ export default function FormulasPage() {
                     aria-label={t("formulas.expressionLabel", { key: f.key || i + 1 })}
                     rows={2}
                     spellCheck={false}
-                    placeholder="3/4 * ((n - rank(seed_total) + 1) / n) + 1/4 * ..."
+                    placeholder={t("formulas.expressionPlaceholder")}
                     value={f.expression}
                     onChange={(e) => update(i, { expression: e.target.value })}
                   />
@@ -459,7 +459,7 @@ export default function FormulasPage() {
               ))}
 
             {preview && preview.rows.length > 0 && (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("formulas.preview")}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left border-b">

@@ -231,7 +231,7 @@ function SeasonsSettings() {
       {show && (
         <div className="card p-4 mb-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div><label htmlFor="settingspage-f4" className="label">{t("common:name")}</label><input id="settingspage-f4" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Botball 2027" /></div>
+            <div><label htmlFor="settingspage-f4" className="label">{t("common:name")}</label><input id="settingspage-f4" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("seasons.namePlaceholder")} /></div>
             <div><label htmlFor="settingspage-f5" className="label">{t("seasons.year")}</label><input id="settingspage-f5" className="input" type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} /></div>
             <div><label htmlFor="settingspage-f6" className="label">{t("seasons.gameTheme")}</label><input id="settingspage-f6" className="input" value={theme} onChange={(e) => setTheme(e.target.value)} /></div>
             <div><label htmlFor="settingspage-f7" className="label">{t("seasons.eventStart")}</label><input id="settingspage-f7" className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
@@ -474,7 +474,7 @@ function PrintersSettings() {
                 {Object.entries(PRINTER_TYPE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </div>
-            <div><label htmlFor="settingspage-f16" className="label">{t("printers.apiUrl")}</label><input id="settingspage-f16" className="input" disabled={isGeneric} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="http://..." /></div>
+            <div><label htmlFor="settingspage-f16" className="label">{t("printers.apiUrl")}</label><input id="settingspage-f16" className="input" disabled={isGeneric} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder={t("printers.apiUrlPlaceholder")} /></div>
             {type === "bambu" && <div><label htmlFor="settingspage-f17" className="label">{t("printers.serial")}</label><input id="settingspage-f17" className="input" value={deviceId} onChange={(e) => setDeviceId(e.target.value)} /></div>}
             {!isGeneric && <div><label htmlFor="settingspage-f18" className="label">{t("printers.apiKey")}</label><input id="settingspage-f18" className="input" type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} /></div>}
           </div>
@@ -701,7 +701,7 @@ function LevelsSettings() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4"><h2 className="text-lg font-semibold">{t("levels.title")}</h2></div>
       <div className="card p-4 mb-4 flex flex-wrap items-end gap-3">
-        <div><label htmlFor="settingspage-f26" className="label">{t("common:name")}</label><input id="settingspage-f26" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Senior" /></div>
+        <div><label htmlFor="settingspage-f26" className="label">{t("common:name")}</label><input id="settingspage-f26" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("levels.namePlaceholder")} /></div>
         <div><label htmlFor="settingspage-f27" className="label">{t("levels.code")}</label><input id="settingspage-f27" className="input w-28" value={code} onChange={(e) => setCode(e.target.value)} placeholder="SR" /></div>
         <button className="btn-primary text-sm disabled:opacity-40" disabled={!name || !code || createM.isPending} onClick={() => createM.mutate()}>{t("levels.add")}</button>
       </div>

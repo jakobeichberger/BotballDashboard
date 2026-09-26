@@ -45,7 +45,8 @@
       "active": "Active",
       "finished": "Finished",
       "archived": "Archived"
-    }
+    },
+    "namePlaceholder": "Botball 2027"
   },
   "spools": {
     "title": "Filament spools",
@@ -79,7 +80,8 @@
     "type": "Type",
     "apiUrl": "API URL / host",
     "serial": "Serial number",
-    "apiKey": "API key / access code"
+    "apiKey": "API key / access code",
+    "apiUrlPlaceholder": "http://printer.local"
   },
   "announcements": {
     "title": "Announcements",
@@ -134,7 +136,8 @@
     "orderOf": "Order {{name}}",
     "qualifiesFromOf": "{{name}} qualifies from",
     "none": "– none –",
-    "confirmDelete": "Delete level \"{{name}}\"?"
+    "confirmDelete": "Delete level \"{{name}}\"?",
+    "namePlaceholder": "e.g. Senior"
   },
   "modules": {
     "title": "Season modules",

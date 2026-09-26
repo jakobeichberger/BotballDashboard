@@ -39,7 +39,7 @@ export function StatGrid({ items, ariaLabel }: { items: StatItem[]; ariaLabel: s
     <div
       className={clsx(
         "mb-6 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2",
-        items.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4",
+        items.length === 3 ? "lg:grid-cols-3" : items.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4",
       )}
       role="list"
       aria-label={ariaLabel}

@@ -287,7 +287,8 @@
     "multiplierMax": "Multiplikator-Maximum",
     "removeMultiplier": "Multiplikator entfernen",
     "triggeredBy": "Ausgelöst durch",
-    "triggeredByCheckbox": "Eigenes Kästchen"
+    "triggeredByCheckbox": "Eigenes Kästchen",
+    "maxPlaceholder": "max."
   },
   "sheet": {
     "side": "Seite",
@@ -295,7 +296,8 @@
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – es zählt die bessere Alternative",
     "area": "Bereich",
-    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)"
+    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)",
+    "fields": "Eingaben"
   },
   "entry": {
     "offlineLabel": "{{team}} · Runde {{round}} · {{points}} P.",
@@ -398,7 +400,8 @@
     "bracketWeight": "Gewichtung {{index}}",
     "keyLabel": "Schlüssel der Formel {{number}}",
     "expressionLabel": "Ausdruck für {{key}}",
-    "confirmReset": "Die Formeln für {{category}} auf den Standard zurücksetzen? Eigene Änderungen gehen verloren."
+    "confirmReset": "Die Formeln für {{category}} auf den Standard zurücksetzen? Eigene Änderungen gehen verloren.",
+    "expressionPlaceholder": "3/4 * ((n - rank(seed_total) + 1) / n) + 1/4 * …"
   },
   "scoreSheets": {
     "title": "Scoring-Sheets",
@@ -460,7 +463,8 @@
       "confirm": "{{count}} Felder bestätigen",
       "confirming": "Wird gespeichert …",
       "confirmError": "Fehler beim Speichern. Bitte erneut versuchen.",
-      "removeRow": "Zeile {{row}} ({{key}}) entfernen"
+      "removeRow": "Zeile {{row}} ({{key}}) entfernen",
+      "keyPlaceholder": "snake_case_key"
     },
     "layout": {
       "title": "OCR-Layout",

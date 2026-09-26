@@ -262,7 +262,7 @@ export default function TeamsPage() {
           <article key={team.id} className="card min-w-0 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="truncate font-semibold text-fg"><EventLink to={`/teams/${team.id}`} className="hover:underline">{team.name}</EventLink></h3>
+                <h2 className="truncate font-semibold text-fg"><EventLink to={`/teams/${team.id}`} className="hover:underline">{team.name}</EventLink></h2>
                 {team.team_number && <span className="text-xs text-leise">#{team.team_number}</span>}
               </div>
               <div className="flex shrink-0 items-center gap-2">

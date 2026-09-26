@@ -45,7 +45,8 @@
       "active": "Aktiv",
       "finished": "Abgeschlossen",
       "archived": "Archiviert"
-    }
+    },
+    "namePlaceholder": "Botball 2027"
   },
   "spools": {
     "title": "Filament-Spulen",
@@ -79,7 +80,8 @@
     "type": "Typ",
     "apiUrl": "API-URL / Host",
     "serial": "Seriennummer",
-    "apiKey": "API-Key / Access Code"
+    "apiKey": "API-Key / Access Code",
+    "apiUrlPlaceholder": "http://drucker.local"
   },
   "announcements": {
     "title": "Ankündigungen",
@@ -134,7 +136,8 @@
     "orderOf": "Reihenfolge {{name}}",
     "qualifiesFromOf": "{{name}} qualifiziert aus",
     "none": "– offen –",
-    "confirmDelete": "Stufe \"{{name}}\" löschen?"
+    "confirmDelete": "Stufe \"{{name}}\" löschen?",
+    "namePlaceholder": "z. B. Senior"
   },
   "modules": {
     "title": "Saison-Module",
