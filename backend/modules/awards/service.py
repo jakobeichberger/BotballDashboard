@@ -254,7 +254,7 @@ async def _assert_registered(db: AsyncSession, event_id: str, team_id: str) -> N
         )
     )
     if registered.first() is None:
-        raise ValidationError("The team is not registered for this event")
+        raise ValidationError("Team is not registered for this event")
 
 
 async def nominate(

@@ -6,8 +6,10 @@ import AwardsPage from "@/pages/AwardsPage";
 import TimeoutCardsPanel from "@/modules/scoring/extras/TimeoutCardsPanel";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { confirmAction } from "@/lib/confirm";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), put: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
+vi.mock("@/lib/confirm", () => ({ confirmAction: vi.fn(async () => true) }));
 
 const AWARDS = {
   event_id: "e1",
@@ -28,9 +30,9 @@ const AWARDS = {
   ],
 };
 
-function mockApi() {
+function mockApi(awards: unknown = AWARDS) {
   (api.get as any).mockImplementation((url: string) => {
-    if (url === "/awards/events/e1") return Promise.resolve({ data: AWARDS });
+    if (url === "/awards/events/e1") return Promise.resolve({ data: awards });
     if (url.endsWith("/registrations")) return Promise.resolve({ data: [{ team_id: "t1", team_name: "TechSupport", team_number: "26-0603" }, { team_id: "t2", team_name: "ByteMe", team_number: "26-0188" }] });
     if (url.endsWith("/timeouts")) return Promise.resolve({ data: [{ id: "c1", team_id: "t2", team_name: "ByteMe", round_number: 2, reason: "before_hands_off", note: null, used_at: "2026-04-10T10:00:00Z" }] });
     return Promise.resolve({ data: [] });
@@ -64,7 +66,58 @@ describe("AwardsPage", () => {
     const spirit = screen.getByRole("region", { name: "Spirit of ECER" });
     fireEvent.change(within(spirit).getByLabelText("Platz für ByteMe"), { target: { value: "1" } });
     fireEvent.click(within(spirit).getByRole("button", { name: "Entscheidung speichern" }));
-    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/awards/a2/results", { placements: [{ team_id: "t2", place: 1 }] }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/awards/a2/results", { placements: [{ team_id: "t2", place: 1 }], replace: false }));
+    // A first decision needs no confirmation.
+    expect(confirmAction).not.toHaveBeenCalled();
+  });
+
+  it("prefills the places from the decision and never sends an empty list by accident", async () => {
+    const decided: any = structuredClone(AWARDS);
+    decided.awards[1].results = [{ team_id: "t2", team_name: "ByteMe", team_number: "26-0188", place: 1, course: null, score: null, note: null }];
+    mockApi(decided);
+    renderPage();
+    const spirit = await screen.findByRole("region", { name: "Spirit of ECER" });
+    const select = within(spirit).getByLabelText("Platz für ByteMe") as HTMLSelectElement;
+    expect(select.value).toBe("1");
+    const save = within(spirit).getByRole("button", { name: "Entscheidung speichern" });
+    // Unchanged decision: nothing to save.
+    expect(save).toBeDisabled();
+    fireEvent.change(select, { target: { value: "" } });
+    fireEvent.click(save);
+    await waitFor(() => expect(confirmAction).toHaveBeenCalled());
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/awards/a2/results", { placements: [], replace: true }));
+  });
+
+  it("keeps the decision when the jury cancels the replacement", async () => {
+    const decided: any = structuredClone(AWARDS);
+    decided.awards[1].places = 2;
+    decided.awards[1].results = [{ team_id: "t2", team_name: "ByteMe", team_number: "26-0188", place: 1, course: null, score: null, note: null }];
+    mockApi(decided);
+    (confirmAction as any).mockResolvedValueOnce(false);
+    renderPage();
+    const spirit = await screen.findByRole("region", { name: "Spirit of ECER" });
+    fireEvent.change(within(spirit).getByLabelText("Platz für ByteMe"), { target: { value: "2" } });
+    fireEvent.click(within(spirit).getByRole("button", { name: "Entscheidung speichern" }));
+    await waitFor(() => expect(confirmAction).toHaveBeenCalled());
+    expect(api.put).not.toHaveBeenCalled();
+  });
+
+  it("shows an error with retry instead of an empty page when loading fails", async () => {
+    mockApi();
+    (api.get as any).mockImplementation((url: string) => (url === "/awards/events/e1" ? Promise.reject({ response: { status: 500, data: {} } }) : Promise.resolve({ data: [] })));
+    renderPage();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Daten konnten nicht geladen werden.");
+    expect(screen.getByRole("button", { name: /Erneut versuchen/ })).toBeInTheDocument();
+  });
+
+  it("asks before withdrawing a nomination", async () => {
+    mockApi();
+    (confirmAction as any).mockResolvedValueOnce(false);
+    renderPage();
+    const spirit = await screen.findByRole("region", { name: "Spirit of ECER" });
+    fireEvent.click(within(spirit).getByRole("button", { name: /Nominierung von ByteMe zurückziehen/ }));
+    await waitFor(() => expect(confirmAction).toHaveBeenCalled());
+    expect(api.delete).not.toHaveBeenCalled();
   });
 
   it("applies a template, computes and publishes", async () => {

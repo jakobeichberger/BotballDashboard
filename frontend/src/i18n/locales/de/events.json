@@ -253,6 +253,13 @@
       "decided": "Vergeben",
       "open": "Noch offen",
       "nominations": "Nominierungen"
-    }
+    },
+    "templateApplied": "{{template}}-Awards ergänzt (vorhandene bleiben unverändert).",
+    "confirmReplace": "„{{label}}“ ist bereits entschieden. Bestehende Platzierung ersetzen?",
+    "confirmClear": "Keine Plätze gewählt: Entscheidung für „{{label}}“ zurücksetzen? Der Award verschwindet dann auch von der öffentlichen Seite.",
+    "replace": "Ersetzen",
+    "clear": "Zurücksetzen",
+    "confirmWithdraw": "Nominierung von {{team}} für „{{label}}“ zurückziehen?",
+    "withdrawShort": "Zurückziehen"
   }
 }
