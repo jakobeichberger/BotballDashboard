@@ -35,7 +35,8 @@ test.describe("scoring @mobile", () => {
     await expect(dialog.getByTestId("confirm-total")).toHaveText(/^170[.,]00$/);
     await dialog.getByRole("button", { name: /verbindlich absenden|submit/i }).click();
 
-    await expect(page.getByText(/wertung wurde offiziell gespeichert|score saved officially/i)).toBeVisible();
+    // Named confirmation in the sticky bar (a toast repeats it).
+    await expect(page.getByRole("status").filter({ hasText: /offiziell gespeichert: byte busters|saved officially: byte busters/i }).first()).toBeVisible();
     await expect(rankingRow(page, "Byte Busters")).toContainText(/170[.,]00/);
   });
 

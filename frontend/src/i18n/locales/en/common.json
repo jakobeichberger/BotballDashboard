@@ -95,7 +95,8 @@
     "offline": "Offline: the score is stored on this device and sent automatically once the connection is back.",
     "correct": "Correct",
     "saveLocally": "Save locally",
-    "submit": "Submit officially"
+    "submit": "Submit officially",
+    "cannotSubmit": "Cannot be submitted"
   },
   "export": {
     "failed": "Export failed",
@@ -124,7 +125,9 @@
       "data_conflict": "This conflicts with existing data (duplicate or missing reference).",
       "offline_write_blocked": "No connection – changes are possible again once you are back online.",
       "network": "The server cannot be reached. Please check your connection.",
-      "timeout": "The server did not answer in time. Please try again."
+      "timeout": "The server did not answer in time. Please try again.",
+      "duplicate_round": "This round is already recorded for the team. Please correct the existing entry.",
+      "category_has_no_matches": "Teams of this category play no matches (Aerial, JBC) – their results are entered on the category's own page."
     },
     "status": {
       "400": "The request is invalid.",

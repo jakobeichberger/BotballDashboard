@@ -88,9 +88,19 @@ def _snapshot(row: Any, fields: tuple[str, ...]) -> dict[str, Any]:
 
 
 async def _refresh(db: AsyncSession, rows: list[Any]) -> None:
-    """Reload server-maintained columns (updated_at) before the rows are serialised."""
-    for row in rows:
-        await db.refresh(row)
+    """Reload server-maintained columns (updated_at) before the rows are serialised.
+
+    One SELECT for all rows (populate_existing refreshes the loaded objects),
+    not one refresh per row.
+    """
+    if not rows:
+        return
+    model = type(rows[0])
+    await db.execute(
+        select(model)
+        .where(model.id.in_({row.id for row in rows}))
+        .execution_options(populate_existing=True)
+    )
 
 
 #: Scores derived from the inputs (and, through the formula set, from the
@@ -147,32 +157,48 @@ async def _upsert(
     db: AsyncSession,
     model: Any,
     event: Event,
-    data: dict,
+    entries: list[dict],
     fields: tuple[str, ...],
     kind: str,
     changed_by: str | None,
     derive: Any = None,
-) -> Any:
+) -> list[Any]:
+    """Insert or update one result row per entry (one per team and event).
+
+    The existing rows are loaded with one query and written with one flush,
+    so a bulk save costs about the same number of statements for 5 or 150
+    teams.
+    """
     # Results of an archived season/event are read-only history.
     await ensure_writable(db, event_id=event.id)
-    data = dict(data)
-    team_id = data.pop("team_id")
-    existing = await db.execute(
-        select(model).where(model.event_id == event.id, model.team_id == team_id)
+    team_ids = {entry["team_id"] for entry in entries}
+    loaded = await db.execute(
+        select(model).where(model.event_id == event.id, model.team_id.in_(team_ids))
     )
-    row = existing.scalar_one_or_none()
-    previous = _snapshot(row, fields) if row is not None else None
-    if row is None:
-        row = model(season_id=event.season_id, event_id=event.id, team_id=team_id, **data)
-        db.add(row)
-    else:
-        for k, v in data.items():
-            setattr(row, k, v)
-    if derive:
-        derive(row)
+    found: list[Any] = list(loaded.scalars())
+    existing: dict[str, Any] = {row.team_id: row for row in found}
+    rows: list[Any] = []
+    changes: list[tuple[str, dict[str, Any] | None, dict[str, Any]]] = []
+    for entry in entries:
+        data = dict(entry)
+        team_id = data.pop("team_id")
+        row = existing.get(team_id)
+        previous = _snapshot(row, fields) if row is not None else None
+        if row is None:
+            row = model(season_id=event.season_id, event_id=event.id, team_id=team_id, **data)
+            db.add(row)
+            existing[team_id] = row
+        else:
+            for k, v in data.items():
+                setattr(row, k, v)
+        if derive:
+            derive(row)
+        changes.append((team_id, previous, _snapshot(row, fields)))
+        rows.append(row)
     await db.flush()
-    await _record(db, event, team_id, kind, previous, _snapshot(row, fields), changed_by)
-    return row
+    for team_id, previous, new in changes:
+        await _record(db, event, team_id, kind, previous, new, changed_by)
+    return rows
 
 
 # ── Double Elimination ────────────────────────────────────────────────────────
@@ -209,7 +235,7 @@ async def upsert_de_result(
     *,
     rescore: bool = True,
 ) -> DEResult:
-    row = await _upsert(db, DEResult, event, data, _DE_FIELDS, "de", changed_by)
+    [row] = await _upsert(db, DEResult, event, [data], _DE_FIELDS, "de", changed_by)
     if rescore:
         await rescore_brackets(db, event)
         await _refresh(db, [row])
@@ -219,7 +245,7 @@ async def upsert_de_result(
 async def bulk_upsert_de_results(
     db: AsyncSession, event: Event, entries: list[dict], changed_by: str | None = None
 ) -> list[DEResult]:
-    rows = [await upsert_de_result(db, event, e, changed_by, rescore=False) for e in entries]
+    rows = await _upsert(db, DEResult, event, entries, _DE_FIELDS, "de", changed_by)
     await rescore_brackets(db, event)
     await _refresh(db, rows)
     return rows
@@ -250,8 +276,8 @@ async def upsert_aerial_result(
     *,
     rerank: bool = True,
 ) -> AerialResult:
-    row = await _upsert(
-        db, AerialResult, event, data, _AERIAL_FIELDS, "aerial", changed_by, _derive_aerial
+    [row] = await _upsert(
+        db, AerialResult, event, [data], _AERIAL_FIELDS, "aerial", changed_by, _derive_aerial
     )
     if rerank:
         await _rerank_aerial(db, event)
@@ -262,7 +288,9 @@ async def upsert_aerial_result(
 async def bulk_upsert_aerial_results(
     db: AsyncSession, event: Event, entries: list[dict], changed_by: str | None = None
 ) -> list[AerialResult]:
-    rows = [await upsert_aerial_result(db, event, e, changed_by, rerank=False) for e in entries]
+    rows = await _upsert(
+        db, AerialResult, event, entries, _AERIAL_FIELDS, "aerial", changed_by, _derive_aerial
+    )
     await _rerank_aerial(db, event)
     await _refresh(db, rows)
     return rows
@@ -312,13 +340,14 @@ def _derive_doc(row: DocumentationScore) -> None:
     row.doc_score = documentation_score(row.part1, row.part2, row.part3, row.onsite)
 
 
-async def _check_doc_maxima(db: AsyncSession, event: Event, data: dict) -> None:
+async def _check_doc_maxima(db: AsyncSession, event: Event, entries: list[dict]) -> None:
     """Rubric points may not exceed the season's maximum of the period."""
     maxima = (await rules_service.get_rules(db, event.season_id)).doc_max_points
-    for part, key in _DOC_PARTS:
-        value = data.get(part)
-        if value is not None and value > maxima[key]:
-            raise ValidationError(f"{part} must be at most {maxima[key]:g}")
+    for data in entries:
+        for part, key in _DOC_PARTS:
+            value = data.get(part)
+            if value is not None and value > maxima[key]:
+                raise ValidationError(f"{part} must be at most {maxima[key]:g}")
 
 
 async def _rerank_docs(db: AsyncSession, event: Event) -> None:
@@ -333,9 +362,9 @@ async def upsert_doc_score(
     *,
     rerank: bool = True,
 ) -> DocumentationScore:
-    await _check_doc_maxima(db, event, data)
-    row = await _upsert(
-        db, DocumentationScore, event, data, _DOC_FIELDS, "doc", changed_by, _derive_doc
+    await _check_doc_maxima(db, event, [data])
+    [row] = await _upsert(
+        db, DocumentationScore, event, [data], _DOC_FIELDS, "doc", changed_by, _derive_doc
     )
     if rerank:
         await _rerank_docs(db, event)
@@ -346,7 +375,10 @@ async def upsert_doc_score(
 async def bulk_upsert_doc_scores(
     db: AsyncSession, event: Event, entries: list[dict], changed_by: str | None = None
 ) -> list[DocumentationScore]:
-    rows = [await upsert_doc_score(db, event, e, changed_by, rerank=False) for e in entries]
+    await _check_doc_maxima(db, event, entries)
+    rows = await _upsert(
+        db, DocumentationScore, event, entries, _DOC_FIELDS, "doc", changed_by, _derive_doc
+    )
     await _rerank_docs(db, event)
     await _refresh(db, rows)
     return rows
@@ -374,7 +406,7 @@ async def upsert_jbc_result(
     *,
     rerank: bool = True,
 ) -> JBCResult:
-    row = await _upsert(db, JBCResult, event, data, _JBC_FIELDS, "jbc", changed_by, _derive_jbc)
+    [row] = await _upsert(db, JBCResult, event, [data], _JBC_FIELDS, "jbc", changed_by, _derive_jbc)
     if rerank:
         await sync_event_scores(db, event.id, kinds=("jbc",))
         await _refresh(db, [row])
@@ -384,7 +416,7 @@ async def upsert_jbc_result(
 async def bulk_upsert_jbc_results(
     db: AsyncSession, event: Event, entries: list[dict], changed_by: str | None = None
 ) -> list[JBCResult]:
-    rows = [await upsert_jbc_result(db, event, e, changed_by, rerank=False) for e in entries]
+    rows = await _upsert(db, JBCResult, event, entries, _JBC_FIELDS, "jbc", changed_by, _derive_jbc)
     await sync_event_scores(db, event.id, kinds=("jbc",))
     await _refresh(db, rows)
     return rows

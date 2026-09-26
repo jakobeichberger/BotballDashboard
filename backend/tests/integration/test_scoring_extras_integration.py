@@ -168,6 +168,40 @@ async def test_tiebreak_values_of_dq_and_uncounted_runs_do_not_count(
     assert ranking[a.id]["rank"] == ranking[b.id]["rank"] == 1
 
 
+@pytest.mark.asyncio
+async def test_equal_seeding_runs_count_the_ones_best_for_the_team(
+    client, auth_headers, db, season, event
+):
+    """Of three runs with the same score, the two with the better tie-breaker
+    values count, whatever order the rows come back in (quality review #8)."""
+    a, b = await _teams(db, event, ("A", "botball"), ("B", "botball"))
+    await _rules(client, auth_headers, season.id)
+    for cups in (1, 3, 2):
+        await _score(
+            client,
+            auth_headers,
+            event.id,
+            a.id,
+            {"points": 60},
+            tiebreak_values={"full_cups": cups},
+        )
+    for cups in (3, 1):
+        await _score(
+            client,
+            auth_headers,
+            event.id,
+            b.id,
+            {"points": 60},
+            tiebreak_values={"full_cups": cups},
+        )
+    ranking = await _ranking(client, auth_headers, event.id)
+    assert ranking[a.id]["seed_score"] == ranking[b.id]["seed_score"]
+    # A counts 3 + 2 cups, B 3 + 1.
+    assert ranking[a.id]["rank"] == 1
+    assert ranking[b.id]["rank"] == 2
+    assert ranking[a.id]["tiebreaker"] == CUPS["label"]
+
+
 # ── Head to head → bracket ────────────────────────────────────────────────────
 
 

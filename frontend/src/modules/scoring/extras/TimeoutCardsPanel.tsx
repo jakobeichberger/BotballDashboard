@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { formatDateTime } from "@/i18n/format";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/lib/toast";
+import { apiErrorMessage } from "@/lib/errors";
 import type { EventRegistration } from "@/api/types";
 
 interface TimeoutCard {
@@ -53,7 +54,15 @@ export default function TimeoutCardsPanel({ eventId, registrations }: { eventId:
           <p className="mt-0.5 text-sm text-leise">{t("timeouts.hint")}</p>
         </div>
       </div>
-      {canRecord && (
+      {timeouts.isLoading && <p role="status" className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
+      {timeouts.isError && (
+        // Not an empty list: which teams already used their card is unknown.
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger/[0.07] p-3 text-sm text-danger">
+          {apiErrorMessage(timeouts.error, t("timeouts.loadFailed"))}
+          <button type="button" className="btn-secondary min-h-11" onClick={() => void timeouts.refetch()}>{t("common:retry")}</button>
+        </div>
+      )}
+      {canRecord && timeouts.isSuccess && (
         <form className="mb-4 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (teamId) record.mutate(); }}>
           <select aria-label={t("timeouts.team")} className="input min-w-48 flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
             <option value="">{t("timeouts.team")}</option>
@@ -67,7 +76,7 @@ export default function TimeoutCardsPanel({ eventId, registrations }: { eventId:
           <button className="btn-secondary" disabled={!teamId || record.isPending}><Plus className="h-4 w-4" aria-hidden="true" />{t("timeouts.record")}</button>
         </form>
       )}
-      <ul className="divide-y divide-rand text-sm">
+      {timeouts.isSuccess && <ul className="divide-y divide-rand text-sm">
         {(timeouts.data ?? []).map((card) => (
           <li key={card.id} className="flex items-center justify-between gap-3 py-2">
             <span className="min-w-0">
@@ -78,8 +87,8 @@ export default function TimeoutCardsPanel({ eventId, registrations }: { eventId:
             {canRevoke && <button type="button" className="btn-icon" aria-label={t("timeouts.revoke", { team: card.team_name })} onClick={() => revoke.mutate(card.team_id)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
           </li>
         ))}
-        {timeouts.data?.length === 0 && <li className="py-2 text-leise">{t("timeouts.none")}</li>}
-      </ul>
+        {timeouts.data.length === 0 && <li className="py-2 text-leise">{t("timeouts.none")}</li>}
+      </ul>}
     </section>
   );
 }

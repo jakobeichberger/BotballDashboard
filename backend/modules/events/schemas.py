@@ -327,7 +327,8 @@ class EventScoreCreate(BaseModel):
     scheduled_match_id: str | None = None
     team_id: str
     competition_level_id: str | None = None
-    round_number: int = Field(default=1, ge=1)
+    # None: the scheduled match's round, else round 1.
+    round_number: int | None = Field(default=None, ge=1)
     table_number: int | None = Field(default=None, ge=1)
     raw_scores: dict = Field(default_factory=dict)
     # Special round conditions (game review "Tie Breakers & Special Scoring

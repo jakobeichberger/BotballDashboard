@@ -291,3 +291,69 @@ async def test_public_results_and_schedule_page(client, db, season, event, auth_
     upcoming = (await client.get(f"{base}/schedule?upcoming=true&limit=1")).json()
     assert len(schedule) == 4
     assert [m["code"] for m in upcoming] == ["P-1"]
+
+
+# ── Bulk result upserts (DE, aerial, documentation, JBC) ──────────────────────
+
+
+def _de_entry(team: Team, i: int) -> dict:
+    return {"team_id": team.id, "bracket": "A", "de_rank": i + 1}
+
+
+def _aerial_entry(team: Team, i: int) -> dict:
+    return {"team_id": team.id, "runs": [10.0 + i, 20.0]}
+
+
+def _doc_entry(team: Team, i: int) -> dict:
+    return {"team_id": team.id, "part1": 10.0 + i, "part2": 20.0, "onsite": 30.0}
+
+
+def _jbc_entry(team: Team, i: int) -> dict:
+    return {"team_id": team.id, "points": 5.0 + i}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "entry", "category"),
+    [
+        ("de-results", _de_entry, "botball"),
+        ("aerial-results", _aerial_entry, "aerial_junior"),
+        ("doc-scores", _doc_entry, "botball"),
+        ("jbc-results", _jbc_entry, "jbc"),
+    ],
+)
+async def test_bulk_result_upserts_run_a_constant_number_of_queries(
+    client, db, season, event, auth_headers, statements, path, entry, category
+):
+    """One lookup of the existing rows and of the rules per request, not per
+    entry (performance review #4): 12 more entries cost fewer than 12 more
+    statements. (Not exactly equal: the re-ranking updates the ranks of the
+    rows already there, and the ORM groups those UPDATEs by changed columns.)"""
+    season.use_double_elimination = True
+    season.use_documentation_scoring = True
+    season.use_aerial = True
+    event.active_modules = ["seeding", "double_elimination", "documentation", "aerial"]
+    teams = [Team(name=f"R{i:02d}") for i in range(20)]
+    db.add_all(teams)
+    await db.flush()
+    for team in teams:
+        db.add(EventRegistration(event_id=event.id, team_id=team.id, category=category))
+    await db.commit()
+
+    async def put(batch: list[Team]) -> int:
+        statements["n"] = 0
+        response = await client.put(
+            f"/api/scoring/events/{event.id}/{path}",
+            headers=auth_headers,
+            json=[entry(team, i) for i, team in enumerate(batch)],
+        )
+        assert response.status_code == 200, response.text
+        assert {row["team_id"] for row in response.json()} == {t.id for t in batch}
+        return statements["n"]
+
+    small, large = teams[:4], teams[4:20]
+    extra = len(large) - len(small)
+    inserted = (await put(small), await put(large))
+    updated = (await put(small), await put(large))
+    assert inserted[1] - inserted[0] < extra, inserted
+    assert updated[1] - updated[0] < extra, updated

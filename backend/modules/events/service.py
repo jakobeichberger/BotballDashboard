@@ -1001,6 +1001,11 @@ async def sync_de_results(db: AsyncSession, event: Event, phase: EventPhase) -> 
     ``bracket_score`` is derived exactly like a manual DE entry
     (competition_service.bracket_score: (n − DERank + 1) / n per bracket and
     category); the DE score itself is left to the scoring formula.
+
+    Every team of the bracket gets a row from the first result on, the teams
+    still in the bracket with ``de_rank`` None: n is the size of the field,
+    not the number of teams already out, so a placement scores the same
+    while the bracket runs as once it is decided (never below 0).
     """
     label = _bracket_label(phase)
     places = await _complete_if_decided(db, phase)
@@ -1015,8 +1020,6 @@ async def sync_de_results(db: AsyncSession, event: Event, phase: EventPhase) -> 
         rank = places.get(team_id)
         row = existing.get(team_id)
         if row is None:
-            if rank is None:
-                continue
             row = DEResult(season_id=event.season_id, event_id=event.id, team_id=team_id)
             db.add(row)
         row.bracket = label

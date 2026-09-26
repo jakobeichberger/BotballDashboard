@@ -1,11 +1,13 @@
 """Event-aware scoring, immutable revisions, and ranking computation."""
 
+import functools
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 
+from fastapi import HTTPException, status
 from sqlalchemy import Select, delete, func, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -23,6 +25,7 @@ from modules.scoring import rules_service, sheet, tiebreak
 from modules.scoring.models import Match, Ranking, ScoreRevision, ScoringSchema
 from modules.scoring.ranking import competition_ranks
 from modules.scoring.visibility import visible_matches_clause, visible_revisions_clause
+from modules.seasons.categories import MATCHLESS_KINDS, category_map, kind_of
 from modules.seasons.lifecycle import ensure_writable
 from modules.seasons.models import SeasonPhase
 from modules.teams.models import TeamSeasonRegistration
@@ -452,8 +455,17 @@ async def create_match(
             raise ValidationError("Scheduled match does not belong to this event")
         await assert_match_participant(db, scheduled_match_id, match_data["team_id"])
         match_data.setdefault("event_phase_id", scheduled_match.phase_id)
-        match_data.setdefault("round_number", scheduled_match.round_number)
-        match_data.setdefault("table_number", scheduled_match.table_number)
+        # The request schemas send None for "not given": the scheduled match
+        # decides then (a plain setdefault never applied, every run was round 1).
+        if match_data.get("round_number") is None:
+            match_data["round_number"] = scheduled_match.round_number
+        if match_data.get("table_number") is None:
+            match_data["table_number"] = scheduled_match.table_number
+    if match_data.get("round_number") is None:
+        match_data["round_number"] = await _next_round(db, event.id, match_data)
+    await _assert_scores_matches(db, event, match_data["team_id"])
+    if not match_data.get("is_practice"):
+        await _assert_new_seeding_round(db, event.id, match_data)
 
     schema = await get_active_schema(
         db,
@@ -508,6 +520,109 @@ async def create_match(
     if rank_refresh is None:
         await batch.run(db)
     return match
+
+
+async def _assert_scores_matches(db: AsyncSession, event: Event, team_id: str) -> None:
+    """422 when the team's category at the event has no matches (Aerial, JBC).
+
+    Their results are aerial runs or challenge points; a match score would
+    give them a row in the seeding ranking next to the Botball teams. A team
+    without a category (not registered) keeps the historical default.
+    """
+    category = (await team_categories(db, event, [team_id])).get(team_id)
+    if category is None:
+        return
+    registry = await category_map(db, event.season_id)
+    if kind_of(registry, category) in MATCHLESS_KINDS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            {
+                "code": "category_has_no_matches",
+                "message": f"Teams in category '{category}' play no matches; "
+                "enter their results on the category's own page",
+            },
+        )
+
+
+async def _next_round(db: AsyncSession, event_id: str, data: dict) -> int:
+    """The team's next free round number (official or practice) at the event.
+
+    Used when a free-hand entry names no round, so consecutive entries become
+    rounds 1, 2, 3 instead of all claiming round 1.
+    """
+    level_id = data.get("competition_level_id")
+    highest = (
+        await db.execute(
+            select(func.max(Match.round_number)).where(
+                Match.event_id == event_id,
+                Match.team_id == data["team_id"],
+                Match.is_practice.is_(bool(data.get("is_practice"))),
+                Match.competition_level_id == level_id
+                if level_id
+                else Match.competition_level_id.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    return int(highest or 0) + 1
+
+
+async def _entry_kind(db: AsyncSession, data: dict) -> str:
+    """The phase kind a new run belongs to, resolved like select_matches_with_kind."""
+    if data.get("event_phase_id"):
+        event_phase = await db.get(EventPhase, data["event_phase_id"])
+        if event_phase is not None:
+            return str(event_phase.phase_type)
+    if data.get("phase_id"):
+        season_phase = await db.get(SeasonPhase, data["phase_id"])
+        if season_phase is not None:
+            return str(season_phase.phase_type)
+    return SEEDING
+
+
+async def _assert_new_seeding_round(db: AsyncSession, event_id: str, data: dict) -> None:
+    """409 ``duplicate_round`` when the team already has this official seeding round.
+
+    Every official seeding run counts towards the seed score, so a second
+    entry for the same round was silently counted as an extra run. A
+    correction edits the recorded run (PATCH, with a revision) instead.
+    Head-to-head rounds are not affected: a replayed match is recorded as a
+    new run of the scheduled match, and only the latest run per team counts
+    (rules_service.head_to_head_matches).
+    A run of a scheduled seeding match is the same round when it belongs to
+    the same scheduled match; a free-hand run when it has the same number.
+    """
+    if await _entry_kind(db, data) != SEEDING:
+        return
+    level_id = data.get("competition_level_id")
+    scheduled_match_id = data.get("scheduled_match_id")
+    same_round = (
+        Match.scheduled_match_id == scheduled_match_id
+        if scheduled_match_id
+        else Match.round_number == data["round_number"]
+    )
+    rows = (
+        await db.execute(
+            select_matches_with_kind(Match.id, Match.total_score).where(
+                Match.event_id == event_id,
+                Match.team_id == data["team_id"],
+                Match.is_practice.is_(False),
+                Match.competition_level_id == level_id
+                if level_id
+                else Match.competition_level_id.is_(None),
+                same_round,
+            )
+        )
+    ).all()
+    existing = next((row for row in rows if row.phase_kind == SEEDING), None)
+    if existing is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            {
+                "code": "duplicate_round",
+                "message": f"Round {data['round_number']} of this team is already recorded "
+                f"({existing.total_score:g} points); correct that entry instead",
+            },
+        )
 
 
 def _validate_round_lost(data: dict) -> None:
@@ -939,25 +1054,45 @@ async def _seed_tiebreak_values(
             runs[match.team_id].append(match)
     out: dict[str, dict[str, float | None]] = {}
     for team_id, matches in runs.items():
-        counted = sorted(
-            matches,
-            key=lambda m: official_run_score(m.total_score, m.is_disqualified, m.round_lost),
-            reverse=True,
-        )[:2]
-        out[team_id] = tiebreak.sum_values(
-            [
-                tiebreak.match_values(
-                    criteria,
-                    m.raw_scores,
-                    m.tiebreak_values,
-                    rules_service.snapshot_definition(m),
-                )
-                if not (m.is_disqualified or m.round_lost)
-                else {}
-                for m in counted
-            ]
-        )
+        values = {
+            m.id: tiebreak.match_values(
+                criteria, m.raw_scores, m.tiebreak_values, rules_service.snapshot_definition(m)
+            )
+            if not (m.is_disqualified or m.round_lost)
+            else {}
+            for m in matches
+        }
+        counted = sorted(matches, key=functools.cmp_to_key(_counted_run_order(values, criteria)))
+        out[team_id] = tiebreak.sum_values([values[m.id] for m in counted[:2]])
     return out
+
+
+def _counted_run_order(
+    values: dict[str, dict[str, float | None]], criteria: list[dict]
+) -> Callable[[Match, Match], int]:
+    """Order in which a team's seeding runs are counted (best first).
+
+    The game review only says "the best two rounds"; when several runs have
+    the same score, which of them count decides the tie-breaker sums. The
+    order is fixed so a re-ranking never flips: higher official score, then
+    the run that is better for the team on the tie-breakers (in their order),
+    then the earlier run, then the id.
+    """
+
+    def cmp(a: Match, b: Match) -> int:
+        score_a = official_run_score(a.total_score, a.is_disqualified, a.round_lost)
+        score_b = official_run_score(b.total_score, b.is_disqualified, b.round_lost)
+        if score_a != score_b:
+            return -1 if score_a > score_b else 1
+        better, _ = tiebreak.compare(values[a.id], values[b.id], criteria)
+        if better:
+            return -better
+        created_a, created_b = a.created_at, b.created_at
+        if created_a is not None and created_b is not None and created_a != created_b:
+            return -1 if created_a < created_b else 1
+        return (a.id > b.id) - (a.id < b.id)
+
+    return cmp
 
 
 async def get_ranking(
@@ -987,6 +1122,14 @@ async def get_ranking(
         if not phase or phase.event_id != event_id or phase.phase_type != SEEDING:
             return []
     query = select(Ranking).where(Ranking.event_id == event_id, Ranking.event_phase_id.is_(None))
+    # Aerial and JBC teams play no matches; a run recorded for one before
+    # score entry rejected it must not put the team into the seeding table.
+    event = await db.get(Event, event_id)
+    if event is not None:
+        registry = await category_map(db, event.season_id)
+        matchless = {key for key in registry if kind_of(registry, key) in MATCHLESS_KINDS}
+        matchless |= {key for key in MATCHLESS_KINDS if key not in registry}
+        query = query.where(func.coalesce(Ranking.category, DEFAULT_CATEGORY).not_in(matchless))
     if competition_level_id:
         query = query.where(Ranking.competition_level_id == competition_level_id)
     if category:

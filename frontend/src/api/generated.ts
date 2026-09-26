@@ -5681,11 +5681,8 @@ export interface components {
             team_id: string;
             /** Competition Level Id */
             competition_level_id?: string | null;
-            /**
-             * Round Number
-             * @default 1
-             */
-            round_number: number;
+            /** Round Number */
+            round_number?: number | null;
             /** Table Number */
             table_number?: number | null;
             /** Raw Scores */
@@ -6267,11 +6264,8 @@ export interface components {
             team_id: string;
             /** Competition Level Id */
             competition_level_id?: string | null;
-            /**
-             * Round Number
-             * @default 1
-             */
-            round_number: number;
+            /** Round Number */
+            round_number?: number | null;
             /** Table Number */
             table_number?: number | null;
             /** Raw Scores */

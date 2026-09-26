@@ -95,7 +95,8 @@
     "offline": "Offline: Die Wertung wird auf diesem Gerät gespeichert und automatisch übertragen, sobald wieder eine Verbindung besteht.",
     "correct": "Korrigieren",
     "saveLocally": "Lokal speichern",
-    "submit": "Verbindlich absenden"
+    "submit": "Verbindlich absenden",
+    "cannotSubmit": "So nicht absendbar"
   },
   "export": {
     "failed": "Export fehlgeschlagen",
@@ -124,7 +125,9 @@
       "data_conflict": "Das widerspricht vorhandenen Daten (Duplikat oder fehlender Bezug).",
       "offline_write_blocked": "Keine Verbindung – Änderungen sind erst nach dem Wiederverbinden möglich.",
       "network": "Der Server ist nicht erreichbar. Bitte die Verbindung prüfen.",
-      "timeout": "Der Server antwortet nicht rechtzeitig. Bitte erneut versuchen."
+      "timeout": "Der Server antwortet nicht rechtzeitig. Bitte erneut versuchen.",
+      "duplicate_round": "Diese Runde ist für das Team schon erfasst. Bitte den vorhandenen Eintrag korrigieren.",
+      "category_has_no_matches": "Teams dieser Kategorie spielen keine Matches (Aerial, JBC) – ihre Ergebnisse werden auf der eigenen Seite der Kategorie erfasst."
     },
     "status": {
       "400": "Die Anfrage ist ungültig.",

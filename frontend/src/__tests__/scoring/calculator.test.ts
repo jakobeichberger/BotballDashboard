@@ -79,3 +79,23 @@ describe("2026 sheet (derived multipliers)", () => {
     expect(computeSheet({ "A.lower_start_box_drums": 1, "A.lower_start_box_poms": 1 }, definition).total).toBe(54);
   });
 });
+
+describe("entry issues (frontend review M4)", () => {
+  const flat = normalize([{ key: "cubes", label: "Würfel", type: "count", multiplier: 3, max_value: 20 }, { key: "bonus", label: "Bonus", type: "number", multiplier: 1 }], null);
+
+  it("reports a negative count although the schema sets no minimum", () => {
+    const result = computeSheet({ cubes: -3 }, flat);
+    expect(result.issues).toEqual([{ code: "belowMin", key: "cubes", label: "Würfel", limit: 0 }]);
+    expect(result.errors).toEqual(["cubes must be at least 0"]);
+    // A plain number field without a minimum may be negative.
+    expect(computeSheet({ bonus: -3 }, flat).issues).toEqual([]);
+  });
+
+  it("names the field and its side, not the internal key", () => {
+    const definition = fixtures.schemas.botball_2025.definition as unknown as SheetDefinition;
+    const [issue] = computeSheet({ "A.fry_potato": 5 }, definition).issues;
+    expect(issue).toMatchObject({ code: "aboveMax", key: "A.fry_potato", limit: 2 });
+    expect(issue.label).toMatch(/^A · /);
+    expect(issue.label).not.toContain("fry_potato");
+  });
+});

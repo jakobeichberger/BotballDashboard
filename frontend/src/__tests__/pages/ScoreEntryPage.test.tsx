@@ -70,7 +70,7 @@ describe("ScoreEntryPage", () => {
   it("labels every form field", async () => {
     renderPage();
     expect(await screen.findByLabelText("Team")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Würfel/)).toHaveAttribute("type", "number");
+    expect(screen.getByRole("spinbutton", { name: /Würfel/ })).toHaveAttribute("type", "number");
   });
 
   it("deletes a score only after an explicit confirmation", async () => {
