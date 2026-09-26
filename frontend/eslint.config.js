@@ -6,6 +6,28 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 import { defineConfig } from "eslint/config";
+import local from "./eslint-local-rules.js";
+
+// Texts the UI may show untranslated: symbols/numbers, upper-case
+// abbreviations and the product/format names below, which are the same in
+// every language.
+const LANGUAGE_NEUTRAL = [
+  "[0-9!-/:-@[-`{-~\\s·–—−…×⌀→←↓↑✓✕•°%„“”Δ]+",
+  "[A-Z0-9_-]+",
+  // version prefix (v3), sample size (n=12), grams (−50 g)
+  "[\\s·,:→]*v\\s*",
+  "n=",
+  "−?\\d*\\s*g\\s*",
+  // language names are shown in their own language
+  "English",
+  "Deutsch",
+  "JSON",
+  "Botball",
+  "BotballDashboard",
+  // second half of the "Botball" + "Dashboard" wordmark
+  "Dashboard",
+  "📄",
+];
 
 export default defineConfig(
   { ignores: ["dist", "dev-dist", "node_modules", "coverage", "*.config.js", "*.config.d.ts"] },
@@ -39,38 +61,21 @@ export default defineConfig(
     },
   },
   {
-    // UI texts go through t() (de + en); a literal in JSX text is an error.
-    // Allowed: symbols/numbers (plugin default), upper-case abbreviations
-    // and the product/format names below, which are the same in every language.
+    // UI texts go through t() (de + en); a literal in JSX text or in a
+    // user-facing attribute is an error (see LANGUAGE_NEUTRAL for exceptions).
     files: ["src/**/*.tsx"],
     ignores: ["src/__tests__/**"],
-    plugins: { i18next },
+    plugins: { i18next, local },
     rules: {
       "i18next/no-literal-string": [
         "error",
         {
           mode: "jsx-text-only",
-          words: {
-            exclude: [
-              "[0-9!-/:-@[-`{-~\\s·–—−…×⌀→←↓↑✓✕•°%„“”Δ]+",
-              "[A-Z0-9_-]+",
-              // version prefix (v3), sample size (n=12), grams (−50 g)
-              "[\\s·,:→]*v\\s*",
-              "n=",
-              "−?\\d*\\s*g\\s*",
-              // language names are shown in their own language
-              "English",
-              "Deutsch",
-              "JSON",
-              "Botball",
-              "BotballDashboard",
-              // second half of the "Botball" + "Dashboard" wordmark
-              "Dashboard",
-              "📄",
-            ],
-          },
+          words: { exclude: LANGUAGE_NEUTRAL },
         },
       ],
+      // The same for user-facing attributes (aria-label, title, placeholder, alt, label).
+      "local/no-literal-ui-attribute": ["error", { allow: LANGUAGE_NEUTRAL }],
     },
   },
   {

@@ -284,6 +284,15 @@ async def create_phase(db: AsyncSession, event_id: str, data: dict) -> EventPhas
     return phase
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Stored and submitted times compared on one footing.
+
+    PostgreSQL returns ``timestamptz`` values, SQLite (tests) naive ones, and
+    a client may send a time without offset; naive times are UTC here.
+    """
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
 async def update_phase(db: AsyncSession, event_id: str, phase_id: str, data: dict) -> EventPhase:
     await ensure_writable(db, event_id=event_id)
     result = await db.execute(
@@ -296,8 +305,10 @@ async def update_phase(db: AsyncSession, event_id: str, phase_id: str, data: dic
         # Switching a phase to a disabled module is the same as creating one.
         await assert_phase_allowed(db, await get_event(db, event_id), data["phase_type"])
     for key, value in data.items():
+        if isinstance(value, datetime):
+            value = _as_utc(value)
         setattr(phase, key, value)
-    if phase.starts_at and phase.ends_at and phase.ends_at <= phase.starts_at:
+    if phase.starts_at and phase.ends_at and _as_utc(phase.ends_at) <= _as_utc(phase.starts_at):
         raise ValidationError("ends_at must be after starts_at")
     try:
         await db.flush()
@@ -1001,6 +1012,11 @@ async def sync_de_results(db: AsyncSession, event: Event, phase: EventPhase) -> 
     ``bracket_score`` is derived exactly like a manual DE entry
     (competition_service.bracket_score: (n − DERank + 1) / n per bracket and
     category); the DE score itself is left to the scoring formula.
+
+    Every team of the bracket gets a row from the first result on, the teams
+    still in the bracket with ``de_rank`` None: n is the size of the field,
+    not the number of teams already out, so a placement scores the same
+    while the bracket runs as once it is decided (never below 0).
     """
     label = _bracket_label(phase)
     places = await _complete_if_decided(db, phase)
@@ -1015,8 +1031,6 @@ async def sync_de_results(db: AsyncSession, event: Event, phase: EventPhase) -> 
         rank = places.get(team_id)
         row = existing.get(team_id)
         if row is None:
-            if rank is None:
-                continue
             row = DEResult(season_id=event.season_id, event_id=event.id, team_id=team_id)
             db.add(row)
         row.bracket = label
@@ -1193,6 +1207,8 @@ async def update_scheduled_match(
     if match.version != expected_version:
         raise ConflictError(f"Schedule changed (current version: {match.version})")
     for key, value in data.items():
+        if isinstance(value, datetime):
+            value = _as_utc(value)
         setattr(match, key, value)
     if match.table_number and match.table_number > (await get_event(db, event_id)).table_count:
         raise ValidationError("Table number exceeds the configured table count")
@@ -1201,13 +1217,14 @@ async def update_scheduled_match(
         own_teams = {
             participant.team_id for participant in match.participants if participant.team_id
         }
-        start = match.scheduled_at
+        start = _as_utc(match.scheduled_at)
         end = start + timedelta(minutes=match.duration_minutes)
         for other in candidates:
             if other.id == match.id or not other.scheduled_at or other.status == "cancelled":
                 continue
-            other_end = other.scheduled_at + timedelta(minutes=other.duration_minutes)
-            overlaps = start < other_end and other.scheduled_at < end
+            other_start = _as_utc(other.scheduled_at)
+            other_end = other_start + timedelta(minutes=other.duration_minutes)
+            overlaps = start < other_end and other_start < end
             other_teams = {
                 participant.team_id for participant in other.participants if participant.team_id
             }

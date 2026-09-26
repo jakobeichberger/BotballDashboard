@@ -25,7 +25,7 @@ tests:
           - exp_labels: { severity: critical, job: botball-readiness, instance: "http://backend:8000/api/system/readiness" }
             exp_annotations:
               summary: "BotballDashboard readiness check fails"
-              description: "/api/system/readiness has not returned 200 for 2 minutes: PostgreSQL, Redis or the Celery worker is unavailable (OCR, push and printer polling stop without the worker)."
+              description: "/api/system/readiness has not returned 200 for 2 minutes: PostgreSQL, Redis or a Celery queue without worker (the response lists each check and queue; see WorkerQueueDown)."
 
   - interval: 1m
     input_series:
@@ -57,9 +57,12 @@ tests:
     input_series:
       - series: 'botball_backup_last_run_success{job="botball-backup", instance="backup:9101"}'
         values: "1 1 0"
-      # Last success at t=0 (epoch); after 26 h + 10 min the backup is stale.
+      # Last success at t=0 (epoch); daily backups (limit 26 h, exported by the
+      # backup service): after 26 h + 10 min the backup is stale.
       - series: 'botball_backup_last_success_timestamp_seconds{job="botball-backup", instance="backup:9101"}'
         values: "0x1700"
+      - series: 'botball_backup_max_age_seconds{job="botball-backup", instance="backup:9101"}'
+        values: "93600x1700"
     alert_rule_test:
       - eval_time: 2m
         alertname: BackupFailed
@@ -76,8 +79,8 @@ tests:
         exp_alerts:
           - exp_labels: { severity: critical, job: botball-backup, instance: "backup:9101" }
             exp_annotations:
-              summary: "No successful backup for more than 26 hours"
-              description: "The last successful backup is 1d 3h 0m 0s old."
+              summary: "No successful backup within the expected interval"
+              description: "The last successful backup is 1d 3h 0m 0s old, more than allowed (BACKUP_INTERVAL_SECONDS + 2 h or BACKUP_MAX_AGE_HOURS). See `docker compose logs backup`."
 
   - interval: 1m
     input_series:
@@ -211,3 +214,217 @@ tests:
             exp_annotations:
               summary: "PostgreSQL uses more than 80 % of its connections"
               description: "90% of max_connections are in use; new API requests or workers may fail to connect."
+
+  # BackupStale follows the configured interval: with backups every 3 days
+  # (limit 74 h) a 27 h old backup is fine.
+  - interval: 1m
+    input_series:
+      - series: 'botball_backup_last_success_timestamp_seconds{job="botball-backup", instance="backup:9101"}'
+        values: "0x4600"
+      - series: 'botball_backup_max_age_seconds{job="botball-backup", instance="backup:9101"}'
+        values: "266400x4600"
+    alert_rule_test:
+      - eval_time: 27h
+        alertname: BackupStale
+        exp_alerts: []
+      - eval_time: 75h
+        alertname: BackupStale
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "No successful backup within the expected interval"
+              description: "The last successful backup is 3d 3h 0m 0s old, more than allowed (BACKUP_INTERVAL_SECONDS + 2 h or BACKUP_MAX_AGE_HOURS). See `docker compose logs backup`."
+
+  # Restore test: a failure fires at once; the age alert after two missed
+  # weekly runs + 1 day (15 d) and one hour of "for".
+  - interval: 1m
+    input_series:
+      # Succeeded, failed from minute 60 to 179, succeeded again.
+      - series: 'botball_restore_test_last_success{job="botball-backup", instance="backup:9101"}'
+        values: "1x59 0x119 1x60"
+      - series: 'botball_restore_test_last_success_timestamp_seconds{job="botball-backup", instance="backup:9101"}'
+        values: "0x23200"
+      - series: 'botball_restore_test_max_age_seconds{job="botball-backup", instance="backup:9101"}'
+        values: "1296000x23200"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RestoreTestFailed
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: RestoreTestFailed
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "The last restore test failed"
+              description: "An archive could not be restored into the test database or its uploads do not match the manifest; the backups may be unusable. See `docker compose logs backup` and status/restore-test.json in the backup directory."
+      - eval_time: 4h
+        alertname: RestoreTestFailed
+        exp_alerts: []
+      - eval_time: 14d
+        alertname: RestoreTestStale
+        exp_alerts: []
+      - eval_time: 16d
+        alertname: RestoreTestStale
+        exp_alerts:
+          - exp_labels: { severity: warning, job: botball-backup, instance: "backup:9101" }
+            exp_annotations:
+              summary: "No successful restore test for too long"
+              description: "The last successful restore test was 16d 0h 0m 0s ago, longer than allowed (two weekly automatic runs + 1 day, or 35 days for manual tests). See docs/operations.md, \"Restore test\"."
+
+  # Only worker-ocr is alive: default and periodic (worker) alert, ocr not.
+  - interval: 1m
+    input_series:
+      - series: 'botball_celery_queue_consumers{job="botball-api", instance="backend:8000", queue="default"}'
+        values: "1 0x10"
+      - series: 'botball_celery_queue_consumers{job="botball-api", instance="backend:8000", queue="periodic"}'
+        values: "1 0x10"
+      - series: 'botball_celery_queue_consumers{job="botball-api", instance="backend:8000", queue="ocr"}'
+        values: "1x10"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: WorkerQueueDown
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: WorkerQueueDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-api, instance: "backend:8000", queue: default }
+            exp_annotations:
+              summary: "No Celery worker consumes the default queue"
+              description: "Notifications (outbox, push, mail), printer polling and reminders stop. Check `docker compose ps worker` and `docker compose logs worker`."
+          - exp_labels: { severity: critical, job: botball-api, instance: "backend:8000", queue: periodic }
+            exp_annotations:
+              summary: "No Celery worker consumes the periodic queue"
+              description: "Notifications (outbox, push, mail), printer polling and reminders stop. Check `docker compose ps worker` and `docker compose logs worker`."
+
+  - interval: 1m
+    input_series:
+      - series: 'botball_celery_queue_consumers{job="botball-api", instance="backend:8000", queue="ocr"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: WorkerQueueDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-api, instance: "backend:8000", queue: ocr }
+            exp_annotations:
+              summary: "No Celery worker consumes the ocr queue"
+              description: "Score-sheet OCR stops. Check `docker compose ps worker-ocr` and `docker compose logs worker-ocr`."
+
+  # Beat: heartbeat at t=0 (epoch), none afterwards -> stale after 5 min,
+  # alert after 5 more.
+  - interval: 1m
+    input_series:
+      - series: 'botball_beat_last_heartbeat_timestamp_seconds{job="botball-api", instance="backend:8000"}'
+        values: "0x20"
+      - series: 'botball_beat_heartbeat_known{job="botball-api", instance="backend:8000"}'
+        values: "1x20"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: BeatNotRunning
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: BeatNotRunning
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-api, instance: "backend:8000" }
+            exp_annotations:
+              summary: "Celery beat schedules no tasks"
+              description: "Beat has not handed a task to the broker for more than 5 minutes (or never): no notification outbox, printer polling, reminders or clean-up run. Check `docker compose ps beat` and `docker compose logs beat`."
+
+  # Beat never wrote a heartbeat (e.g. the container never started).
+  - interval: 1m
+    input_series:
+      - series: 'botball_beat_heartbeat_known{job="botball-api", instance="backend:8000"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: BeatNotRunning
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-api, instance: "backend:8000" }
+            exp_annotations:
+              summary: "Celery beat schedules no tasks"
+              description: "Beat has not handed a task to the broker for more than 5 minutes (or never): no notification outbox, printer polling, reminders or clean-up run. Check `docker compose ps beat` and `docker compose logs beat`."
+
+  # A beat that keeps sending (heartbeat follows the clock) never alerts.
+  - interval: 1m
+    input_series:
+      - series: 'botball_beat_last_heartbeat_timestamp_seconds{job="botball-api", instance="backend:8000"}'
+        values: "0+60x20"
+      - series: 'botball_beat_heartbeat_known{job="botball-api", instance="backend:8000"}'
+        values: "1x20"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: BeatNotRunning
+        exp_alerts: []
+
+  # External probe through Traefik and the certificate expiry.
+  - interval: 1m
+    input_series:
+      - series: 'probe_success{job="botball-external", instance="https://botball.school.test/"}'
+        values: "1 1 0x10"
+      # Expires 10 days after t=0: inside the 14-day warning, outside the 3-day one.
+      - series: 'probe_ssl_earliest_cert_expiry{job="botball-external", instance="https://botball.school.test/"}'
+        values: "864000x100"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: SiteUnreachable
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: SiteUnreachable
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-external, instance: "https://botball.school.test/" }
+            exp_annotations:
+              summary: "https://botball.school.test/ is not reachable through Traefik"
+              description: "The Blackbox probe of https://botball.school.test/ fails for 3 minutes (Traefik, TLS certificate, frontend or the API route). Check `docker compose ps traefik frontend backend` and `docker compose logs traefik`."
+      - eval_time: 30m
+        alertname: TLSCertificateExpiresSoon
+        exp_alerts: []
+      - eval_time: 61m
+        alertname: TLSCertificateExpiresSoon
+        exp_alerts:
+          - exp_labels: { severity: warning, job: botball-external, instance: "https://botball.school.test/" }
+            exp_annotations:
+              summary: "The TLS certificate of https://botball.school.test/ expires in less than 14 days"
+              description: "The certificate expires in 9d 22h 59m 0s. Traefik renews Let's Encrypt certificates 30 days ahead, so the renewal is failing: check `docker compose logs traefik | grep -i acme` (DNS, port 443 reachable from the internet, TRAEFIK_EMAIL)."
+      - eval_time: 61m
+        alertname: TLSCertificateExpiryCritical
+        exp_alerts: []
+
+  # Expires two days after t=0.
+  - interval: 1m
+    input_series:
+      - series: 'probe_ssl_earliest_cert_expiry{job="botball-external", instance="https://botball.school.test/"}'
+        values: "172800x30"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: TLSCertificateExpiryCritical
+        exp_alerts:
+          - exp_labels: { severity: critical, job: botball-external, instance: "https://botball.school.test/" }
+            exp_annotations:
+              summary: "The TLS certificate of https://botball.school.test/ expires in less than 3 days"
+              description: "The certificate expires in 1d 23h 45m 0s; browsers will refuse the site afterwards. Check `docker compose logs traefik | grep -i acme`."
+
+  # The dead man's switch is always firing.
+  - interval: 1m
+    input_series: []
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: Watchdog
+        exp_alerts:
+          - exp_labels: { severity: none }
+            exp_annotations:
+              summary: "Alerting pipeline heartbeat (always firing)"
+              description: "This alert is always firing. It is delivered to ALERT_HEARTBEAT_URL only; if the external heartbeat service stops receiving it, the monitoring itself is down."
+
+  - interval: 1m
+    input_series:
+      - series: 'alertmanager_notifications_failed_total{job="alertmanager", instance="alertmanager:9093", integration="webhook"}'
+        values: "0 0 1 2 3 4 5 6 7 8 9 10"
+      - series: 'alertmanager_notifications_failed_total{job="alertmanager", instance="alertmanager:9093", integration="email"}'
+        values: "0x11"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: AlertmanagerNotificationsFailing
+        exp_alerts:
+          - exp_labels: { severity: warning, integration: webhook }
+            exp_annotations:
+              summary: "Alertmanager cannot deliver webhook notifications"
+              description: "Notifications through webhook failed in the last 15 minutes; alerts may not reach anyone. Check `docker compose logs alertmanager` and the ALERT_* settings."

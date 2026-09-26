@@ -14,6 +14,9 @@ import Freshness from "@/components/Freshness";
 import { pollWhileOffline, useLiveUpdates } from "@/hooks/useLiveUpdates";
 import { apiErrorMessage, errorStatus } from "@/lib/errors";
 import { confirmAction } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
+import { playsMatches, useSeasonCategories } from "@/lib/categories";
+import { useQueuedNotice } from "@/hooks/useQueuedNotice";
 import type { EventRegistration, RankingEntry, ScheduledMatch, ScoringSchema } from "@/api/types";
 import { computeSheet, normalize, type RawScores } from "@/modules/scoring/sheet/calculator";
 import SheetForm from "@/modules/scoring/sheet/SheetForm";
@@ -38,7 +41,10 @@ export default function EventScoringPage() {
   const [roundLostReason, setRoundLostReason] = useState<LoseRoundReason>("never_left_start_box");
   const [endContact, setEndContact] = useState(false);
   const [tiebreak, setTiebreak] = useState<Record<string, number | boolean>>({});
-  const [message, setMessage] = useState("");
+  // Result of the last save, shown in the sticky bar next to the button (in view on a phone).
+  const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  // "Saved offline" stays only while the entry is still waiting in the queue.
+  const queuedNotice = useQueuedNotice();
   const [confirming, setConfirming] = useState(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const registrations = useQuery<EventRegistration[]>({ queryKey: ["event-registrations", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data });
@@ -48,6 +54,9 @@ export default function EventScoringPage() {
   const { live } = useLiveUpdates(eventId);
   const ranking = useQuery<RankingEntry[]>({ queryKey: ["event-ranking", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/ranking`)).data, refetchInterval: pollWhileOffline(live) });
   const rules = useQuery<RuleSet>({ queryKey: ["scoring-rules", event?.season_id], queryFn: async () => (await api.get(`/scoring/seasons/${event?.season_id}/rules`)).data, enabled: !!event?.season_id });
+  const registry = useSeasonCategories(event?.season_id);
+  // Aerial and JBC teams play no matches: they are not offered (the API refuses them too).
+  const matchTeams = (registrations.data ?? []).filter((item) => playsMatches(registry.kindOf(item.category)));
   const outcome = useQuery<HeadToHeadOutcome>({ queryKey: ["h2h-outcome", scheduledMatchId], queryFn: async () => (await api.get(`/scoring/scheduled-matches/${scheduledMatchId}/outcome`)).data, enabled: !!scheduledMatchId });
 
   const definition = useMemo(() => normalize(schema.data?.fields, schema.data?.definition), [schema.data]);
@@ -62,6 +71,13 @@ export default function EventScoringPage() {
   const currentMatch = matchIndex >= 0 ? matches[matchIndex] : undefined;
   const selectedMatch = currentMatch;
   const headToHead = (selectedMatch?.participants.filter((p) => p.team_id).length ?? 0) > 1;
+  // The team's recorded runs, to point out a second score for the same scheduled match.
+  const teamMatches = useQuery<{ id: string; scheduled_match_id: string | null; is_practice: boolean; total_score: number }[]>({
+    queryKey: ["event-team-matches", eventId, teamId],
+    queryFn: async () => (await api.get(`/v1/events/${eventId}/matches`, { params: { team_id: teamId } })).data,
+    enabled: !!teamId && !!scheduledMatchId && online,
+  });
+  const existingScore = scheduledMatchId ? teamMatches.data?.find((item) => item.scheduled_match_id === scheduledMatchId && !item.is_practice) : undefined;
   const teamName = (id: string | null) => registrations.data?.find((item) => item.team_id === id)?.team_name ?? id ?? "";
 
   const teamLabel = (id: string) => {
@@ -76,7 +92,7 @@ export default function EventScoringPage() {
     if (id === scheduledMatchId) return;
     if (dirty && !(await confirmAction({ message: t("discardEntries"), confirmLabel: t("discardEntriesConfirm"), tone: "danger" }))) return;
     setScheduledMatchId(id);
-    setMessage("");
+    setMessage(null);
     const match = matches.find((item) => item.id === id);
     const participants = (match?.participants ?? []).map((item) => item.team_id).filter((item): item is string => !!item);
     if (participants.length && !participants.includes(teamId)) setTeamId(participants[0]);
@@ -113,12 +129,20 @@ export default function EventScoringPage() {
     }, { offlineLabel: [teamLabel(teamId), currentMatch?.code, t("pointsShort", { points: formatScore(total) })].filter(Boolean).join(" · ") }),
     onSuccess: ({ data }) => {
       setConfirming(false);
-      setMessage(isQueuedResponse(data) ? t("scoreQueued") : t("scoreSaved"));
+      if (isQueuedResponse(data)) {
+        setMessage(null);
+        queuedNotice.show(data.idempotency_key);
+      } else {
+        const text = t("scoreSavedFor", { team: teamLabel(teamId), points: formatScore(total) });
+        setMessage({ tone: "success", text });
+        toast.success(text);
+      }
       reset();
       queryClient.invalidateQueries({ queryKey: ["event-ranking", eventId] });
       queryClient.invalidateQueries({ queryKey: ["h2h-outcome", scheduledMatchId] });
+      queryClient.invalidateQueries({ queryKey: ["event-team-matches", eventId] });
     },
-    onError: (error: unknown) => { setConfirming(false); setMessage(apiErrorMessage(error, t("saveFailed"))); },
+    onError: (error: unknown) => { setConfirming(false); setMessage({ tone: "error", text: apiErrorMessage(error, t("saveFailed")) }); },
   });
 
   if (schema.isLoading) return <div className="p-6 text-leise" role="status">{t("common:loadingEllipsis")}</div>;
@@ -147,7 +171,7 @@ export default function EventScoringPage() {
       {!online && <p role="alert" className="mb-4 rounded-lg bg-warning/10 p-3 text-warning">{t("offlineScoring")}</p>}
       {!canWrite && <p className="mb-4 rounded-lg bg-flaeche-2 p-3">{t("readOnlyPermission")}</p>}
       <div className="mb-5"><PendingScores filter={(entry) => entry.eventId === eventId} /></div>
-      <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setMessage(""); setConfirming(true); }}>
+      <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setMessage(null); setConfirming(true); }}>
         {matches.length > 0 && (
           // Swiping switches matches only on this bar, never while typing in the form.
           <nav aria-label={t("scheduledMatch")} className="card flex touch-pan-y items-center justify-between gap-2 p-2" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -160,19 +184,24 @@ export default function EventScoringPage() {
           </nav>
         )}
         <div className="card grid gap-4 p-4 md:grid-cols-2">
-          <label className="text-sm font-medium">{t("team")}<select required disabled={disabled} className="input mt-1 w-full" value={teamId} onChange={(e) => setTeamId(e.target.value)}><option value="">{t("chooseTeam")}</option>{registrations.data?.map((item) => <option key={item.id} value={item.team_id}>{item.seed_number ? `#${item.seed_number} · ` : ""}{item.team_name}{item.team_number ? ` (${item.team_number})` : ""}</option>)}</select></label>
+          <label className="text-sm font-medium">{t("team")}<select required disabled={disabled} className="input mt-1 w-full" value={teamId} onChange={(e) => setTeamId(e.target.value)}><option value="">{t("chooseTeam")}</option>{matchTeams.map((item) => <option key={item.id} value={item.team_id}>{item.seed_number ? `#${item.seed_number} · ` : ""}{item.team_name}{item.team_number ? ` (${item.team_number})` : ""}</option>)}</select></label>
           <label className="text-sm font-medium">{t("scheduledMatch")}<select disabled={disabled} className="input mt-1 w-full" value={scheduledMatchId} onChange={(e) => void selectMatch(e.target.value)}><option value="">{t("withoutMatch")}</option>{matches.map((item) => <option key={item.id} value={item.id}>{item.code} · {t("table", { number: item.table_number ?? "–" })}</option>)}</select></label>
         </div>
-        {definition && <SheetForm definition={definition} values={values} disabled={disabled} onChange={(key, value) => setValues((current) => ({ ...current, [key]: value }))} />}
+        {definition && <SheetForm definition={definition} values={values} disabled={disabled} onChange={(key, value) => setValues((current) => {
+          const next = { ...current };
+          if (value === null) delete next[key];
+          else next[key] = value;
+          return next;
+        })} />}
 
         <fieldset disabled={disabled} className="card space-y-3 p-4">
           <legend className="px-2 font-semibold">{t("specialRules")}</legend>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={roundLost} onChange={(e) => setRoundLost(e.target.checked)} />{t("roundLost")}</label>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 pr-2 text-sm"><input type="checkbox" className="h-6 w-6 shrink-0" checked={roundLost} onChange={(e) => setRoundLost(e.target.checked)} />{t("roundLost")}</label>
             {roundLost && <label className="text-sm">{t("roundLostReason")} <select className="input ml-1 inline-block w-auto" value={roundLostReason} onChange={(e) => setRoundLostReason(e.target.value as LoseRoundReason)}>{LOSE_ROUND_REASONS.map((reason) => <option key={reason} value={reason}>{t(`reason_${reason}`)}</option>)}</select></label>}
           </div>
-          {headToHead && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={endContact} onChange={(e) => setEndContact(e.target.checked)} />{t("endContact", { percent: rules.data?.end_contact_bonus_percent ?? 25 })}</label>}
-          {headToHead && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(tiebreak.replayed)} onChange={(e) => setTiebreak((current) => ({ ...current, replayed: e.target.checked }))} />{t("replayed")}</label>}
+          {headToHead && <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm"><input type="checkbox" className="h-6 w-6 shrink-0" checked={endContact} onChange={(e) => setEndContact(e.target.checked)} />{t("endContact", { percent: rules.data?.end_contact_bonus_percent ?? 25 })}</label>}
+          {headToHead && <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm"><input type="checkbox" className="h-6 w-6 shrink-0" checked={Boolean(tiebreak.replayed)} onChange={(e) => setTiebreak((current) => ({ ...current, replayed: e.target.checked }))} />{t("replayed")}</label>}
           {entryCriteria.length > 0 && (
             <div>
               <p className="text-sm font-medium">{t("tiebreakers")}</p>
@@ -186,8 +215,13 @@ export default function EventScoringPage() {
 
         {scheduledMatchId && outcome.data?.sides && <OutcomeCard outcome={outcome.data} teamName={teamName} />}
 
-        <div className="sticky bottom-0 card flex items-center justify-between gap-4 border-primary/30 p-4"><div><p className="text-sm text-leise">{t("calculatedTotal")}</p><p className="text-3xl font-bold">{formatScore(total)}</p></div><button className="btn-primary flex min-h-12 items-center gap-2" disabled={disabled || save.isPending || !teamId || sheet.errors.length > 0}><Save />{t("reviewScore")}</button></div>
-        <p className="text-sm text-leise">{t("officialHint")}</p>{message && <p role="status" className="rounded-lg bg-flaeche-2 p-3 text-sm">{message}</p>}
+        <div className="sticky bottom-0 card space-y-3 border-primary/30 p-4">
+          {/* The save result sits in the sticky bar, so it is in view on a phone. */}
+          {message && <p role={message.tone === "error" ? "alert" : "status"} className={message.tone === "error" ? "rounded-lg bg-danger/[0.07] p-2 text-sm text-danger" : "rounded-lg bg-success/10 p-2 text-sm text-success"}>{message.text}</p>}
+          {queuedNotice.visible && <p role="status" className="rounded-lg bg-warning/10 p-2 text-sm text-warning">{t("scoreQueued")}</p>}
+          <div className="flex items-center justify-between gap-4"><div><p className="text-sm text-leise">{t("calculatedTotal")}</p><p className="text-3xl font-bold">{formatScore(total)}</p></div><button className="btn-primary flex min-h-12 items-center gap-2" disabled={disabled || save.isPending || !teamId || sheet.errors.length > 0}><Save />{t("reviewScore")}</button></div>
+        </div>
+        <p className="text-sm text-leise">{t("officialHint")}</p>
       </form>
       <ScoreConfirmDialog
         open={confirming}
@@ -202,12 +236,16 @@ export default function EventScoringPage() {
         total={total}
         offline={!online}
         pending={save.isPending}
+        // A head-to-head match may be replayed (the latest score counts); a
+        // seeding match already scored would count twice and is refused.
+        warning={existingScore ? t(headToHead ? "replayMatchScore" : "duplicateMatchScore", { team: teamLabel(teamId), points: formatScore(existingScore.total_score) }) : undefined}
+        blocked={!!existingScore && !headToHead}
         onConfirm={() => save.mutate()}
         onCancel={() => setConfirming(false)}
       />
-      <div className="mt-8"><PartsChallengePanel eventId={eventId} matches={matches} registrations={registrations.data ?? []} /></div>
-      <div className="mt-8"><TimeoutCardsPanel eventId={eventId} registrations={registrations.data ?? []} /></div>
-      <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><Freshness query={ranking} live={live} className="mb-3" /><div className="card table-scroll"><table className="w-full text-sm"><thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">{t("seed")}</th><th className="p-3 text-right">{t("best")}</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{formatScore(item.seed_score)}</td><td className="p-3 text-right">{formatScore(item.best_score)}</td><td className="p-3 text-xs text-leise">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
+      <div className="mt-8"><PartsChallengePanel eventId={eventId} matches={matches} registrations={matchTeams} /></div>
+      <div className="mt-8"><TimeoutCardsPanel eventId={eventId} registrations={matchTeams} /></div>
+      <section className="mt-8"><h2 className="mb-3 text-xl font-semibold">{t("currentRanking")}</h2><Freshness query={ranking} live={live} className="mb-3" /><div className="card table-scroll" tabIndex={0} role="region" aria-label={t("currentRanking")}><table className="w-full text-sm"><thead className="bg-flaeche-2"><tr><th className="p-3 text-left">#</th><th className="p-3 text-left">{t("team")}</th><th className="p-3 text-right">{t("seed")}</th><th className="p-3 text-right">{t("best")}</th><th className="p-3 text-left">{t("tiebreaker")}</th></tr></thead><tbody>{ranking.data?.map((item) => <tr key={`${item.team_id}-${item.rank}`} className="border-t"><td className="p-3 font-bold">{item.rank}</td><td className="p-3 font-mono text-xs">{item.team_name ?? teamName(item.team_id)}</td><td className="p-3 text-right">{formatScore(item.seed_score)}</td><td className="p-3 text-right">{formatScore(item.best_score)}</td><td className="p-3 text-xs text-leise">{item.tiebreaker ?? ""}</td></tr>)}</tbody></table></div></section>
     </div>
   );
 }

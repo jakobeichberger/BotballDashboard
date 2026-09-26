@@ -244,9 +244,17 @@ async def delete_award(db: AsyncSession, award_id: str) -> None:
 # ── Nominations and decisions ─────────────────────────────────────────────────
 
 
-async def _assert_team(db: AsyncSession, team_id: str) -> None:
+async def _assert_registered(db: AsyncSession, event_id: str, team_id: str) -> None:
+    """Only teams registered for the event can be nominated or placed."""
     if await db.get(Team, team_id) is None:
         raise NotFoundError("Team not found")
+    registered = await db.execute(
+        select(EventRegistration.team_id).where(
+            EventRegistration.event_id == event_id, EventRegistration.team_id == team_id
+        )
+    )
+    if registered.first() is None:
+        raise ValidationError("Team is not registered for this event")
 
 
 async def nominate(
@@ -254,7 +262,7 @@ async def nominate(
 ) -> AwardNomination:
     award = await get_award(db, award_id)
     await ensure_writable(db, event_id=award.event_id)
-    await _assert_team(db, team_id)
+    await _assert_registered(db, award.event_id, team_id)
     existing = (
         await db.execute(
             select(AwardNomination).where(
@@ -284,24 +292,49 @@ async def withdraw_nomination(db: AsyncSession, award_id: str, team_id: str) -> 
     )
 
 
+def _placing_key(rows: list[dict[str, Any]]) -> set[tuple[str, int, str | None]]:
+    return {(r["team_id"], r["place"], r.get("course")) for r in rows}
+
+
 async def decide(
-    db: AsyncSession, award_id: str, placements: list[dict[str, Any]], user_id: str | None
+    db: AsyncSession,
+    award_id: str,
+    placements: list[dict[str, Any]],
+    user_id: str | None,
+    replace: bool = False,
 ) -> None:
     """The jury's placing (replaces the award's results).
 
     Places may be shared; a place beyond the award's number of places is
     refused. For a computed award this overrides the computed placing until
     the next "compute".
+
+    A decision is never changed or cleared by accident: an empty placing and
+    a placing that differs from the award's current results need
+    ``replace=True`` (the jury confirmed "replace the existing placing").
     """
     award = await get_award(db, award_id)
     await ensure_writable(db, event_id=award.event_id)
+    if not placements and not replace:
+        raise ValidationError("Choose at least one place (or clear the decision explicitly)")
     teams = [p["team_id"] for p in placements]
     if len(teams) != len(set(teams)):
         raise ValidationError("A team can take only one place per award")
     for placement in placements:
         if placement["place"] > award.places:
             raise ValidationError(f"{award.label} has {award.places} place(s)")
-        await _assert_team(db, placement["team_id"])
+        await _assert_registered(db, award.event_id, placement["team_id"])
+    if not replace:
+        current = (
+            await db.execute(
+                select(AwardResult.team_id, AwardResult.place, AwardResult.course).where(
+                    AwardResult.award_id == award.id
+                )
+            )
+        ).all()
+        existing = {(team, place, course) for team, place, course in current}
+        if existing and existing != _placing_key(placements):
+            raise ConflictError("The award is already decided; confirm to replace the placing")
     await _replace_results(db, award, placements, user_id)
 
 
@@ -389,7 +422,11 @@ def placings(
 
 
 async def _source_rows(
-    db: AsyncSession, event_id: str, award: AwardCategory, data: Any
+    db: AsyncSession,
+    event_id: str,
+    award: AwardCategory,
+    data: Any,
+    cache: dict[str, list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, Any]]:
     from modules.scoring import formula_service
 
@@ -401,12 +438,17 @@ async def _source_rows(
             {c for c in data.participants.values() if c not in data.categories}
         )
         categories = [c for c in known if kinds is None or kind_of(data.categories, c) in kinds]
+    # One formula run per category and compute(): the ECER line-up reads
+    # Botball five times and Open four times.
+    cache = {} if cache is None else cache
     rows: list[dict[str, Any]] = []
     for category in categories:
-        ranked, _ = await formula_service.compute_category_ranking(
-            db, event_id, category, data=data
-        )
-        rows.extend(ranked)
+        if category not in cache:
+            ranked, _ = await formula_service.compute_category_ranking(
+                db, event_id, category, data=data
+            )
+            cache[category] = ranked
+        rows.extend(cache[category])
     return rows
 
 
@@ -442,6 +484,7 @@ async def compute(
         query = query.where(AwardCategory.id == award_id)
     awards = list((await db.execute(query)).scalars())
     data = await formula_service.load_event_inputs(db, event_id)
+    ranked: dict[str, list[dict[str, Any]]] = {}
     for award in awards:
         if award.kind == "judged":
             if award.source == "paper_on_stage":
@@ -449,7 +492,7 @@ async def compute(
             continue
         if not award.source:
             continue
-        rows = await _source_rows(db, event_id, award, data)
+        rows = await _source_rows(db, event_id, award, data, ranked)
         await _replace_results(
             db, award, placings(rows, award.source, award.places, award.per_course), user_id
         )
@@ -484,6 +527,26 @@ async def public_awards(db: AsyncSession, event: Event) -> list[dict[str, Any]]:
         for award in data["awards"]
         if award["results"]
     ]
+
+
+def restricted_view(data: dict[str, Any]) -> dict[str, Any]:
+    """What non-jury readers (guests, mentors, reviewers) may see.
+
+    The award line-up always; the placed teams only once the awards are
+    published, and never the nominations, the jury notes or who nominated.
+    """
+    published = data["published"]
+    return {
+        **data,
+        "awards": [
+            {
+                **award,
+                "nominations": [],
+                "results": [{**r, "note": None} for r in award["results"]] if published else [],
+            }
+            for award in data["awards"]
+        ],
+    }
 
 
 def export_rows(data: dict[str, Any]) -> list[list[Any]]:

@@ -77,7 +77,7 @@ export default function EventAuditTrail({ eventId }: { eventId: string }) {
         )}
       </div>
       {rows.isError && <p className="text-sm text-danger">{t("audit.loadFailed")}</p>}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0}>
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left text-fg">

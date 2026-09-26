@@ -305,7 +305,7 @@
           "auth"
         ],
         "summary": "Request Password Reset",
-        "description": "Always 204, whether or not the address belongs to an account.",
+        "description": "Always 204, whether or not the address belongs to an account.\n\nThe mail leaves after the commit, in the background: the answer never\nwaits for the mail server, so its timing does not reveal the account.",
         "operationId": "request_password_reset_api_auth_password_reset_request_post",
         "requestBody": {
           "content": {
@@ -3804,6 +3804,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 100000,
               "minimum": 0,
               "default": 0,
               "title": "Offset"
@@ -6757,7 +6758,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,19}$"
                 },
                 {
                   "type": "null"
@@ -6841,7 +6843,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,19}$"
                 },
                 {
                   "type": "null"
@@ -6909,7 +6912,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,19}$"
                 },
                 {
                   "type": "null"
@@ -15728,7 +15732,7 @@
           "awards"
         ],
         "summary": "Decide Award",
-        "description": "The jury's placing; replaces the award's results.",
+        "description": "The jury's placing; replaces the award's results.\n\nChanging or clearing an existing decision needs ``replace: true``.",
         "operationId": "decide_award_api_awards__award_id__results_put",
         "security": [
           {
@@ -17370,6 +17374,11 @@
             "type": "array",
             "maxItems": 50,
             "title": "Placements"
+          },
+          "replace": {
+            "type": "boolean",
+            "title": "Replace",
+            "default": false
           }
         },
         "type": "object",
@@ -20568,10 +20577,16 @@
             "title": "Competition Level Id"
           },
           "round_number": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Round Number",
-            "default": 1
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Number"
           },
           "table_number": {
             "anyOf": [
@@ -22386,9 +22401,15 @@
             "title": "Competition Level Id"
           },
           "round_number": {
-            "type": "integer",
-            "title": "Round Number",
-            "default": 1
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Number"
           },
           "table_number": {
             "anyOf": [
@@ -27859,6 +27880,17 @@
               }
             ],
             "title": "Stl Submitted"
+          },
+          "quota_override": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quota Override"
           }
         },
         "type": "object",

@@ -541,7 +541,8 @@ async def get_public_results(
     slug: str,
     request: Request,
     limit: int | None = Query(None, ge=1, le=1000),
-    offset: int = Query(0, ge=0),
+    # Bounded like `limit`: every distinct value is a cache entry.
+    offset: int = Query(0, ge=0, le=100_000),
     order: Literal["asc", "desc"] = Query(
         "asc", description="asc: by round, then entry time; desc: the newest first"
     ),

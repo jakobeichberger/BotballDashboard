@@ -1,7 +1,7 @@
 from typing import Annotated
 from urllib.parse import quote
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from core.database import get_db
 from core.logging import get_logger
 from core.mail_templates import render
 from core.rate_limit import rate_limit
+from core.task_queue import run_after_commit
 from modules.auth import service
 from modules.auth.schemas import (
     AccountDelete,
@@ -47,18 +48,24 @@ REFRESH_COOKIE = "refresh_token"
 
 
 def _mail_enabled() -> bool:
-    # Same rule as the account-creation mail: no real mail in development.
-    return bool(settings.smtp_host) and not settings.is_dev
+    # Same rule as every other mail: SMTP or SendGrid configured, not in development.
+    from core.notifications import email_enabled
+
+    return email_enabled()
 
 
 async def send_password_reset_email(
     email: str, display_name: str, token: str, language: str | None = None
 ) -> None:
-    """Mail the single-use reset link in the user's language (background task)."""
+    """Mail the single-use reset link in the user's language (runs after the commit)."""
     link = f"{settings.app_base_url.rstrip('/')}/reset-password?token={quote(token)}"
     if not _mail_enabled():
-        # Development: there is no mail server, so the link goes to the log.
-        logger.info("password_reset_link", email=email, link=link)
+        if settings.is_dev:
+            # Development: there is no mail server, so the link goes to the log.
+            logger.info("password_reset_link", email=email, link=link)
+        else:
+            # Never the link itself: whoever reads the log could take the account.
+            logger.warning("password_reset_mail_unavailable", email=email)
         return
     from core.notifications import send_email
 
@@ -273,14 +280,18 @@ async def delete_my_account(
 )
 async def request_password_reset(
     body: PasswordResetRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    """Always 204, whether or not the address belongs to an account."""
+    """Always 204, whether or not the address belongs to an account.
+
+    The mail leaves after the commit, in the background: the answer never
+    waits for the mail server, so its timing does not reveal the account.
+    """
     issued = await service.request_password_reset(db, body.email)
     if issued:
         user, token = issued
-        background_tasks.add_task(
+        run_after_commit(
+            db,
             send_password_reset_email,
             user.email,
             user.display_name,
@@ -364,7 +375,6 @@ async def list_users(
 @router.post("/users", response_model=UserResponse, status_code=201)
 async def create_user(
     body: UserCreate,
-    background_tasks: BackgroundTasks,
     _=Depends(require_permission("users:write")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -372,8 +382,8 @@ async def create_user(
         db, body.email, body.display_name, body.password, body.role_ids
     )
     if _mail_enabled():
-        background_tasks.add_task(
-            send_account_created_email, user.email, user.display_name, user.preferred_language
+        run_after_commit(
+            db, send_account_created_email, user.email, user.display_name, user.preferred_language
         )
     return user
 

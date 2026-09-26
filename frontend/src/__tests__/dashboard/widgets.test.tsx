@@ -71,12 +71,12 @@ describe("PhaseTimeline", () => {
       <PhaseTimeline
         phases={[
           { id: "1", name: "Quali", phase_type: "qualification", is_active: false },
-          { id: "2", name: "Finale", phase_type: "final", is_active: true },
+          { id: "2", name: "Endrunde", phase_type: "final", is_active: true },
         ]}
       />
     );
     expect(screen.getByText("Quali")).toBeInTheDocument();
-    expect(screen.getByText("Finale")).toBeInTheDocument();
+    expect(screen.getByText("Endrunde")).toBeInTheDocument();
     expect(screen.getByText("Aktiv")).toBeInTheDocument();
   });
 });

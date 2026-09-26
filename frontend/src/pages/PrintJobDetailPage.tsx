@@ -8,6 +8,7 @@ import { EventLink } from "@/components/EventLink";
 import { useAuthStore } from "@/store/authStore";
 import { formatDateTime } from "@/i18n/format";
 import { confirmAction } from "@/lib/confirm";
+import { errorStatus } from "@/lib/errors";
 import {
   NEXT_STATUSES,
   PRINT_FILE_ACCEPT,
@@ -31,6 +32,29 @@ function fmtDate(v?: string | null) {
   return formatDateTime(v);
 }
 
+/**
+ * Body of PATCH /printing/jobs/{id} (local type until the API types are
+ * regenerated). ``quota_override`` lets an admin retry a failed job although
+ * the team's hard print limit is reached; the backend answers 409 otherwise.
+ */
+interface PrintJobPatch {
+  status?: PrintJobStatus;
+  printer_id?: string | null;
+  stl_submitted?: boolean;
+  actual_grams?: number | null;
+  actual_minutes?: number | null;
+  spool_id?: string | null;
+  quota_override?: boolean;
+}
+
+/** A 409 of the hard part or filament limit (the backend's "… limit reached …"). */
+function isQuotaConflict(error: unknown): boolean {
+  if (errorStatus(error) !== 409) return false;
+  const data = (error as { response?: { data?: { message?: unknown; detail?: unknown } } }).response?.data;
+  const text = typeof data?.message === "string" ? data.message : typeof data?.detail === "string" ? data.detail : "";
+  return /limit reached/i.test(text);
+}
+
 function spoolLabel(spool: FilamentSpool) {
   return [spool.material, spool.color, spool.brand].filter(Boolean).join(" · ") + ` (${Math.round(spool.remaining_grams)} g)`;
 }
@@ -46,6 +70,8 @@ export default function PrintJobDetailPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [printerId, setPrinterId] = useState("");
   const [completion, setCompletion] = useState<{ grams: string; minutes: string; spool: string } | null>(null);
+  // Set when a retry (failed -> queued) was refused by the team's quota.
+  const [quotaBlocked, setQuotaBlocked] = useState(false);
 
   const { data: job, isLoading, isError } = useQuery<PrintJob>({
     queryKey: ["print-job", id],
@@ -73,6 +99,7 @@ export default function PrintJobDetailPage() {
 
   const onSuccess = () => {
     setMessage(null);
+    setQuotaBlocked(false);
     qc.invalidateQueries({ queryKey: ["print-job", id] });
     qc.invalidateQueries({ queryKey: ["print-jobs"] });
     qc.invalidateQueries({ queryKey: ["spools"] });
@@ -90,9 +117,16 @@ export default function PrintJobDetailPage() {
     onError,
   });
   const patchM = useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.patch(`/printing/jobs/${id}`, body),
+    mutationFn: (body: PrintJobPatch) => api.patch(`/printing/jobs/${id}`, body),
     onSuccess: () => { setCompletion(null); onSuccess(); },
-    onError,
+    onError: (error, body) => {
+      if (body.status === "queued" && isQuotaConflict(error)) {
+        setQuotaBlocked(true);
+        setMessage(t("detail.retryQuotaBlocked"));
+        return;
+      }
+      onError(error);
+    },
   });
   const uploadM = useMutation({ mutationFn: (file: File) => uploadPrintFile(id!, file), onSuccess, onError });
   const downloadM = useMutation({ mutationFn: () => downloadPrintFile(job!), onError });
@@ -113,6 +147,10 @@ export default function PrintJobDetailPage() {
   }
 
   const status = job.status as PrintJobStatus;
+  const enqueue = (quota_override?: boolean) => patchM.mutate({ status: "queued", printer_id: printerId || job.printer_id, ...(quota_override ? { quota_override } : {}) });
+  const releaseOverQuota = async () => {
+    if (await confirmAction({ message: t("detail.confirmQuotaOverride"), confirmLabel: t("detail.quotaOverrideRelease"), tone: "danger" })) enqueue(true);
+  };
   const canReplaceFile = canAdmin ? !["printing", "completed", "cancelled", "rejected"].includes(status) : canWrite && status === "pending";
   const canCancel = canAdmin ? NEXT_STATUSES[status].includes("cancelled") : canWrite && status === "pending";
   const openCompletion = () => setCompletion({
@@ -268,9 +306,14 @@ export default function PrintJobDetailPage() {
                     {printers?.filter((p) => p.is_active).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </label>
-                <button className="btn-primary text-sm" disabled={!(printerId || job.printer_id) || patchM.isPending} onClick={() => patchM.mutate({ status: "queued", printer_id: printerId || job.printer_id })}>
+                <button className="btn-primary text-sm" disabled={!(printerId || job.printer_id) || patchM.isPending} onClick={() => enqueue()}>
                   {t("enqueue")}
                 </button>
+                {quotaBlocked && status === "failed" && (
+                  <button className="btn-secondary text-sm" disabled={!(printerId || job.printer_id) || patchM.isPending} onClick={() => void releaseOverQuota()}>
+                    <AlertTriangle className="w-4 h-4" aria-hidden="true" /> {t("detail.quotaOverrideRelease")}
+                  </button>
+                )}
               </>
             )}
             {status === "queued" && (

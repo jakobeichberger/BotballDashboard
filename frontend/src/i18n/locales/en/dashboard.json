@@ -3,7 +3,8 @@
   "role": {
     "admin": "Administrator",
     "reviewer": "Reviewer",
-    "user": "Participant"
+    "user": "Participant",
+    "juror": "Jury"
   },
   "roleLabel": "Role: {{role}}",
   "welcome": "Welcome, {{name}}",

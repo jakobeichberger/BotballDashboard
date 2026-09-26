@@ -269,3 +269,152 @@ async def test_one_timeout_card_per_team_and_tournament(client, db, auth_headers
     ]
     assert (await client.delete(f"{url}/{team.id}", headers=auth_headers)).status_code == 204
     assert (await client.get(url, headers=auth_headers)).json() == []
+
+
+# ── Review 2: decisions, visibility, integrity, performance ───────────────────
+
+GUEST = ("seasons:read", "events:read", "teams:read", "scoring:read", "dashboard:read")
+MENTOR = ("seasons:read", "events:read", "teams:read", "scoring:read", "scoring:write")
+
+
+async def _spirit(client, headers, event_id):
+    await client.post(f"/api/awards/events/{event_id}/templates/ecer", headers=headers)
+    data = (await client.get(f"/api/awards/events/{event_id}", headers=headers)).json()
+    return _by_key(data)["spirit_of_ecer"]
+
+
+@pytest.mark.asyncio
+async def test_decision_is_not_wiped_by_an_empty_or_unconfirmed_replacement(
+    client, db, auth_headers, event
+):
+    a, b = await _teams(db, event, ("Alpha", "botball"), ("Beta", "botball"))
+    spirit = await _spirit(client, auth_headers, event.id)
+    url = f"/api/awards/{spirit['id']}/results"
+    first = {"placements": [{"team_id": a.id, "place": 1}]}
+    assert (await client.put(url, headers=auth_headers, json=first)).status_code == 200
+
+    # An empty list never clears a decision by accident.
+    resp = await client.put(url, headers=auth_headers, json={"placements": []})
+    assert resp.status_code == 422, resp.text
+    # Nor does a different placing without the explicit replace flag.
+    other = {"placements": [{"team_id": b.id, "place": 1}]}
+    resp = await client.put(url, headers=auth_headers, json=other)
+    assert resp.status_code == 409, resp.text
+    data = (await client.get(f"/api/awards/events/{event.id}", headers=auth_headers)).json()
+    assert [r["team_id"] for r in _by_key(data)["spirit_of_ecer"]["results"]] == [a.id]
+
+    # Re-sending the same decision is fine.
+    assert (await client.put(url, headers=auth_headers, json=first)).status_code == 200
+    # With replace the jury changes its mind ...
+    resp = await client.put(url, headers=auth_headers, json={**other, "replace": True})
+    assert resp.status_code == 200, resp.text
+    assert [r["team_id"] for r in resp.json()["results"]] == [b.id]
+    # ... or clears the decision on purpose.
+    resp = await client.put(url, headers=auth_headers, json={"placements": [], "replace": True})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["results"] == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("perms", [GUEST, MENTOR], ids=["guest", "mentor"])
+async def test_non_admins_see_only_published_results_without_jury_notes(
+    client, db, auth_headers, event, perms
+):
+    (a,) = await _teams(db, event, ("Alpha", "botball"))
+    spirit = await _spirit(client, auth_headers, event.id)
+    await client.post(
+        f"/api/awards/{spirit['id']}/nominations",
+        headers=auth_headers,
+        json={"team_id": a.id, "note": "JURY-INTERNAL: robot barely worked"},
+    )
+    await client.put(
+        f"/api/awards/{spirit['id']}/results",
+        headers=auth_headers,
+        json={"placements": [{"team_id": a.id, "place": 1, "note": "secret"}]},
+    )
+    user = await make_user(db, f"{perms[-1].replace(':', '-')}@test.com", perms)
+    await db.commit()
+    headers = headers_for(user)
+    url = f"/api/awards/events/{event.id}"
+
+    body = (await client.get(url, headers=headers)).json()
+    assert body["published"] is False
+    award = _by_key(body)["spirit_of_ecer"]
+    assert award["results"] == [] and award["nominations"] == []
+    assert "JURY-INTERNAL" not in str(body) and "secret" not in str(body)
+
+    for export in ("export.csv", "export.pdf"):
+        resp = await client.get(f"{url}/{export}", headers=headers)
+        assert resp.status_code == 403, export
+
+    await client.put(f"{url}/publish", headers=auth_headers, json={"published": True})
+    body = (await client.get(url, headers=headers)).json()
+    award = _by_key(body)["spirit_of_ecer"]
+    assert [(r["team_id"], r["note"]) for r in award["results"]] == [(a.id, None)]
+    assert award["nominations"] == []
+    assert "JURY-INTERNAL" not in str(body) and "secret" not in str(body)
+    # The jury itself still sees everything.
+    full = _by_key((await client.get(url, headers=auth_headers)).json())["spirit_of_ecer"]
+    assert full["nominations"][0]["note"].startswith("JURY-INTERNAL")
+    assert full["results"][0]["note"] == "secret"
+
+
+@pytest.mark.asyncio
+async def test_only_teams_registered_for_the_event_can_be_nominated_or_placed(
+    client, db, auth_headers, event
+):
+    stranger = Team(name="Elsewhere", team_number="26-0999")
+    db.add(stranger)
+    await db.commit()
+    spirit = await _spirit(client, auth_headers, event.id)
+    resp = await client.post(
+        f"/api/awards/{spirit['id']}/nominations",
+        headers=auth_headers,
+        json={"team_id": stranger.id},
+    )
+    assert resp.status_code == 422, resp.text
+    resp = await client.put(
+        f"/api/awards/{spirit['id']}/results",
+        headers=auth_headers,
+        json={"placements": [{"team_id": stranger.id, "place": 1}]},
+    )
+    assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.asyncio
+async def test_compute_ranks_each_category_once(client, db, auth_headers, event, monkeypatch):
+    from modules.scoring import formula_service
+
+    await _teams(db, event, ("Alpha", "botball"), ("Opa", "open"))
+    await client.post(f"/api/awards/events/{event.id}/templates/ecer", headers=auth_headers)
+    calls: list[str] = []
+    original = formula_service.compute_category_ranking
+
+    async def counting(db, event_id, category, *, data=None):
+        calls.append(category)
+        return await original(db, event_id, category, data=data)
+
+    monkeypatch.setattr(formula_service, "compute_category_ranking", counting)
+    resp = await client.post(f"/api/awards/events/{event.id}/compute", headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert calls and sorted(calls) == sorted(set(calls)), calls
+
+
+@pytest.mark.asyncio
+async def test_awards_pdf_is_built_off_the_event_loop(client, db, auth_headers, event, monkeypatch):
+    import threading
+
+    from modules.exports import pdf_builder
+
+    loop_thread = threading.get_ident()
+    threads: list[int] = []
+    original = pdf_builder.build_awards_pdf
+
+    def recording(*args, **kwargs):
+        threads.append(threading.get_ident())
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(pdf_builder, "build_awards_pdf", recording)
+    resp = await client.get(f"/api/awards/events/{event.id}/export.pdf", headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert threads and threads[0] != loop_thread

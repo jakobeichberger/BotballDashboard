@@ -119,7 +119,8 @@ make fernet-key   # bei laufendem Stack
 | `BACKUP_INTERVAL_SECONDS` | `86400` | Abstand zwischen erfolgreichen Backups |
 | `BACKUP_RETRY_SECONDS` | `3600` | Neuer Versuch nach einem Fehlschlag |
 | `BACKUP_RETENTION_DAYS` | `30` | Ältere Archive werden gelöscht |
-| `BACKUP_MAX_AGE_HOURS` | `26` | Healthcheck wird `unhealthy`, wenn das letzte erfolgreiche Backup älter ist |
+| `BACKUP_MAX_AGE_HOURS` | Intervall in Stunden + 2 (26) | Healthcheck wird `unhealthy` und `BackupStale` feuert, wenn das letzte erfolgreiche Backup älter ist |
+| `BACKUP_RESTORE_TEST_INTERVAL_SECONDS` | `604800` (wöchentlich) | Automatischer Restore-Test mit eigenem Test-Schlüssel des Servers; `0` = nur manuelle Tests (dann alle 35 Tage erwartet) |
 
 Details zu Schlüssel, Kopie außer Haus und Wiederherstellung: [Betrieb](../../operations.md).
 
@@ -133,8 +134,19 @@ Details zu Schlüssel, Kopie außer Haus und Wiederherstellung: [Betrieb](../../
 | `ALERT_SMTP_SMARTHOST` | `SMTP_HOST:SMTP_PORT` | SMTP-Server für Alarm-Mails |
 | `ALERT_SMTP_USER` / `ALERT_SMTP_PASSWORD` | `SMTP_USER` / `SMTP_PASSWORD` | SMTP-Anmeldung |
 | `ALERT_SMTP_REQUIRE_TLS` | `SMTP_TLS` | STARTTLS |
+| `ALERT_HEARTBEAT_URL` | leer | Totmannschalter: der immer feuernde `Watchdog` geht jede Minute als POST dorthin – an einen externen Heartbeat-Dienst (healthchecks.io, Uptime-Kuma-Push), der alarmiert, wenn er ausbleibt |
 
 Ohne Empfänger sind Alarme nur in der Oberfläche von Prometheus (`:9090/alerts`) und Alertmanager (`:9093`) sichtbar.
+
+## Redis, Images, Monitoring-Rolle
+
+| Variable | Standard | Beschreibung |
+|---|---|---|
+| `REDIS_MAXMEMORY` | `256mb` | Speichergrenze von Redis (Richtlinie `noeviction`: bei vollem Speicher schlagen Schreibvorgänge fehl, statt Celery-Aufträge zu verwerfen) |
+| `REDIS_MEM_LIMIT` | `768m` | Container-Limit von Redis (mit Reserve für Snapshots) |
+| `BOTBALL_IMAGE_PREFIX` | `botballdashboard` | Präfix der lokal gebauten Images (`<prefix>-backend:local`, `<prefix>-frontend:local`) |
+| `POSTGRES_MONITOR_USER` | `botball_monitor` | Login-Rolle des postgres-exporters (nur `pg_monitor`, wird automatisch angelegt) |
+| `SERVICE_SCOPE` | `full` | Nicht ändern; `worker-ocr` setzt selbst `ocr` |
 
 ## Container-Logs
 

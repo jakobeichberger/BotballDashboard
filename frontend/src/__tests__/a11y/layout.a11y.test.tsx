@@ -67,6 +67,18 @@ describe("Layout accessibility", () => {
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
 
+  it("keeps absolutely positioned descendants (sr-only) inside the app shell", () => {
+    // Without a positioned ancestor, an sr-only span deep in the scrolling
+    // <main> is laid out against the viewport and stretches the document:
+    // on phones the page then scrolls on into an empty grey area.
+    renderLayout();
+    const main = screen.getByRole("main");
+    let shell = main.parentElement;
+    while (shell?.parentElement && !shell.className.includes("h-screen")) shell = shell.parentElement;
+    expect(shell?.className).toMatch(/\brelative\b/);
+    expect(main.className).toMatch(/overscroll-contain/);
+  });
+
   it("opens the mobile drawer with focus inside and closes it with Escape", () => {
     renderLayout();
     const menu = screen.getByRole("button", { name: "Menü öffnen" });

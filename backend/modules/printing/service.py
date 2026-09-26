@@ -142,7 +142,7 @@ async def create_print_job(db: AsyncSession, data: dict, submitted_by: str) -> P
 
         await ensure_legacy_default_registration(db, event, data["team_id"])
 
-    quota = await _get_or_create_quota(db, data["team_id"], data["season_id"], event.id)
+    quota = await _locked_quota(db, data["team_id"], data["season_id"], event.id)
     violation = await _hard_limit_violation(db, quota, data.get("estimated_grams"))
     if violation and not override:
         raise ConflictError(violation)
@@ -190,7 +190,15 @@ async def ensure_job_writable(db: AsyncSession, job: PrintJob) -> None:
     await ensure_writable(db, season_id=job.season_id, event_id=job.event_id)
 
 
-async def update_print_job(db: AsyncSession, job_id: str, **kwargs) -> PrintJob:
+async def update_print_job(
+    db: AsyncSession,
+    job_id: str,
+    *,
+    quota_override: bool = False,
+    acting_user_id: str | None = None,
+    **kwargs,
+) -> PrintJob:
+    """Change a job; ``quota_override`` lets a retry exceed the hard limit (admins)."""
     job = await get_print_job(db, job_id)
     old_status = job.status
     old_grams = job.actual_grams
@@ -198,6 +206,13 @@ async def update_print_job(db: AsyncSession, job_id: str, **kwargs) -> PrintJob:
     new_status = kwargs.get("status")
     if new_status and new_status != old_status and new_status not in JOB_TRANSITIONS[old_status]:
         raise ConflictError(f"Invalid print job transition: {old_status} -> {new_status}")
+    violation = None
+    if old_status not in OPEN_STATUSES and new_status in OPEN_STATUSES:
+        # A retry (failed -> queued) reopens the job: it counts toward the
+        # hard limit again and is checked like a new submission.
+        violation = await _reopen_violation(db, job)
+        if violation and not quota_override:
+            raise ConflictError(violation)
     if kwargs.get("spool_id"):
         await get_spool(db, kwargs["spool_id"])
     if kwargs.get("printer_id"):
@@ -223,6 +238,17 @@ async def update_print_job(db: AsyncSession, job_id: str, **kwargs) -> PrintJob:
             job.remaining_seconds = None
 
     await _account_filament(db, job, old_status, old_grams, old_spool_id)
+
+    if violation:
+        job.quota_override = True
+        await log_action(
+            db,
+            "printing.quota_override",
+            user_id=acting_user_id,
+            resource_type="print_job",
+            resource_id=job.id,
+            detail={"team_id": job.team_id, "event_id": job.event_id, "reason": violation},
+        )
 
     if new_status and new_status != old_status:
         await emit_event(
@@ -416,6 +442,31 @@ async def _hard_limit_violation(
                 f"requested, this job needs {estimated_grams:g} g)."
             )
     return None
+
+
+async def _locked_quota(
+    db: AsyncSession, team_id: str, season_id: str, event_id: str | None
+) -> TeamSeasonPrintQuota:
+    """The team's quota row, locked until the transaction ends (PostgreSQL).
+
+    Every hard-limit check runs under this lock, so two concurrent
+    submissions (a double click, two mentors) are checked one after the
+    other and the second one sees the first one's job.
+    """
+    quota = await _get_or_create_quota(db, team_id, season_id, event_id)
+    locked = await db.execute(
+        select(TeamSeasonPrintQuota)
+        .where(TeamSeasonPrintQuota.id == quota.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return locked.scalar_one()
+
+
+async def _reopen_violation(db: AsyncSession, job: PrintJob) -> str | None:
+    """Why reopening ``job`` would exceed a hard limit (it is not counted as open yet)."""
+    quota = await _locked_quota(db, job.team_id, job.season_id, job.event_id)
+    return await _hard_limit_violation(db, quota, job.estimated_grams)
 
 
 async def _get_or_create_quota(

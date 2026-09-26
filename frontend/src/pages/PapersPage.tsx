@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Clock, FileText, Percent, Plus, Star, type LucideIcon } from "lucide-react";
-import clsx from "clsx";
-import { TONE_BORDER, TONE_ICON, type Tone } from "@/components/ui/tones";
+import { ArrowRight, CheckCircle2, Clock, FileText, Percent, Plus, Star } from "lucide-react";
+import { StatGrid, type StatItem } from "@/pages/dashboard/widgets";
 import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -43,30 +42,20 @@ const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
 
 function PaperStatsPanel({ stats }: { stats: PaperStats }) {
   const { t } = useTranslation("papers");
-  const tiles: Array<[string, string, LucideIcon, Tone]> = [
-    [t("stats.total"), String(stats.total), FileText, "primary"],
-    [t("stats.acceptanceRate"), pct(stats.acceptance_rate), CheckCircle2, "success"],
-    [t("stats.avgFinal"), pct(stats.average_final_score), Percent, "info"],
-    [t("stats.avgReview"), stats.average_review_score == null ? "—" : `${formatNumber(stats.average_review_score, oneDecimal)} / 10`, Star, "neutral"],
-    [t("stats.openReviews"), String(stats.reviews_open), Clock, "warning"],
+  const tiles: StatItem[] = [
+    { label: t("stats.total"), value: String(stats.total), icon: FileText, tone: "primary" },
+    { label: t("stats.acceptanceRate"), value: pct(stats.acceptance_rate), icon: CheckCircle2, tone: "success" },
+    { label: t("stats.avgFinal"), value: pct(stats.average_final_score), icon: Percent, tone: "info" },
+    { label: t("stats.avgReview"), value: stats.average_review_score == null ? "—" : `${formatNumber(stats.average_review_score, oneDecimal)} / 10`, icon: Star, tone: "neutral" },
+    { label: t("stats.openReviews"), value: String(stats.reviews_open), icon: Clock, tone: "warning" },
   ];
   return (
     <section className="mb-6" aria-labelledby="paper-stats-heading">
       <h2 id="paper-stats-heading" className="section-title mb-3">{t("stats.title")}</h2>
-      <dl className="grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-5">
-        {tiles.map(([label, value, Icon, tone]) => (
-          <div key={label} className={clsx("stat-card", TONE_BORDER[tone])}>
-            <span className={clsx("stat-icon", TONE_ICON[tone])}>
-              <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
-            </span>
-            <div className="flex min-w-0 flex-col-reverse">
-              <dt className="stat-label truncate">{label}</dt>
-              <dd className="stat-value truncate">{value}</dd>
-            </div>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-2 text-xs text-leise">
+      {/* The same KPI list as every other page (was a <dl> with dt/dd nested
+          in divs, which axe flags as definition-list / dlitem). */}
+      <StatGrid items={tiles} ariaLabel={t("stats.title")} />
+      <p className="-mt-4 text-xs text-leise">
         {t("stats.decisions", { accepted: stats.accepted, rejected: stats.rejected, disqualified: stats.disqualified })}{" "}
         {t("stats.perCriterion")}{" "}
         {REVIEW_CRITERIA.map((c) => `${c.label} ${formatNumber(stats.criterion_averages?.[c.key], oneDecimal)}`).join(" · ")}

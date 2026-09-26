@@ -282,19 +282,31 @@ def probe(monkeypatch):
     import core.celery_app
     import core.database
 
-    state = {"db": True, "redis": True, "workers": [{"worker@host": {"ok": "pong"}}], "pings": 0}
+    state = {
+        "db": True,
+        "redis": True,
+        "workers": {
+            "celery@worker": [{"name": "default"}, {"name": "periodic"}],
+            "celery@worker-ocr": [{"name": "ocr"}],
+        },
+        "pings": 0,
+    }
 
-    def ping(timeout, limit):
-        state["pings"] += 1
-        assert limit == 1  # answer as soon as one worker replied
-        return state["workers"]
+    class _Inspect:
+        def __init__(self, timeout):
+            pass
+
+        def active_queues(self):
+            # Every worker's reply counts (tests/unit/test_readiness_queues.py).
+            state["pings"] += 1
+            return state["workers"]
 
     monkeypatch.setattr(core.database, "engine", _Engine(True))
     monkeypatch.setattr(redis.asyncio, "Redis", _Redis)
     monkeypatch.setattr(
         core.celery_app,
         "celery_app",
-        types.SimpleNamespace(control=types.SimpleNamespace(ping=ping)),
+        types.SimpleNamespace(control=types.SimpleNamespace(inspect=_Inspect)),
     )
     monkeypatch.setattr(main, "_worker_check", None)
 
@@ -318,13 +330,14 @@ async def test_readiness_all_checks_pass(probe):
     assert body == {
         "status": "ready",
         "checks": {"postgresql": True, "redis": True, "worker": True},
+        "queues": {"default": True, "periodic": True, "ocr": True},
     }
 
 
 async def test_readiness_reports_each_failed_dependency(probe):
     probe["db"] = False
     probe["redis"] = False
-    probe["workers"] = []
+    probe["workers"] = {}
     probe["apply"]()
     status, body = await _readiness()
     assert status == 503

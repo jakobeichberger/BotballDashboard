@@ -1,9 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import AdminDashboard from "@/pages/dashboard/AdminDashboard";
 import ReviewerDashboard from "@/pages/dashboard/ReviewerDashboard";
 import UserDashboard from "@/pages/dashboard/UserDashboard";
+import { useAuthStore } from "@/store/authStore";
+
+const JUROR = ["events:read", "events:write", "scoring:read", "scoring:write", "scoring:admin", "teams:read", "dashboard:read", "seasons:read"];
+const signIn = (user: { is_superuser?: boolean; permissions?: string[] }) =>
+  useAuthStore.setState({ user: { id: "u1", display_name: "U", roles: [], ...user } as any });
 
 const router = (ui: React.ReactNode) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
@@ -16,6 +21,8 @@ const season = {
 };
 
 describe("AdminDashboard", () => {
+  beforeEach(() => signIn({ is_superuser: true }));
+
   it("renders system KPIs, shortcuts, phases and announcements", () => {
     router(
       <AdminDashboard
@@ -36,9 +43,31 @@ describe("AdminDashboard", () => {
     expect(screen.getByText("News")).toBeInTheDocument();
   });
 
-  it("defaults KPIs to 0 when stats are missing", () => {
+  it("shows a dash for KPIs while stats are missing", () => {
     router(<AdminDashboard season={season} announcements={[]} />);
-    expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText("–").length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("shows the phase type by its label, not the raw key", () => {
+    router(<AdminDashboard season={{ phases: [{ id: "p", name: "Vorrunde", phase_type: "seeding", is_active: false }] }} announcements={[]} />);
+    expect(screen.queryByText("seeding")).not.toBeInTheDocument();
+    expect(screen.getByText("Seeding")).toBeInTheDocument();
+  });
+
+  it("offers a juror only the tiles and KPIs the jury can open", () => {
+    signIn({ permissions: JUROR });
+    router(<AdminDashboard stats={{ teams: 5, matches: 12, papers: 3, print_jobs: 7 }} season={season} announcements={[]} />);
+    for (const name of [/teams verwalten/i, /wertung/i, /statistik/i]) expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    for (const name of [/paper-review/i, /3d-druck/i, /einstellungen/i]) expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    expect(screen.queryByText("Druckaufträge")).not.toBeInTheDocument();
+    expect(screen.queryByText("3")).not.toBeInTheDocument();
+  });
+
+  it("hides the tiles of inactive modules", () => {
+    router(<AdminDashboard season={season} announcements={[]} summary={{ modules: ["seeding"], deadlines: [] } as any} />);
+    expect(screen.queryByRole("link", { name: /paper-review/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /3d-druck/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /teams verwalten/i })).toBeInTheDocument();
   });
 });
 

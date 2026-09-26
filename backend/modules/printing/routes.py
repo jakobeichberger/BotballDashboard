@@ -132,11 +132,13 @@ async def get_print_job(
 async def update_print_job(
     job_id: str,
     body: PrintJobUpdate,
-    _=Depends(require_permission("printing:admin")),
+    current_user=Depends(require_permission("printing:admin")),
     db: AsyncSession = Depends(get_db),
 ):
     await service.ensure_job_writable(db, await service.get_print_job(db, job_id))
-    return await service.update_print_job(db, job_id, **body.model_dump(exclude_none=True))
+    return await service.update_print_job(
+        db, job_id, acting_user_id=current_user.id, **body.model_dump(exclude_none=True)
+    )
 
 
 @router.put("/jobs/{job_id}/approve", response_model=PrintJobResponse)
@@ -193,11 +195,9 @@ async def upload_print_file(
     relative_path, file_name, size = await files.save_print_file(file, job.id)
     box = None
     if file_name.lower().endswith(".stl"):
-        import asyncio
+        from modules.printing.rules import measure_stl
 
-        from modules.printing.rules import stl_bounding_box
-
-        box = await asyncio.to_thread(stl_bounding_box, files.stored_path(job.id, file_name))
+        box = await measure_stl(files.stored_path(job.id, file_name))
     return service.attach_file(job, relative_path, file_name, size, box)
 
 

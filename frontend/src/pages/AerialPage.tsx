@@ -9,6 +9,9 @@ import { EventLink } from "@/components/EventLink";
 import { Plane, ArrowLeft, Save, Plus, Users, CheckCircle2, Trophy } from "lucide-react";
 import { StatGrid } from "@/pages/dashboard/widgets";
 import { formatNumber } from "@/i18n/format";
+import { toast } from "@/lib/toast";
+import QueryErrorState from "@/components/QueryErrorState";
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 
 type Run = number | null;
 
@@ -41,22 +44,28 @@ export default function AerialPage() {
   const registry = useSeasonCategories(seasonId);
   const aerialCategories = registry.categories.filter((entry) => entry.kind === "aerial");
 
-  const { data: existing } = useQuery<AerialEntry[]>({
+  const existingQuery = useQuery<AerialEntry[]>({
     queryKey: ["aerial-results", base],
     queryFn: async () => { const { data } = await api.get(`${base}/aerial-results`); return data; },
     enabled: !!base,
   });
+  const existing = existingQuery.data;
 
-  const { data: teams } = useQuery<Team[]>({
+  const teamsQuery = useQuery<Team[]>({
     queryKey: ["teams"],
     queryFn: async () => { const { data } = await api.get("/teams"); return data; },
   });
+  const teams = teamsQuery.data;
 
-  const { data: registrations } = useQuery<Registration[]>({
+  const registrationsQuery = useQuery<Registration[]>({
     queryKey: ["event-registrations", eventId],
     queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data,
     enabled: !!eventId,
   });
+  const registrations = registrationsQuery.data;
+  // Without results, teams or registrations the table would show every run
+  // empty and the KPIs 0 — an error is shown instead.
+  const failed = existingQuery.isError || teamsQuery.isError || registrationsQuery.isError;
   const categoryOf = useMemo(() => new Map((registrations ?? []).map((r) => [r.team_id, r.category])), [registrations]);
 
   // Default view: the first aerial category that has registered teams.
@@ -69,6 +78,8 @@ export default function AerialPage() {
 
   const [draft, setDraft] = useState<Record<string, Run[]>>({});
   const [extraRuns, setExtraRuns] = useState(0);
+  const dirty = Object.keys(draft).length > 0;
+  useUnsavedChangesWarning(dirty);
 
   const savedRuns = (teamId: string): Run[] => existing?.find((e) => e.team_id === teamId)?.runs ?? [];
   const runsOf = (teamId: string): Run[] => draft[teamId] ?? savedRuns(teamId);
@@ -91,10 +102,13 @@ export default function AerialPage() {
       await api.put(`${base}/aerial-results`, entries);
     },
     onSuccess: () => {
+      toast.success(t("profile:saved"));
       queryClient.invalidateQueries({ queryKey: ["aerial-results", base] });
       queryClient.invalidateQueries({ queryKey: ["aerial-ranking", base] });
       setDraft({});
     },
+    // The draft stays, so nothing typed is lost.
+    onError: (error) => toast.apiError(error),
   });
 
   const handleSave = () => {
@@ -122,7 +136,7 @@ export default function AerialPage() {
         </div>
         <button
           onClick={handleSave}
-          disabled={saveMutation.isPending || Object.keys(draft).length === 0}
+          disabled={saveMutation.isPending || !dirty || failed}
           className="btn-primary"
         >
           <Save className="h-5 w-5" aria-hidden="true" />
@@ -130,10 +144,9 @@ export default function AerialPage() {
         </button>
       </div>
 
-      {saveMutation.isSuccess && (
-        <div role="status" className="mb-4 rounded-lg border border-success/40 bg-success/[0.07] px-4 py-2 text-sm text-success">{t("profile:saved")}</div>
-      )}
+      <QueryErrorState queries={[existingQuery, teamsQuery, registrationsQuery]} className="mb-4" />
 
+      {!failed && (<>
       <StatGrid
         ariaLabel={t("aerial.kpi.label")}
         items={[
@@ -207,6 +220,7 @@ export default function AerialPage() {
           </tbody>
         </table>
       </div>
+      </>)}
     </div>
   );
 }

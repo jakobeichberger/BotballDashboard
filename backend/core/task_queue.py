@@ -9,6 +9,7 @@ runs in a worker thread instead of blocking the event loop.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from kombu.exceptions import KombuError
@@ -23,6 +24,8 @@ logger = get_logger("task_queue")
 
 _PENDING_KEY = "celery_tasks_pending"
 _HOOKED_KEY = "celery_tasks_hooked"
+_CALLS_KEY = "after_commit_calls_pending"
+_CALLS_HOOKED_KEY = "after_commit_calls_hooked"
 # Strong references to in-flight sends (the loop only keeps weak ones).
 _inflight: set[asyncio.Task] = set()
 
@@ -68,6 +71,57 @@ def _send(task: Any, args: tuple) -> None:
 async def _send_all(pending: list[tuple[Any, tuple]]) -> None:
     for task, args in pending:
         await asyncio.to_thread(_send, task, args)
+
+
+def run_after_commit(
+    db: AsyncSession | Session,
+    func: Callable[..., Awaitable[Any]],
+    *args: Any,
+    **kwargs: Any,
+) -> None:
+    """Run ``await func(*args, **kwargs)`` in the background once ``db`` commits.
+
+    For short in-process side effects such as account mails: the request's
+    response (held by CommitBeforeResponseMiddleware until the commit) does
+    not wait for them, a rollback drops them, and graceful shutdown drains
+    them (``drain_pending_tasks``). Errors are logged, never raised.
+    """
+    session = db.sync_session if isinstance(db, AsyncSession) else db
+    session.info.setdefault(_CALLS_KEY, []).append((func, args, kwargs))
+    if not session.info.get(_CALLS_HOOKED_KEY):
+        sa_event.listen(session, "after_commit", _run_calls_after_commit)
+        sa_event.listen(session, "after_rollback", _drop_calls)
+        session.info[_CALLS_HOOKED_KEY] = True
+
+
+def _drop_calls(session: Session) -> None:
+    session.info.pop(_CALLS_KEY, None)
+
+
+def _run_calls_after_commit(session: Session) -> None:
+    pending = session.info.pop(_CALLS_KEY, None)
+    if not pending:
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(_run_calls(pending))
+        return
+    job = loop.create_task(_run_calls(pending))
+    _inflight.add(job)
+    job.add_done_callback(_inflight.discard)
+
+
+async def _run_calls(pending: list[tuple[Callable[..., Awaitable[Any]], tuple, dict]]) -> None:
+    for func, args, kwargs in pending:
+        try:
+            await func(*args, **kwargs)
+        except Exception as exc:  # noqa: BLE001 - a background side effect must not crash
+            logger.warning(
+                "after_commit_call_failed",
+                call=getattr(func, "__qualname__", str(func)),
+                error=str(exc),
+            )
 
 
 async def drain_pending_tasks() -> None:

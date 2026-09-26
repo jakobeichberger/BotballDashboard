@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import { formatDate, formatNumber } from "@/i18n/format";
 import { PAPER_STATUS_LABEL } from "@/modules/papers/paperMeta";
+import { phaseLabel } from "@/api/analytics";
 import { TONE_BORDER, TONE_ICON, type Tone } from "@/components/ui/tones";
 
 export interface StatItem {
@@ -38,7 +39,7 @@ export function StatGrid({ items, ariaLabel }: { items: StatItem[]; ariaLabel: s
     <div
       className={clsx(
         "mb-6 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2",
-        items.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4",
+        items.length === 3 ? "lg:grid-cols-3" : items.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4",
       )}
       role="list"
       aria-label={ariaLabel}
@@ -97,7 +98,7 @@ export function PhaseTimeline({ phases }: { phases: Array<any> }) {
             aria-hidden="true"
           />
           <span className="font-ui text-sm font-semibold">{phase.name}</span>
-          <span className="ml-auto text-xs text-leise">{phase.phase_type}</span>
+          <span className="ml-auto text-xs text-leise">{phaseLabel(phase.phase_type)}</span>
           {phase.is_active && <span className="badge-red">{t("common:active")}</span>}
         </li>
       ))}

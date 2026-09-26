@@ -79,6 +79,8 @@ describe("module-aware navigation and routes", () => {
     renderAt("/events/ev/papers", <ModuleRoute module="paper"><h1>Papers</h1></ModuleRoute>);
     expect(await screen.findByText(/nicht aktiv|not active/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Papers" })).not.toBeInTheDocument();
+    // The notice is the page's level-one heading (axe page-has-heading-one).
+    expect(screen.getByRole("heading", { level: 1, name: /nicht aktiv|not active/ })).toBeInTheDocument();
   });
 
   it("renders routes of enabled modules", async () => {

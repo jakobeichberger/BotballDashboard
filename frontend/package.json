@@ -24,7 +24,6 @@
     "@fontsource/exo-2": "^5.3.0",
     "@fontsource/geist-sans": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
-    "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-query": "^5.103.3",
     "axios": "^1.20.0",
     "clsx": "^2.1.1",
@@ -45,7 +44,6 @@
     "workbox-routing": "^7.4.1",
     "workbox-strategies": "^7.4.1",
     "workbox-window": "^7.4.1",
-    "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

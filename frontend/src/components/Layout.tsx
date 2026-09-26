@@ -251,7 +251,9 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    // relative: absolutely positioned descendants (sr-only texts) stay inside
+    // the shell instead of stretching the document past the viewport.
+    <div className="relative flex h-screen overflow-hidden">
       <div className="hidden md:block">{sidebar("desktop")}</div>
       {menuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
@@ -321,7 +323,7 @@ export default function Layout() {
           </div>
         )}
         {syncChip && <div className="border-b border-rand px-4 py-2 md:hidden">{syncChip}</div>}
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {/* A broken page keeps the navigation usable; switching pages clears the error. */}
           <ErrorBoundary resetKey={location.pathname}>
             <Suspense fallback={<div className="p-6 text-leise" role="status">{t("loadingEllipsis")}</div>}>

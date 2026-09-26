@@ -375,7 +375,14 @@ async def _admin_section(db: AsyncSession, event) -> dict[str, Any]:
             )
         )
     ).all()
-    de_results = await _count(db, select(DEResult.id).where(DEResult.event_id == event.id))
+    # A running bracket keeps a row for every team still in it (no rank yet).
+    de_results = await _count(
+        db,
+        select(DEResult.id).where(
+            DEResult.event_id == event.id,
+            DEResult.de_rank.is_not(None) | DEResult.de_score.is_not(None),
+        ),
+    )
     doc_scores = await _count(
         db, select(DocumentationScore.id).where(DocumentationScore.event_id == event.id)
     )

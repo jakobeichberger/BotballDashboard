@@ -92,9 +92,9 @@
   "aerial": {
     "title": "Aerial – Ergebnisse",
     "hint": "Score = Durchschnitt aller Läufe (sofern die Kategorie nichts anderes festlegt). Leere Felder zählen nicht.",
-    "run": "Run {{number}}",
+    "run": "Lauf {{number}}",
     "score": "Score",
-    "runFor": "Run {{number}} für {{team}}",
+    "runFor": "Lauf {{number}} für {{team}}",
     "hintBest": "Score = Durchschnitt der besten {{count}} Läufe (Aerial Junior Rulebook 2026). Leere Felder zählen nicht.",
     "category": "Kategorie",
     "allTeams": "Alle Teams",
@@ -287,7 +287,8 @@
     "multiplierMax": "Multiplikator-Maximum",
     "removeMultiplier": "Multiplikator entfernen",
     "triggeredBy": "Ausgelöst durch",
-    "triggeredByCheckbox": "Eigenes Kästchen"
+    "triggeredByCheckbox": "Eigenes Kästchen",
+    "maxPlaceholder": "max."
   },
   "sheet": {
     "side": "Seite",
@@ -295,7 +296,16 @@
     "total": "Total {{sides}} =",
     "eitherHint": "{{name}} – es zählt die bessere Alternative",
     "area": "Bereich",
-    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)"
+    "derivedHint": "(automatisch, sobald „{{field}}“ mindestens 1 ist)",
+    "issue": {
+      "notNumeric": "„{{label}}“ muss eine Zahl sein.",
+      "belowMin": "„{{label}}“ muss mindestens {{limit}} sein.",
+      "aboveMax": "„{{label}}“ darf höchstens {{limit}} sein.",
+      "invalid": "Die Eingaben sind ungültig."
+    },
+    "decrease": "{{label}} um 1 verringern",
+    "increase": "{{label}} um 1 erhöhen",
+    "fields": "Eingaben"
   },
   "entry": {
     "offlineLabel": "{{team}} · Runde {{round}} · {{points}} P.",
@@ -333,7 +343,16 @@
     "confirmFor": "Wertung von {{team}}, Runde {{round}} bestätigen",
     "deleteFor": "Wertung von {{team}}, Runde {{round}} löschen",
     "schemaLoadFailed": "Das Wertungsschema konnte nicht geladen werden.",
-    "subtitle": "Wertungen erfassen, korrigieren und bestätigen."
+    "subtitle": "Wertungen erfassen, korrigieren und bestätigen.",
+    "saved": "Gespeichert: {{team}} · Runde {{round}} · {{points}} P.",
+    "savedPractice": "Übungslauf gespeichert: {{team}} · Lauf {{round}} · {{points}} P.",
+    "updated": "Änderungen gespeichert.",
+    "decreaseRound": "Runde verringern",
+    "increaseRound": "Runde erhöhen",
+    "roundInvalid": "Die Runde muss eine ganze Zahl ab 1 sein.",
+    "duplicateRound": "Runde {{round}} von {{team}} ist schon erfasst ({{points}} P.). Eine zweite Wertung derselben Runde würde als zusätzlicher Lauf zählen und wird abgelehnt – bitte den vorhandenen Eintrag korrigieren oder eine andere Runde wählen.",
+    "correctExisting": "Vorhandenen Eintrag korrigieren",
+    "noEventTeams": "Für dieses Event ist kein Team registriert, das Matches spielt."
   },
   "scoreboard": {
     "disqualified": "Disqualifiziert (rote Karte)",
@@ -397,7 +416,9 @@
     "bracketLabel": "Bracket {{index}}",
     "bracketWeight": "Gewichtung {{index}}",
     "keyLabel": "Schlüssel der Formel {{number}}",
-    "expressionLabel": "Ausdruck für {{key}}"
+    "expressionLabel": "Ausdruck für {{key}}",
+    "confirmReset": "Die Formeln für {{category}} auf den Standard zurücksetzen? Eigene Änderungen gehen verloren.",
+    "expressionPlaceholder": "3/4 * ((n - rank(seed_total) + 1) / n) + 1/4 * …"
   },
   "scoreSheets": {
     "title": "Scoring-Sheets",
@@ -459,7 +480,8 @@
       "confirm": "{{count}} Felder bestätigen",
       "confirming": "Wird gespeichert …",
       "confirmError": "Fehler beim Speichern. Bitte erneut versuchen.",
-      "removeRow": "Zeile {{row}} ({{key}}) entfernen"
+      "removeRow": "Zeile {{row}} ({{key}}) entfernen",
+      "keyPlaceholder": "snake_case_key"
     },
     "layout": {
       "title": "OCR-Layout",
@@ -601,6 +623,8 @@
     "inspection": "Inspektion (illegales Teil)",
     "record": "Timeout erfassen",
     "revoke": "Timeout von {{team}} zurücknehmen",
-    "none": "Noch kein Team hat seine Timeout-Karte genutzt."
+    "none": "Noch kein Team hat seine Timeout-Karte genutzt.",
+    "loadFailed": "Timeout-Karten konnten nicht geladen werden.",
+    "confirmRevoke": "Timeout-Karte von „{{team}}“ zurücknehmen? Das Team kann sie danach erneut einsetzen."
   }
 }

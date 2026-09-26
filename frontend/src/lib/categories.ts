@@ -27,6 +27,15 @@ export interface SeasonCategory {
 
 export const CATEGORY_KINDS: CategoryKind[] = ["botball", "open", "aerial", "jbc", "custom"];
 
+/**
+ * Kinds whose teams play no seeding or head-to-head matches: their results are
+ * aerial runs or challenge points (backend modules.seasons.categories.MATCHLESS_KINDS,
+ * which rejects a match score for them). A custom category may score matches.
+ */
+export const MATCHLESS_KINDS: CategoryKind[] = ["aerial", "jbc"];
+
+export const playsMatches = (kind: CategoryKind): boolean => !MATCHLESS_KINDS.includes(kind);
+
 /** The backend defaults (modules.seasons.categories), used until the list has loaded. */
 export const DEFAULT_CATEGORIES: SeasonCategory[] = [
   { key: "botball", label_de: "Botball", label_en: "Botball", kind: "botball", formula_preset: null, run_count: null, counted_runs: null, rank_per_bracket: false },

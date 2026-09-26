@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useChanged } from "@/hooks/useChanged";
+import QueryErrorState from "@/components/QueryErrorState";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -40,16 +42,20 @@ export default function AwardsPage() {
   const { t } = useTranslation("events");
   const { eventId = "" } = useParams();
   const queryClient = useQueryClient();
+  // The jury (awards:admin / scoring:admin) nominates, decides and exports;
+  // mentors hold scoring:write for their own team and must not. Others read.
   const canManage = useAuthStore((s) => s.hasPermission("awards:admin") || s.hasPermission("scoring:admin"));
-  // Nominating is the jury's job as well: mentors hold scoring:write for their own team.
-  const canNominate = canManage;
   const awards = useQuery<EventAwards>({ queryKey: ["event-awards", eventId], queryFn: async () => (await api.get(`/awards/events/${eventId}`)).data, enabled: !!eventId });
   const registrations = useQuery<Registration[]>({ queryKey: ["event-registrations", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data, enabled: !!eventId });
   const teams = [...(registrations.data ?? [])].sort((a, b) => a.team_name.localeCompare(b.team_name));
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["event-awards", eventId] });
   const onError = (error: unknown) => toast.apiError(error);
-  const applyTemplate = useMutation({ mutationFn: async (template: string) => api.post(`/awards/events/${eventId}/templates/${template}`), onSuccess: refresh, onError });
+  const applyTemplate = useMutation({
+    mutationFn: async (template: string) => api.post(`/awards/events/${eventId}/templates/${template}`),
+    onSuccess: (_, template) => { toast.success(t("awards.templateApplied", { template: template.toUpperCase() })); refresh(); },
+    onError,
+  });
   const compute = useMutation({ mutationFn: async () => api.post(`/awards/events/${eventId}/compute`), onSuccess: () => { toast.success(t("awards.computed")); refresh(); }, onError });
   const publish = useMutation({ mutationFn: async (published: boolean) => api.put(`/awards/events/${eventId}/publish`, { published }), onSuccess: refresh, onError });
 
@@ -68,10 +74,10 @@ export default function AwardsPage() {
           <p className="page-subtitle">{t("awards.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ExportButton url={`/awards/events/${eventId}/export.pdf`} filename="awards.pdf" label="PDF" variant="pdf" />
-          <ExportButton url={`/awards/events/${eventId}/export.csv`} filename="awards.csv" label="CSV" variant="csv" />
           {canManage && (
             <>
+              <ExportButton url={`/awards/events/${eventId}/export.pdf`} filename="awards.pdf" label="PDF" variant="pdf" />
+              <ExportButton url={`/awards/events/${eventId}/export.csv`} filename="awards.csv" label="CSV" variant="csv" />
               <button className="btn-secondary" disabled={publish.isPending || !data} onClick={() => publish.mutate(!data?.published)}>
                 {data?.published ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
                 {data?.published ? t("awards.unpublish") : t("awards.publish")}
@@ -92,7 +98,8 @@ export default function AwardsPage() {
             { label: t("awards.kpi.total"), value: list.length, icon: Trophy, tone: "primary" },
             { label: t("awards.kpi.decided"), value: decided, icon: CheckCircle2, tone: "success" },
             { label: t("awards.kpi.open"), value: list.length - decided, icon: Clock, tone: "warning" },
-            { label: t("awards.kpi.nominations"), value: list.reduce((sum, award) => sum + award.nominations.length, 0), icon: Users, tone: "info" },
+            // Nominations are the jury's (the API sends them to the jury only).
+            ...(canManage ? [{ label: t("awards.kpi.nominations"), value: list.reduce((sum, award) => sum + award.nominations.length, 0), icon: Users, tone: "info" as const }] : []),
           ]}
         />
       )}
@@ -115,6 +122,7 @@ export default function AwardsPage() {
         </div>
       )}
 
+      <QueryErrorState queries={[awards, registrations]} className="mb-4" />
       {awards.isLoading && <p className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
       {data && list.length === 0 && (
         <div className="card flex flex-col items-center gap-3 p-10 text-center text-leise">
@@ -125,28 +133,42 @@ export default function AwardsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {list.map((award) => (
-          <AwardCard key={award.id} award={award} teams={teams} canManage={canManage} canNominate={canNominate} onChange={refresh} />
+          <AwardCard key={award.id} award={award} teams={teams} canManage={canManage} onChange={refresh} />
         ))}
       </div>
     </div>
   );
 }
 
-function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: AwardCategory; teams: Registration[]; canManage: boolean; canNominate: boolean; onChange: () => void }) {
+function AwardCard({ award, teams, canManage, onChange }: { award: AwardCategory; teams: Registration[]; canManage: boolean; onChange: () => void }) {
   const { t } = useTranslation("events");
   const [teamId, setTeamId] = useState("");
   const [note, setNote] = useState("");
-  const [places, setPlaces] = useState<Record<string, string>>({});
+  // The selects start from the current decision: saving without a change
+  // must never send an empty placing (that would clear the decision).
+  const [places, setPlaces] = useState<Record<string, string>>(() => placesOf(award.results));
+  if (useChanged([award.results])) setPlaces(placesOf(award.results));
+  const placements = Object.entries(places).filter(([, place]) => place !== "").map(([team, place]) => ({ team_id: team, place: Number(place) }));
+  const decided = award.results.length > 0;
+  const unchanged = samePlacing(placements, award.results);
   const onError = (error: unknown) => toast.apiError(error);
   const nominate = useMutation({ mutationFn: async () => api.post(`/awards/${award.id}/nominations`, { team_id: teamId, note: note || null }), onSuccess: () => { setTeamId(""); setNote(""); onChange(); }, onError });
   const withdraw = useMutation({ mutationFn: async (id: string) => api.delete(`/awards/${award.id}/nominations/${id}`), onSuccess: onChange, onError });
   const decide = useMutation({
-    mutationFn: async () => api.put(`/awards/${award.id}/results`, {
-      placements: Object.entries(places).filter(([, place]) => place !== "").map(([team, place]) => ({ team_id: team, place: Number(place) })),
-    }),
-    onSuccess: () => { toast.success(t("awards.decided")); setPlaces({}); onChange(); },
+    mutationFn: async (replace: boolean) => api.put(`/awards/${award.id}/results`, { placements, replace }),
+    onSuccess: () => { toast.success(t("awards.decided")); onChange(); },
     onError,
   });
+  const saveDecision = async () => {
+    if (!decided) { decide.mutate(false); return; }
+    // Changing or clearing an existing decision is confirmed first.
+    const message = placements.length ? t("awards.confirmReplace", { label: award.label }) : t("awards.confirmClear", { label: award.label });
+    if (await confirmAction({ message, tone: placements.length ? "default" : "danger", confirmLabel: placements.length ? t("awards.replace") : t("awards.clear") })) decide.mutate(true);
+  };
+  const confirmWithdraw = async (nomination: Nomination) => {
+    const team = nomination.team_name ?? nomination.team_id;
+    if (await confirmAction({ message: t("awards.confirmWithdraw", { team, label: award.label }), tone: "danger", confirmLabel: t("awards.withdrawShort") })) withdraw.mutate(nomination.team_id);
+  };
   const remove = useMutation({ mutationFn: async () => api.delete(`/awards/${award.id}`), onSuccess: onChange, onError });
   const KindIcon = award.kind === "computed" ? Calculator : Gavel;
 
@@ -189,7 +211,7 @@ function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: 
         </ol>
       ) : <p className="rounded-eng border border-dashed border-rand px-3 py-4 text-center text-sm text-leise">{t("awards.noResult")}</p>}
 
-      {award.kind === "judged" && (
+      {award.kind === "judged" && canManage && (
         <div className="space-y-3 border-t border-rand pt-4">
           <h3 className="font-ui text-sm font-semibold tracking-ui text-fg">{t("awards.nominations", { count: award.nominations.length })}</h3>
           {award.nominations.length > 0 && (
@@ -206,12 +228,12 @@ function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: 
                       {Array.from({ length: award.places }, (_, i) => <option key={i} value={i + 1}>{t("awards.place", { place: i + 1 })}</option>)}
                     </select>
                   )}
-                  {canNominate && <button type="button" className="btn-icon" aria-label={t("awards.withdraw", { team: nomination.team_name ?? nomination.team_id })} onClick={() => withdraw.mutate(nomination.team_id)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
+                  {canManage && <button type="button" className="btn-icon" aria-label={t("awards.withdraw", { team: nomination.team_name ?? nomination.team_id })} disabled={withdraw.isPending} onClick={() => void confirmWithdraw(nomination)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
                 </li>
               ))}
             </ul>
           )}
-          {canNominate && (
+          {canManage && (
             <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (teamId) nominate.mutate(); }}>
               <select aria-label={t("awards.nominateTeam")} className="input min-w-40 flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">{t("awards.nominateTeam")}</option>
@@ -223,11 +245,22 @@ function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: 
           )}
           {canManage && award.nominations.length > 0 && (
             <div className="flex justify-end">
-              <button type="button" className="btn-primary" disabled={decide.isPending} onClick={() => decide.mutate()}><CheckCircle2 className="h-5 w-5" aria-hidden="true" />{t("awards.decide")}</button>
+              <button type="button" className="btn-primary" disabled={decide.isPending || unchanged || (!decided && !placements.length)} onClick={() => void saveDecision()}><CheckCircle2 className="h-5 w-5" aria-hidden="true" />{t("awards.decide")}</button>
             </div>
           )}
         </div>
       )}
     </section>
   );
+}
+
+function placesOf(results: AwardResult[]): Record<string, string> {
+  return Object.fromEntries(results.map((result) => [result.team_id, String(result.place)]));
+}
+
+/** True when the chosen places are exactly the current decision. */
+function samePlacing(placements: { team_id: string; place: number }[], results: AwardResult[]): boolean {
+  if (placements.length !== results.length) return false;
+  const current = new Map(results.map((result) => [result.team_id, result.place]));
+  return placements.every((placement) => current.get(placement.team_id) === placement.place);
 }

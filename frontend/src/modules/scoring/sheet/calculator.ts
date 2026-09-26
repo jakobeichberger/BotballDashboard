@@ -76,11 +76,26 @@ export interface SideResult {
   sections: SectionResult[];
 }
 
+/** One value the form must not submit, for a localized message (formatSheetIssue). */
+export interface SheetIssue {
+  code: "notNumeric" | "belowMin" | "aboveMax";
+  /** Raw-score key ("A.fry_potato"). */
+  key: string;
+  /** Field label, with the side when the sheet has sides ("A · Fries"). */
+  label: string;
+  limit?: number;
+}
+
 export interface SheetResult {
   total: number;
   sides: SideResult[];
-  /** Values the backend would reject (non-numeric, above the maximum). */
+  /**
+   * Values the form must not submit (non-numeric, below the minimum, above the
+   * maximum) as English messages like the backend's; `issues` has them
+   * structured for display.
+   */
   errors: string[];
+  issues: SheetIssue[];
 }
 
 export interface InputSpec extends SheetField {
@@ -187,7 +202,7 @@ export function multiplierFactor(raw: RawScores, side: string | null, multiplier
   return effective(raw, side, multiplier);
 }
 
-function computeStrict(raw: RawScores, definition: SheetDefinition | null): Omit<SheetResult, "errors"> {
+function computeStrict(raw: RawScores, definition: SheetDefinition | null): Omit<SheetResult, "errors" | "issues"> {
   if (!definition) {
     const total = Object.entries(raw).reduce((sum, [key, value]) => sum + toNumber(key, value), 0);
     return { total: round(total, 2), sides: [] };
@@ -212,17 +227,53 @@ function computeStrict(raw: RawScores, definition: SheetDefinition | null): Omit
   return { total: round(grandTotal, 2), sides };
 }
 
+const ISSUE_MESSAGES: Record<SheetIssue["code"], (issue: SheetIssue) => string> = {
+  notNumeric: (issue) => `${issue.key} must be numeric`,
+  belowMin: (issue) => `${issue.key} must be at least ${issue.limit}`,
+  aboveMax: (issue) => `${issue.key} must be at most ${issue.limit}`,
+};
+
+/**
+ * What the entry form must not submit: non-numeric values, values above the
+ * maximum and values below the minimum. A count without a configured minimum
+ * cannot be negative (its input says min 0; the backend checks only a
+ * configured minimum, so -3 reached it and failed as a generic error).
+ * Missing required values are left to the backend.
+ */
+export function sheetIssues(raw: RawScores, definition: SheetDefinition | null): SheetIssue[] {
+  const issues: SheetIssue[] = [];
+  const specs = definition ? new Map(inputFields(definition).map((spec) => [spec.key, spec])) : new Map<string, InputSpec>();
+  for (const [key, value] of Object.entries(raw)) {
+    const spec = specs.get(key);
+    if (definition && !spec) continue;
+    const label = spec ? (spec.side ? `${spec.side} · ${spec.label}` : spec.label) : key;
+    let number: number;
+    try {
+      number = toNumber(key, value);
+    } catch {
+      issues.push({ code: "notNumeric", key, label });
+      continue;
+    }
+    if (!spec) continue;
+    const min = spec.min_value ?? (spec.type === "count" ? 0 : null);
+    if (min !== null && number < min) issues.push({ code: "belowMin", key, label, limit: min });
+    if (spec.max_value !== null && spec.max_value !== undefined && number > spec.max_value) issues.push({ code: "aboveMax", key, label, limit: spec.max_value });
+  }
+  return issues;
+}
+
 /**
  * Total and breakdown. Where the backend raises (bad value, above maximum)
- * this reports the problem in `errors` and previews the total with that
- * value clamped, so the form keeps showing a number while typing.
+ * this reports the problem in `errors` / `issues` and previews the total with
+ * that value clamped, so the form keeps showing a number while typing.
  */
 export function computeSheet(raw: RawScores, definition: SheetDefinition | null): SheetResult {
+  const issues = sheetIssues(raw, definition);
+  const errors = issues.map((issue) => ISSUE_MESSAGES[issue.code](issue));
   try {
-    return { ...computeStrict(raw, definition), errors: [] };
+    return { ...computeStrict(raw, definition), errors, issues };
   } catch (error) {
     if (!(error instanceof SheetError)) throw error;
-    const errors = validate(raw, definition, { unknownKeys: false });
     const specs = definition ? new Map(inputFields(definition).map((spec) => [spec.key, spec])) : new Map<string, InputSpec>();
     const clamped: RawScores = {};
     for (const [key, value] of Object.entries(raw)) {
@@ -230,7 +281,7 @@ export function computeSheet(raw: RawScores, definition: SheetDefinition | null)
       const max = specs.get(key)?.max_value;
       clamped[key] = Number.isNaN(number) ? 0 : max !== null && max !== undefined ? Math.min(number, max) : number;
     }
-    return { ...computeStrict(clamped, definition), errors: errors.length ? errors : [error.message] };
+    return { ...computeStrict(clamped, definition), errors: errors.length ? errors : [error.message], issues };
   }
 }
 

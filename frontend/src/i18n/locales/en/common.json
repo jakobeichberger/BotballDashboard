@@ -49,8 +49,6 @@
     "bots": "Bot Gallery",
     "profile": "Profile"
   },
-  "pendingSync": "{{count}} score(s) waiting to sync",
-  "syncFailed": "{{count}} score(s) could not be synced",
   "notifications": {
     "title": "Notifications",
     "empty": "No notifications",
@@ -95,7 +93,8 @@
     "offline": "Offline: the score is stored on this device and sent automatically once the connection is back.",
     "correct": "Correct",
     "saveLocally": "Save locally",
-    "submit": "Submit officially"
+    "submit": "Submit officially",
+    "cannotSubmit": "Cannot be submitted"
   },
   "export": {
     "failed": "Export failed",
@@ -124,7 +123,9 @@
       "data_conflict": "This conflicts with existing data (duplicate or missing reference).",
       "offline_write_blocked": "No connection – changes are possible again once you are back online.",
       "network": "The server cannot be reached. Please check your connection.",
-      "timeout": "The server did not answer in time. Please try again."
+      "timeout": "The server did not answer in time. Please try again.",
+      "duplicate_round": "This round is already recorded for the team. Please correct the existing entry.",
+      "category_has_no_matches": "Teams of this category play no matches (Aerial, JBC) – their results are entered on the category's own page."
     },
     "status": {
       "400": "The request is invalid.",
@@ -235,7 +236,9 @@
       "only_organizers_may_manage_bots_of_external_teams": "Only organizers may manage bots of external teams.",
       "only_team_administrators_may_link_user_accounts": "Only team administrators may link user accounts.",
       "public_scoreboard_is_disabled": "Public scoreboard is disabled.",
-      "public_schedule_is_disabled": "Public schedule is disabled."
+      "public_schedule_is_disabled": "Public schedule is disabled.",
+      "choose_at_least_one_place_or_clear_the_decision_explicitly": "Choose at least one place (or clear the decision explicitly).",
+      "the_award_is_already_decided_confirm_to_replace_the_placing": "The award is already decided; confirm to replace the placing."
     }
   },
   "confirmDialog": {
@@ -275,5 +278,9 @@
     "online": "Connected",
     "offline": "Offline"
   },
-  "open": "Open"
+  "open": "Open",
+  "pendingSync_one": "{{count}} score waiting to sync",
+  "pendingSync_other": "{{count}} scores waiting to sync",
+  "syncFailed_one": "{{count}} score could not be synced",
+  "syncFailed_other": "{{count}} scores could not be synced"
 }

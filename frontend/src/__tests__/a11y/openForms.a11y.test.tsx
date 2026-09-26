@@ -94,7 +94,7 @@ describe("open forms accessibility (axe)", () => {
 
   it("score entry form", async () => {
     renderAt("/scoring/entry", "/scoring/entry", <ScoreEntryPage />);
-    expect(await screen.findByLabelText(/Würfel/)).toBeInTheDocument();
+    expect(await screen.findByRole("spinbutton", { name: /Würfel/ })).toBeInTheDocument();
     expect(await axe(document.body, AXE_OPTS)).toHaveNoViolations();
   });
 

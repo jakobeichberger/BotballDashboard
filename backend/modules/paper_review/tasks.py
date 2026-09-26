@@ -6,8 +6,10 @@ from sqlalchemy import select
 
 from core.celery_app import celery_app, run_task
 from core.database import WorkerSessionLocal
-from modules.paper_review.models import ReviewerAssignment
+from modules.paper_review.models import REVIEWABLE_STATUSES, Paper, ReviewerAssignment
 from modules.paper_review.service import mark_reminder_sent
+from modules.seasons.lifecycle import ARCHIVED
+from modules.seasons.models import Season
 
 
 @celery_app.task(name="papers.process_review_deadlines")
@@ -16,11 +18,19 @@ def process_review_deadlines() -> None:
         async with WorkerSessionLocal() as db:
             now = datetime.now(UTC)
             reminder_cutoff = now - timedelta(hours=24)
+            # Only papers still in review: once organisers decide a paper
+            # (possibly before every reviewer finished), an open assignment
+            # is moot and must not be marked overdue or reminded daily.
             result = await db.execute(
-                select(ReviewerAssignment).where(
+                select(ReviewerAssignment)
+                .join(Paper, Paper.id == ReviewerAssignment.paper_id)
+                .join(Season, Season.id == Paper.season_id)
+                .where(
                     ReviewerAssignment.status != "completed",
                     ReviewerAssignment.due_at.is_not(None),
                     ReviewerAssignment.due_at <= now + timedelta(hours=24),
+                    Paper.status.in_(REVIEWABLE_STATUSES),
+                    Season.status != ARCHIVED,
                 )
             )
             for assignment in result.scalars().all():

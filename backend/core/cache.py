@@ -26,12 +26,14 @@ instance), ``none`` disables caching (ETags still work).
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import time
+import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Request, Response
 from pydantic import TypeAdapter
@@ -53,9 +55,23 @@ _BACKOFF_SECONDS = 5.0
 # to a number an old entry might still carry.
 _VERSION_TTL_SECONDS = 7 * 24 * 3600
 
+#: How long one instance may compute an entry before others compute too.
+_LOCK_TTL_MS = 2000
+_LOCK_POLL_SECONDS = 0.05
+# Delete the lock only if it is still ours (it may have expired and been
+# taken by another instance meanwhile).
+_RELEASE_LOCK = """
+if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('del', KEYS[1])
+end
+return 0
+"""
+
 _down_until = 0.0
 _memory: dict[str, tuple[float, bytes]] = {}
 _memory_versions: dict[str, int] = {}
+# Entries being computed in this process: key → the leader's result.
+_flights: dict[str, asyncio.Future[Payload]] = {}
 
 
 @dataclass(frozen=True)
@@ -165,17 +181,99 @@ async def cached_payload(
     params: str,
     compute: Callable[[], Awaitable[bytes]],
 ) -> Payload:
-    """The cached payload of (`kind`, `event_id`, `params`), computed on a miss."""
+    """The cached payload of (`kind`, `event_id`, `params`), computed on a miss.
+
+    Single flight: every committed score bumps the version, and all open
+    scoreboards ask again at once. Of the concurrent misses for one key only
+    the first computes; the others in this process wait for its result, and
+    other API instances wait for its Redis entry (see ``_compute_and_store``).
+    """
     version = await current_version(event_id)
-    key = _entry_key(kind, event_id, version, params) if version is not None else None
-    if key is not None:
-        hit = await _load(key)
-        if hit is not None:
-            return hit
-    payload = Payload.of(await compute())
-    if key is not None:
+    if version is None:
+        return Payload.of(await compute())
+    key = _entry_key(kind, event_id, version, params)
+    hit = await _load(key)
+    if hit is not None:
+        return hit
+
+    leader = _flights.get(key)
+    if leader is not None and not leader.done():
+        try:
+            return await asyncio.shield(leader)
+        except asyncio.CancelledError:
+            if not leader.cancelled():
+                raise  # this request itself was cancelled
+        except Exception:  # noqa: BLE001, S110 - the leader failed: compute ourselves
+            pass
+        return await _compute_and_store(key, compute)
+
+    flight: asyncio.Future[Payload] = asyncio.get_running_loop().create_future()
+    # Nobody may be waiting; retrieve the exception so it is not reported.
+    flight.add_done_callback(lambda f: f.cancelled() or f.exception())
+    _flights[key] = flight
+    try:
+        payload = await _compute_and_store(key, compute)
+    except BaseException as exc:
+        if isinstance(exc, asyncio.CancelledError):
+            flight.cancel()
+        else:
+            flight.set_exception(exc)
+        raise
+    else:
+        flight.set_result(payload)
+        return payload
+    finally:
+        if _flights.get(key) is flight:
+            del _flights[key]
+
+
+async def _compute_and_store(key: str, compute: Callable[[], Awaitable[bytes]]) -> Payload:
+    """Compute and store one entry; across instances only one computes.
+
+    With Redis, ``SET key:lock NX PX`` elects the instance that computes; the
+    others poll for the entry for as long as the lock lives and compute
+    themselves only if it does not show up (slow leader, lost lock, Redis
+    trouble) — the lock only saves work, it never blocks a read for long.
+    """
+    lock_key = f"{key}:lock"
+    token = await _acquire_lock(lock_key)
+    if token is False:
+        deadline = time.monotonic() + _LOCK_TTL_MS / 1000
+        while time.monotonic() < deadline:
+            await asyncio.sleep(_LOCK_POLL_SECONDS)
+            hit = await _load(key)
+            if hit is not None:
+                return hit
+        token = None
+    try:
+        payload = Payload.of(await compute())
         await _store(key, payload)
-    return payload
+        return payload
+    finally:
+        if isinstance(token, str):
+            await _release_lock(lock_key, token)
+
+
+async def _acquire_lock(lock_key: str) -> str | Literal[False] | None:
+    """A token when this instance holds the lock, False when another one does,
+    None when there is no shared lock (memory backend, Redis unavailable)."""
+    if not _redis_usable():
+        return None
+    token = uuid.uuid4().hex
+    try:
+        acquired = await _client().set(lock_key, token, nx=True, px=_LOCK_TTL_MS)
+    except REDIS_ERRORS as exc:
+        _mark_down("lock", exc)
+        return None
+    return token if acquired else False
+
+
+async def _release_lock(lock_key: str, token: str) -> None:
+    try:
+        await _client().eval(_RELEASE_LOCK, 1, lock_key, token)
+    except REDIS_ERRORS as exc:
+        # The lock expires on its own within _LOCK_TTL_MS.
+        _mark_down("unlock", exc)
 
 
 @lru_cache(maxsize=64)
@@ -216,4 +314,5 @@ def clear_memory() -> None:
     global _down_until
     _memory.clear()
     _memory_versions.clear()
+    _flights.clear()
     _down_until = 0.0

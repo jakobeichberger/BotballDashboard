@@ -202,7 +202,7 @@ export default function FieldCandidateEditor({ template, onConfirmed }: Props) {
                       className="input input-sm w-36 font-mono text-xs"
                       value={f.key}
                       onChange={(e) => updateField(idx, { key: e.target.value })}
-                      placeholder="snake_case_key"
+                      placeholder={t('scoreSheets.fields.keyPlaceholder')}
                     />
                   </td>
                   <td className="px-2 py-1">

@@ -168,7 +168,7 @@ function SectionEditor({ section, index, count, onChange, onMove, onRemove }: Se
             <input aria-label={t("schema.fieldKey")} className="input font-mono text-xs" value={field.key} onChange={(e) => updateField(i, { key: e.target.value })} />
             <select aria-label={t("schema.fieldType")} className="input" value={field.type ?? "count"} onChange={(e) => updateField(i, { type: e.target.value as SheetField["type"] })}><option value="count">{t("schema.type.count")}</option><option value="boolean">{t("schema.type.boolean")}</option><option value="number">{t("schema.type.number")}</option></select>
             <input aria-label={t("schema.pointsEach")} title={t("schema.pointsEach")} type="number" step="any" className="input" value={field.multiplier ?? 1} onChange={(e) => updateField(i, { multiplier: Number(e.target.value) })} />
-            <input aria-label={t("schema.maximum")} title={t("schema.maximum")} type="number" min={0} className="input" value={field.max_value ?? ""} placeholder="max" onChange={(e) => updateField(i, { max_value: e.target.value === "" ? null : Number(e.target.value) })} />
+            <input aria-label={t("schema.maximum")} title={t("schema.maximum")} type="number" min={0} className="input" value={field.max_value ?? ""} placeholder={t("schema.maxPlaceholder")} onChange={(e) => updateField(i, { max_value: e.target.value === "" ? null : Number(e.target.value) })} />
             <button type="button" className="btn-secondary px-2" aria-label={t("schema.removeField")} onClick={() => onChange({ fields: section.fields.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></button>
           </div>
         ))}
@@ -216,7 +216,7 @@ function MultiplierRow({ value, fields, onChange, onRemove }: { value: SheetMult
       <select aria-label={t("schema.multiplierType")} className="input" value={value.type ?? "boolean"} onChange={(e) => onChange({ ...value, type: e.target.value as SheetMultiplier["type"], max_value: e.target.value === "boolean" ? 1 : value.max_value ?? null })}><option value="boolean">{t("schema.checkTimesFactor")}</option><option value="count">{t("schema.countTimesFactor")}</option></select>
       <input aria-label={t("schema.factor")} title={t("schema.factor")} type="number" step="any" className="input" value={value.factor ?? 1} onChange={(e) => onChange({ ...value, factor: Number(e.target.value) })} />
       <input aria-label={t("schema.offset")} title={t("schema.offsetHint")} type="number" step="any" className="input" disabled={!counted} value={counted ? value.offset ?? 0 : ""} onChange={(e) => onChange({ ...value, offset: Number(e.target.value) })} />
-      <input aria-label={t("schema.multiplierMax")} title={t("schema.maximum")} type="number" min={0} className="input" disabled={!counted} value={counted ? value.max_value ?? "" : ""} placeholder="max" onChange={(e) => onChange({ ...value, max_value: e.target.value === "" ? null : Number(e.target.value) })} />
+      <input aria-label={t("schema.multiplierMax")} title={t("schema.maximum")} type="number" min={0} className="input" disabled={!counted} value={counted ? value.max_value ?? "" : ""} placeholder={t("schema.maxPlaceholder")} onChange={(e) => onChange({ ...value, max_value: e.target.value === "" ? null : Number(e.target.value) })} />
       <button type="button" className="btn-secondary px-2" aria-label={t("schema.removeMultiplier")} onClick={onRemove}><Trash2 className="h-4 w-4" /></button>
     </div>
     {!counted && fields && (

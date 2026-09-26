@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
+from core.task_queue import drain_pending_tasks
 from modules.auth import routes as auth_routes
 from modules.auth.models import (
     PasswordResetToken,
@@ -58,6 +59,12 @@ def sent_mails(monkeypatch):
     return mails
 
 
+async def _mails_out(db) -> None:
+    """Commit the request's work; its mails leave after the commit."""
+    await db.commit()
+    await drain_pending_tasks()
+
+
 class TestPasswordPolicy:
     @pytest.mark.parametrize(
         ("password", "ok"),
@@ -86,7 +93,7 @@ class TestPasswordPolicy:
 
     @pytest.mark.parametrize("common", ["Password123", "QWERTYUIOP"])
     async def test_every_password_path_rejects_common_passwords(
-        self, client, user, auth_headers, sent_mails, common
+        self, client, db, user, auth_headers, sent_mails, common
     ):
         headers = await _headers(client)
         created = await client.post(
@@ -105,6 +112,7 @@ class TestPasswordPolicy:
             headers=auth_headers,
         )
         await client.post("/api/auth/password-reset/request", json={"email": "user@example.com"})
+        await _mails_out(db)
         reset = await client.post(
             "/api/auth/password-reset/confirm",
             json={"token": sent_mails[0][1], "new_password": common},
@@ -114,7 +122,7 @@ class TestPasswordPolicy:
             assert "common or leaked" in resp.text
 
     async def test_every_password_path_rejects_passwords_over_72_bytes(
-        self, client, user, auth_headers, sent_mails
+        self, client, db, user, auth_headers, sent_mails
     ):
         # 50 characters, but 75 bytes: more than bcrypt 5 accepts.
         too_long = "Grüße-äöü-" * 5
@@ -135,6 +143,7 @@ class TestPasswordPolicy:
             headers=auth_headers,
         )
         await client.post("/api/auth/password-reset/request", json={"email": "user@example.com"})
+        await _mails_out(db)
         reset = await client.post(
             "/api/auth/password-reset/confirm",
             json={"token": sent_mails[0][1], "new_password": too_long},
@@ -193,6 +202,7 @@ class TestPasswordReset:
             "/api/auth/password-reset/request", json={"email": "USER@example.com"}
         )
         assert resp.status_code == 204
+        await _mails_out(db)
         assert len(sent_mails) == 1
         email, token = sent_mails[0]
         assert email == "user@example.com"
@@ -215,23 +225,26 @@ class TestPasswordReset:
         )
         assert again.status_code == 400
 
-    async def test_unknown_email_is_indistinguishable(self, client, sent_mails):
+    async def test_unknown_email_is_indistinguishable(self, client, db, sent_mails):
         resp = await client.post(
             "/api/auth/password-reset/request", json={"email": "nobody@example.com"}
         )
         assert resp.status_code == 204
+        await _mails_out(db)
         assert sent_mails == []
 
-    async def test_resend_is_throttled(self, client, user, sent_mails):
+    async def test_resend_is_throttled(self, client, db, user, sent_mails):
         for _ in range(3):
             resp = await client.post(
                 "/api/auth/password-reset/request", json={"email": "user@example.com"}
             )
             assert resp.status_code == 204
+            await _mails_out(db)
         assert len(sent_mails) == 1
 
     async def test_expired_token_rejected(self, client, db, user, sent_mails):
         await client.post("/api/auth/password-reset/request", json={"email": "user@example.com"})
+        await _mails_out(db)
         stored = (await db.execute(select(PasswordResetToken))).scalar_one()
         stored.expires_at = datetime.now(UTC) - timedelta(minutes=1)
         await db.commit()
@@ -241,8 +254,9 @@ class TestPasswordReset:
         )
         assert resp.status_code == 400
 
-    async def test_reset_enforces_policy(self, client, user, sent_mails):
+    async def test_reset_enforces_policy(self, client, db, user, sent_mails):
         await client.post("/api/auth/password-reset/request", json={"email": "user@example.com"})
+        await _mails_out(db)
         resp = await client.post(
             "/api/auth/password-reset/confirm",
             json={"token": sent_mails[0][1], "new_password": "user@example.com"},

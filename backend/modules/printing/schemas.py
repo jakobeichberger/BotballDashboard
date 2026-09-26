@@ -82,6 +82,8 @@ class PrintJobUpdate(BaseModel):
     part_count: int | None = Field(default=None, ge=1, le=50)
     # The STL was handed in with documentation Period 3.
     stl_submitted: bool | None = None
+    # Retry a failed job although the team's hard limit is reached (audited).
+    quota_override: bool | None = None
 
 
 class PrintJobResponse(BaseModel):

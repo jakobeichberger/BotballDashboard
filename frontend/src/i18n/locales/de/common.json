@@ -49,8 +49,6 @@
     "bots": "Bot-Galerie",
     "profile": "Profil"
   },
-  "pendingSync": "{{count}} Wertung(en) warten auf Synchronisierung",
-  "syncFailed": "{{count}} Wertung(en) konnten nicht synchronisiert werden",
   "notifications": {
     "title": "Benachrichtigungen",
     "empty": "Keine Benachrichtigungen",
@@ -95,7 +93,8 @@
     "offline": "Offline: Die Wertung wird auf diesem Gerät gespeichert und automatisch übertragen, sobald wieder eine Verbindung besteht.",
     "correct": "Korrigieren",
     "saveLocally": "Lokal speichern",
-    "submit": "Verbindlich absenden"
+    "submit": "Verbindlich absenden",
+    "cannotSubmit": "So nicht absendbar"
   },
   "export": {
     "failed": "Export fehlgeschlagen",
@@ -124,7 +123,9 @@
       "data_conflict": "Das widerspricht vorhandenen Daten (Duplikat oder fehlender Bezug).",
       "offline_write_blocked": "Keine Verbindung – Änderungen sind erst nach dem Wiederverbinden möglich.",
       "network": "Der Server ist nicht erreichbar. Bitte die Verbindung prüfen.",
-      "timeout": "Der Server antwortet nicht rechtzeitig. Bitte erneut versuchen."
+      "timeout": "Der Server antwortet nicht rechtzeitig. Bitte erneut versuchen.",
+      "duplicate_round": "Diese Runde ist für das Team schon erfasst. Bitte den vorhandenen Eintrag korrigieren.",
+      "category_has_no_matches": "Teams dieser Kategorie spielen keine Matches (Aerial, JBC) – ihre Ergebnisse werden auf der eigenen Seite der Kategorie erfasst."
     },
     "status": {
       "400": "Die Anfrage ist ungültig.",
@@ -235,7 +236,9 @@
       "only_organizers_may_manage_bots_of_external_teams": "Nur Organisator:innen dürfen Roboter externer Teams verwalten.",
       "only_team_administrators_may_link_user_accounts": "Nur Team-Admins dürfen Benutzerkonten verknüpfen.",
       "public_scoreboard_is_disabled": "Die öffentliche Rangliste ist deaktiviert.",
-      "public_schedule_is_disabled": "Der öffentliche Zeitplan ist deaktiviert."
+      "public_schedule_is_disabled": "Der öffentliche Zeitplan ist deaktiviert.",
+      "choose_at_least_one_place_or_clear_the_decision_explicitly": "Bitte mindestens einen Platz wählen (oder die Entscheidung ausdrücklich zurücksetzen).",
+      "the_award_is_already_decided_confirm_to_replace_the_placing": "Der Award ist bereits entschieden – bitte das Ersetzen bestätigen."
     }
   },
   "confirmDialog": {
@@ -275,5 +278,9 @@
     "online": "Verbunden",
     "offline": "Offline"
   },
-  "open": "Öffnen"
+  "open": "Öffnen",
+  "pendingSync_one": "{{count}} Wertung wartet auf Synchronisierung",
+  "pendingSync_other": "{{count}} Wertungen warten auf Synchronisierung",
+  "syncFailed_one": "{{count}} Wertung konnte nicht synchronisiert werden",
+  "syncFailed_other": "{{count}} Wertungen konnten nicht synchronisiert werden"
 }

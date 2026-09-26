@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trans, useTranslation } from "react-i18next";
-import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy, Pencil, X, Flag } from "lucide-react";
+import { ClipboardList, ArrowLeft, Check, Trash2, Save, Dumbbell, Trophy, Pencil, X, Flag, Minus, Plus } from "lucide-react";
 import { api, isQueuedResponse } from "@/lib/api";
 import { EventLink } from "@/components/EventLink";
 import PendingScores from "@/components/PendingScores";
@@ -11,6 +11,10 @@ import { useAuthStore } from "@/store/authStore";
 import { useScoringScope } from "@/hooks/useScoringScope";
 import clsx from "clsx";
 import { computeSheet, normalize } from "@/modules/scoring/sheet/calculator";
+import { sheetMessages } from "@/modules/scoring/sheet/issues";
+import { playsMatches, useSeasonCategories } from "@/lib/categories";
+import { useQueuedNotice } from "@/hooks/useQueuedNotice";
+import type { EventRegistration } from "@/api/types";
 import ChecklistConfirmDialog from "@/modules/scoring/extras/ChecklistConfirmDialog";
 import MatchPenaltyDialog, { PenaltyBadges, type PenaltyMatch } from "@/modules/scoring/extras/MatchPenaltyDialog";
 import type { RuleSet } from "@/modules/scoring/extras/types";
@@ -23,11 +27,24 @@ interface Field {
   key: string;
   label: string;
   multiplier: number;
+  min_value?: number | null;
   max_value: number | null;
   type: "count" | "boolean";
 }
 
 type Mode = "contest" | "practice";
+
+interface TeamOption {
+  id: string;
+  name: string;
+}
+
+/** The round as typed: digits only, so "1", backspace, "2" gives 2 (not 12). */
+function parseRound(text: string): number | null {
+  if (!/^\d+$/.test(text)) return null;
+  const value = Number(text);
+  return value >= 1 ? value : null;
+}
 
 export default function ScoreEntryPage() {
   const { t } = useTranslation("scoring");
@@ -39,18 +56,30 @@ export default function ScoreEntryPage() {
   const isPractice = mode === "practice";
   const online = useOnlineStatus();
   const [confirming, setConfirming] = useState(false);
+  // Confirmation of the last save, next to the save button (plus a toast).
   const [notice, setNotice] = useState("");
+  // "Saved offline" only while the entry is still in the offline queue.
+  const queuedNotice = useQueuedNotice();
 
   // Scores are entered for the event of the current route; without one the
   // backend falls back to the season's default event.
   const { eventId, seasonId: sid, season, isLoading: scopeLoading } = useScoringScope();
   const eventQuery = eventId ? `?event_id=${eventId}` : "";
 
-  const { data: allTeams } = useQuery({
+  const registry = useSeasonCategories(sid);
+  // Under an event: the teams registered for it whose category plays matches
+  // (Aerial and JBC teams are not offered; the API refuses them as well).
+  const { data: registrations } = useQuery<EventRegistration[]>({
+    queryKey: ["event-registrations", eventId],
+    queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data,
+    enabled: !!eventId,
+  });
+  const { data: allTeams } = useQuery<TeamOption[]>({
     queryKey: ["teams"],
     queryFn: async () => (await api.get("/teams")).data,
+    enabled: !eventId,
   });
-  const { data: myTeams } = useQuery({
+  const { data: myTeams } = useQuery<TeamOption[]>({
     queryKey: ["teams-mine"],
     queryFn: async () => (await api.get("/teams/mine")).data,
     enabled: canEnter && !canManageAll,
@@ -70,12 +99,28 @@ export default function ScoreEntryPage() {
     enabled: !!sid,
   });
 
-  const entryTeams = canManageAll ? allTeams : myTeams;
-  const teamName = (tid: string) => allTeams?.find((team: any) => team.id === tid)?.name ?? tid;
+  const eventTeams: TeamOption[] | undefined = registrations
+    ?.filter((registration) => playsMatches(registry.kindOf(registration.category)))
+    .map((registration) => ({ id: registration.team_id, name: registration.team_name }));
+  const candidates = eventId ? eventTeams : allTeams;
+  const entryTeams = canManageAll || eventId ? candidates?.filter((team) => canManageAll || myTeams?.some((own) => own.id === team.id)) : myTeams;
+  const teamName = (tid: string) =>
+    registrations?.find((registration) => registration.team_id === tid)?.team_name ??
+    allTeams?.find((team) => team.id === tid)?.name ??
+    myTeams?.find((team) => team.id === tid)?.name ??
+    tid;
 
   const [teamId, setTeamId] = useState("");
-  const [round, setRound] = useState(1);
+  const [roundText, setRoundText] = useState("1");
+  const round = parseRound(roundText);
   const [scores, setScores] = useState<Record<string, number>>({});
+  const setScore = (key: string, value: number | null) =>
+    setScores((current) => {
+      const next = { ...current };
+      if (value === null) delete next[key];
+      else next[key] = value;
+      return next;
+    });
 
   const { data: rules } = useQuery<RuleSet>({
     queryKey: ["scoring-rules", sid],
@@ -87,6 +132,7 @@ export default function ScoreEntryPage() {
   // Same calculation as the backend (area multipliers, either-or, sides A/B).
   const sheet = computeSheet(scores, normalize(schema?.fields, schema?.definition));
   const preview = sheet.total;
+  const problems = sheetMessages(sheet, t);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["matches", sid, eventId] });
   const onError = (e: unknown) => toast.apiError(e, t("common:actionFailed"));
@@ -97,13 +143,14 @@ export default function ScoreEntryPage() {
   const resetForm = () => { setScores({}); setEditingId(null); };
 
   const saveM = useMutation({
-    // Resolves to whether the entry went to the offline queue instead of the server.
-    mutationFn: async (): Promise<boolean> => {
+    // Resolves to what happened: updated, queued offline (with its key) or saved.
+    mutationFn: async (): Promise<{ kind: "updated" } | { kind: "queued"; key: string } | { kind: "saved"; text: string }> => {
       if (editingId) {
         await api.patch(`/scoring/matches/${editingId}`, { raw_scores: rawFromScores() });
-        return false;
+        return { kind: "updated" };
       }
-      const { data } = await api.post(
+      const text = t(isPractice ? "entry.savedPractice" : "entry.saved", { team: teamName(teamId), round, points: preview });
+      const { data } = await api.post<unknown>(
         `/scoring/seasons/${sid}/matches`,
         {
           ...(eventId ? { event_id: eventId } : {}),
@@ -115,11 +162,20 @@ export default function ScoreEntryPage() {
         },
         { offlineLabel: t(isPractice ? "entry.offlineLabelPractice" : "entry.offlineLabel", { team: teamName(teamId), round, points: preview }) },
       );
-      return isQueuedResponse(data);
+      return isQueuedResponse(data) ? { kind: "queued", key: data.idempotency_key } : { kind: "saved", text };
     },
-    onSuccess: (queued) => {
+    onSuccess: (result) => {
       setConfirming(false);
-      setNotice(queued ? t("events:scoreQueued") : "");
+      if (result.kind === "queued") {
+        setNotice("");
+        queuedNotice.show(result.key);
+      } else {
+        const text = result.kind === "saved" ? result.text : t("entry.updated");
+        setNotice(text);
+        toast.success(text);
+      }
+      // A new run moves on to the team's next round.
+      if (result.kind !== "updated" && round !== null) setRoundText(String(round + 1));
       resetForm();
       invalidate();
     },
@@ -133,9 +189,10 @@ export default function ScoreEntryPage() {
   };
 
   const startEdit = (m: any) => {
+    setNotice("");
     setEditingId(m.id);
     setTeamId(m.team_id);
-    setRound(m.round_number);
+    setRoundText(String(m.round_number));
     setScores({ ...m.raw_scores });
   };
   const checklist = rules?.referee_checklist ?? [];
@@ -171,6 +228,23 @@ export default function ScoreEntryPage() {
     .filter((m: any) => !!m.is_practice === isPractice)
     .filter((m: any) => canManageAll || myTeams?.some((t: any) => t.id === m.team_id))
     .sort((a: any, b: any) => a.round_number - b.round_number);
+
+  // The team's next free round (of the current mode), preselected with the team.
+  const nextRound = (tid: string) =>
+    visibleMatches.filter((m: any) => m.team_id === tid).reduce((highest: number, m: any) => Math.max(highest, m.round_number), 0) + 1;
+  const chooseTeam = (tid: string) => {
+    setTeamId(tid);
+    setNotice("");
+    if (tid) setRoundText(String(nextRound(tid)));
+  };
+  const stepRound = (delta: number) => setRoundText(String(Math.max(1, (round ?? 1) + delta)));
+  // A second official score for a recorded round would count as an extra run:
+  // the API refuses it (409 duplicate_round), the form says so up front.
+  const duplicate: any = !editingId && !isPractice && teamId && round !== null
+    ? visibleMatches.find((m: any) => m.team_id === teamId && m.round_number === round)
+    : undefined;
+  const duplicateText = duplicate ? t("entry.duplicateRound", { team: teamName(teamId), round, points: duplicate.total_score }) : "";
+  const correctDuplicate = () => { setConfirming(false); startEdit(duplicate); };
 
   // Practice progress summary (per selected team, or across visible practice runs)
   const practiceScores = visibleMatches.map((m: any) => m.total_score);
@@ -239,7 +313,7 @@ export default function ScoreEntryPage() {
         </p>
       )}
       {sid && <PendingScores filter={(entry) => entry.url === `/scoring/seasons/${sid}/matches` && (entry.eventId ?? undefined) === eventId && !!entry.body.is_practice === isPractice} />}
-      {notice && <p role="status" className="rounded-lg bg-flaeche-2 p-3 text-sm">{notice}</p>}
+      {queuedNotice.visible && <p role="status" className="rounded-lg bg-warning/10 p-3 text-sm text-warning">{t("events:scoreQueued")}</p>}
 
       {!season && scopeLoading && <p role="status" className="text-sm text-leise">{t("common:loadingEllipsis")}</p>}
       {!season && !scopeLoading && <p className="text-danger text-sm">{t("entry.noSeason")}</p>}
@@ -260,24 +334,37 @@ export default function ScoreEntryPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="label" htmlFor={`${formId}-team`}>{t("scouting.team")}</label>
-              <select id={`${formId}-team`} className="input" value={teamId} disabled={!!editingId} onChange={(e) => setTeamId(e.target.value)}>
+              <select id={`${formId}-team`} className="input" value={teamId} disabled={!!editingId} onChange={(e) => chooseTeam(e.target.value)}>
                 <option value="">{t("entry.chooseTeam")}</option>
-                {entryTeams?.map((team: any) => (<option key={team.id} value={team.id}>{team.name}</option>))}
+                {entryTeams?.map((team) => (<option key={team.id} value={team.id}>{team.name}</option>))}
               </select>
+              {eventId && entryTeams?.length === 0 && <p className="mt-1 text-xs text-leise">{t("entry.noEventTeams")}</p>}
             </div>
             <div>
               <label className="label" htmlFor={`${formId}-round`}>{isPractice ? t("entry.runNumber") : t("scouting.roundLabel")}</label>
-              <input id={`${formId}-round`} type="number" min={1} className="input" value={round} disabled={!!editingId}
-                     onChange={(e) => setRound(Number(e.target.value) || 1)} />
+              {/* Text + inputMode: the value can be cleared and retyped on a phone; the steppers are thumb-sized. */}
+              <div className="flex items-center gap-2">
+                <button type="button" className="btn-secondary h-11 w-11 shrink-0 justify-center p-0" aria-label={t("entry.decreaseRound")} disabled={!!editingId || (round ?? 1) <= 1} onClick={() => stepRound(-1)}><Minus className="h-5 w-5" aria-hidden="true" /></button>
+                <input id={`${formId}-round`} type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="off" className="input text-center text-lg" value={roundText} disabled={!!editingId}
+                       aria-invalid={round === null} onChange={(e) => setRoundText(e.target.value.replace(/\D/g, ""))} />
+                <button type="button" className="btn-secondary h-11 w-11 shrink-0 justify-center p-0" aria-label={t("entry.increaseRound")} disabled={!!editingId} onClick={() => stepRound(1)}><Plus className="h-5 w-5" aria-hidden="true" /></button>
+              </div>
+              {round === null && <p role="alert" className="mt-1 text-xs text-danger">{t("entry.roundInvalid")}</p>}
             </div>
             <div className="flex items-end">
               <div className="text-sm">
                 <div className="text-leise">{t("entry.preview")}</div>
                 <div className="text-2xl font-bold text-akzent">{preview}</div>
-                {sheet.errors.length > 0 && <div role="alert" className="text-xs text-danger">{sheet.errors[0]}</div>}
+                {problems.length > 0 && <ul role="alert" className="text-xs text-danger">{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
               </div>
             </div>
           </div>
+          {duplicate && (
+            <div role="alert" className="rounded-lg bg-danger/[0.07] p-3 text-sm text-danger">
+              <p>{duplicateText}</p>
+              {canManageAll && <button type="button" className="btn-secondary mt-2 min-h-11" onClick={correctDuplicate}><Pencil className="h-4 w-4" aria-hidden="true" /> {t("entry.correctExisting")}</button>}
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 border-t pt-4">
             {fields.map((f) => (
@@ -288,25 +375,33 @@ export default function ScoreEntryPage() {
                   <label className="label" htmlFor={`${formId}-${f.key}`}>{f.label} <span className="text-leise">(×{f.multiplier})</span></label>
                 )}
                 {f.type === "boolean" ? (
-                  <label className="inline-flex min-h-11 items-center gap-2 text-sm">
-                    <input type="checkbox" aria-describedby={`${formId}-${f.key}-label`} checked={!!scores[f.key]}
-                           onChange={(e) => setScores({ ...scores, [f.key]: e.target.checked ? 1 : 0 })} />
+                  <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 pr-2 text-sm">
+                    <input type="checkbox" className="h-6 w-6 shrink-0" aria-describedby={`${formId}-${f.key}-label`} checked={!!scores[f.key]}
+                           onChange={(e) => setScore(f.key, e.target.checked ? 1 : 0)} />
                     {t("entry.achieved")}
                   </label>
                 ) : (
-                  <input id={`${formId}-${f.key}`} type="number" min={0} max={f.max_value ?? undefined} className="input"
-                         value={scores[f.key] ?? ""}
-                         onChange={(e) => setScores({ ...scores, [f.key]: Number(e.target.value) })} />
+                  // Clearable (empty = not entered), with thumb-sized steppers for counting.
+                  <div className="flex items-center gap-2">
+                    <button type="button" className="btn-secondary h-11 w-11 shrink-0 justify-center p-0" aria-label={t("sheet.decrease", { label: f.label })}
+                            disabled={(scores[f.key] ?? 0) <= (f.min_value ?? 0)} onClick={() => setScore(f.key, Math.max(f.min_value ?? 0, (scores[f.key] ?? 0) - 1))}><Minus className="h-5 w-5" aria-hidden="true" /></button>
+                    <input id={`${formId}-${f.key}`} type="number" inputMode="numeric" min={f.min_value ?? 0} max={f.max_value ?? undefined} className="input text-lg"
+                           value={scores[f.key] ?? ""}
+                           onChange={(e) => setScore(f.key, e.target.value === "" ? null : Number(e.target.value))} />
+                    <button type="button" className="btn-secondary h-11 w-11 shrink-0 justify-center p-0" aria-label={t("sheet.increase", { label: f.label })}
+                            disabled={f.max_value !== null && (scores[f.key] ?? 0) >= f.max_value} onClick={() => setScore(f.key, (scores[f.key] ?? 0) + 1)}><Plus className="h-5 w-5" aria-hidden="true" /></button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
 
+          {notice && <p role="status" className="rounded-lg bg-success/10 p-3 text-sm text-success">{notice}</p>}
           <div className="flex justify-end gap-2">
             {editingId && (
               <button type="button" className="btn-secondary" onClick={resetForm}><X className="w-4 h-4" /> {t("common:cancel")}</button>
             )}
-            <button type="button" className="btn-primary disabled:opacity-40" disabled={!teamId || saveM.isPending}
+            <button type="button" className="btn-primary disabled:opacity-40" disabled={!teamId || saveM.isPending || round === null || sheet.errors.length > 0 || !!duplicate}
                     onClick={submit}>
               <Save className="w-4 h-4" /> {editingId ? t("entry.saveChanges") : (isPractice ? t("entry.savePractice") : t("entry.checkAndSave"))}
             </button>
@@ -320,12 +415,15 @@ export default function ScoreEntryPage() {
 
       <ScoreConfirmDialog
         open={confirming}
-        context={[[t("scouting.team"), teamName(teamId)], [t("scouting.roundLabel"), String(round)]]}
+        context={[[t("scouting.team"), teamName(teamId)], [t("scouting.roundLabel"), String(round ?? "")]]}
         fields={fields}
         values={scores}
         total={preview}
         offline={!online}
         pending={saveM.isPending}
+        warning={duplicateText || undefined}
+        blocked={!!duplicate}
+        action={duplicate && canManageAll ? <button type="button" className="btn-secondary min-h-11" onClick={correctDuplicate}>{t("entry.correctExisting")}</button> : undefined}
         onConfirm={() => saveM.mutate()}
         onCancel={() => setConfirming(false)}
       />

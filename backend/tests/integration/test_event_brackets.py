@@ -393,3 +393,56 @@ async def test_scheduled_match_links_are_exposed(client, auth_headers, event, db
     assert semi["next_loser_match_id"] is None
     rows = (await db.execute(select(ScheduledMatch))).scalars().all()
     assert len(rows) == 2
+
+
+@pytest.mark.asyncio
+async def test_bracket_scores_stay_non_negative_while_the_bracket_runs(
+    client, auth_headers, event, db
+):
+    """Every team of the bracket counts towards n_bracket from the first match on.
+
+    Only the teams that are already out have a DE rank while the bracket runs;
+    with n counted over those alone a team placed 7th of 8 scored
+    (2 - 7 + 1) / 2 = -2 and dropped below teams that never played.
+    """
+    teams = await _register(db, event, 8)
+    seed_of = {team.id: seed for seed, team in enumerate(teams, start=1)}
+    phase = await _phase(client, auth_headers, event, "double_elimination", 1)
+    await _generate(client, auth_headers, event, phase["id"])
+    # Four winner-bracket openers, two W2 matches and the first two loser-bracket
+    # matches: seeds 7 and 8 are out, everyone else is still in.
+    for _ in range(8):
+        current = await _schedule(client, auth_headers, event, phase["id"])
+        ready = [
+            match
+            for match in current.values()
+            if match["status"] == "scheduled" and len(match["participants"]) == 2
+        ]
+        match = min(ready, key=lambda item: item["sequence_number"])
+        response = await _play(client, auth_headers, event, match, _favourite(match, seed_of))
+        assert response.status_code == 200, response.text
+
+    await db.commit()
+    rows = {
+        row.team_id: row
+        for row in (await db.execute(select(DEResult).where(DEResult.event_id == event.id)))
+        .scalars()
+        .all()
+    }
+    placed = {seed_of[t]: row for t, row in rows.items() if row.de_rank is not None}
+    assert sorted(placed) == [7, 8]
+    for row in rows.values():
+        assert row.bracket_score is None or row.bracket_score >= 0
+    # (8 - 7 + 1) / 8: the value the team keeps once the bracket is decided.
+    assert placed[7].bracket_score == pytest.approx(0.25)
+
+    ranking = await client.get(
+        f"/api/scoring/events/{event.id}/ranking/overall", headers=auth_headers
+    )
+    assert ranking.status_code == 200, ranking.text
+    by_name = {entry["team_name"]: entry for entry in ranking.json()}
+    assert all((entry["de_score"] or 0) >= 0 for entry in by_name.values())
+    assert by_name["Team 07"]["values"]["n_bracket"] == 8
+    assert by_name["Team 07"]["de_score"] > 0
+    # Teams still in the bracket have no placement and no DE score yet.
+    assert not by_name["Team 01"]["de_score"]

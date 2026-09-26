@@ -143,6 +143,9 @@ export interface paths {
         /**
          * Request Password Reset
          * @description Always 204, whether or not the address belongs to an account.
+         *
+         *     The mail leaves after the commit, in the background: the answer never
+         *     waits for the mail server, so its timing does not reveal the account.
          */
         post: operations["request_password_reset_api_auth_password_reset_request_post"];
         delete?: never;
@@ -4215,6 +4218,8 @@ export interface paths {
         /**
          * Decide Award
          * @description The jury's placing; replaces the award's results.
+         *
+         *     Changing or clearing an existing decision needs ``replace: true``.
          */
         put: operations["decide_award_api_awards__award_id__results_put"];
         post?: never;
@@ -4712,6 +4717,11 @@ export interface components {
         AwardDecision: {
             /** Placements */
             placements?: components["schemas"]["Placement"][];
+            /**
+             * Replace
+             * @default false
+             */
+            replace: boolean;
         };
         /** AwardResponse */
         AwardResponse: {
@@ -5678,11 +5688,8 @@ export interface components {
             team_id: string;
             /** Competition Level Id */
             competition_level_id?: string | null;
-            /**
-             * Round Number
-             * @default 1
-             */
-            round_number: number;
+            /** Round Number */
+            round_number?: number | null;
             /** Table Number */
             table_number?: number | null;
             /** Raw Scores */
@@ -6264,11 +6271,8 @@ export interface components {
             team_id: string;
             /** Competition Level Id */
             competition_level_id?: string | null;
-            /**
-             * Round Number
-             * @default 1
-             */
-            round_number: number;
+            /** Round Number */
+            round_number?: number | null;
             /** Table Number */
             table_number?: number | null;
             /** Raw Scores */
@@ -7904,6 +7908,8 @@ export interface components {
             part_count?: number | null;
             /** Stl Submitted */
             stl_submitted?: boolean | null;
+            /** Quota Override */
+            quota_override?: boolean | null;
         };
         /** PrintQueueStatus */
         PrintQueueStatus: {

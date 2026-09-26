@@ -22,6 +22,7 @@ from core.exceptions import (
     UnauthorizedError,
     ValidationError,
 )
+from core.logging import get_logger
 from modules.auth.models import (
     PasswordResetToken,
     Permission,
@@ -34,6 +35,7 @@ from modules.auth.models import (
 from modules.auth.password_policy import MAX_BYTES, password_problem
 
 settings = get_settings()
+logger = get_logger(__name__)
 
 
 def hash_password(password: str) -> str:
@@ -136,15 +138,27 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> tuple[str, str
     user_id: str = payload["sub"]
 
     token_hash = _hash_token(refresh_token)
+    # FOR UPDATE (PostgreSQL): a second refresh with the same token waits for
+    # the first to commit and then sees the row rotated, instead of both
+    # passing the check and forking the session into two valid chains.
     token_result = await db.execute(
-        select(RefreshToken).where(
-            RefreshToken.token_hash == token_hash,
-            RefreshToken.revoked == False,
-            RefreshToken.expires_at > datetime.now(UTC),
-        )
+        select(RefreshToken).where(RefreshToken.token_hash == token_hash).with_for_update()
     )
     stored = token_result.scalar_one_or_none()
-    if not stored:
+    if not stored or stored.user_id != user_id:
+        raise UnauthorizedError("Invalid or expired refresh token")
+    if stored.revoked:
+        # Reuse of a token that was already rotated: two parties hold it (the
+        # legitimate client and whoever stole it). Which one rotated first is
+        # unknown, so every session of the account ends, access tokens too.
+        # Committed here because the 401 below rolls the request back.
+        user = await db.get(User, stored.user_id)
+        if user is not None:
+            await revoke_all_sessions(db, user)
+            await db.commit()
+        logger.warning("refresh_token_reuse", user_id=stored.user_id)
+        raise UnauthorizedError("Invalid or expired refresh token")
+    if _aware(stored.expires_at) <= datetime.now(UTC):
         raise UnauthorizedError("Invalid or expired refresh token")
 
     # Rotate: revoke old, issue new

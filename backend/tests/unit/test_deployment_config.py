@@ -126,7 +126,7 @@ def test_every_service_has_a_healthcheck(compose):
     ]
     assert missing == []
     one_shot = {name for name, service in services.items() if service.get("restart") == "no"}
-    assert one_shot == {"volume-permissions", "backup-permissions"}
+    assert one_shot == {"volume-permissions", "backup-permissions", "postgres-monitor-role"}
 
 
 def test_internal_system_endpoints_are_not_routed_by_traefik(compose):

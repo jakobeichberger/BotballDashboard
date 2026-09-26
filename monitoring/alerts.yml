@@ -19,7 +19,7 @@ groups:
           severity: critical
         annotations:
           summary: "BotballDashboard readiness check fails"
-          description: "/api/system/readiness has not returned 200 for 2 minutes: PostgreSQL, Redis or the Celery worker is unavailable (OCR, push and printer polling stop without the worker)."
+          description: "/api/system/readiness has not returned 200 for 2 minutes: PostgreSQL, Redis or a Celery queue without worker (the response lists each check and queue; see WorkerQueueDown)."
 
       - alert: HighServerErrorRate
         expr: |
@@ -44,6 +44,83 @@ groups:
           summary: "Security checks run without Redis ({{ $labels.component }})"
           description: "Redis was unreachable, so the {{ $labels.component }} check let requests through (fail open): rate limits or revoked access tokens are not enforced. Check `docker compose logs redis`."
 
+  - name: botball-background
+    rules:
+      # botball_celery_queue_consumers comes from the API (/api/system/metrics),
+      # which asks every worker for its queues.
+      - alert: WorkerQueueDown
+        expr: botball_celery_queue_consumers == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No Celery worker consumes the {{ $labels.queue }} queue"
+          description: "{{ if eq $labels.queue \"ocr\" }}Score-sheet OCR stops. Check `docker compose ps worker-ocr` and `docker compose logs worker-ocr`.{{ else }}Notifications (outbox, push, mail), printer polling and reminders stop. Check `docker compose ps worker` and `docker compose logs worker`.{{ end }}"
+
+      # Beat writes a heartbeat to Redis whenever the broker accepts one of its
+      # tasks (the outbox task is due every 10 s).
+      - alert: BeatNotRunning
+        expr: |
+          time() - botball_beat_last_heartbeat_timestamp_seconds > 300
+          or botball_beat_heartbeat_known == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Celery beat schedules no tasks"
+          description: "Beat has not handed a task to the broker for more than 5 minutes (or never): no notification outbox, printer polling, reminders or clean-up run. Check `docker compose ps beat` and `docker compose logs beat`."
+
+  - name: botball-external
+    rules:
+      - alert: SiteUnreachable
+        expr: probe_success{job="botball-external"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} is not reachable through Traefik"
+          description: "The Blackbox probe of {{ $labels.instance }} fails for 3 minutes (Traefik, TLS certificate, frontend or the API route). Check `docker compose ps traefik frontend backend` and `docker compose logs traefik`."
+
+      - alert: TLSCertificateExpiresSoon
+        expr: probe_ssl_earliest_cert_expiry{job="botball-external"} - time() < 14 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "The TLS certificate of {{ $labels.instance }} expires in less than 14 days"
+          description: "The certificate expires in {{ $value | humanizeDuration }}. Traefik renews Let's Encrypt certificates 30 days ahead, so the renewal is failing: check `docker compose logs traefik | grep -i acme` (DNS, port 443 reachable from the internet, TRAEFIK_EMAIL)."
+
+      - alert: TLSCertificateExpiryCritical
+        expr: probe_ssl_earliest_cert_expiry{job="botball-external"} - time() < 3 * 86400
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The TLS certificate of {{ $labels.instance }} expires in less than 3 days"
+          description: "The certificate expires in {{ $value | humanizeDuration }}; browsers will refuse the site afterwards. Check `docker compose logs traefik | grep -i acme`."
+
+  - name: botball-monitoring
+    rules:
+      # Dead man's switch: always firing. Alertmanager sends it every minute to
+      # ALERT_HEARTBEAT_URL, an external service that alerts when the pings
+      # stop (Prometheus, Alertmanager or the host down). See docs/operations.md.
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Alerting pipeline heartbeat (always firing)"
+          description: "This alert is always firing. It is delivered to ALERT_HEARTBEAT_URL only; if the external heartbeat service stops receiving it, the monitoring itself is down."
+
+      - alert: AlertmanagerNotificationsFailing
+        expr: sum by (integration) (increase(alertmanager_notifications_failed_total[15m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alertmanager cannot deliver {{ $labels.integration }} notifications"
+          description: "Notifications through {{ $labels.integration }} failed in the last 15 minutes; alerts may not reach anyone. Check `docker compose logs alertmanager` and the ALERT_* settings."
+
   - name: botball-backups
     rules:
       - alert: BackupFailed
@@ -62,14 +139,37 @@ groups:
           summary: "The off-site copy of the last backup failed"
           description: "The archive exists locally but was not copied to BACKUP_OFFSITE_TARGET; the copy is retried every BACKUP_RETRY_SECONDS. See `docker compose logs backup`."
 
+      # The limit follows BACKUP_INTERVAL_SECONDS (interval + 2 h, or
+      # BACKUP_MAX_AGE_HOURS), exported by the backup service.
       - alert: BackupStale
-        expr: time() - botball_backup_last_success_timestamp_seconds > 26 * 3600
+        expr: |
+          time() - botball_backup_last_success_timestamp_seconds
+            > botball_backup_max_age_seconds
         for: 10m
         labels:
           severity: critical
         annotations:
-          summary: "No successful backup for more than 26 hours"
-          description: "The last successful backup is {{ $value | humanizeDuration }} old."
+          summary: "No successful backup within the expected interval"
+          description: "The last successful backup is {{ $value | humanizeDuration }} old, more than allowed (BACKUP_INTERVAL_SECONDS + 2 h or BACKUP_MAX_AGE_HOURS). See `docker compose logs backup`."
+
+      - alert: RestoreTestFailed
+        expr: botball_restore_test_last_success == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "The last restore test failed"
+          description: "An archive could not be restored into the test database or its uploads do not match the manifest; the backups may be unusable. See `docker compose logs backup` and status/restore-test.json in the backup directory."
+
+      - alert: RestoreTestStale
+        expr: |
+          time() - botball_restore_test_last_success_timestamp_seconds
+            > botball_restore_test_max_age_seconds
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No successful restore test for too long"
+          description: "The last successful restore test was {{ $value | humanizeDuration }} ago, longer than allowed (two weekly automatic runs + 1 day, or 35 days for manual tests). See docs/operations.md, \"Restore test\"."
 
       - alert: BackupNeverSucceeded
         expr: botball_backup_status_known == 1 unless botball_backup_last_success_timestamp_seconds

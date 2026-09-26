@@ -11,7 +11,7 @@ describe("resolveDashboardRole", () => {
   });
 
   it("returns 'admin' for organizer permissions", () => {
-    expect(resolveDashboardRole({ permissions: ["events:write"] })).toBe("admin");
+    expect(resolveDashboardRole({ permissions: ["events:admin"] })).toBe("admin");
     expect(resolveDashboardRole({ permissions: ["teams:admin"] })).toBe("admin");
     expect(resolveDashboardRole({ permissions: ["dashboard:write"] })).toBe("admin");
   });
@@ -21,13 +21,19 @@ describe("resolveDashboardRole", () => {
   });
 
   it("prefers admin over reviewer when both apply", () => {
-    expect(resolveDashboardRole({ permissions: ["papers:review", "events:write"] })).toBe("admin");
+    expect(resolveDashboardRole({ permissions: ["papers:review", "teams:admin"] })).toBe("admin");
   });
 
-  it("maps mentor/guest/juror permissions to 'user'", () => {
+  it("returns 'juror' for the tournament jury (events:write / scoring:admin), not 'admin'", () => {
+    const juror = ["events:read", "events:write", "scoring:read", "scoring:write", "scoring:admin", "teams:read", "dashboard:read", "seasons:read"];
+    expect(resolveDashboardRole({ permissions: juror })).toBe("juror");
+    expect(resolveDashboardRole({ permissions: ["events:write"] })).toBe("juror");
+    expect(resolveDashboardRole({ permissions: ["scoring:admin"] })).toBe("juror");
+  });
+
+  it("maps mentor/guest permissions to 'user'", () => {
     expect(resolveDashboardRole({ permissions: ["teams:write", "scoring:write"] })).toBe("user");
     expect(resolveDashboardRole({ permissions: ["scoring:read"] })).toBe("user");
-    expect(resolveDashboardRole({ permissions: ["scoring:admin"] })).toBe("user");
   });
 
   it("returns 'user' for a user without permissions", () => {
