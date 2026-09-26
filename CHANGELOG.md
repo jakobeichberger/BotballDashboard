@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen am BotballDashboard. Das Format folgt [Keep a Cha
 
 ## [Unreleased]
 
+### Review 2: Awards und Frontend-UX
+
+- **Awards:** „Entscheidung speichern“ übernimmt die bestehende Platzierung in die Auswahl und löscht sie nicht mehr mit einer leeren Liste. Das Backend lehnt eine leere Platzierung (422) und eine abweichende Platzierung eines entschiedenen Awards (409) ab, solange nicht `replace: true` mitgeschickt wird; die Seite fragt vorher „Bestehende Platzierung ersetzen?“. Nominierungen zurückziehen fragt ebenfalls nach.
+- **Awards-Sichtbarkeit:** Gäste, Mentoren und andere ohne `awards:admin`/`scoring:admin` sehen nur die veröffentlichten Platzierungen, keine Nominierungen, Jury-Notizen oder `nominated_by`. CSV- und PDF-Export nur noch für die Jury. Nominieren und Platzieren nur für beim Event angemeldete Teams.
+- **Performance:** Das Awards-PDF entsteht im Threadpool; „Berechnen“ rechnet jede Kategorie nur einmal. Der Login-Chunk schrumpft von 116 kB (36 kB gzip) auf 35 kB (13 kB gzip): Das Formular prüft ohne zod, `zod` und `@hookform/resolvers` entfallen.
+- **Handy:** Die App lässt sich nicht mehr über das Seitenende hinaus in eine graue Fläche scrollen (`relative` am Layout, `overscroll-contain` am Inhalt).
+- **Fehlerzustände:** Awards, Aerial, JBC, Formeln und die Dashboard-Kennzahlen zeigen „Daten konnten nicht geladen werden“ mit „Erneut versuchen“ statt leerer Tabellen und Nullen. Aerial meldet fehlgeschlagene Speichervorgänge; Aerial und JBC warnen beim Schließen mit ungespeicherten Änderungen; „Formeln auf Standard zurücksetzen“ fragt nach.
+- **Dashboard:** Die Jury bekommt ein eigenes Dashboard („Jury“ statt „Administrator“) mit nur den Kacheln und Kennzahlen, die sie öffnen darf und deren Module aktiv sind.
+- **Texte und Barrierefreiheit:** Phasentypen und Score-Sheet-Abschnitte mit Namen statt interner Schlüssel, „Wertung“ statt „Scoring“, „Lauf“ in der Aerial-Tabelle, echte Pluralformen, axe-Befunde behoben (Paper-Kennzahlen, fokussierbare Scroll-Bereiche, `<main>` auf `/settings`, `h1` bei inaktivem Modul, Überschriften auf `/teams`, Spaltenkopf auf Performance). Neue Lint-Regel `local/no-literal-ui-attribute`: unübersetzte Texte in `aria-label`, `title`, `placeholder`, `alt` und `label` sind ein Fehler.
+
 ### PostgreSQL 18, Redis 8 und Python 3.14
 
 - **PostgreSQL 16 → 18** (`postgres:18-alpine`, 18.6) in Compose, CI und Doku. Das Volume `pgdata` (Proxmox: `/data/db`) hängt jetzt unter `/var/lib/postgresql`, der Cluster liegt wie im offiziellen Image ab 18 in `18/docker`.

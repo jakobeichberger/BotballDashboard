@@ -110,6 +110,16 @@ describe("AwardsPage", () => {
     expect(screen.getByRole("button", { name: /Erneut versuchen/ })).toBeInTheDocument();
   });
 
+  it("shows readers without jury rights the results only", async () => {
+    useAuthStore.setState({ hasPermission: (permission: string) => permission === "scoring:read" } as any);
+    mockApi({ ...AWARDS, awards: AWARDS.awards.map((award) => ({ ...award, nominations: [] })) });
+    renderPage();
+    const spirit = await screen.findByRole("region", { name: "Spirit of ECER" });
+    expect(within(spirit).queryByText(/Nominierungen/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /PDF|CSV/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Entscheidung speichern" })).not.toBeInTheDocument();
+  });
+
   it("asks before withdrawing a nomination", async () => {
     mockApi();
     (confirmAction as any).mockResolvedValueOnce(false);

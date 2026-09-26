@@ -42,9 +42,9 @@ export default function AwardsPage() {
   const { t } = useTranslation("events");
   const { eventId = "" } = useParams();
   const queryClient = useQueryClient();
+  // The jury (awards:admin / scoring:admin) nominates, decides and exports;
+  // mentors hold scoring:write for their own team and must not. Others read.
   const canManage = useAuthStore((s) => s.hasPermission("awards:admin") || s.hasPermission("scoring:admin"));
-  // Nominating is the jury's job as well: mentors hold scoring:write for their own team.
-  const canNominate = canManage;
   const awards = useQuery<EventAwards>({ queryKey: ["event-awards", eventId], queryFn: async () => (await api.get(`/awards/events/${eventId}`)).data, enabled: !!eventId });
   const registrations = useQuery<Registration[]>({ queryKey: ["event-registrations", eventId], queryFn: async () => (await api.get(`/v1/events/${eventId}/registrations`)).data, enabled: !!eventId });
   const teams = [...(registrations.data ?? [])].sort((a, b) => a.team_name.localeCompare(b.team_name));
@@ -98,7 +98,8 @@ export default function AwardsPage() {
             { label: t("awards.kpi.total"), value: list.length, icon: Trophy, tone: "primary" },
             { label: t("awards.kpi.decided"), value: decided, icon: CheckCircle2, tone: "success" },
             { label: t("awards.kpi.open"), value: list.length - decided, icon: Clock, tone: "warning" },
-            { label: t("awards.kpi.nominations"), value: list.reduce((sum, award) => sum + award.nominations.length, 0), icon: Users, tone: "info" },
+            // Nominations are the jury's (the API sends them to the jury only).
+            ...(canManage ? [{ label: t("awards.kpi.nominations"), value: list.reduce((sum, award) => sum + award.nominations.length, 0), icon: Users, tone: "info" as const }] : []),
           ]}
         />
       )}
@@ -132,14 +133,14 @@ export default function AwardsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {list.map((award) => (
-          <AwardCard key={award.id} award={award} teams={teams} canManage={canManage} canNominate={canNominate} onChange={refresh} />
+          <AwardCard key={award.id} award={award} teams={teams} canManage={canManage} onChange={refresh} />
         ))}
       </div>
     </div>
   );
 }
 
-function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: AwardCategory; teams: Registration[]; canManage: boolean; canNominate: boolean; onChange: () => void }) {
+function AwardCard({ award, teams, canManage, onChange }: { award: AwardCategory; teams: Registration[]; canManage: boolean; onChange: () => void }) {
   const { t } = useTranslation("events");
   const [teamId, setTeamId] = useState("");
   const [note, setNote] = useState("");
@@ -210,7 +211,7 @@ function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: 
         </ol>
       ) : <p className="rounded-eng border border-dashed border-rand px-3 py-4 text-center text-sm text-leise">{t("awards.noResult")}</p>}
 
-      {award.kind === "judged" && (
+      {award.kind === "judged" && canManage && (
         <div className="space-y-3 border-t border-rand pt-4">
           <h3 className="font-ui text-sm font-semibold tracking-ui text-fg">{t("awards.nominations", { count: award.nominations.length })}</h3>
           {award.nominations.length > 0 && (
@@ -227,12 +228,12 @@ function AwardCard({ award, teams, canManage, canNominate, onChange }: { award: 
                       {Array.from({ length: award.places }, (_, i) => <option key={i} value={i + 1}>{t("awards.place", { place: i + 1 })}</option>)}
                     </select>
                   )}
-                  {canNominate && <button type="button" className="btn-icon" aria-label={t("awards.withdraw", { team: nomination.team_name ?? nomination.team_id })} disabled={withdraw.isPending} onClick={() => void confirmWithdraw(nomination)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
+                  {canManage && <button type="button" className="btn-icon" aria-label={t("awards.withdraw", { team: nomination.team_name ?? nomination.team_id })} disabled={withdraw.isPending} onClick={() => void confirmWithdraw(nomination)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
                 </li>
               ))}
             </ul>
           )}
-          {canNominate && (
+          {canManage && (
             <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (teamId) nominate.mutate(); }}>
               <select aria-label={t("awards.nominateTeam")} className="input min-w-40 flex-1" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">{t("awards.nominateTeam")}</option>
