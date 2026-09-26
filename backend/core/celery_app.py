@@ -15,6 +15,7 @@ next one is dropped instead of piling up.
 """
 
 import asyncio
+import time
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from pathlib import Path
@@ -132,7 +133,15 @@ def _configure_worker_logging(**_kwargs) -> None:
 # one of its tasks (the notification outbox is due every 10 s), and the beat
 # container's healthcheck (scripts/beat_healthcheck.py) checks its age.
 BEAT_HEARTBEAT_FILE = Path("/tmp/celerybeat-heartbeat")
+# The same heartbeat in Redis, for the API's metrics (the beat alert in
+# monitoring/alerts.yml); the file above is only visible inside the beat
+# container. Written at most every _REDIS_HEARTBEAT_INTERVAL seconds.
+BEAT_HEARTBEAT_KEY = "botball:beat:heartbeat"
+_REDIS_HEARTBEAT_INTERVAL = 5.0
+_REDIS_HEARTBEAT_TTL = 86400
 _beat_running = False
+_last_redis_heartbeat = 0.0
+_redis_client = None
 
 
 @beat_init.connect
@@ -141,9 +150,32 @@ def _mark_beat_process(**_kwargs) -> None:
     _beat_running = True
 
 
+def _heartbeat_redis():
+    global _redis_client
+    if _redis_client is None:
+        from redis import Redis
+
+        _redis_client = Redis.from_url(
+            settings.redis_url, socket_timeout=2, socket_connect_timeout=2
+        )
+    return _redis_client
+
+
 @after_task_publish.connect
 def _beat_heartbeat(**_kwargs) -> None:
+    global _last_redis_heartbeat
     # The API and the worker publish tasks too; only beat keeps the heartbeat.
-    if _beat_running:
-        with suppress(OSError):
-            BEAT_HEARTBEAT_FILE.touch()
+    if not _beat_running:
+        return
+    with suppress(OSError):
+        BEAT_HEARTBEAT_FILE.touch()
+    now = time.time()
+    if now - _last_redis_heartbeat < _REDIS_HEARTBEAT_INTERVAL:
+        return
+    _last_redis_heartbeat = now
+    from redis.exceptions import RedisError
+
+    # The broker just accepted a task, so Redis is normally there; a failure
+    # here must never stop beat from scheduling.
+    with suppress(RedisError, OSError):
+        _heartbeat_redis().set(BEAT_HEARTBEAT_KEY, f"{now:.3f}", ex=_REDIS_HEARTBEAT_TTL)

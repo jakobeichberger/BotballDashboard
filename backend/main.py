@@ -217,10 +217,26 @@ async def health():
 # The worker check broadcasts over the broker; probes call readiness every few
 # seconds, so its result is reused for a short while.
 _WORKER_CHECK_TTL = 15.0
-_worker_check: tuple[float, bool] | None = None
+# How long the broadcast waits for replies. Running workers answer within
+# milliseconds; waiting is the price of hearing from all of them (the first
+# reply alone would hide a dead worker behind a live one).
+_WORKER_REPLY_TIMEOUT = 1.0
+_worker_check: tuple[float, dict[str, int]] | None = None
 
 
-async def _worker_alive() -> bool:
+def _expected_queues() -> tuple[str, ...]:
+    from core.celery_app import DEFAULT_QUEUE, OCR_QUEUE, PERIODIC_QUEUE
+
+    return (DEFAULT_QUEUE, PERIODIC_QUEUE, OCR_QUEUE)
+
+
+async def _queue_consumers() -> dict[str, int]:
+    """Number of live workers consuming each Celery queue.
+
+    Every worker is asked which queues it consumes, so a dead ``worker``
+    (default, periodic) is noticed while ``worker-ocr`` still answers, and
+    the other way round.
+    """
     global _worker_check
     now = time.monotonic()
     if _worker_check and now - _worker_check[0] < _WORKER_CHECK_TTL:
@@ -228,19 +244,65 @@ async def _worker_alive() -> bool:
 
     from core.celery_app import celery_app
 
+    counts = dict.fromkeys(_expected_queues(), 0)
     try:
-        # limit=1: return as soon as one worker answers instead of waiting out
-        # the timeout for replies from every worker.
         replies = await asyncio.wait_for(
-            asyncio.to_thread(lambda: celery_app.control.ping(timeout=1.0, limit=1)),
-            timeout=2,
+            asyncio.to_thread(
+                lambda: celery_app.control.inspect(timeout=_WORKER_REPLY_TIMEOUT).active_queues()
+            ),
+            timeout=_WORKER_REPLY_TIMEOUT + 2,
         )
-        alive = bool(replies)
+        for queues in (replies or {}).values():
+            for name in {queue.get("name") for queue in queues or []}:
+                if name in counts:
+                    counts[name] += 1
     except (KombuError, RedisError, OSError, TimeoutError) as exc:  # broker unreachable
         logger.warning("readiness_worker_check_failed", error=str(exc))
-        alive = False
-    _worker_check = (time.monotonic(), alive)
-    return alive
+    missing = sorted(name for name, count in counts.items() if count == 0)
+    if missing:
+        logger.warning("readiness_queue_without_worker", queues=missing)
+    _worker_check = (time.monotonic(), counts)
+    return counts
+
+
+async def _beat_heartbeat() -> float | None:
+    """Unix time beat last handed a task to the broker; None when unknown."""
+    from redis.asyncio import Redis
+
+    from core.celery_app import BEAT_HEARTBEAT_KEY
+
+    redis = Redis.from_url(settings.redis_url)
+    try:
+        value = await redis.get(BEAT_HEARTBEAT_KEY)
+    except REDIS_ERRORS as exc:
+        logger.warning("beat_heartbeat_read_failed", error=str(exc))
+        return None
+    finally:
+        await redis.aclose()
+    try:
+        return float(value) if value is not None else None
+    except ValueError:
+        return None
+
+
+def _operational_metrics(consumers: dict[str, int], beat: float | None) -> str:
+    lines = [
+        "# HELP botball_celery_queue_consumers Live Celery workers consuming each queue.",
+        "# TYPE botball_celery_queue_consumers gauge",
+        *(
+            f'botball_celery_queue_consumers{{queue="{name}"}} {count}'
+            for name, count in sorted(consumers.items())
+        ),
+        "# HELP botball_beat_heartbeat_known 1 when Celery beat has left a heartbeat in Redis.",
+        "# TYPE botball_beat_heartbeat_known gauge",
+        f"botball_beat_heartbeat_known {0 if beat is None else 1}",
+        "# HELP botball_beat_last_heartbeat_timestamp_seconds Last time beat handed a task"
+        " to the broker.",
+        "# TYPE botball_beat_last_heartbeat_timestamp_seconds gauge",
+    ]
+    if beat is not None:
+        lines.append(f"botball_beat_last_heartbeat_timestamp_seconds {beat}")
+    return "\n".join(lines) + "\n"
 
 
 @app.get("/api/system/readiness", tags=["system"])
@@ -264,11 +326,13 @@ async def readiness() -> JSONResponse:
         logger.warning("readiness_redis_failed", error=str(exc))
     finally:
         await redis.aclose()
-    checks["worker"] = await _worker_alive()
+    queues = {name: count > 0 for name, count in (await _queue_consumers()).items()}
+    # "worker" summarises the queues: each one has at least one live consumer.
+    checks["worker"] = all(queues.values())
     ready = all(checks.values())
     return JSONResponse(
         status_code=200 if ready else 503,
-        content={"status": "ready" if ready else "not_ready", "checks": checks},
+        content={"status": "ready" if ready else "not_ready", "checks": checks, "queues": queues},
     )
 
 
@@ -281,4 +345,8 @@ async def metrics(request: Request):
         from core.exceptions import NotFoundError
 
         raise NotFoundError("Not found")
-    return render_metrics()
+    # Queue consumers and the beat heartbeat drive the per-queue and beat
+    # alerts (monitoring/alerts.yml); the queue check shares readiness' cache.
+    return render_metrics() + _operational_metrics(
+        await _queue_consumers(), await _beat_heartbeat()
+    )
