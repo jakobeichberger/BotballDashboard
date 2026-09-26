@@ -32,6 +32,34 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: blackbox:9115
+  # What a visitor sees: https://${DOMAIN}/ (Traefik, certificate, frontend)
+  # and https://${DOMAIN}/api/system/health (Traefik → API). The targets are
+  # written by monitoring/prometheus-entrypoint.sh from DOMAIN; the Blackbox
+  # exporter resolves DOMAIN to the Docker host (docker-compose.yml,
+  # extra_hosts). Also yields probe_ssl_earliest_cert_expiry for the
+  # certificate alerts.
+  - job_name: botball-external
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    file_sd_configs:
+      - files: [/prometheus/external-targets.json]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+  # The monitoring itself (rule evaluation, failed notifications). A dead
+  # Prometheus or Alertmanager is noticed outside: the Watchdog alert goes to
+  # ALERT_HEARTBEAT_URL (see monitoring/alertmanager/render-config.sh).
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
   # backup_scheduler.py in the "backup" service (compose profile "production").
   # If that profile is not running this target is down and BackupMonitoringDown
   # fires – intentionally, because then no backups are made.

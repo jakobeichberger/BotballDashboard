@@ -2,8 +2,16 @@
 #   (none)      traefik, db, redis, backend, worker, worker-ocr, beat, frontend
 #   production  + backup      (encrypted daily backups, needs AGE_RECIPIENT)
 #   monitoring  + prometheus, blackbox, alertmanager, node-exporter, postgres-exporter
+#               (+ postgres-monitor-role, one-shot: the exporter's pg_monitor login)
 # Enable them with COMPOSE_PROFILES in .env (e.g. COMPOSE_PROFILES=production,monitoring)
 # or --profile on the command line.
+
+# Application images: every service built from ./backend runs the one image
+# ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-backend:local, the frontend
+# ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-frontend:local. scripts/update.sh
+# additionally tags each release with its git commit (…:<sha>), so a rollback
+# re-tags the previous release as :local and starts it without a rebuild
+# (update.sh --rollback, docs/documentation/installation/update.md).
 
 # Every container logs to json-file with rotation, so a chatty service cannot
 # fill the disk during an event.
@@ -26,6 +34,7 @@ x-hardening: &hardening
 # or host directories created by root, to uid 10001. They run as root with
 # only CHOWN and DAC_READ_SEARCH, no network, and exit.
 x-ownership-init: &ownership-init
+  image: ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-backend:local
   build:
     context: ./backend
     dockerfile: Dockerfile
@@ -131,6 +140,21 @@ services:
   # ── Redis ─────────────────────────────────────────────────────
   redis:
     image: redis:8-alpine
+    # Redis is the Celery broker as well as cache, rate-limit and token
+    # deny-list store, all in one instance. maxmemory bounds it; the policy is
+    # noeviction because evicting keys would silently drop queued Celery tasks
+    # or revoked tokens. When the limit is reached, writes fail (cache misses,
+    # rate limits fail open: alert RedisFailOpen) instead of losing data; the
+    # cached payloads expire after RANKING_CACHE_TTL_SECONDS and the API
+    # validates cache keys, so the cache cannot grow without bound.
+    command:
+      - redis-server
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - noeviction
+    # maxmemory plus headroom for the RDB snapshot (fork, copy-on-write).
+    mem_limit: ${REDIS_MEM_LIMIT:-768m}
     volumes:
       - redisdata:/data
     restart: unless-stopped
@@ -144,6 +168,7 @@ services:
   # ── Backend API ───────────────────────────────────────────────
   backend:
     <<: *hardening
+    image: ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-backend:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -213,6 +238,7 @@ services:
   # worker-ocr: score-sheet OCR only, so a pile of scans never delays them.
   worker:
     <<: *hardening
+    image: ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-backend:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -253,6 +279,7 @@ services:
 
   worker-ocr:
     <<: *hardening
+    image: ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-backend:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -263,11 +290,22 @@ services:
     # OCR of two score sheets at a time; a runaway decode is killed here
     # instead of taking the whole host down.
     mem_limit: ${OCR_WORKER_MEM_LIMIT:-2g}
-    env_file:
-      - path: .env
-        required: false
+    # No env_file: OCR (poppler, tesseract, OpenCV on uploaded scans) is the
+    # most exposed code path, so this container gets only what the ocr queue
+    # uses – database, Redis, uploads – and none of the JWT, app, printer,
+    # SMTP or push secrets. SERVICE_SCOPE=ocr lets the settings start without
+    # them (core/config.py).
     environment:
+      SERVICE_SCOPE: ocr
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-botball}
+      POSTGRES_USER: ${POSTGRES_USER:-botball}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-botball}
       REDIS_URL: redis://redis:6379/0
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
       # OpenCV refuses to decode larger images (decompression bombs); the OCR
       # code checks the same 40 MP limit from the image header first.
       OPENCV_IO_MAX_IMAGE_PIXELS: "40000000"
@@ -291,6 +329,7 @@ services:
 
   beat:
     <<: *hardening
+    image: ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-backend:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -336,6 +375,7 @@ services:
   backup:
     <<: *hardening
     profiles: ["production"]
+    image: ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-backend:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -416,12 +456,17 @@ services:
   prometheus:
     profiles: ["monitoring"]
     image: prom/prometheus:v3.15.0
+    # Writes the external probe targets from DOMAIN, then starts Prometheus.
+    entrypoint: ["/bin/sh", "/etc/prometheus/entrypoint.sh"]
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=30d"
+    environment:
+      DOMAIN: ${DOMAIN:-}
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
+      - ./monitoring/prometheus-entrypoint.sh:/etc/prometheus/entrypoint.sh:ro
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheusdata:/prometheus
@@ -437,10 +482,19 @@ services:
   blackbox:
     profiles: ["monitoring"]
     image: prom/blackbox-exporter:v0.28.0
+    # DOMAIN resolves to the Docker host here, so the external probe
+    # (prometheus.yml, job botball-external) enters through the published
+    # ports and Traefik like a visitor, without depending on DNS or NAT
+    # hairpinning. Reachability from the internet is left to the external
+    # heartbeat/uptime service (docs/operations.md).
+    extra_hosts:
+      - "${DOMAIN:-botball.invalid}:host-gateway"
     restart: unless-stopped
     logging: *default-logging
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9115/-/healthy"]
+      # 127.0.0.1, not localhost: with DOMAIN=localhost the extra_hosts entry
+      # above points "localhost" at the host.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9115/-/healthy"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -462,17 +516,52 @@ services:
       timeout: 5s
       retries: 3
 
+  # Creates (or updates) the login role the exporter uses: member of
+  # pg_monitor only, no superuser. Runs before postgres-exporter on every
+  # `up`, for new and existing installations alike; the generated password
+  # stays in the volume postgres-monitor-secret (readable by the exporter's
+  # user only). See monitoring/postgres-monitor-role.sh.
+  postgres-monitor-role:
+    profiles: ["monitoring"]
+    image: postgres:18-alpine
+    entrypoint: ["sh", "/usr/local/bin/postgres-monitor-role.sh"]
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:-botball}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-botball}
+      PGDATABASE: ${POSTGRES_DB:-botball}
+      MONITOR_ROLE: ${POSTGRES_MONITOR_USER:-botball_monitor}
+      # uid of the exporter image's user (nobody)
+      SECRET_OWNER: "65534"
+    volumes:
+      - ./monitoring/postgres-monitor-role.sh:/usr/local/bin/postgres-monitor-role.sh:ro
+      - postgres-monitor-secret:/secret
+    depends_on:
+      db:
+        condition: service_healthy
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    restart: "no"
+    logging: *default-logging
+
   # PostgreSQL metrics (up, connections, database size, deadlocks).
   postgres-exporter:
     profiles: ["monitoring"]
     image: prometheuscommunity/postgres-exporter:v0.20.1
     environment:
       DATA_SOURCE_URI: db:5432/${POSTGRES_DB:-botball}?sslmode=disable
-      DATA_SOURCE_USER: ${POSTGRES_USER:-botball}
-      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD:-botball}
+      DATA_SOURCE_USER: ${POSTGRES_MONITOR_USER:-botball_monitor}
+      DATA_SOURCE_PASS_FILE: /secret/password
+    volumes:
+      - postgres-monitor-secret:/secret:ro
     depends_on:
       db:
         condition: service_healthy
+      postgres-monitor-role:
+        condition: service_completed_successfully
     restart: unless-stopped
     logging: *default-logging
     healthcheck:
@@ -490,6 +579,7 @@ services:
     entrypoint: ["/bin/sh", "/etc/alertmanager/render-config.sh"]
     environment:
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ALERT_HEARTBEAT_URL: ${ALERT_HEARTBEAT_URL:-}
       ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-}
       ALERT_EMAIL_FROM: ${ALERT_EMAIL_FROM:-${SMTP_FROM:-}}
       ALERT_SMTP_SMARTHOST: ${ALERT_SMTP_SMARTHOST:-}
@@ -516,7 +606,7 @@ services:
   # On Proxmox LXC scripts/proxmox-setup.sh and scripts/update.sh build dist/
   # on the host instead and tag Dockerfile.prebuilt as the same image.
   frontend:
-    image: botballdashboard-frontend:local
+    image: ${BOTBALL_IMAGE_PREFIX:-botballdashboard}-frontend:local
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -560,3 +650,5 @@ volumes:
   backup-restore-test-key:
   prometheusdata:
   alertmanagerdata:
+  # Password of the postgres-exporter's pg_monitor role (postgres-monitor-role).
+  postgres-monitor-secret:
