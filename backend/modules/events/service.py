@@ -305,6 +305,8 @@ async def update_phase(db: AsyncSession, event_id: str, phase_id: str, data: dic
         # Switching a phase to a disabled module is the same as creating one.
         await assert_phase_allowed(db, await get_event(db, event_id), data["phase_type"])
     for key, value in data.items():
+        if isinstance(value, datetime):
+            value = _as_utc(value)
         setattr(phase, key, value)
     if phase.starts_at and phase.ends_at and _as_utc(phase.ends_at) <= _as_utc(phase.starts_at):
         raise ValidationError("ends_at must be after starts_at")
@@ -1205,6 +1207,8 @@ async def update_scheduled_match(
     if match.version != expected_version:
         raise ConflictError(f"Schedule changed (current version: {match.version})")
     for key, value in data.items():
+        if isinstance(value, datetime):
+            value = _as_utc(value)
         setattr(match, key, value)
     if match.table_number and match.table_number > (await get_event(db, event_id)).table_count:
         raise ValidationError("Table number exceeds the configured table count")

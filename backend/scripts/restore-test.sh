@@ -57,7 +57,13 @@ tar -xzf "${work_dir}/backup.tar.gz" -C "${work_dir}/data"
 pg dropdb --if-exists "$restore_db"
 pg createdb "$restore_db"
 restore_dump "$restore_db" "${work_dir}/data/database.dump"
-pg psql --dbname="$restore_db" --command='SELECT COUNT(*) AS restored_events FROM events;'
+# An archive of a database without the application schema (taken before
+# the first migration) restores fine but has no events table to count.
+if [ "$(pg psql --dbname="$restore_db" -tAc "SELECT to_regclass('public.events') IS NOT NULL")" = "t" ]; then
+  pg psql --dbname="$restore_db" --command='SELECT COUNT(*) AS restored_events FROM events;'
+else
+  echo "NOTE: the archive holds no application schema (backup of an empty database)"
+fi
 
 if [ -f "${work_dir}/data/uploads.sha256" ]; then
   upload_count="$(wc -l < "${work_dir}/data/uploads.sha256")"

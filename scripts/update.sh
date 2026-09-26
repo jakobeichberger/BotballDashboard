@@ -211,6 +211,17 @@ pre_migration_backup() {
     warn "The database is not running – no backup before ${label} (fresh installation?)."
     return 0
   fi
+  # A fresh installation has no schema yet: there is nothing to back up, and
+  # an archive of the empty database would only feed the restore test.
+  # Only a definite "f" skips; if the query itself fails, back up anyway.
+  local has_schema
+  has_schema="$(docker compose exec -T db sh -c \
+      'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT to_regclass('"'"'public.alembic_version'"'"') IS NOT NULL"' \
+      2>/dev/null | tr -d '[:space:]' || true)"
+  if [[ "${has_schema}" == "f" ]]; then
+    info "The database has no schema yet (fresh installation) – nothing to back up before ${label}."
+    return 0
+  fi
   info "Backup before ${label} (backup + restore test / checksum)..."
   # A new release may add volumes to the backup service (e.g. the
   # restore-test key); hand them to the app user first, as `up` would.
