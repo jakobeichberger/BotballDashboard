@@ -624,6 +624,7 @@
     "record": "Record timeout",
     "revoke": "Revoke the timeout of {{team}}",
     "none": "No team has used its timeout card yet.",
-    "loadFailed": "Timeout cards could not be loaded."
+    "loadFailed": "Timeout cards could not be loaded.",
+    "confirmRevoke": "Revoke the timeout card of “{{team}}”? The team can use it again afterwards."
   }
 }

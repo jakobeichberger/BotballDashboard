@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { formatDateTime } from "@/i18n/format";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/lib/toast";
+import { confirmAction } from "@/lib/confirm";
 import { apiErrorMessage } from "@/lib/errors";
 import type { EventRegistration } from "@/api/types";
 
@@ -84,7 +85,7 @@ export default function TimeoutCardsPanel({ eventId, registrations }: { eventId:
               <span className="ml-2 badge-yellow">{card.reason === "inspection" ? t("timeouts.inspection") : t("timeouts.beforeHandsOff")}</span>
               <span className="ml-2 text-xs text-leise">{formatDateTime(card.used_at)}</span>
             </span>
-            {canRevoke && <button type="button" className="btn-icon" aria-label={t("timeouts.revoke", { team: card.team_name })} onClick={() => revoke.mutate(card.team_id)}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
+            {canRevoke && <button type="button" className="btn-icon" aria-label={t("timeouts.revoke", { team: card.team_name })} onClick={() => void confirmAction({ message: t("timeouts.confirmRevoke", { team: card.team_name ?? "" }), tone: "danger" }).then((ok) => ok && revoke.mutate(card.team_id))}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
           </li>
         ))}
         {timeouts.data.length === 0 && <li className="py-2 text-leise">{t("timeouts.none")}</li>}

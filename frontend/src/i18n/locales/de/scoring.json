@@ -624,6 +624,7 @@
     "record": "Timeout erfassen",
     "revoke": "Timeout von {{team}} zurücknehmen",
     "none": "Noch kein Team hat seine Timeout-Karte genutzt.",
-    "loadFailed": "Timeout-Karten konnten nicht geladen werden."
+    "loadFailed": "Timeout-Karten konnten nicht geladen werden.",
+    "confirmRevoke": "Timeout-Karte von „{{team}}“ zurücknehmen? Das Team kann sie danach erneut einsetzen."
   }
 }
