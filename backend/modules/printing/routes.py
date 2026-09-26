@@ -193,11 +193,9 @@ async def upload_print_file(
     relative_path, file_name, size = await files.save_print_file(file, job.id)
     box = None
     if file_name.lower().endswith(".stl"):
-        import asyncio
+        from modules.printing.rules import measure_stl
 
-        from modules.printing.rules import stl_bounding_box
-
-        box = await asyncio.to_thread(stl_bounding_box, files.stored_path(job.id, file_name))
+        box = await measure_stl(files.stored_path(job.id, file_name))
     return service.attach_file(job, relative_path, file_name, size, box)
 
 

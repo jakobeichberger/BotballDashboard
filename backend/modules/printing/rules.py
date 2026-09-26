@@ -16,9 +16,13 @@ G-code, OBJ) are not measured.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import struct
+from itertools import chain
 from pathlib import Path
+
+from core.concurrency import ProcessSemaphore
 
 ALLOWED_MATERIALS = ("PLA", "PETG")
 #: Ender 3 V3 SE build volume in mm (x, y, z).
@@ -75,44 +79,104 @@ def fits_build_volume(dimensions: tuple[float, float, float]) -> bool:
     )
 
 
+#: Triangles per block of a binary STL (50 bytes each: ~3 MB at a time).
+_BINARY_BLOCK_TRIANGLES = 65_536
+#: Bytes per read of an ASCII STL.
+_ASCII_CHUNK_BYTES = 256 * 1024
+#: A "vertex x y z" line is short; a longer tail without one is garbage.
+_ASCII_MAX_CARRY = 4096
+#: Measurements running at once per API process (each holds a worker thread
+#: and up to a block of the file in memory).
+STL_CONCURRENT_MEASUREMENTS = 2
+_MEASURE_SLOTS = ProcessSemaphore(STL_CONCURRENT_MEASUREMENTS)
+
+
+async def measure_stl(path: str | Path) -> tuple[float, float, float] | None:
+    """``stl_bounding_box`` in a worker thread, at most a few at a time."""
+    async with _MEASURE_SLOTS:
+        return await asyncio.to_thread(stl_bounding_box, path)
+
+
 def stl_bounding_box(path: str | Path) -> tuple[float, float, float] | None:
-    """Size (x, y, z) of an STL mesh in its units (mm), or None if unreadable."""
-    data = Path(path).read_bytes()
-    if len(data) >= 84:
-        (triangles,) = struct.unpack_from("<I", data, 80)
-        if triangles and len(data) == 84 + 50 * triangles:
-            return _binary_box(data, triangles)
-    return _ascii_box(data)
+    """Size (x, y, z) of an STL mesh in its units (mm), or None if unreadable.
+
+    Streams the file: memory stays at a few MB whatever the file size (the
+    upload limit is 100 MB, the API container has 1.5 GB).
+    """
+    path = Path(path)
+    size = path.stat().st_size
+    if size >= 84:
+        with path.open("rb") as handle:
+            header = handle.read(84)
+        (triangles,) = struct.unpack_from("<I", header, 80)
+        if triangles and size == 84 + 50 * triangles:
+            return _binary_box(path, triangles)
+    return _ascii_box(path)
 
 
-def _binary_box(data: bytes, triangles: int) -> tuple[float, float, float] | None:
+def _binary_box(path: Path, triangles: int) -> tuple[float, float, float] | None:
     import numpy as np
 
     record = np.dtype([("normal", "<f4", 3), ("vertices", "<f4", (3, 3)), ("attribute", "<u2")])
-    mesh = np.frombuffer(data, dtype=record, count=triangles, offset=84)
-    points = mesh["vertices"].reshape(-1, 3)
-    if not np.isfinite(points).all():
+    low = np.full(3, np.inf)
+    high = np.full(3, -np.inf)
+    # Read block by block (a memory map would grow the process RSS by the
+    # whole file as its pages are touched).
+    with path.open("rb") as handle:
+        handle.seek(84)
+        remaining = triangles
+        while remaining:
+            block = np.fromfile(handle, dtype=record, count=min(remaining, _BINARY_BLOCK_TRIANGLES))
+            if not len(block):
+                return None
+            remaining -= len(block)
+            vertices = block["vertices"]
+            # min/max over triangles and corners of the strided view: no
+            # reshaped copy. NaN propagates, so the result's finiteness
+            # stands for every vertex's.
+            low = np.minimum(low, vertices.min(axis=(0, 1)))
+            high = np.maximum(high, vertices.max(axis=(0, 1)))
+    if not (np.isfinite(low).all() and np.isfinite(high).all()):
         return None
-    size = points.max(axis=0) - points.min(axis=0)
+    size = high - low
     return (float(size[0]), float(size[1]), float(size[2]))
 
 
-def _ascii_box(data: bytes) -> tuple[float, float, float] | None:
-    low = [float("inf")] * 3
-    high = [float("-inf")] * 3
+def _ascii_box(path: Path) -> tuple[float, float, float] | None:
+    import numpy as np
+
+    low = np.full(3, np.inf)
+    high = np.full(3, -np.inf)
     found = False
-    for match in _VERTEX.finditer(data):
-        try:
-            point = [float(value) for value in match.groups()]
-        except ValueError:
-            return None
-        found = True
-        for axis in range(3):
-            low[axis] = min(low[axis], point[axis])
-            high[axis] = max(high[axis], point[axis])
+    carry = b""
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(_ASCII_CHUNK_BYTES)
+            data = carry + chunk
+            if chunk:
+                # Keep a vertex that may continue in the next chunk for then.
+                cut = data.rfind(b"vertex")
+                if cut < 0:
+                    cut = max(0, len(data) - len(b"vertex"))
+                elif len(data) - cut > _ASCII_MAX_CARRY:
+                    cut = len(data) - len(b"vertex")
+                data, carry = data[:cut], data[cut:]
+            matches = _VERTEX.findall(data)
+            if matches:
+                try:
+                    values = list(map(float, chain.from_iterable(matches)))
+                except ValueError:
+                    return None
+                points = np.array(values).reshape(-1, 3)
+                found = True
+                low = np.minimum(low, points.min(axis=0))
+                high = np.maximum(high, points.max(axis=0))
+            if not chunk:
+                break
     if not found:
         return None
-    return (high[0] - low[0], high[1] - low[1], high[2] - low[2])
+    size = high - low
+    return (float(size[0]), float(size[1]), float(size[2]))
 
 
 def job_warnings(
